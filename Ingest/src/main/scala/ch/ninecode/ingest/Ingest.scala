@@ -182,6 +182,20 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             path
     }
 
+    def getFiles (file: String): Seq[String] = {
+        if (options.nocopy)
+            Seq (file)
+        else
+        {
+            val start = System.nanoTime ()
+            val name = s"/${base_name (file)}"
+            val files = putFile (session, name, readFile (file), file.toLowerCase.endsWith (".zip"))
+            val end = System.nanoTime ()
+            log.info (s"copy $file: ${(end - start) / 1e9} seconds")
+            files
+        }
+    }
+
     def readFile (file: String): Array[Byte] =
     {
         try
@@ -309,20 +323,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             "inferSchema" → "true"
         )
 
-        val belvis_files: Seq[String] =
-        {
-            if (options.nocopy)
-                Seq (file)
-            else
-            {
-                val start = System.nanoTime ()
-                val name = s"/${base_name (file)}"
-                val files = putFile (session, name, readFile (file), file.toLowerCase.endsWith (".zip"))
-                val end = System.nanoTime ()
-                log.info (s"copy $file: ${(end - start) / 1e9} seconds")
-                files
-            }
-        }
+        val belvis_files: Seq[String] = getFiles(file)
         for (filename ← belvis_files)
         {
             val start = System.nanoTime ()
@@ -468,20 +469,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def process_lpex (join_table: Map[String, String])(file: String): Unit =
     {
-        val lpex_files: Seq[String] =
-        {
-            if (options.nocopy)
-                Seq (file)
-            else
-            {
-                val start = System.nanoTime ()
-                val name = s"/${base_name (file)}"
-                val files = putFile (session, name, readFile (file), file.toLowerCase.endsWith (".zip"))
-                val end = System.nanoTime ()
-                log.info (s"copy $file: ${(end - start) / 1e9} seconds")
-                files
-            }
-        }
+        val lpex_files: Seq[String] = getFiles(file)
         for (filename ← lpex_files)
         {
             val start = System.nanoTime ()
@@ -502,7 +490,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
      * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
      * @param line one line from the data file
      */
-    def line_ekz (join_table: Map[String, String]) (line: String): Seq[MeasuredValue] =
+    def line_custom (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
     {
         // LDN-Messpunkt;Einheitennummer...
         // 730154;39580894;Wirkenergie A+ 15;1-1:1.8.0*255;15;kWh;2019.08.24;24.08.2019 00:00;24.08.2019 00:15;0.038;...
@@ -538,35 +526,22 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             List ()
     }
 
-    def sub_ekz (filename: String, join_table: Map[String, String]): Unit =
+    def sub_custom (filename: String, join_table: Map[String, String]): Unit =
     {
         val lines: RDD[String] = session.sparkContext.textFile (filename)
-        val rdd = lines.flatMap (line_ekz (join_table))
+        val rdd = lines.flatMap (line_custom (join_table))
         // combine real and imaginary parts
         val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
         grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
     }
 
-    def process_ekz (join_table: Map[String, String])(file: String): Unit =
+    def process_custom (join_table: Map[String, String])(file: String): Unit =
     {
-        val ekz_files: Seq[String] =
-        {
-            if (options.nocopy)
-                Seq (file)
-            else
-            {
-                val start = System.nanoTime ()
-                val name = s"/${base_name (file)}"
-                val files = putFile (session, name, readFile (file), file.toLowerCase.endsWith (".zip"))
-                val end = System.nanoTime ()
-                log.info (s"copy $file: ${(end - start) / 1e9} seconds")
-                files
-            }
-        }
-        for (filename ← ekz_files)
+        val files: Seq[String] = getFiles(file)
+        for (filename ← files)
         {
             val start = System.nanoTime ()
-            sub_ekz (filename, join_table)
+            sub_custom (filename, join_table)
             if (!options.nocopy)
                 hdfs.delete (new Path (filename), false)
             val end = System.nanoTime ()
@@ -624,7 +599,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 {
                     case "Belvis" => options.datafiles.foreach (process_belvis (join_table))
                     case "LPEx" => options.datafiles.foreach (process_lpex (join_table))
-                    case "Custom" => options.datafiles.foreach (process_ekz (join_table))
+                    case "Custom" => options.datafiles.foreach (process_custom (join_table))
                 }
 
                 if (!options.nocopy)
