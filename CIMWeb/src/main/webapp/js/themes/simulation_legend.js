@@ -23,6 +23,11 @@ define
                 this._quality_factors =
                 [
                     {
+                        title: "Events",
+                        id: "events",
+                        selected: false
+                    },
+                    {
                         title: "Load factor (0 &rarr; 1)",
                         id: "load_factor",
                         selected: false
@@ -91,8 +96,8 @@ define
                     this._template,
                     {
                         "quality_factors": self._quality_factors,
-                        "clock": (text, render) => self._clock.getSVG (),
-                        "play":  (text, render) => self.play ()
+                        "clock": () => self._clock.getSVG (),
+                        "play":  () => self.play ()
                     }
                 );
                 this._container.getElementsByClassName ("close")[0].onclick = this.close.bind (this);
@@ -130,7 +135,6 @@ define
      xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:cc="http://creativecommons.org/ns#"
      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:svg="http://www.w3.org/2000/svg"
      xmlns="http://www.w3.org/2000/svg"
      id="svg8"
      version="1.1"
@@ -147,7 +151,6 @@ define
                 <dc:format>image/svg+xml</dc:format>
                 <dc:type
                      rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-                <dc:title></dc:title>
             </cc:Work>
         </rdf:RDF>
     </metadata>
@@ -172,7 +175,6 @@ define
      xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:cc="http://creativecommons.org/ns#"
      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:svg="http://www.w3.org/2000/svg"
      xmlns="http://www.w3.org/2000/svg"
      id="svg8"
      version="1.1"
@@ -189,7 +191,6 @@ define
                 <dc:format>image/svg+xml</dc:format>
                 <dc:type
                      rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-                <dc:title></dc:title>
             </cc:Work>
         </rdf:RDF>
     </metadata>
@@ -245,44 +246,7 @@ define
                     }
                 );
                 this._slider.on ("change", this.legend_change.bind (this));
-
-                const calendar = document.getElementById ("simulation_date");
-                if (calendar)
-                {
-                    let start = new Date (this._times.start).toISOString ();
-                    start = start.substring (start.indexOf ("T"));
-                    let end = new Date (this._times.end).toISOString ();
-                    end = start.substring (end.indexOf ("T"));
-                    calendar.setAttribute ("min", start);
-                    calendar.setAttribute ("max", end);
-                }
-
-//                           <span><input id="simulation_date" type="text" value=""/></span>
-
-//                const start = new Date (this._times.start);
-//                const end = new Date (this._times.end);
-//                this._daterange = new DateRangePicker (
-//                    "#simulation_date",
-//                    {
-//                        timePicker: true,
-//                        timePickerIncrement: 15,
-//                        locale: {
-//                            format: 'YYYY.MM.DD HH:mm'
-//                        },
-//                        timePicker24Hour: true,
-//                        linkedCalendars: false,
-//                        singleDatePicker: true,
-//                        startDate: start,
-//                        endDate: end,
-//                        minDate: start,
-//                        maxDate: end,
-//                        showDropdowns: true,
-//                        opens: "up"
-//                        //showISOWeekNumbers: true
-//                    },
-//                    (start, end, label) => false
-//                );
-
+                this.setCalendar ();
                 document.getElementById ("player_action").onclick = this.play_pause.bind (this);
             }
 
@@ -303,9 +267,8 @@ define
                 this._legend_listener = fn;
             }
 
-            setTimes (times) // { start: start, end: end }
+            setCalendar ()
             {
-                this._times = times;
                 const calendar = document.getElementById ("simulation_date");
                 if (calendar)
                 {
@@ -316,6 +279,12 @@ define
                     calendar.setAttribute ("min", start);
                     calendar.setAttribute ("max", end);
                 }
+            }
+
+            setTimes (times) // { start: start, end: end }
+            {
+                this._times = times;
+                this.setCalendar ();
             }
 
             getTimes ()

@@ -16,6 +16,7 @@ truncate table cimapplication.geojson_lines;
 truncate table cimapplication.geojson_polygons;
 truncate table cimapplication.key_value;
 truncate table cimapplication.simulation_event;
+truncate table cimapplication.simulation_event_summary;
 truncate table cimapplication.load_factor_by_day;
 truncate table cimapplication.coincidence_factor_by_day;
 truncate table cimapplication.responsibility_by_day;
@@ -24,6 +25,11 @@ truncate table cimapplication.responsibility_by_day;
      */
     function (mustache, util, cimfiles, cimmap, cimquery, cim, cimapp, Chooser, SimulationTheme, moment, DateRangePicker)
     {
+        let KeySpaces = [];
+
+        function getKeySpaces () { return (KeySpaces); }
+        function setKeySpaces (keyspaces) { KeySpaces = keyspaces; }
+
         // The simulation details.
         let TheSimulation =
             {
@@ -913,15 +919,15 @@ truncate table cimapplication.responsibility_by_day;
             }
         ];
 
-        function set_input_keyspace (event)
+        function set_input_keyspace ()
         {
-            TheSimulation.keyspaces.input = event.target.value;
+            TheSimulation.keyspaces.input = document.getElementById ("input_keyspace").value;
             getDateRange ();
         }
 
         function set_output_keyspace (event)
         {
-            TheSimulation.keyspaces.output = event.target.value;
+            TheSimulation.keyspaces.output = document.getElementById ("output_keyspace").value;
             getSimulationNames ();
         }
 
@@ -1138,7 +1144,7 @@ truncate table cimapplication.responsibility_by_day;
         }
 
         /**
-         * @summary Run the simulation using GridLAB-D to populate simmulated_value_by_day Cassandra table.
+         * @summary Run the simulation using GridLAB-D to populate simulation Cassandra tables.
          * @description Execute gridlabd for the simulation parameters provided by the user.
          * Typical command line call: wget --output-document=simulation.log --post-file=sak.json "http://localhost:9080/cimweb/cim/estimation;verbose=true;keep=true"
          * @function do_simulate
@@ -1353,13 +1359,33 @@ truncate table cimapplication.responsibility_by_day;
                         </div>
                         <div class="form-row">
                           <div class="col form-group">
-                            <label for="input_keyspace">Cassandra input keyspace</label>
-                            <input id="input_keyspace" type="text" class="form-control" aria-describedby="outputKeyspaceHelp" value="cimapplication">
-                            <small id="outputKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used for input (table <em>measured_value</em>).</small>
+                              <label for="input_keyspace">Cassandra input keyspace</label>
+                              <div class="input-group">
+                                  <input id="input_keyspace" type="text" class="form-control" aria-describedby="inputKeyspaceHelp" value="cimapplication">
+                                  <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Keyspace</button>
+                                    <div id="input_keyspace_select" class="dropdown-menu">
+                                      <a class="dropdown-item" href="#">One</a>
+                                      <a class="dropdown-item" href="#">Two</a>
+                                      <a class="dropdown-item" href="#">Three</a>
+                                    </div>
+                                  </div>
+                              </div>
+                            <small id="inputKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used for input (table <em>measured_value</em>).</small>
                           </div>
                           <div class="col form-group">
                             <label for="output_keyspace">Cassandra output keyspace</label>
-                            <input id="output_keyspace" type="text" class="form-control" aria-describedby="outputKeyspaceHelp" value="cimapplication">
+                              <div class="input-group">
+                                  <input id="output_keyspace" type="text" class="form-control" aria-describedby="outputKeyspaceHelp" value="cimapplication">
+                                  <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Keyspace</button>
+                                    <div id="output_keyspace_select" class="dropdown-menu">
+                                      <a class="dropdown-item" href="#">One</a>
+                                      <a class="dropdown-item" href="#">Two</a>
+                                      <a class="dropdown-item" href="#">Three</a>
+                                    </div>
+                                  </div>
+                              </div>
                             <small id="outputKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used for output (table <em>simulated_value</em> and others).</small>
                           </div>
                         </div>
@@ -1455,6 +1481,15 @@ truncate table cimapplication.responsibility_by_day;
             );
             document.getElementById ("input_keyspace").onchange = set_input_keyspace;
             document.getElementById ("output_keyspace").onchange = set_output_keyspace;
+            const contents = this.getKeySpaces ().map (keyspace => `<a class="dropdown-item" href="#">${keyspace}</a>`).join ("\n");
+            const in_key = document.getElementById ("input_keyspace_select");
+            in_key.innerHTML = contents;
+            for (var i = 0; i < in_key.children.length; i++)
+                in_key.children.item (i).onclick = (event) => { event.preventDefault (); const element = document.getElementById ("input_keyspace"); element.value = event.target.innerHTML; element.onchange (); };
+            const out_key = document.getElementById ("output_keyspace_select");
+            out_key.innerHTML = contents;
+            for (var j = 0; j < out_key.children.length; j++)
+                out_key.children.item (j).onclick = (event) => { event.preventDefault (); const element = document.getElementById ("output_keyspace"); element.value = event.target.innerHTML; element.onchange (); };
 
             // see https://wireddots.com/products/datetimepicker
             const start = new Date (TheSimulation.interval.start);
@@ -1547,7 +1582,7 @@ truncate table cimapplication.responsibility_by_day;
         function render ()
         {
             document.getElementById ("simulate").innerHTML = "";
-            formFill ();
+            formFill.call (this);
             return (getSimulationNames ().then (getFiles).then (getDateRange));
         }
 
@@ -1766,6 +1801,46 @@ truncate table cimapplication.responsibility_by_day;
             );
         }
 
+        function get_keyspaces ()
+        {
+            const self = this;
+            return (
+                new Promise (
+                    function (resolve, reject)
+                    {
+                        cimquery.queryPromise (
+                            {
+                                cassandra: true,
+                                sql: "select * from system_schema.keyspaces"
+                            }
+                        ).then (
+                            function (result)
+                            {
+                                self.setKeySpaces (result.map (x => x.keyspace_name).filter (
+                                        x =>
+                                        {
+                                            switch (x)
+                                            {
+                                                case "system_auth":
+                                                case "system_schema":
+                                                case "system_distributed":
+                                                case "system":
+                                                case "system_traces":
+                                                    return (false);
+                                                default:
+                                                    return (true);
+                                            }
+                                        }
+                                    )
+                                );
+                                resolve ();
+                            }
+                        )
+                    }
+                )
+            );
+        }
+
         /**
          * @summary Render the simulations page.
          * @description Uses mustache to create HTML DOM elements that display the simulation options.
@@ -1773,11 +1848,14 @@ truncate table cimapplication.responsibility_by_day;
          */
         function initialize ()
         {
-            setReplication ().then (render);
+            const self = this;
+            setReplication ().then (get_keyspaces.bind (self)).then (render.bind (self));
         }
 
         return (
             {
+                getKeySpaces: getKeySpaces,
+                setKeySpaces: setKeySpaces,
                 initialize: initialize
             }
         );

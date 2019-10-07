@@ -105,6 +105,9 @@ define
                     const subtheme = this.getLegend ().currentQualityFactor ();
                     switch (subtheme)
                     {
+                        case "events":
+                            polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(255,0,0)"], [1.0, "RGB(0,255,0)"] ] };
+                            break;
                         case "load_factor":
                             polygon_color = { type: "exponential", property: "T" + date.substring (0, date.indexOf ("T")), stops: [ [0.0, "RGB(255,0,0)"], [1.0, "RGB(0,255,0)"] ] };
                             break;
@@ -201,6 +204,12 @@ define
                 const subtheme = self.getLegend ().currentQualityFactor ();
                 switch (subtheme)
                 {
+                    case "events":
+//                        simulation | mrid | day | consumer | consumer_total | linesegments | linesegments_total | transformer | transformer_total
+                        this.clear_points_and_lines ();
+                        cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".simulation_event_summary where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
+                            .then (data => self.setLoadFactor_for_Polygon.call (self, data));
+                        break;
                     case "load_factor":
                         this.clear_points_and_lines ();
                         cimquery.queryPromise ({ sql: "select json * from " + self._keyspace + ".load_factor_by_day where mrid ='" + self._Trafo + "' allow filtering", cassandra: true })
@@ -240,6 +249,8 @@ define
                 const subtheme = self.getLegend ().currentQualityFactor ();
                 switch (subtheme)
                 {
+                    case "events":
+                        break;
                     case "load_factor":
                         break;
                     case "coincidence_factor":
@@ -260,6 +271,8 @@ define
                 const subtheme = self.getLegend ().currentQualityFactor ();
                 switch (subtheme)
                 {
+                    case "break":
+                        break;
                     case "load_factor":
                         break;
                     case "coincidence_factor":
