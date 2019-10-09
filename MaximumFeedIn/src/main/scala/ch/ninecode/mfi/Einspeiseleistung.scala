@@ -437,7 +437,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info ("solve and analyse: " + (analyse - export2) / 1e9 + " seconds " + ret.count + " results")
 
             val b4_db = System.nanoTime ()
-            Database.store ("Einspeiseleistung", Calendar.getInstance (), options.workdir)(ret.collect)
+            Database.store ("Einspeiseleistung", Calendar.getInstance (), options.outputfile)(ret.collect)
             val dbsave = System.nanoTime ()
             log.info ("database save: " + (dbsave - b4_db) / 1e9 + " seconds")
 
@@ -455,7 +455,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val file = files.head.split (",")(0).replace (" ", "%20")
         val uri = new URI (file)
         if (null == uri.getScheme)
-            "/simulation/"
+            "simulation/"
         else
             uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
     }
@@ -476,7 +476,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else if (-1 != options.simulation)
         {
             // do all transformers with EEA which are not yet processed
-            Database.fetchTransformersWithEEA (options.simulation, options.workdir)
+            Database.fetchTransformersWithEEA (options.simulation, options.outputfile)
         }
         else
         {
@@ -562,7 +562,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             precalc_results.has
         else if (-1 != options.reference)
         {
-            val changed: Array[String] = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta, options.workdir)
+            val changed: Array[String] = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta, options.outputfile)
             precalc_results.has.filter (x => changed.contains (x.mrid))
         }
         else

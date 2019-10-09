@@ -299,7 +299,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         )
             .persist (storage_level)
 
-        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), options.workdir)(has)
+        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), options.outputfile)(has)
         log.info ("the simulation number is " + simulation)
 
         def mapGraphEdges (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =

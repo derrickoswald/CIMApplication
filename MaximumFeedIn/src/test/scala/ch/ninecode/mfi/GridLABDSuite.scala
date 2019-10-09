@@ -185,6 +185,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
                 workdir = "simulation/",
+                outputfile = "simulation/results.db",
                 files = List (filename),
                 precalc_factor = 2.5
             )
@@ -197,7 +198,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             // load the sqlite-JDBC driver using the current class loader
             Class.forName ("org.sqlite.JDBC")
             // create a database connection
-            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+            val connection = DriverManager.getConnection (s"jdbc:sqlite:${options.outputfile}")
 
             val statement = connection.createStatement ()
             val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where (simulation = (select max(simulation) from results) or simulation = (select max(simulation) from results) - 1) and house like 'USR%' order by house, simulation")
@@ -241,6 +242,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
                 workdir = "simulation/",
+                outputfile = "simulation/results.db",
                 files = List (filename),
                 cable_impedance_limit = 0.14
             )
@@ -253,7 +255,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             // load the sqlite-JDBC driver using the current class loader
             Class.forName ("org.sqlite.JDBC")
             // create a database connection
-            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+            val connection = DriverManager.getConnection (s"jdbc:sqlite:${options.outputfile}")
 
             val statement = connection.createStatement ()
             val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where (simulation = (select max(simulation) from results) or simulation = (select max(simulation) from results) - 1) and house like 'USR%' and trafo like 'TX0002'")
@@ -299,6 +301,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
                 workdir = "simulation/",
+                outputfile = "simulation/results.db",
                 files = List (filename),
                 precalc_factor = 2.5
             )
@@ -311,7 +314,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             // load the sqlite-JDBC driver using the current class loader
             Class.forName ("org.sqlite.JDBC")
             // create a database connection
-            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+            val connection = DriverManager.getConnection (s"jdbc:sqlite:${options.outputfile}")
 
             val statement = connection.createStatement ()
             val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where id = (select max(id) from results)")
@@ -358,6 +361,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
                 workdir = "simulation/",
+                outputfile = "simulation/results.db",
                 files = List (filename),
                 precalc_factor = 2.5
             )
@@ -370,7 +374,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             // load the sqlite-JDBC driver using the current class loader
             Class.forName ("org.sqlite.JDBC")
             // create a database connection
-            val connection = DriverManager.getConnection ("jdbc:sqlite:simulation/results.db")
+            val connection = DriverManager.getConnection (s"jdbc:sqlite:${options.outputfile}")
 
             val statement = connection.createStatement ()
             val countset = statement.executeQuery ("select count() from results where simulation = (select max(simulation) from results)")
@@ -406,10 +410,10 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             connection.close ()
     }
 
-    def simulation (workdir: String = "simulation/"): String =
+    def simulation (outputfile: String = "simulation/results.db"): String =
     {
         Class.forName ("org.sqlite.JDBC") // load the sqlite-JDBC driver using the current class loader
-        using (DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db"))
+        using (DriverManager.getConnection (s"jdbc:sqlite:${outputfile}"))
         {
             connection =>
                 using (connection.createStatement ())
@@ -449,13 +453,13 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
-                workdir = "simulation_three_phase/",
+                outputfile = "simulation_three_phase/results.db",
                 files = List (filename),
                 precalc_factor = 2.5
             )
             val eins = Einspeiseleistung (session, options_one_phase)
             eins.run ()
-            val one_phase = simulation ("simulation_three_phase/")
+            val one_phase = simulation (options_one_phase.outputfile)
 
             val options_three_phase = EinspeiseleistungOptions (
                 verbose = true,
@@ -472,16 +476,16 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold = 3.0,
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
-                workdir = "simulation_three_phase/",
+                outputfile = "simulation_three_phase/results.db",
                 files = List (filename),
                 precalc_factor = 2.5
             )
             val drei = Einspeiseleistung (session, options_three_phase)
             drei.run ()
-            val three_phase = simulation ("simulation_three_phase/")
+            val three_phase = simulation (options_three_phase.outputfile)
 
             Class.forName ("org.sqlite.JDBC") // load the sqlite-JDBC driver using the current class loader
-            using (DriverManager.getConnection ("jdbc:sqlite:simulation_three_phase/results.db"))
+            using (DriverManager.getConnection (s"jdbc:sqlite:${options_three_phase.outputfile}"))
             {
                 connection =>
                     using (connection.createStatement ())

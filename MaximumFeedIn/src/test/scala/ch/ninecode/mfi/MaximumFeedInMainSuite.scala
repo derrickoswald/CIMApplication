@@ -2,7 +2,7 @@ package ch.ninecode.mfi
 
 import org.scalatest.FunSuite
 
-import ch.ninecode.mfi.Main.main
+import ch.ninecode.mfi.MaximumFeedIn.main
 
 class MaximumFeedInMainSuite extends FunSuite
 {

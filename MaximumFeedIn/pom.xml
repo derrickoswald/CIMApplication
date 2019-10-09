@@ -181,7 +181,7 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.mfi.Main</mainClass>
+                                    <mainClass>ch.ninecode.mfi.MaximumFeedIn</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>

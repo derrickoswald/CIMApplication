@@ -35,7 +35,7 @@ object Database
                   |    description text,                     -- textual description of the simulation run
                   |    time text                             -- the date and time at which the simulation was run
                   |)""".stripMargin)
-            statement.executeUpdate ("create index if not exists epoc on simulation (time)")
+            statement.executeUpdate ("create index if not exists epoch on simulation (time)")
         }
         val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'results'")
         val exists2 = resultset2.next ()
@@ -71,7 +71,7 @@ object Database
                   |        0 Priority,             -- low priority for precalculated values
                   |        s.description Analysis, -- 'Threshold Precalculation'
                   |        datetime(s.time/1000, 'unixepoch', 'localtime') Date, -- textual program execution time
-                  |        s.time When_Epoc,       -- numeric program execution time
+                  |        s.time When_Epoch,      -- numeric program execution time
                   |        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the house
                   |        r.feeder Feeder,        -- mRID of the Connector supplying the house from the substation
                   |        r.house House,          -- mRID of the EnergyConsumer at this feed-in node
@@ -89,7 +89,7 @@ object Database
                   |        1 Priority,             -- high priority for load-flow values
                   |        s.description Analysis, -- 'Einspeiseleistung'
                   |        datetime(s.time/1000, 'unixepoch', 'localtime') Date, -- textual program execution time
-                  |        s.time When_Epoc,       -- numeric program execution time
+                  |        s.time When_Epoch,      -- numeric program execution time
                   |        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the house
                   |        r.feeder Feeder,        -- mRID of the Connector supplying the house from the substation
                   |        r.house House,          -- mRID of the EnergyConsumer at this feed-in node
@@ -113,7 +113,7 @@ object Database
                   |        i.Maximum,              -- maximum feed-in power (W)
                   |        i.Reason,               -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
                   |        i.Details,              -- details regarding the limiting criteria
-                  |        max(i.When_Epoc) When_Epoc -- select only the most recent value
+                  |        max(i.When_Epoch) When_Epoch -- select only the most recent value
                   |    from
                   |        intermediate i          -- staging view
                   |    where
@@ -129,7 +129,7 @@ object Database
                   |        i.Maximum,              -- maximum feed-in power (W)
                   |        i.Reason,               -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
                   |        i.Details,              -- details regarding the limiting criteria
-                  |        max(i.When_Epoc) When_Epoc -- select only the most recent value
+                  |        max(i.When_Epoch) When_Epoch -- select only the most recent value
                   |    from
                   |        intermediate i          -- staging view
                   |    where
@@ -140,10 +140,10 @@ object Database
         statement.close ()
     }
 
-    def store (description: String, t1: Calendar, workdir: String)(records: Array[MaxEinspeiseleistung]): Int = synchronized
+    def store (description: String, t1: Calendar, outputfile: String)(records: Array[MaxEinspeiseleistung]): Int = synchronized
     {
         // make the directory
-        val file = Paths.get (s"${workdir}dummy")
+        val file = Paths.get (s"${outputfile}")
         Files.createDirectories (file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
@@ -153,7 +153,7 @@ object Database
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db")
+            connection = DriverManager.getConnection (s"jdbc:sqlite:${outputfile}")
             connection.setAutoCommit (false)
 
             // create schema
@@ -232,10 +232,10 @@ object Database
 
     }
 
-    def store_precalculation (description: String, t1: Calendar, workdir: String)(results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
+    def store_precalculation (description: String, t1: Calendar, outputfile: String)(results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
-        val file = Paths.get (s"${workdir}dummy")
+        val file = Paths.get (s"${outputfile}")
         Files.createDirectories (file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
@@ -245,7 +245,7 @@ object Database
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db")
+            connection = DriverManager.getConnection (s"jdbc:sqlite:${outputfile}")
             connection.setAutoCommit (false)
 
             // create schema
@@ -317,14 +317,14 @@ object Database
         }
     }
 
-    def fetchTransformersWithEEA (simulation: Int, workdir: String): Array[String] =
+    def fetchTransformersWithEEA (simulation: Int, outputfile: String): Array[String] =
     {
         var ret = new ArrayBuffer[String]()
 
         // check if the directory exists
-        val file = Paths.get (s"${workdir}results.db")
+        val file = Paths.get (s"${outputfile}")
         if (!Files.exists (file))
-            log.error ("database file " + file + " does not exist")
+            log.error (s"database file ${file} does not exist")
         else
         {
             // load the sqlite-JDBC driver using the current class loader
@@ -334,7 +334,7 @@ object Database
             try
             {
                 // create a database connection
-                connection = DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db")
+                connection = DriverManager.getConnection (s"jdbc:sqlite:${outputfile}")
 
                 val statement = connection.prepareStatement ("select distinct(trafo) from results where eea > 0 and trafo not in (select trafo from results where simulation in (select id from simulation where id > ? and description = 'Einspeiseleistung'))")
                 statement.setInt (1, simulation)
@@ -372,16 +372,17 @@ object Database
      * @param simulation The current (most recent) simulation.
      * @param reference  The reference (historical) simulation.
      * @param delta      The difference in the amount of power that will trigger a recalculation.
+     * @param outputfile The name of the output database file.
      * @return The list of mRID for EnergyConsumer objects needing to be recalculated.
      */
-    def fetchHousesWithDifferentEEA (simulation: Int, reference: Int, delta: Double, workdir: String): Array[String] =
+    def fetchHousesWithDifferentEEA (simulation: Int, reference: Int, delta: Double, outputfile: String): Array[String] =
     {
         var ret = new ArrayBuffer[String]()
 
         // check if the directory exists
-        val file = Paths.get (s"${workdir}results.db")
+        val file = Paths.get (s"${outputfile}")
         if (!Files.exists (file))
-            log.error ("database file " + file + " does not exist")
+            log.error (s"database file ${file} does not exist")
         else
         {
             // load the sqlite-JDBC driver using the current class loader
@@ -391,7 +392,7 @@ object Database
             try
             {
                 // create a database connection
-                connection = DriverManager.getConnection (s"jdbc:sqlite:${workdir}results.db")
+                connection = DriverManager.getConnection (s"jdbc:sqlite:${outputfile}")
 
                 val statement = connection.prepareStatement ("select distinct(current.house) from (select * from results where simulation = ?) current, (select * from results where simulation = ?) reference where current.house = reference.house and ((current.eea != reference.eea) or (abs(current.maximum - reference.maximum) > ?))")
                 statement.setInt (1, simulation)
