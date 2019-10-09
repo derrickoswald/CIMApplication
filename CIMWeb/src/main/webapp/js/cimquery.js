@@ -33,81 +33,35 @@ define
          */
         let QueryCassandra = false;
 
-        /**
-         * @summary perform query.
-         * @description Perform an SQL query on loaded CIM data.
-         * @param {string} sql - the SQL to use
-         * @param {boolean} cassandra - if <code>true</code> query Cassandra rather than Spark
-         * @param {string} table_name - the name of the temporary view to store the result DataFrame, "" for none
-         * @param {string} cassandra_table_name - the name of the name of the Cassandra table to store the result DataFrame, "" for none
-         * @param {function} fn - the callback function with the data
-         * @param {function} error - the error callback function with an error string if possible
-         * @function query
-         */
-        function query (sql, cassandra, table_name, cassandra_table_name, fn, error)
-        {
-            error = error || function (s) { alert (s); };
-            const target = (cassandra) ? "cassandra=true&": "";
-            const table = ("" !== table_name) ? "table_name=" + encodeURIComponent (table_name) + "&": "";
-            const cassandra_table = ("" !== cassandra_table_name) ? "cassandra_table_name=" + encodeURIComponent (cassandra_table_name) + "&": "";
-            const url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (sql);
-            const xmlhttp = util.createCORSRequest ("GET", url);
-            xmlhttp.onreadystatechange = function ()
-            {
-                if (4 === xmlhttp.readyState)
-                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
-                    {
-                        const resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status === "OK")
-                            fn (resp.result);
-                        else
-                            error (resp.message);
-                    }
-                    else
-                        error ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-            };
-            xmlhttp.send ();
-        }
-
         function queryPromise (options)
         {
+            const target = (options.cassandra) ? "cassandra=true&": "";
+            const table = (options.table) ? "table_name=" + encodeURIComponent (options.table) + "&": "";
+            const cassandra_table = (options.cassandra_table) ? "cassandra_table_name=" + encodeURIComponent (options.cassandra_table) + "&": "";
+            const url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (options.sql);
             return (
-                new Promise (
-                    function (resolve, reject)
+                util.makeRequest ("GET", url).then (
+                    (xmlhttp) =>
                     {
-                        const target = (options.cassandra) ? "cassandra=true&": "";
-                        const table = (options.table) ? "table_name=" + encodeURIComponent (options.table) + "&": "";
-                        const cassandra_table = (options.cassandra_table) ? "cassandra_table_name=" + encodeURIComponent (options.cassandra_table) + "&": "";
-                        const url = util.home () + "cim/query?" + target + table + cassandra_table + "sql=" + encodeURIComponent (options.sql);
-                        const xmlhttp = util.createCORSRequest ("GET", url);
-                        xmlhttp.onload = function ()
-                        {
-                            if (xmlhttp.status >= 200 && xmlhttp.status < 300)
-                            {
-                                const resp = JSON.parse (xmlhttp.responseText);
-                                if (resp.status === "OK")
-                                    resolve (resp.result);
-                                else
-                                    reject (resp.message);
-                            }
-                            else
-                                reject (
-                                    {
-                                        status: xmlhttp.status,
-                                        statusText: xmlhttp.statusText
-                                    }
-                                );
-                        };
-                        xmlhttp.onerror = function ()
-                        {
-                            reject (
+                        return (
+                            new Promise (
+                                function (resolve, reject)
                                 {
-                                    status: xmlhttp.status,
-                                    statusText: xmlhttp.statusText
+                                    try
+                                    {
+                                        const resp = JSON.parse (xmlhttp.responseText);
+                                        if (resp.status === "OK")
+                                            resolve (resp.result);
+                                        else
+                                            reject (resp.message);
+                                    }
+                                    catch (exception)
+                                    {
+                                        reject (exception.toString ());
+                                    }
                                 }
-                            );
-                        };
-                        xmlhttp.send ();
+                            )
+                        );
                     }
                 )
             );
@@ -243,7 +197,6 @@ define
         return (
             {
                 initialize: initialize,
-                query: query,
                 queryPromise: queryPromise
             }
         );

@@ -109,57 +109,56 @@ define
          */
         function analyze ()
         {
+            // ToDo: validation
+            const options = {
+                verbose: true,
+                description: "cim analyze",
+                default_short_circuit_power_max: Number (document.getElementById ("network_power_max").value),
+                default_short_circuit_impedance_max: {
+                    re: Number (document.getElementById ("network_resistance_max").value),
+                    im: Number (document.getElementById ("network_reactance_max").value)
+                },
+                default_short_circuit_power_min: Number (document.getElementById ("network_power_min").value),
+                default_short_circuit_impedance_min: {
+                    re: Number (document.getElementById ("network_resistance_min").value),
+                    im: Number (document.getElementById ("network_reactance_min").value)
+                },
+                default_transformer_power_rating: Number (document.getElementById ("transformer_power").value),
+                default_transformer_impedance: {
+                    re: Number (document.getElementById ("transformer_resistance").value),
+                    im: Number (document.getElementById ("transformer_reactance").value)
+                },
+                base_temperature: Number (document.getElementById ("tbase").value),
+                low_temperature: Number (document.getElementById ("tlow").value),
+                high_temperature: Number (document.getElementById ("thigh").value),
+                cmax: Number (document.getElementById ("cmax").value),
+                cmin: Number (document.getElementById ("cmin").value),
+                fuse_table: Number (document.getElementById ("fuse_table").value),
+                messagemax: Number (document.getElementById ("messagemax").value),
+                batchsize: Number (document.getElementById ("batchsize").value),
+                trafos: "",
+                workdir: derive_work_dir (cimmap.get_loaded ().files[0])
+            };
+            const pf = document.getElementById ("motor_power_factor").value;
+            if (("" === pf) || isNaN (Number (pf)))
+            {
+                options.worstcasepf = true;
+                options.cosphi = null;
+            }
+            else
+            {
+                options.worstcasepf = false;
+                options.cosphi = Number (pf)
+            }
+
+            const url = util.home () + "cim/short_circuit";
             return (
-                new Promise (
-                    function (resolve, reject)
+                util.makeRequest ("POST", url, JSON.stringify (options, null, 4)).then (
+                    (xmlhttp) =>
                     {
-                        // ToDo: validation
-                        const options = {
-                            verbose: true,
-                            description: "cim analyze",
-                            default_short_circuit_power_max: Number (document.getElementById ("network_power_max").value),
-                            default_short_circuit_impedance_max: {
-                                re: Number (document.getElementById ("network_resistance_max").value),
-                                im: Number (document.getElementById ("network_reactance_max").value)
-                            },
-                            default_short_circuit_power_min: Number (document.getElementById ("network_power_min").value),
-                            default_short_circuit_impedance_min: {
-                                re: Number (document.getElementById ("network_resistance_min").value),
-                                im: Number (document.getElementById ("network_reactance_min").value)
-                            },
-                            default_transformer_power_rating: Number (document.getElementById ("transformer_power").value),
-                            default_transformer_impedance: {
-                                re: Number (document.getElementById ("transformer_resistance").value),
-                                im: Number (document.getElementById ("transformer_reactance").value)
-                            },
-                            base_temperature: Number (document.getElementById ("tbase").value),
-                            low_temperature: Number (document.getElementById ("tlow").value),
-                            high_temperature: Number (document.getElementById ("thigh").value),
-                            cmax: Number (document.getElementById ("cmax").value),
-                            cmin: Number (document.getElementById ("cmin").value),
-                            fuse_table: Number (document.getElementById ("fuse_table").value),
-                            messagemax: Number (document.getElementById ("messagemax").value),
-                            batchsize: Number (document.getElementById ("batchsize").value),
-                            trafos: "",
-                            workdir: derive_work_dir (cimmap.get_loaded ().files[0])
-                        };
-                        const pf = document.getElementById ("motor_power_factor").value;
-                        if (("" === pf) || isNaN (Number (pf)))
-                        {
-                            options.worstcasepf = true;
-                            options.cosphi = null;
-                        }
-                        else
-                        {
-                            options.worstcasepf = false;
-                            options.cosphi = Number (pf)
-                        }
-                        const url = util.home () + "cim/short_circuit";
-                        const xmlhttp = util.createCORSRequest ("POST", url);
-                        xmlhttp.onreadystatechange = function ()
-                        {
-                            if (4 === xmlhttp.readyState)
-                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
+                        return (
+                            new Promise (
+                                function (resolve, reject)
                                 {
                                     try
                                     {
@@ -174,10 +173,8 @@ define
                                         reject (exception.toString ());
                                     }
                                 }
-                                else
-                                    reject ("xmlhttp.status = " + xmlhttp.status);
-                        };
-                        xmlhttp.send (JSON.stringify (options, null, 4));
+                            )
+                        );
                     }
                 )
             );

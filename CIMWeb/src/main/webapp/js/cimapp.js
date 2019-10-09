@@ -30,27 +30,15 @@ define
          */
         function ping (debug)
         {
-            return (
-                new Promise (
-                    function (resolve, reject)
+            const url = util.home () + "cim/ping" + ((debug) ? ";debug=true" : "");
+            return (util.makeRequest ("GET", url).then (
+                    (xmlhttp) =>
                     {
-                        const url = util.home () + "cim/ping" + ((debug) ? ";debug=true" : "");
-                        const xmlhttp = util.createCORSRequest ("GET", url);
-                        xmlhttp.onreadystatechange = function ()
-                        {
-                            if (4 === xmlhttp.readyState)
-                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
-                                {
-                                    const resp = JSON.parse (xmlhttp.responseText);
-                                    if ("OK" === resp.status)
-                                        resolve (resp.result);
-                                    else
-                                        reject (resp);
-                                }
-                                else
-                                    reject ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-                        };
-                        xmlhttp.send ();
+                        const resp = JSON.parse (xmlhttp.responseText);
+                        if ("OK" === resp.status)
+                            return (resp.result);
+                        else
+                            throw new Error (resp);
                     }
                 )
             );
@@ -64,27 +52,15 @@ define
          */
         function pong (debug)
         {
-            return (
-                new Promise (
-                    function (resolve, reject)
+            const url = util.home () + "cim/pong" + ((debug) ? ";debug=true" : "");
+            return (util.makeRequest ("GET", url).then (
+                    (xmlhttp) =>
                     {
-                        const url = util.home () + "cim/pong" + ((debug) ? ";debug=true" : "");
-                        const xmlhttp = util.createCORSRequest ("GET", url);
-                        xmlhttp.onreadystatechange = function ()
-                        {
-                            if (4 === xmlhttp.readyState)
-                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
-                                {
-                                    const resp = JSON.parse (xmlhttp.responseText);
-                                    if ("OK" === resp.status)
-                                        resolve (resp.result);
-                                    else
-                                        reject (resp);
-                                }
-                                else
-                                    reject ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-                        };
-                        xmlhttp.send ();
+                        const resp = JSON.parse (xmlhttp.responseText);
+                        if ("OK" === resp.status)
+                            return (resp.result);
+                        else
+                            throw new Error (resp);
                     }
                 )
             );

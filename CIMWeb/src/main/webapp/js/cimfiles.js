@@ -188,27 +188,10 @@ define
          */
         function get (path)
         {
-            return (
-                new Promise (
-                    function (resolve, reject)
-                    {
-                        path = path || "";
-                        path = path.startsWith ("/") ? path : "/" + path;
-                        const url = util.home () + "cim/file" + path;
-                        const xmlhttp = util.createCORSRequest ("GET", url);
-                        xmlhttp.onreadystatechange = function ()
-                        {
-                            if (4 === xmlhttp.readyState)
-                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
-                                    resolve (xmlhttp.responseText);
-                                else
-                                    if (null != err)
-                                        reject ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
-                        };
-                        xmlhttp.send ();
-                    }
-                )
-            );
+            path = path || "";
+            path = path.startsWith ("/") ? path : "/" + path;
+            const url = util.home () + "cim/file" + path;
+            return (util.makeRequest ("GET", url).then ((xmlhttp) => xmlhttp.responseText));
         }
 
         /**
@@ -221,27 +204,11 @@ define
          */
         function fetch (path)
         {
-            return (
-                new Promise (
-                    function (resolve, reject)
-                    {
-                        path = path || "";
-                        path = path.startsWith ("/") ? path : "/" + path;
-                        path = path.endsWith ("/") ? path : path + "/";
-                        const url = util.home () + "cim/file" + path;
-                        const xmlhttp = util.createCORSRequest ("GET", url);
-                        xmlhttp.onreadystatechange = function ()
-                        {
-                            if (4 === xmlhttp.readyState)
-                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
-                                    resolve (JSON.parse (xmlhttp.responseText));
-                                else
-                                    reject ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
-                        };
-                        xmlhttp.send ();
-                    }
-                )
-            );
+            path = path || "";
+            path = path.startsWith ("/") ? path : "/" + path;
+            path = path.endsWith ("/") ? path : path + "/";
+            const url = util.home () + "cim/file" + path;
+            return (util.makeRequest ("GET", url).then ((xmlhttp) => JSON.parse (xmlhttp.responseText)));
         }
 
         /**
@@ -253,12 +220,9 @@ define
          */
         function do_fetch (path)
         {
-            fetch (path).then (make_file_list).catch (
-                function (error)
-                {
-                    document.getElementById ("files").innerHTML = JSON.stringify (error, null, 4);
-                }
-            );
+            fetch (path)
+                .then (make_file_list)
+                .catch ((error) => document.getElementById ("files").innerHTML = JSON.stringify (error, null, 4));
         }
 
         /**
@@ -274,25 +238,9 @@ define
          */
         function put (path, data)
         {
-            return (
-                new Promise (
-                    function (resolve, reject)
-                    {
-                        path = path.startsWith ("/") ? path : "/" + path;
-                        const url = util.home () + "cim/file" + path;
-                        const xmlhttp = util.createCORSRequest ("PUT", url);
-                        xmlhttp.onreadystatechange = function ()
-                        {
-                            if (4 === xmlhttp.readyState)
-                                if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
-                                    resolve (JSON.parse (xmlhttp.responseText));
-                                else
-                                    reject ({ status: "FAIL", message: "xmlhttp.status is " + xmlhttp.status });
-                        };
-                        xmlhttp.send (data);
-                    }
-                )
-            );
+            path = path.startsWith ("/") ? path : "/" + path;
+            const url = util.home () + "cim/file" + path;
+            return (util.makeRequest ("PUT", url, data).then ((xmlhttp) => JSON.parse (xmlhttp.responseText)));
         }
 
         /**
@@ -353,26 +301,21 @@ define
         {
             path = path.startsWith ("/") ? path : "/" + path;
             const url = util.home () + "cim/file" + path;
-            const xmlhttp = util.createCORSRequest ("DELETE", url);
-            xmlhttp.onreadystatechange = function ()
-            {
-                if (4 === xmlhttp.readyState)
-                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
+            return (util.makeRequest ("DELETE", url).then (
+                    (xmlhttp) =>
                     {
                         const resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status !== "OK")
-                            alert (resp.message);
-                        else
+                        if (resp.status === "OK")
                         {
                             let parent = path.endsWith ("/") ? path.substring (0, path.length () - 1) : path;
                             parent = parent.substring (0, parent.lastIndexOf ("/")) + "/";
                             do_fetch (parent);
                         }
+                        else
+                            alert (resp.message);
                     }
-                    else
-                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-            };
-            xmlhttp.send ();
+                )
+            );
         }
 
         /**
@@ -439,6 +382,12 @@ define
             );
         }
 
+        function preflight (xmlhttp)
+        {
+            xmlhttp.setRequestHeader ("Accept", "application/zip");
+            xmlhttp.responseType = "blob";
+        }
+
         /**
          * @summary View the file contents.
          * @description Fetch the file and display in a cimmap.
@@ -453,18 +402,12 @@ define
 
             path = path.startsWith ("/") ? path : "/" + path;
             const url = util.home () + "cim/file" + path + ";zip=true";
-            const xmlhttp = util.createCORSRequest ("GET", url);
-            xmlhttp.setRequestHeader ("Accept", "application/zip");
-            xmlhttp.responseType = "blob";
-            xmlhttp.onreadystatechange = function ()
-            {
-                if (4 === xmlhttp.readyState)
-                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
-                        read_zip (xmlhttp.response, read_cim);
-                    else
-                        alert ("status: " + xmlhttp.status);
-            };
-            xmlhttp.send ();
+            util.makeRequest ("GET", url, null, preflight).then (
+                (xmlhttp) =>
+                {
+                    read_zip (xmlhttp.response, read_cim);
+                }
+            );
         }
 
         /**
@@ -479,18 +422,12 @@ define
             window.location.hash = "map";
 
             const url = util.home () + "cim/view/spark;all=true;zip=true";
-            const xmlhttp = util.createCORSRequest ("GET", url);
-            xmlhttp.setRequestHeader ("Accept", "application/zip");
-            xmlhttp.responseType = "blob";
-            xmlhttp.onreadystatechange = function ()
-            {
-                if (4 === xmlhttp.readyState)
-                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
-                        read_zip (xmlhttp.response, read_cim);
-                    else
-                        alert ("status: " + xmlhttp.status);
-            };
-            xmlhttp.send ();
+            util.makeRequest ("GET", url, null, preflight).then (
+                (xmlhttp) =>
+                {
+                    read_zip (xmlhttp.response, read_cim);
+                }
+            );
         }
 
         /**
@@ -787,28 +724,22 @@ define
                 path += ";inferSchema=true";
 
             const url = util.home () + "cim/load" + path;
-            const xmlhttp = util.createCORSRequest ("GET", url);
-            xmlhttp.onreadystatechange = function ()
-            {
-                if (4 === xmlhttp.readyState)
-                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
+            util.makeRequest ("GET", url).then (
+                (xmlhttp) =>
+                {
+                    const resp = JSON.parse (xmlhttp.responseText);
+                    if (resp.status === "OK")
                     {
-                        const resp = JSON.parse (xmlhttp.responseText);
-                        if (resp.status === "OK")
-                        {
-                            console.log (JSON.stringify (resp, null, 4));
-                            cimmap.set_loaded (resp.result);
-                            if (!csv)
-                                do_show ();
-                        }
-                        else
-                            alert (resp.message);
+                        console.log (JSON.stringify (resp, null, 4));
+                        cimmap.set_loaded (resp.result);
+                        if (!csv)
+                            do_show ();
                     }
                     else
-                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-            };
-            xmlhttp.send ();
-        }
+                        alert (resp.message);
+                }
+            );
+         }
 
         /**
          * @summary Render the file page.

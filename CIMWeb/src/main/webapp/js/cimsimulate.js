@@ -1165,11 +1165,10 @@ truncate table cimapplication.responsibility_by_day;
                 window.location.hash = "map";
 
             const url = util.home () + "cim/estimation" + verbose + keep;
-            const xmlhttp = util.createCORSRequest ("POST", url);
-            xmlhttp.onreadystatechange = function ()
-            {
-                if (4 === xmlhttp.readyState)
-                    if (200 === xmlhttp.status || 201 === xmlhttp.status || 202 === xmlhttp.status)
+            util.makeRequest ("POST", url, jsonify (json)).then (
+                (xmlthttp) =>
+                {
+                    try
                     {
                         const resp = JSON.parse (xmlhttp.responseText);
                         if (resp.status === "OK")
@@ -1202,14 +1201,13 @@ truncate table cimapplication.responsibility_by_day;
                                     }
                                 );
                         }
-                        else
-                            alert (resp.message);
                     }
-                    else
-                        alert ("status: " + xmlhttp.status + ": " + xmlhttp.responseText);
-            };
-
-            xmlhttp.send (jsonify (json));
+                    catch (exception)
+                    {
+                        alert (exception.toString ());
+                    }
+                }
+            );
         }
 
         function do_show ()
