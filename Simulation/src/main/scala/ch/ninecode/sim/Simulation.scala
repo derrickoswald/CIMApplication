@@ -26,6 +26,7 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.TTLOption
 import com.datastax.spark.connector.writer.WriteConf
@@ -707,7 +708,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
                         // save the results
                         log.info ("""saving GridLAB-D simulation results""")
-                        results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl")))
+                        results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl"), consistencyLevel = ConsistencyLevel.ANY))
                         log.info ("""saved GridLAB-D simulation results""")
                         results.unpersist (false)
                     }

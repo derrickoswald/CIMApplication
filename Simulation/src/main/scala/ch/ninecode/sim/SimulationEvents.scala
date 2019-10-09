@@ -7,8 +7,9 @@ import javax.json.JsonObject
 
 import scala.reflect.runtime.universe.TypeTag
 
-import org.apache.spark.rdd.RDD
+import org.apache.spark.sql._
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types.DateType
@@ -288,12 +289,9 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      */
     def save (events: RDD[Event]) (implicit access: SimulationCassandraAccess): Unit =
     {
-        if (!events.isEmpty)
-        {
-            val columns = SomeColumns ("simulation", "mrid", "type", "start_time", "end_time", "ratio", "severity", "message")
-            val configuration = WriteConf.fromSparkConf (spark.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
-            events.saveToCassandra (access.output_keyspace, "simulation_event", columns, configuration)
-        }
+        val columns = SomeColumns ("simulation", "mrid", "type", "start_time", "end_time", "ratio", "severity", "message")
+        val configuration = WriteConf.fromSparkConf (spark.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
+        events.saveToCassandra (access.output_keyspace, "simulation_event", columns, configuration)
     }
 
     /**
@@ -314,89 +312,92 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         def minimum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.min (a, Math.min (b, c)))
         def per_phase[Type_x: TypeTag] = udf [Double, Double]((x: Double) => x / Math.sqrt (3.0))
 
-        val keyvalues = access.key_value (reference)
         val to_drop = if (three_phase)
             Seq("simulation", "type", "units")
         else
             Seq("simulation", "type", "real_b", "imag_b", "real_c", "imag_c", "units")
         val simulated_values = access.raw_values (`type`, to_drop)
+        val _keyvalues = access.key_value (reference)
+        val missing = simulated_values.select ("mrid").join (_keyvalues, Seq ("mrid"), "left_anti").withColumn ("value", functions.lit (default))
+        val keyvalues = _keyvalues.union (missing)
+
+//        keyvalues.printSchema ()
+//        keyvalues.show(5)
+//        keyvalues.explain (true)
+
         val values = if (three_phase)
         {
-            val intermediate = simulated_values
-                .withColumn ("value_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                .withColumn ("value_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
-                .withColumn ("value_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
-                .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
-            intermediate
-                .withColumn ("value_max", maximum [Double, Double, Double].apply (intermediate ("value_a"), intermediate ("value_b"), intermediate ("value_c")))
-                .withColumn ("value_min", minimum [Double, Double, Double].apply (intermediate ("value_a"), intermediate ("value_b"), intermediate ("value_c")))
-                .drop ("value_a", "value_b", "value_c")
-                .join (
-                    keyvalues
-                        .withColumn ("reference", per_phase [Double].apply (keyvalues.col ("value").cast ("double")))
-                        .drop ("value"),
-                    Seq ("mrid"))
+            val references = keyvalues
+                .withColumn ("reference", per_phase [Double].apply (keyvalues.col ("value").cast ("double")))
+                .drop ("value")
+            simulated_values
+                .withColumn ("value_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a"))).cache
+                .withColumn ("value_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b"))).cache
+                .withColumn ("value_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c"))).cache
+                .withColumn ("value_max", maximum [Double, Double, Double].apply (functions.col ("value_a"), functions.col ("value_b"), functions.col ("value_c")))
+                .withColumn ("value_min", minimum [Double, Double, Double].apply (functions.col ("value_a"), functions.col ("value_b"), functions.col ("value_c")))
+                .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "value_a", "value_b", "value_c")
+                .join (references, Seq ("mrid"))
         }
         else
         {
-            val simulated_values = access.raw_values (`type`, to_drop)
+            val references = keyvalues
+                .withColumn ("reference", keyvalues.col ("value").cast ("double"))
+                .drop ("value")
             simulated_values
-                .withColumn ("value", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                .drop ("real_a", "imag_a")
-                .join (
-                    keyvalues
-                        .withColumn ("reference", keyvalues.col ("value").cast ("double"))
-                        .drop ("value"),
-                    Seq ("mrid"))
+                .withColumn ("value1", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                .drop ("value", "real_a", "imag_a")
+                .join (references, Seq ("mrid"))
         }
+        values.persist (storage_level)
 
 //        values.printSchema ()
 //        values.show(5)
 //        values.explain (true)
-        if (!values.isEmpty)
-        {
-            val mrid = values.schema.fieldIndex ("mrid")
-            val period = values.schema.fieldIndex ("period")
-            val time = values.schema.fieldIndex ("time")
-            val val_max = if (three_phase) "value_max" else "value"
-            val val_min = if (three_phase) "value_min" else "value"
-            val value_max = values.schema.fieldIndex (val_max)
-            val value_min = values.schema.fieldIndex (val_min)
-            val ref = values.schema.fieldIndex ("reference")
 
-            // two stages here, one for HighTrigger and one for LowTrigger
-            val highs = triggers.flatMap (
-                {
-                    case h: HighTrigger ⇒ Some (h)
-                    case _: LowTrigger ⇒ None
-                }
-            )
-            val lows = triggers.flatMap (
-                {
-                    case _: HighTrigger ⇒ None
-                    case l: LowTrigger ⇒ Some (l)
-                }
-            )
+        val mrid = values.schema.fieldIndex ("mrid")
+        val period = values.schema.fieldIndex ("period")
+        val time = values.schema.fieldIndex ("time")
+        val val_max = if (three_phase) "value_max" else "value1"
+        val val_min = if (three_phase) "value_min" else "value1"
+        val value_max = values.schema.fieldIndex (val_max)
+        val value_min = values.schema.fieldIndex (val_min)
+        val ref = values.schema.fieldIndex ("reference")
 
-            // for exceeding threshold checks, use the minimum of the three phases (worst case), or just the value (single phase case)
-            val highEvents = if (0 < highs.size)
-                values.filter (filterFor (highs, val_min, "reference"))
-                    .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_min), row.getDouble (ref)))
-                    .groupBy (_._1).values.flatMap (check (access.simulation, highs))
-            else
-                spark.sparkContext.emptyRDD[Event]
+        // two stages here, one for HighTrigger and one for LowTrigger
+        val highs = triggers.flatMap (
+            {
+                case h: HighTrigger ⇒ Some (h)
+                case _: LowTrigger ⇒ None
+            }
+        )
+        val lows = triggers.flatMap (
+            {
+                case _: HighTrigger ⇒ None
+                case l: LowTrigger ⇒ Some (l)
+            }
+        )
 
-            // for subceeding threshold checks, use the maximum of the three phases (worst case), or just the value (single phase case)
-            val lowEvents = if (0 < lows.size)
-                values.filter (filterFor (lows, val_max, "reference"))
-                    .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_max), row.getDouble (ref)))
-                    .groupBy (_._1).values.flatMap (check (access.simulation, lows))
-            else
-                spark.sparkContext.emptyRDD[Event]
+        // for exceeding threshold checks, use the minimum of the three phases (worst case), or just the value (single phase case)
+        val highEvents = if (0 < highs.size)
+            values.filter (filterFor (highs, val_min, "reference"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_min), row.getDouble (ref)))
+                .groupBy (_._1).values.flatMap (check (access.simulation, highs))
+        else
+            spark.sparkContext.emptyRDD[Event]
 
-            save (highEvents.union (lowEvents))
-        }
-        keyvalues.unpersist (false)
+        // for subceeding threshold checks, use the maximum of the three phases (worst case), or just the value (single phase case)
+        val lowEvents = if (0 < lows.size)
+            values.filter (filterFor (lows, val_max, "reference"))
+                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_max), row.getDouble (ref)))
+                .groupBy (_._1).values.flatMap (check (access.simulation, lows))
+        else
+            spark.sparkContext.emptyRDD[Event]
+
+        save (highEvents.union (lowEvents))
+
+        values.unpersist (false)
+        _keyvalues.unpersist (false)
         simulated_values.unpersist (false)
     }
 }
