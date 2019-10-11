@@ -107,6 +107,7 @@
         <module>LowVoltage</module>
         <module>MaximumFeedIn</module>
         <module>CopyCassandra</module>
+        <module>TimeSeries</module>
     </modules>
 
 </project>

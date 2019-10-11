@@ -1,47 +1,29 @@
 package ch.ninecode.ts
 
-import ch.ninecode.ts.Main.LogLevels
-import ch.ninecode.ts.Main.LogLevels.LogLevels
+import ch.ninecode.ts.LogLevels.LogLevels
 
+/**
+ * Options for time series processing.
+ *
+ * @param valid         <code>false</code> if either help or version requested (i.e. don't proceed with execution).
+ * @param unittest      If <code>true</code>, don't call sys.exit().
+ * @param master        Spark master.
+ * @param spark_options Spark options.
+ * @param storage       Storage level for RDD serialization.
+ * @param log_level     Logging level.
+ * @param host          Cassandra connection host.
+ * @param port          Cassandra nativeTransportPort port.
+ * @param keyspace      Cassandra keyspace.
+ */
 case class TimeSeriesOptions
 (
-    /**
-     * If <code>true</code>, don't call sys.exit().
-     */
+    var valid: Boolean = true,
     unittest: Boolean = false,
-
-    /**
-     * If <code>true</code>, emit progress messages.
-     */
-    verbose: Boolean = false,
-
-    /**
-     * Spark master.
-     */
     master: String = "",
-
-    /**
-     * Spark options.
-     */
-    options: Map[String, String] = Map (),
-
-    /**
-     * Cassandra connection host.
-     */
-    host: String = "localhost",
-
-    /**
-     * Storage level for RDD serialization.
-     */
+    spark_options: Map[String, String] = Map (),
     storage: String = "MEMORY_AND_DISK_SER",
-
-    /**
-     * Logging level.
-     */
     log_level: LogLevels = LogLevels.OFF,
-
-    /**
-     * Cassandra keyspace
-     */
+    host: String = "localhost",
+    port: Int = 9042,
     keyspace: String = "cimapplication"
 )

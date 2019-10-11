@@ -3,14 +3,17 @@ package ch.ninecode.ts
 import java.util.Date
 
 import scala.collection.JavaConversions._
-import com.datastax.driver.core.ResultSet
-import com.datastax.driver.core.Row
-import com.datastax.spark.connector.cql.CassandraConnector
+
 import org.apache.commons.lang.StringUtils
+import org.apache.log4j.Level
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import com.datastax.driver.core.ResultSet
+import com.datastax.driver.core.Row
+import com.datastax.spark.connector.cql.CassandraConnector
 
 /**
  * Validate, correct and model time series in Cassandra.
@@ -23,7 +26,7 @@ import org.slf4j.LoggerFactory
  */
 case class TimeSeries (session: SparkSession, options: TimeSeriesOptions)
 {
-    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+    org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (Level.toLevel (options.log_level.toString))
     val log: Logger = LoggerFactory.getLogger (getClass)
     val storage_level: StorageLevel = StorageLevel.fromString (options.storage)
 
@@ -42,7 +45,7 @@ case class TimeSeries (session: SparkSession, options: TimeSeriesOptions)
 
     def Range (mrid: String, `type`: String): (String, String, Date, Date, Long, Double, Double, Double, Double) =
     {
-        val sql = """select mrid, type, min(time) as min, max(time) as max, count(mrid) as count, min(real_a) as min, avg(real_a) as avg, max(real_a) as max, cimapplication.standard_deviation (real_a) as standard_deviation from %s.measured_value where mrid='%s' and type = '%s' and real_a > 0 group by mrid, type allow filtering""".format (options.keyspace, mrid, `type`)
+        val sql = s"""select mrid, type, min(time) as min, max(time) as max, count(mrid) as count, min(real_a) as min, avg(real_a) as avg, max(real_a) as max, ${options.keyspace}.standard_deviation (real_a) as standard_deviation from ${options.keyspace}.measured_value where mrid='$mrid' and real_a > 0.0 and type = '${`type`}' group by mrid, type allow filtering"""
         val range = CassandraConnector (session.sparkContext.getConf).withSessionDo
         {
             session ⇒
@@ -67,16 +70,20 @@ case class TimeSeries (session: SparkSession, options: TimeSeriesOptions)
             r ← range
             if null != r
             )
-            log.info ("%s:%s %s⇒%s %8d %10.3f %10.3f %10.3f %10.3f".format (
+        {
+            val expected = (r._4.getTime - r._3.getTime + 900000) / 900000
+            log.info ("%s:%s %s⇒%s %8d %8d %10.3f %10.3f %10.3f %10.3f".format (
                 StringUtils.leftPad (r._1, 10, " "),
                 StringUtils.rightPad (r._2, 7, " "),
                 StringUtils.leftPad (r._3.toString, 30, " "),
                 StringUtils.rightPad (r._4.toString, 30, " "),
                 r._5,
+                (expected - r._5),
                 r._6,
                 r._7,
                 r._8,
                 r._9))
+        }
         val end = System.nanoTime ()
         log.info ("process: %s seconds".format ((end - begin) / 1e9))
     }

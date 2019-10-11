@@ -2,15 +2,12 @@ package ch.ninecode.ts
 
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
-import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Properties
-import java.util.TimeZone
 
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-import scopt.OptionParser
 
+import org.apache.log4j.Level
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -27,73 +24,9 @@ object Main
         in.close ()
         p
     }
-    val APPLICATION_NAME: String = "TimeSeries"
+    val APPLICATION_NAME: String = properties.getProperty ("artifactId")
     val APPLICATION_VERSION: String = properties.getProperty ("version")
     val SPARK: String = properties.getProperty ("spark")
-
-    object LogLevels extends Enumeration
-    {
-        type LogLevels = Value
-        val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
-    }
-
-    implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
-
-    object Formats extends Enumeration
-    {
-        type Formats = Value
-        val Belvis, LPEx = Value
-    }
-
-    implicit val FormatsRead: scopt.Read[Formats.Value] = scopt.Read.reads (Formats.withName)
-
-    var do_exit = true
-
-    val parser: OptionParser[TimeSeriesOptions] = new scopt.OptionParser[TimeSeriesOptions](APPLICATION_NAME)
-    {
-        head (APPLICATION_NAME, APPLICATION_VERSION)
-
-        val default = new TimeSeriesOptions
-
-        override def terminate (exitState: Either[String, Unit]): Unit =
-            if (do_exit)
-                exitState match
-                {
-                    case Left (_) => sys.exit (1)
-                    case Right (_) => sys.exit (0)
-                }
-
-        opt [Unit]("unittest").
-            hidden ().
-            action ((_, c) ⇒ c.copy (unittest = true)).
-            text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
-
-        opt [Unit]("verbose").
-            action ((_, c) ⇒ c.copy (verbose = true)).
-            text ("emit progress messages [%s]".format (default.verbose))
-
-        opt [String]("master").valueName ("MASTER_URL").
-            action ((x, c) ⇒ c.copy (master = x)).
-            text ("local[*], spark://host:port, mesos://host:port or yarn [%s]".format (default.master))
-
-        opt [String]("host").valueName ("Cassandra").
-            action ((x, c) ⇒ c.copy (host = x)).
-            text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
-
-        opt [String]("storage").
-            action ((x, c) ⇒ c.copy (storage = x)).
-            text ("storage level for RDD serialization [%s]".format (default.storage))
-
-        opt [LogLevels.Value]("logging").
-            action ((x, c) ⇒ c.copy (log_level = x)).
-            text ("log level, one of " + LogLevels.values.iterator.mkString (",") + " [%s]".format (default.log_level))
-
-        opt [String]("keyspace").
-            action ((x, c) ⇒ c.copy (keyspace = x)).
-            text ("target Cassandra keyspace [%s]".format (default.keyspace))
-
-        help ("help").text ("prints this usage text")
-    }
 
     def jarForObject (obj: Object): String =
     {
@@ -130,16 +63,12 @@ object Main
      */
     def main (args: Array[String])
     {
-        do_exit = !args.contains ("--unittest")
-
-        // parser.parse returns Option[C]
-        parser.parse (args, TimeSeriesOptions ()) match
+        new TimeSeriesOptionsParser (APPLICATION_NAME, APPLICATION_VERSION).parse (args, TimeSeriesOptions ()) match
         {
             case Some (options) =>
-
-                if (!args.contains ("--help"))
+                if (options.valid)
                 {
-                    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+                    org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (Level.toLevel (options.log_level.toString))
 
                     val begin = System.nanoTime ()
 
@@ -148,18 +77,17 @@ object Main
                     configuration.setAppName (APPLICATION_NAME)
                     if ("" != options.master)
                         configuration.setMaster (options.master)
-                    if (options.options.nonEmpty)
-                        options.options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
-                    if ("" != options.host)
-                        configuration.set ("spark.cassandra.connection.host", options.host)
+                    if (options.spark_options.nonEmpty)
+                        options.spark_options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
+                    configuration.set ("spark.cassandra.connection.host", options.host)
+                    configuration.set ("spark.cassandra.connection.port", options.port.toString)
+                    configuration.set ("spark.ui.showConsoleProgress", "false")
 
                     // get the necessary jar files to send to the cluster
                     val s1 = jarForObject (TimeSeriesOptions ())
                     val s2 = jarForObject (com.datastax.spark.connector.mapper.ColumnMapper)
                     val s3 = jarForObject (new com.twitter.jsr166e.LongAdder ())
-                    configuration.setJars (Array (s1, s2, s3))
-
-                    configuration.set ("spark.ui.showConsoleProgress", "false")
+                    configuration.setJars (Set (s1, s2, s3).toArray)
 
                     // make a Spark session
                     val session = SparkSession.builder ().config (configuration).getOrCreate ()
@@ -178,12 +106,10 @@ object Main
                     val calculate = System.nanoTime ()
                     log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
                 }
-                if (do_exit)
+                if (!options.unittest)
                     sys.exit (0)
-
             case None =>
-                if (do_exit)
-                    sys.exit (1)
+                sys.exit (1)
         }
     }
 }
