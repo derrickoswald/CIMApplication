@@ -84,7 +84,7 @@ object MaximumFeedIn
             case Some (arguments) =>
                 if (arguments.valid)
                 {
-                    if (arguments.verbose) org.apache.log4j.LogManager.getLogger ("ch.ninecode.mfi.Main$").setLevel (org.apache.log4j.Level.INFO)
+                    if (arguments.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
                     val log = LoggerFactory.getLogger (getClass)
                     val begin = System.nanoTime ()
 

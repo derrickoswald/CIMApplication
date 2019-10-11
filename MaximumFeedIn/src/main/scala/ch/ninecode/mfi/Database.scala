@@ -143,8 +143,9 @@ object Database
     def store (description: String, t1: Calendar, outputfile: String)(records: Array[MaxEinspeiseleistung]): Int = synchronized
     {
         // make the directory
-        val file = Paths.get (s"${outputfile}")
-        Files.createDirectories (file.getParent)
+        val file = Paths.get (outputfile)
+        if (null != file.getParent)
+            Files.createDirectories (file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
@@ -235,8 +236,9 @@ object Database
     def store_precalculation (description: String, t1: Calendar, outputfile: String)(results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
-        val file = Paths.get (s"${outputfile}")
-        Files.createDirectories (file.getParent)
+        val file = Paths.get (outputfile)
+        if (null != file.getParent)
+            Files.createDirectories (file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
