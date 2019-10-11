@@ -317,9 +317,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         else
             Seq("simulation", "type", "real_b", "imag_b", "real_c", "imag_c", "units")
         val simulated_values = access.raw_values (`type`, to_drop)
-        val _keyvalues = access.key_value (reference)
-        val missing = simulated_values.select ("mrid").join (_keyvalues, Seq ("mrid"), "left_anti").withColumn ("value", functions.lit (default))
-        val keyvalues = _keyvalues.union (missing)
+        val keyvalues = access.key_value (reference)
 
 //        keyvalues.printSchema ()
 //        keyvalues.show(5)
@@ -397,7 +395,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         save (highEvents.union (lowEvents))
 
         values.unpersist (false)
-        _keyvalues.unpersist (false)
+        keyvalues.unpersist (false)
         simulated_values.unpersist (false)
     }
 }

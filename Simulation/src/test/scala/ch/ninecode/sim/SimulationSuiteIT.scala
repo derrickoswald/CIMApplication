@@ -1371,7 +1371,7 @@ object SimulationSuiteIT
             in.close ()
             p
         }
-        properties.getProperty ("nativeTransportPort")
+        properties.getProperty ("nativeTransportPort", "9042")
     }
 
     def populate_measured_data (): Unit =

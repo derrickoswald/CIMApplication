@@ -113,13 +113,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_${version.dependency.scala}</artifactId>
-            <version>${version.dependency.scalatest}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${version.dependency.junit}</version>

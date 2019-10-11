@@ -106,7 +106,7 @@ object EventAndFactorSuiteIT
         in.close ()
         p
     }
-    val PORT: String = properties.getProperty ("nativeTransportPort")
+    val PORT: String = properties.getProperty ("nativeTransportPort", "9042")
 
     @BeforeClass def before (): Unit =
     {
