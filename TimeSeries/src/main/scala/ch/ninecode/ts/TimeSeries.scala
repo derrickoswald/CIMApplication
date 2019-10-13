@@ -2,6 +2,8 @@ package ch.ninecode.ts
 
 import java.util.Date
 
+import com.datastax.driver.core.ConsistencyLevel
+
 import scala.collection.JavaConversions._
 
 import org.apache.commons.lang.StringUtils
@@ -10,10 +12,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.Row
 import com.datastax.spark.connector.cql.CassandraConnector
+import com.datastax.spark.connector._
+import com.datastax.spark.connector.writer.WriteConf
 
 /**
  * Validate, correct and model time series in Cassandra.
@@ -43,15 +46,24 @@ case class TimeSeries (session: SparkSession, options: TimeSeriesOptions)
         iterator.toSeq
     }
 
-    def Range (mrid: String, `type`: String): (String, String, Date, Date, Long, Double, Double, Double, Double) =
+    def Range (mrid: String, `type`: String): (String, String, Date, Date, Long, Int, Double, Double, Double, Double) =
     {
-        val sql = s"""select mrid, type, min(time) as min, max(time) as max, count(mrid) as count, min(real_a) as min, avg(real_a) as avg, max(real_a) as max, ${options.keyspace}.standard_deviation (real_a) as standard_deviation from ${options.keyspace}.measured_value where mrid='$mrid' and real_a > 0.0 and type = '${`type`}' group by mrid, type allow filtering"""
+        // assumes the period is always the same
+        val sql = s"""select mrid, type, min(period) as period, min(time) as min, max(time) as max, count(mrid) as count, min(real_a) as min, avg(real_a) as avg, max(real_a) as max, ${options.keyspace}.standard_deviation (real_a) as standard_deviation from ${options.keyspace}.measured_value where mrid='$mrid' and real_a > 0.0 and type = '${`type`}' group by mrid, type allow filtering"""
         val range = CassandraConnector (session.sparkContext.getConf).withSessionDo
         {
             session ⇒
                 val row = session.execute (sql).one()
                 if (null != row)
-                    (row.getString(0), row.getString(1), row.getTimestamp (2), row.getTimestamp (3), row.getLong (4), row.getDouble (5), row.getDouble (6), row.getDouble (7), row.getDouble (8))
+                {
+                    val period = row.getInt (2)
+                    val start = row.getTimestamp (3)
+                    val end = row.getTimestamp (4)
+                    val expected = (end.getTime - start.getTime + period) / period
+                    val count = row.getLong (5)
+                    val missing = (expected - count).toInt
+                    (row.getString (0), row.getString (1), start, end, count, missing, row.getDouble (6), row.getDouble (7), row.getDouble (8), row.getDouble (9))
+                }
                 else
                     null
         }
@@ -66,24 +78,25 @@ case class TimeSeries (session: SparkSession, options: TimeSeriesOptions)
         log.info ("%s distinct mrid and type".format (count))
         val range = for ((mrid, typ) ← scope)
             yield Range (mrid, typ)
-        for (
-            r ← range
-            if null != r
-            )
+        val stats = for (r ← range if null != r)
+        yield
         {
-            val expected = (r._4.getTime - r._3.getTime + 900000) / 900000
-            log.info ("%s:%s %s⇒%s %8d %8d %10.3f %10.3f %10.3f %10.3f".format (
+            log.info ("%s:%s %s⇒%s %8d %6d %10.3f %10.3f %10.3f %10.3f".format (
                 StringUtils.leftPad (r._1, 10, " "),
                 StringUtils.rightPad (r._2, 7, " "),
                 StringUtils.leftPad (r._3.toString, 30, " "),
                 StringUtils.rightPad (r._4.toString, 30, " "),
                 r._5,
-                (expected - r._5),
                 r._6,
                 r._7,
                 r._8,
-                r._9))
+                r._9,
+                r._10))
+            r
         }
+        val columns = SomeColumns ("mrid", "type", "start", "end", "count", "missing", "minimum", "average", "maximum", "stddev")
+        val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
+        session.sparkContext.parallelize (stats).saveToCassandra  (options.keyspace, "measured_value_stats", columns, writeConf)
         val end = System.nanoTime ()
         log.info ("process: %s seconds".format ((end - begin) / 1e9))
     }

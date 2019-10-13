@@ -171,7 +171,7 @@ object TimeSeriesSuiteIT
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName ("SummarySuiteIT")
+        configuration.setAppName ("TimeSeriesSuiteIT")
         configuration.setMaster ("local[*]")
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "2g")

@@ -88,6 +88,36 @@ create or replace aggregate cimapplication.standard_deviation (double)
     finalfunc standard_deviation_final
     initcond (0, 0.0, 0.0);
 
+create or replace function cimapplication.tick (t timestamp, period int)
+    returns null on null input
+    returns int
+    language java
+    as $$
+        return ((int)((t.getTime () / period) % (24 * 60 * 60 * 1000 / period)));
+$$;
+
+create or replace function cimapplication.day (t timestamp)
+    returns null on null input
+    returns int
+    language java
+    as $$
+        Calendar c = Calendar.getInstance ();
+        c.setTimeZone (TimeZone.getTimeZone ("GMT"));
+        c.setTime (t);
+        return (c.get (Calendar.DAY_OF_WEEK));
+    $$;
+
+create or replace function cimapplication.week (t timestamp)
+    returns null on null input
+    returns int
+    language java
+    as $$
+        Calendar c = Calendar.getInstance ();
+        c.setTimeZone (TimeZone.getTimeZone ("GMT"));
+        c.setTime (t);
+        return (c.get (Calendar.WEEK_OF_YEAR));
+    $$;
+
 create table if not exists cimapplication.measured_value (
     mrid text,
     type text,
@@ -115,6 +145,33 @@ These are typically smart meter readings, or transformer values from a SCADA sys
     real_c - the real component of the phase C (or T) value
     imag_c - the imaginary component of the phase C (or T) value
     units  - the units for the measurement
+';
+
+create table if not exists cimapplication.measured_value_stats (
+    mrid text,
+    type text,
+    start timestamp,
+    end timestamp,
+    count int,
+    missing int,
+    minimum double,
+    average double,
+    maximum double,
+    stddev double,
+    primary key ((mrid, type), start)
+) with clustering order by (start asc) and comment = '
+Measurement value statistics.
+Statistical properties of measurement_value table aggregated by mrid and type.
+    mrid    - the unique CIM mRID for the element
+    type    - the type of value, e.g. energy, power, voltage, current
+    start   - the first time at which a measurement was taken in GMT
+    end     - the last time at which a measurement was taken in GMT
+    count   - the number of non-zero measurements
+    missing - the number of zero or missing elements between the start and end time
+    minimum - the minimum non-zero measurement value
+    average - the average non-zero measurement value
+    maximum - the maximum non-zero measurement value
+    stddev  - the standard deviation of the non-zero measurement values
 ';
 
 create table if not exists cimapplication.simulated_value (
