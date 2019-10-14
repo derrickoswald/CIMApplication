@@ -60,6 +60,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     MeasurementDateTimeFormat.setCalendar (MeasurementCalendar)
     val MeasurementDateTimeFormat2: SimpleDateFormat = new SimpleDateFormat ("dd.MM.yyyy HH:mm")
     MeasurementDateTimeFormat2.setCalendar (MeasurementCalendar)
+    val MeasurementDateTimeFormat3: SimpleDateFormat = new SimpleDateFormat ("dd.MM.yyyy HH:mm:ss")
+    MeasurementDateTimeFormat3.setCalendar (MeasurementCalendar)
 
     val ZuluTimeZone: TimeZone = TimeZone.getTimeZone ("GMT")
     val ZuluTimeCalendar: Calendar = Calendar.getInstance ()
@@ -110,11 +112,11 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def sum (a: Reading, b: Reading): Reading =
     {
-        val values: Array[Double] = new Array[Double] (math.max(a.values.length, b.values.length))
+        val values: Array[Double] = new Array[Double](math.max (a.values.length, b.values.length))
         for (i ← a.values.indices)
-            values(i) = a.values(i)
+            values (i) = a.values (i)
         for (i ← b.values.indices)
-            values(i) = values(i) + b.values(i)
+            values (i) = values (i) + b.values (i)
         Reading (a.mRID, a.time, a.period, values)
     }
 
@@ -135,13 +137,13 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
         val measurement_time = new Date (timestamp.getTime).getTime
         for
-        {
+            {
             i <- reading.values.indices
             time = measurement_time + period * i
             if (time >= options.mintime) && (time < options.maxtime)
         }
-        yield
-            (reading.mRID, "energy", time, period, 1000.0 * reading.values (i), 0.0, "Wh")
+            yield
+                (reading.mRID, "energy", time, period, 1000.0 * reading.values (i), 0.0, "Wh")
     }
 
     // build a file system configuration, including core-site.xml
@@ -182,7 +184,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             path
     }
 
-    def getFiles (file: String): Seq[String] = {
+    def getFiles (file: String): Seq[String] =
+    {
         if (options.nocopy)
             Seq (file)
         else
@@ -199,7 +202,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     def readFile (file: String): Array[Byte] =
     {
         try
-            Files.readAllBytes (Paths.get (file))
+        Files.readAllBytes (Paths.get (file))
         catch
         {
             case e: Exception =>
@@ -323,7 +326,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             "inferSchema" → "true"
         )
 
-        val belvis_files: Seq[String] = getFiles(file)
+        val belvis_files: Seq[String] = getFiles (file)
         for (filename ← belvis_files)
         {
             val start = System.nanoTime ()
@@ -340,7 +343,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     /**
      * Decode an OBIS code into actionable values.
      *
-     * @param code the OBIS code to deconstruct
+     * @param code  the OBIS code to deconstruct
      * @param units the original units provided for the values
      * @param scale the original scaling factor for the values
      * @return (type: e.g. energy or power, real: true if active, imag: true if reactive, units: e.g. Wh, factor: to multiply the values by)
@@ -404,34 +407,36 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     /**
      * Make tuples suitable for Cassandra:
      * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+     *
      * @param line one line from the LPEx file
      */
-    def to_tuples (join_table: Map[String, String]) (line: String): Seq[MeasuredValue] =
+    def to_tuples (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
     {
         val ONE_MINUTE_IN_MILLIS = 60000
 
         // described in GoerlitzExportImport_V131I04_FBe_DE.pdf
         val fields = line.split (";")
         // eliminate the version line and header line
-        if (fields.length > 15 && fields(0) != "Datum")
+        if (fields.length > 15 && fields (0) != "Datum")
         {
-            val datetime = MeasurementDateTimeFormat.parse (fields(0) + " " + fields(1))
-            val mrid = join_table.getOrElse (fields(10), null)
+            val datetime = MeasurementDateTimeFormat.parse (fields (0) + " " + fields (1))
+            val mrid = join_table.getOrElse (fields (10), null)
             if (null != mrid)
             {
-                val (typ, real, imag, units, factor) = decode_obis (fields(11), fields(12), fields(13))
+                val (typ, real, imag, units, factor) = decode_obis (fields (11), fields (12), fields (13))
                 val time = datetime.getTime
-                val period = fields(14).toInt
+                val period = fields (14).toInt
                 val interval = period * ONE_MINUTE_IN_MILLIS
-                val list = for {
-                        i ← 15 until fields.length by 2
-                        flags = fields(i + 1)
-                        if flags == "W"
-                        value = fields(i).toDouble * factor
-                        slot = (i - 15) / 2
-                        timestamp = time + (interval * slot)
-                        if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
-                    }
+                val list = for
+                    {
+                    i ← 15 until fields.length by 2
+                    flags = fields (i + 1)
+                    if flags == "W"
+                    value = fields (i).toDouble * factor
+                    slot = (i - 15) / 2
+                    timestamp = time + (interval * slot)
+                    if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
+                }
                     yield
                         (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
                 // discard all zero records
@@ -447,7 +452,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             List ()
     }
 
-    def complex (measurements: Iterable[MeasuredValue]) : MeasuredValue =
+    def complex (measurements: Iterable[MeasuredValue]): MeasuredValue =
     {
         val a = measurements.head
         (a._1, a._2, a._3, a._4, measurements.map (_._5).sum, measurements.map (_._6).sum, a._7)
@@ -469,7 +474,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def process_lpex (join_table: Map[String, String])(file: String): Unit =
     {
-        val lpex_files: Seq[String] = getFiles(file)
+        val lpex_files: Seq[String] = getFiles (file)
         for (filename ← lpex_files)
         {
             val start = System.nanoTime ()
@@ -483,11 +488,18 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def isNumber (s: String): Boolean = s forall Character.isDigit
 
-    def asDouble (s: String): Double = try { s.toDouble } catch { case _: Throwable => 0.0 }
+    def asDouble (s: String): Double = try
+    {
+        s.toDouble
+    } catch
+    {
+        case _: Throwable => 0.0
+    }
 
     /**
      * Make tuples suitable for Cassandra:
      * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+     *
      * @param line one line from the data file
      */
     def line_custom (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
@@ -496,26 +508,29 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // 730154;39580894;Wirkenergie A+ 15;1-1:1.8.0*255;15;kWh;2019.08.24;24.08.2019 00:00;24.08.2019 00:15;0.038;...
         val fields: Array[String] = line.split (";")
         // eliminate the header line
-        if (isNumber (fields(0)))
+        if (isNumber (fields (0)))
         {
-            val mrid = join_table.getOrElse (fields(0), null)
+            val mrid = join_table.getOrElse (fields (0), null)
             if (null != mrid)
             {
-                val (typ, real, imag, units, factor) = decode_obis (fields(3), fields(5), "1.0")
+                val (typ, real, imag, units, factor) = decode_obis (fields (3), fields (5), "1.0")
+                val date = fields (6)
                 if (real || imag)
                     for (
                         index <- 7 until fields.length
                         if 0 == (index - 7) % 3;
-                        datetime1 = MeasurementDateTimeFormat2.parse (fields(index));
-                        timestamp = MeasurementDateTimeFormat2.parse (fields(index + 1));
+                        start = fields (index);
+                        end = fields (index + 1);
+                        datetime1 = if (start.length == 8) MeasurementDateTimeFormat3.parse (s"$date $start") else MeasurementDateTimeFormat2.parse (start);
+                        timestamp = if (end.length == 8) MeasurementDateTimeFormat3.parse (s"$date $end") else MeasurementDateTimeFormat2.parse (end);
                         interval = (timestamp.getTime - datetime1.getTime).toInt;
-                        value = asDouble (fields(index + 2)) * factor
+                        value = asDouble (fields (index + 2)) * factor
                     )
-                    yield
-                        if (real)
-                            (mrid, typ, timestamp.getTime, interval, value, 0.0, units)
-                        else
-                            (mrid, typ, timestamp.getTime, interval, 0.0, value, units)
+                        yield
+                            if (real)
+                                (mrid, typ, timestamp.getTime, interval, value, 0.0, units)
+                            else
+                                (mrid, typ, timestamp.getTime, interval, 0.0, value, units)
                 else
                     List ()
             }
@@ -525,6 +540,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         else
             List ()
     }
+
 
     def sub_custom (filename: String, join_table: Map[String, String]): Unit =
     {
@@ -537,7 +553,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def process_custom (join_table: Map[String, String])(file: String): Unit =
     {
-        val files: Seq[String] = getFiles(file)
+        val files: Seq[String] = getFiles (file)
         for (filename ← files)
         {
             val start = System.nanoTime ()
