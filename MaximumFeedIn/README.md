@@ -178,7 +178,7 @@ For example spark-submit uses `--driver-memory 2g`, while `--opts` uses `spark.d
 
 ### storage_level
 The [object serialization](http://spark.apache.org/docs/latest/tuning.html#data-serialization) storage level
-to use for the [`CIMReader`](https://derrickoswald.github.io/CIMReader/) and `MaximumFeedIn`.
+to use for the [`CIMReader`](https://derrickoswald.github.io/CIMSpark/CIMReader/) and `MaximumFeedIn`.
 
 ### deduplicate
 When using striped or tiled RDF files as input, this option will eliminate
@@ -224,7 +224,7 @@ Specifies the logging level (verbosity) of log records. This overrides the loggi
 Specifies the checkpoint directory and turns checkpointing on - if not specified no checkpointing occurs.
 An RDD checkpoint is a _materialized_ RDD where the current state of the RDD is stored on disk
 and the _recipe_ for how to re-create it is discarded.
-The [`CIMReader`](https://derrickoswald.github.io/CIMReader/) and `MaximumFeedIn` application
+The [`CIMReader`](https://derrickoswald.github.io/CIMSpark/CIMReader/) and `MaximumFeedIn` application
 have optional checkpoints coded in logic to save the state after _costly_ computations - 
 which means we trade off time to re-create discarded RDD, for disk space and the time for extra disk/network I/O.
 
@@ -286,7 +286,7 @@ cables with a R1 value higher than this are not calculated with gridlab, the rea
 The CIM file is read into Spark using a custom reader, [CIMReader](https://github.com/derrickoswald/CIMReader).
 The reader produces a set of
 [Resilient Distributed Dataset (RDD)](https://spark.apache.org/docs/latest/programming-guide.html#resilient-distributed-datasets-rdds);
-one for [each CIM element class](https://derrickoswald.github.io/CIMReader/doc/scaladocs/#ch.ninecode.model.package).
+one for [each CIM element class](https://derrickoswald.github.io/CIMSpark/doc/scaladocs/#ch.ninecode.model.package).
 It also executes a topological analysis to identify a reduced subset of nodes
 (sets of electrically identical ConnectivityNode elements - 
 connected with zero Ohm conductors such as bus bars or closed switches)

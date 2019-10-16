@@ -8,7 +8,7 @@ Spark based module to create CIM EquivalentInjection objects from spreadsheet da
 Matches the transformers in a set of CIM files to the
 available network short circuit power and angle in one or more .CSV files.
 For each matched transformer, the program creates an
-[EquivalentInjection](https://derrickoswald.github.io/CIMReader/doc/scaladocs/index.html#ch.ninecode.model.EquivalentInjection)
+[EquivalentInjection](https://derrickoswald.github.io/CIMSpark/doc/scaladocs/index.html#ch.ninecode.model.EquivalentInjection)
 object that represents the upstream network at the high voltage terminal,
 of the transformer and writes these objects to a
 CIM file of the same name as the CSV file.

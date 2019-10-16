@@ -94,7 +94,7 @@ For example spark-submit uses `--driver-memory 2g`, while `--opts` uses `spark.d
 
 ### storage_level
 The [object serialization](http://spark.apache.org/docs/latest/tuning.html#data-serialization) storage level
-to use for the [`CIMReader`](https://derrickoswald.github.io/CIMReader/) and `MaximumFeedIn`.
+to use for the [`CIMReader`](https://derrickoswald.github.io/CIMSpark/CIMReader/) and `ShortCircuit`.
 
 ### splitsize
 Same as specifying `ch.ninecode.cim.split_maxsize=XXX` for the CIMReader.
@@ -114,7 +114,7 @@ This overrides the logging level specified in log4j.properties for some ShortCir
 Specifies the checkpoint directory and turns checkpointing on - if not specified no checkpointing occurs.
 An RDD checkpoint is a _materialized_ RDD where the current state of the RDD is stored on disk
 and the _recipe_ for how to re-create it is discarded.
-The [`CIMReader`](https://derrickoswald.github.io/CIMReader/) and `ShortCircuit` application
+The [`CIMReader`](https://derrickoswald.github.io/CIMSpark/CIMReader/) and `ShortCircuit` application
 have optional checkpoints coded in logic to save the state after _costly_ computations -
 which means we trade off time to re-create discarded RDD, for disk space and the time for extra disk/network I/O.
 
