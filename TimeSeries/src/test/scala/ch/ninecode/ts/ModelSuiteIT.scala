@@ -49,6 +49,7 @@ class ModelSuiteIT
             "--host", "localhost",
             "--port", cassandra_port,
             "--keyspace", KEYSPACE,
+            "--tree_depth", "8", // it's just quicker this way
             "--model_file", "target/models/myDecisionTreeRegressorModel"))
 
         val modeled = System.nanoTime ()

@@ -95,6 +95,12 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
                 c.get (Calendar.DAY_OF_WEEK)
             }
         )
+        def onehot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf [Int, Int, Int](
+            (day: Int, index: Int) =>
+            {
+                if (day == index) 1 else 0
+            }
+        )
         def week[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
             (t: Timestamp) =>
             {
@@ -120,9 +126,16 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
             .load
             .filter (s"real_a > 0.0")
             .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
-            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+            .withColumn ("day", day [Timestamp].apply (functions.col ("time"))).cache
+            .withColumn ("sun", onehot [Int, Int].apply (functions.col ("day"), functions.lit (1)))
+            .withColumn ("mon", onehot [Int, Int].apply (functions.col ("day"), functions.lit (2)))
+            .withColumn ("tue", onehot [Int, Int].apply (functions.col ("day"), functions.lit (3)))
+            .withColumn ("wed", onehot [Int, Int].apply (functions.col ("day"), functions.lit (4)))
+            .withColumn ("thu", onehot [Int, Int].apply (functions.col ("day"), functions.lit (5)))
+            .withColumn ("fri", onehot [Int, Int].apply (functions.col ("day"), functions.lit (6)))
+            .withColumn ("sat", onehot [Int, Int].apply (functions.col ("day"), functions.lit (7)))
             .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
-            .selectExpr ("mrid", "type", "tick", "day", "week", "real_a as value")
+            .selectExpr ("mrid", "type", "tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "real_a as value")
             .join (stats, Seq ("mrid", "type"))
             .persist (StorageLevel.fromString (options.storage_level))
 
@@ -131,7 +144,7 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         val (trainingData, testData) = (splits(0), splits(1))
 
         val assembler = new VectorAssembler ()
-            .setInputCols  (Array("tick", "day", "week", "average"))
+            .setInputCols  (Array("tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "average"))
             .setOutputCol ("features")
         val train_df = assembler.transform (trainingData)
         val test_df = assembler.transform (testData)
@@ -195,6 +208,7 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         log.info (s"generating features")
         val periods = 24 * 60 * 60 * 1000 / period
         val average = yearly_kWh * 1000.0 / 365.25 / periods
+        def oneHot (day: Int, weekday: Int): Int = if (day == weekday) 1 else 0
         val data = Iterator.continually
         {
             val millis = start.getTimeInMillis
@@ -205,7 +219,7 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
             val day = c.get (Calendar.DAY_OF_WEEK)
             val week = c.get (Calendar.DAY_OF_WEEK)
             start.add (Calendar.MILLISECOND, period)
-            Row (millis, tick, day, week, average)
+            Row (millis, tick, oneHot (day, 1), oneHot (day, 2), oneHot (day, 3), oneHot (day, 4), oneHot (day, 5), oneHot (day, 6), oneHot (day, 7), week, average)
         }.takeWhile (_ => start.getTimeInMillis <= end.getTimeInMillis)
 
         // make a dataframe
@@ -213,7 +227,13 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
             List (
                 StructField ("time", LongType, false),
                 StructField ("tick", IntegerType, false),
-                StructField ("day", IntegerType, false),
+                StructField ("sun", IntegerType, false),
+                StructField ("mon", IntegerType, false),
+                StructField ("tue", IntegerType, false),
+                StructField ("wed", IntegerType, false),
+                StructField ("thu", IntegerType, false),
+                StructField ("fri", IntegerType, false),
+                StructField ("sat", IntegerType, false),
                 StructField ("week", IntegerType, false),
                 StructField ("average", DoubleType, false)
             )
@@ -224,7 +244,7 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
             schema
         )
         val assembler = new VectorAssembler ()
-            .setInputCols  (Array("tick", "day", "week", "average"))
+            .setInputCols  (Array("tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "average"))
             .setOutputCol ("features")
         val features = assembler.transform (df)
 
