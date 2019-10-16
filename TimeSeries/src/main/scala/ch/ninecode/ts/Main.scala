@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory
 
 object Main
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
     val properties: Properties =
     {
         val in = this.getClass.getResourceAsStream ("/application.properties")
@@ -69,6 +68,7 @@ object Main
                 if (options.valid)
                 {
                     org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (Level.toLevel (options.log_level.toString))
+                    val log: Logger = LoggerFactory.getLogger (getClass)
 
                     val begin = System.nanoTime ()
 
@@ -91,7 +91,6 @@ object Main
 
                     // make a Spark session
                     val session = SparkSession.builder ().config (configuration).getOrCreate ()
-                    session.sparkContext.setLogLevel (options.log_level.toString)
                     val version = session.version
                     log.info (s"Spark $version session established")
                     if (version.take (SPARK.length) != SPARK.take (version.length))
@@ -100,9 +99,18 @@ object Main
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
-                    val ts = TimeSeries (session, options)
-                    ts.run ()
-
+                    options.operation match
+                    {
+                        case Operations.Statistics =>
+                            val ts = TimeSeries (session, options)
+                            ts.run ()
+                        case Operations.Model =>
+                            val model = Model (session, options)
+                            model.makeSimpleModel ()
+                        case Operations.Synthesize =>
+                            val model = Model (session, options)
+                            model.generateTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh)
+                    }
                     val calculate = System.nanoTime ()
                     log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
                 }

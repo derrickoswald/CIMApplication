@@ -93,12 +93,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         mapping_options
     }
 
-    def not_all_null (row: Row): Boolean =
-    {
-        val limit = (row.length - 7) / 2
-        (for (i <- 0 until limit) yield row.isNullAt (7 + (2 * i))).exists (!_)
-    }
-
     def to_reading (s: (String, Row)): (String, Reading) =
     {
         val time = s._2.getTimestamp (0)
@@ -291,7 +285,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // we assume a very specific format since there is no header
         val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (filename)
         val rdd = df.rdd
-        val raw = rdd.filter (not_all_null).keyBy (row => join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
+        val raw = rdd.keyBy (row => join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
         val readings: RDD[MeasuredValue] = raw.reduceByKey (sum).values.flatMap (to_timeseries)
         val ok: RDD[MeasuredValue] = readings.filter (_._1 != null)
         ok.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))

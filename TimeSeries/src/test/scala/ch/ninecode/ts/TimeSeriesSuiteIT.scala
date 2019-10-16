@@ -59,7 +59,8 @@ class TimeSeriesSuiteIT
 
     @Test def TimeSeries ()
     {
-        main (Array ("--unittest",
+        main (Array (
+            "Statistics", "--unittest",
             "--master", "local[*]",
             "--logging", "INFO",
             "--host", "localhost",
@@ -73,7 +74,6 @@ object TimeSeriesSuiteIT
     val KEYSPACE = "test"
     val FILE_DEPOT = "data/"
     val FILENAME0 = "measurement_data"
-    lazy val wd: String = "%s%s".format (new java.io.File (".").getCanonicalPath, System.getProperty ("file.separator"))
 
     def using[T <: Closeable, R] (resource: T)(block: T => R): R =
     {

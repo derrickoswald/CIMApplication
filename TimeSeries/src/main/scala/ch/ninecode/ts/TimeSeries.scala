@@ -12,6 +12,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import com.datastax.driver.core.ResultSet
 import com.datastax.driver.core.Row
 import com.datastax.spark.connector.cql.CassandraConnector
@@ -31,7 +32,7 @@ case class TimeSeries (session: SparkSession, options: TimeSeriesOptions)
 {
     org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (Level.toLevel (options.log_level.toString))
     val log: Logger = LoggerFactory.getLogger (getClass)
-    val storage_level: StorageLevel = StorageLevel.fromString (options.storage)
+    val storage_level: StorageLevel = StorageLevel.fromString (options.storage_level)
 
     def Scope: Seq[(String, String)] =
     {

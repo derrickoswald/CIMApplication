@@ -160,6 +160,9 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <runOrder>reversealphabetical</runOrder>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
