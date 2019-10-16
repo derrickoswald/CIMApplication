@@ -44,8 +44,15 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.sc</groupId>
-            <artifactId>ShortCircuit</artifactId>
+            <groupId>ch.ninecode.ingest</groupId>
+            <artifactId>Ingest</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.ts</groupId>
+            <artifactId>TimeSeries</artifactId>
             <version>${project.version}</version>
             <type>jar</type>
         </dependency>
@@ -58,15 +65,22 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.sim</groupId>
-            <artifactId>Simulation</artifactId>
+            <groupId>ch.ninecode.sc</groupId>
+            <artifactId>ShortCircuit</artifactId>
             <version>${project.version}</version>
             <type>jar</type>
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.ingest</groupId>
-            <artifactId>Ingest</artifactId>
+            <groupId>ch.ninecode.mfi</groupId>
+            <artifactId>MaximumFeedIn</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.sim</groupId>
+            <artifactId>Simulation</artifactId>
             <version>${project.version}</version>
             <type>jar</type>
         </dependency>
@@ -105,6 +119,16 @@
                             <bundleFileName>CIMWeb.war</bundleFileName>
                         </webModule>
                         <jarModule>
+                            <groupId>ch.ninecode.ingest</groupId>
+                            <artifactId>Ingest</artifactId>
+                            <bundleFileName>Ingest-${project.version}.jar</bundleFileName>
+                        </jarModule>
+                        <jarModule>
+                            <groupId>ch.ninecode.ts</groupId>
+                            <artifactId>TimeSeries</artifactId>
+                            <bundleFileName>TimeSeries-${project.version}.jar</bundleFileName>
+                        </jarModule>
+                        <jarModule>
                             <groupId>ch.ninecode.gl</groupId>
                             <artifactId>GridLAB-D</artifactId>
                             <bundleFileName>GridLAB-D-${project.version}.jar</bundleFileName>
@@ -113,6 +137,11 @@
                             <groupId>ch.ninecode.sc</groupId>
                             <artifactId>ShortCircuit</artifactId>
                             <bundleFileName>ShortCircuit-${project.version}.jar</bundleFileName>
+                        </jarModule>
+                        <jarModule>
+                            <groupId>ch.ninecode.mfi</groupId>
+                            <artifactId>MaximumFeedIn</artifactId>
+                            <bundleFileName>MaximumFeedIn-${project.version}.jar</bundleFileName>
                         </jarModule>
                         <jarModule>
                             <groupId>ch.ninecode.sim</groupId>

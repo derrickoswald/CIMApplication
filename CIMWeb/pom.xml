@@ -59,8 +59,15 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.sc</groupId>
-            <artifactId>ShortCircuit</artifactId>
+            <groupId>ch.ninecode.ingest</groupId>
+            <artifactId>Ingest</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.ts</groupId>
+            <artifactId>TimeSeries</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -68,6 +75,20 @@
         <dependency>
             <groupId>ch.ninecode.gl</groupId>
             <artifactId>GridLAB-D</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.sc</groupId>
+            <artifactId>ShortCircuit</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.mfi</groupId>
+            <artifactId>MaximumFeedIn</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -82,13 +103,6 @@
         <dependency>
             <groupId>ch.ninecode.sp</groupId>
             <artifactId>Spatial</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.ingest</groupId>
-            <artifactId>Ingest</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
