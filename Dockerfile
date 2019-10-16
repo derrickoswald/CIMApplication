@@ -60,7 +60,7 @@ WORKDIR /usr/local/tomee
 #	&& gpg --batch --verify tomee.tar.gz.asc tomee.tar.gz \
 
 RUN set -x \
-	&& export TOMEE_VERSION=8.0.0-M3 \
+	&& export TOMEE_VERSION=8.0.0 \
 	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/${TOMEE_VERSION}/apache-tomee-${TOMEE_VERSION}-plus.tar.gz -o tomee.tar.gz \
 	&& tar -zxf tomee.tar.gz \
 	&& mv apache-tomee-plus-${TOMEE_VERSION}/* /usr/local/tomee \

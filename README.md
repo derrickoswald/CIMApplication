@@ -49,13 +49,13 @@ new parallel applications running on a cluster of machines.
 # TomEE Setup
 
 - download and unzip/untar TomEE+ distribution in a suitable directory (for example in /opt)
-- if necessary, change the files ownership, e.g chown --recursive /opt/apache-tomee-plus-8.0.0-M3/
+- if necessary, change the files ownership, e.g chown --recursive /opt/apache-tomee-plus-8.0.0/
 - to access the manager GUI (http://localhost:8080/manager/html), edit conf/tomcat-users.xml to
 uncomment the section at the bottom of the file with rolename="tomee-admin" and username="tomee",
 and then change the password as appropriate
 - to enable TomEE, edit conf/tomee.xml and uncomment the &lt;Deployments dir="apps"/&gt; and make the apps directory:
 
-    mkdir /opt/apache-tomee-plus-8.0.0-M3/apps
+    mkdir /opt/apache-tomee-plus-8.0.0/apps
 
 - to deploy the application and reset, you could use these instructions (restart.sh marked executable):
 
