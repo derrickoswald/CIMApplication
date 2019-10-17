@@ -42,18 +42,6 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
     /**
-     * Get the scheme for the model file.
-     */
-    val model_file_scheme: String =
-    {
-        val uri = new URI (options.model_file)
-        if (null == uri.getScheme)
-            ""
-        else
-            uri.getScheme
-    }
-
-    /**
      * Get just the URI for the model file.
      */
     val model_file_uri: String =
@@ -67,18 +55,12 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
 
     def eraseModelFile ()
     {
-        if ((model_file_scheme == "file") || (model_file_scheme == ""))
-            FileUtils.deleteQuietly (new File (options.model_file))
-        else
-        {
-            val hdfs_configuration = new Configuration ()
-            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get (URI.create (model_file_uri), hdfs_configuration)
-
-            val directory = new Path (options.model_file)
-            hdfs.delete (directory, true)
-        }
+        val hdfs_configuration = new Configuration ()
+        hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+        hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+        val hdfs = FileSystem.get (URI.create (model_file_uri), hdfs_configuration)
+        val directory = new Path (options.model_file)
+        hdfs.delete (directory, true)
     }
 
     def makeSimpleModel ()
