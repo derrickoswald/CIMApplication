@@ -7,7 +7,7 @@ import org.junit.FixMethodOrder
 import org.junit.Test
 import org.junit.runners.MethodSorters
 
-import ch.ninecode.ts.Main.main
+import ch.ninecode.ts.TimeSeries.main
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class ModelSuiteIT

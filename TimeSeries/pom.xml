@@ -250,7 +250,7 @@ enable_scripted_user_defined_functions: true
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.ts.Main</mainClass>
+                                    <mainClass>ch.ninecode.ts.TimeSeries</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>

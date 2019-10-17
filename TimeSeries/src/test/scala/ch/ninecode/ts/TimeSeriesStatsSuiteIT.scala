@@ -22,10 +22,10 @@ import org.junit.FixMethodOrder
 import org.junit.Test
 import org.junit.runners.MethodSorters
 
-import ch.ninecode.ts.Main.main
+import ch.ninecode.ts.TimeSeries.main
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-class TimeSeriesSuiteIT
+class TimeSeriesStatsSuiteIT
 {
     def using[T <: Closeable, R] (resource: T)(block: T => R): R =
     {
@@ -57,7 +57,7 @@ class TimeSeriesSuiteIT
         main (Array ("--unittest", "--help"))
     }
 
-    @Test def TimeSeries ()
+    @Test def TimeSeriesStats ()
     {
         main (Array (
             "Statistics", "--unittest",
@@ -69,7 +69,7 @@ class TimeSeriesSuiteIT
     }
 }
 
-object TimeSeriesSuiteIT
+object TimeSeriesStatsSuiteIT
 {
     val KEYSPACE = "test"
     val FILE_DEPOT = "data/"
@@ -171,7 +171,7 @@ object TimeSeriesSuiteIT
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName ("TimeSeriesSuiteIT")
+        configuration.setAppName ("TimeSeriesStatsSuiteIT")
         configuration.setMaster ("local[*]")
         configuration.set ("spark.driver.memory", "2g")
         configuration.set ("spark.executor.memory", "2g")
