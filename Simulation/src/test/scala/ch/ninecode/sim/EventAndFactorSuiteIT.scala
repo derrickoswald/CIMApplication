@@ -18,24 +18,10 @@ class EventAndFactorSuiteIT
 
     val INPUT_KEYSPACE = "test"
     val OUTPUT_KEYSPACE = "test"
-
-    def last_simulation (spark: SparkSession): String =
-    {
-        val simulations = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "simulation", "keyspace" -> OUTPUT_KEYSPACE))
-            .load
-            .select ("id", "run_time")
-        val id = simulations.schema.fieldIndex ("id")
-        val time = simulations.schema.fieldIndex ("run_time")
-        val work = simulations.rdd.map (row ⇒ (row.getString (id), row.getTimestamp (time)))
-        work.sortBy (_._2.getTime, ascending = false).first._1
-    }
+    val ID = "Basic" // note: EventAndFactorSuiteIT must run after SimulationSuiteIT
 
     @Test def events ()
     {
-        val id = last_simulation (_Spark)
         val options = SimulationOptions (verbose = true, three_phase = true)
         val STANDARD_TRIGGERS: Iterable[Trigger] = List[Trigger] (
             // voltage exceeds ±10% of nominal = red, voltage exceeds ±6%=orange
@@ -59,14 +45,13 @@ class EventAndFactorSuiteIT
             HighTrigger ("power", 2, "ratedS", 630.0, 1.10,      15 * 60 * 1000)
         )
         val check = SimulationEvents (STANDARD_TRIGGERS) (_Spark, options)
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, id, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
         check.run (access)
     }
 
     @Test def coincidence_factor ()
     {
-        val id = last_simulation (_Spark)
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, id, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
         val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
         val coincidence = SimulationCoincidenceFactor (IGNORED_AGGREGATES) (_Spark, options)
@@ -75,8 +60,7 @@ class EventAndFactorSuiteIT
 
     @Test def load_factor ()
     {
-        val id = last_simulation (_Spark)
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, id, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
         val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
         val load = SimulationLoadFactor (IGNORED_AGGREGATES) (_Spark, options)
@@ -85,8 +69,7 @@ class EventAndFactorSuiteIT
 
     @Test def responsibility_factor ()
     {
-        val id = last_simulation (_Spark)
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, id, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
         val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
         val responsibility = SimulationResponsibilityFactor (IGNORED_AGGREGATES) (_Spark, options)

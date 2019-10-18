@@ -286,7 +286,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         )
     }
 
-    def make_tasks (job: SimulationJob, id: String): RDD[SimulationTask] =
+    def make_tasks (job: SimulationJob): RDD[SimulationTask] =
     {
         log.info ("""preparing simulation job "%s"""".format (job.name))
 
@@ -302,7 +302,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 get [TopologicalNode]
                 .keyBy (_.id))
             .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
-            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).persist (options.storage_level).setName (id + "_island_trafo") // (islandid, trafosetname)
+            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).persist (options.storage_level).setName (s"${job.id}_island_trafo") // (islandid, trafosetname)
         val numtrafos = islands_trafos.count
         log.info ("""%d transformer island%s found""".format (numtrafos, if (1 == numtrafos) "" else "s"))
 
@@ -358,7 +358,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         players,
                         recorders)
                 }
-            ).persist (options.storage_level).setName (id + "_tasks")
+            ).persist (options.storage_level).setName (s"${job.id}_tasks")
             ret
         }
         else
@@ -591,8 +591,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val ids = batch.map (
             job ⇒
             {
-                val id = java.util.UUID.randomUUID.toString
-                log.info ("""starting simulation %s""".format (id))
+                log.info ("""starting simulation %s""".format (job.id))
 
                 val schema = Schema (session, job.output_keyspace, job.replication, options.verbose)
                 if (schema.make)
@@ -618,7 +617,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                     if ((keytype != "string") || (valuetype != "string"))
                                         log.error ("""extra query "%s" schema fields key and value are not both strings (key=%s, value=%s)""".format (extra.title, keytype, valuetype))
                                     else
-                                        df.rdd.map (row ⇒ (id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (job.output_keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
+                                        df.rdd.map (row ⇒ (job.id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (job.output_keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
                                 }
                             }
                             else
@@ -627,8 +626,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         }
                     )
 
-                    val tasks = make_tasks (job, id)
-                    job.save (session, job.output_keyspace, id, tasks)
+                    val tasks = make_tasks (job)
+                    job.save (session, job.output_keyspace, job.id, tasks)
 
                     log.info ("""matching tasks to topological islands""")
                     val _simulations =
@@ -640,7 +639,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                     case Some (transformerset) ⇒
                                         List (
                                             SimulationTrafoKreis (
-                                                id,
+                                                job.id,
                                                 task.island,
                                                 transformerset,
                                                 task.nodes,
@@ -657,20 +656,20 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                         List ()
                                 }
                             }
-                        ).persist (options.storage_level).setName (id + "_simulations")
+                        ).persist (options.storage_level).setName (s"${job.id}_simulations")
                     val numsimulations = _simulations.count.asInstanceOf [Int]
-                    log.info ("""%d GridLAB-D simulation%s to do for simulation %s batch %d""".format (numsimulations, if (1 == numsimulations) "" else "s", id, batchno))
+                    log.info ("""%d GridLAB-D simulation%s to do for simulation %s batch %d""".format (numsimulations, if (1 == numsimulations) "" else "s", job.id, batchno))
 
                     if (0 != numsimulations)
                     {
                         val direction = SimulationDirection (options.workdir, options.verbose)
                         val simulations = _simulations.map (x ⇒ x.copy (directions = direction.execute (x)))
-                            .persist (options.storage_level).setName (id + "_simulations")
+                            .persist (options.storage_level).setName (s"${job.id}_simulations")
                         _simulations.unpersist (false)
 
                         log.info ("""storing GeoJSON data""")
                         val geo = SimulationGeometry (session, job.output_keyspace)
-                        geo.storeGeometry (id, simulations)
+                        geo.storeGeometry (job.id, simulations)
 
                         // determine which players for which transformers
                         val trafo_house1 = simulations.flatMap (x ⇒ x.players.filter (_.synthesis == null).map (y ⇒ (x.transformer.transformer_name, (y.mrid, y.transform)))).groupByKey.collect
@@ -704,7 +703,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.three_phase, options.fake_three_phase, options.keep, options.verbose)
                         val raw_results = packages.map (runner.execute)
                         raw_results.flatMap (_._1).collect.foreach (log.error)
-                        val results = raw_results.flatMap (_._2).persist (options.storage_level).setName (id + "_results")
+                        val results = raw_results.flatMap (_._2).persist (options.storage_level).setName (s"${job.id}_results")
 
                         // save the results
                         log.info ("""saving GridLAB-D simulation results""")
@@ -724,7 +723,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
                     batchno = batchno + 1
                 }
-                id
+                job.id
             }
         )
         ids

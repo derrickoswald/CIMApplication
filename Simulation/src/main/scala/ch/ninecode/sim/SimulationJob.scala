@@ -15,170 +15,122 @@ import javax.json.JsonValue
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
-import scala.reflect.runtime
-import scala.tools.reflect.ToolBox
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import com.datastax.spark.connector._
 
-
+/**
+ * Simulation job details.
+ * These values are parsed from the supplied JSON and drive all aspects of the simulation.
+ *
+ * @param id               The user specified ID or a generated GUID identifying this simulation uniquely.
+ *                         If one is not supplied in the JSON it will be generated.
+ * @param name             A user specified name for the simulation.
+ *                         This would be used in chart titles or graph labels when comparing scenarios.
+ * @param description      User specified description for the simulation.
+ *                         This would be a reminder to the user about why they did the simulation, i.e. a project name.
+ * @param cim              The CIM files used in the simulation.
+ *                         If there is more than one file, e.g. an additional switch setting overlay file, then separate the file
+ *                         names with commas. These are file system dependent names, e.g. hdfs://sandbox:8020/DemoData.rdf.
+ * @param cimreaderoptions Options to pass to the CIMReader.
+ *                         Unless there is a topology already in the CIM file, this should include ch.ninecode.cim.do_topo_islands=true.
+ * @param input_keyspace   The Cassandra keyspace to read measured data from.
+ *                         A table named measured_value with an appropriate schema (see simulation_schema.sql) is expected.
+ * @param output_keyspace  The Cassandra keyspace to save results to.
+ *                         A table named simulated_value with an appropriate schema (see simulation_schema.sql) and if summarization
+ *                         operations are performed additional tables with appropriate schema are expected.
+ * @param replication      The Cassandra keyspace replication.
+ *                         The replication factor used in the <code>create keyspace if not exists</code> DDL, and hence
+ *                         <em>used only if the <code>output_keyspace</code> is created.</em>
+ * @param start_time       The starting date and time of the simulation.
+ * @param end_time         The ending date and time of the simulation.
+ * @param transformers     The name of the transformers to simulate.
+ *                         If this list is empty all transformers in the CIM file will be processed.
+ *                         The names should reflect "ganged" transformers. For example, if TRA1234 and TRA1235 share a common
+ *                         low voltage topological node, then the name would be "TRA1234_TRA1235".
+ * @param players          Queries for driving data.
+ *                         Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
+ *                         yielding mrid, name, parent, type, property, unit and island for playing data.
+ *                         An example for energy consumed by house connections:
+ *
+ *                         select
+ *                            c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+ *                            'energy' type,
+ *                            concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+ *                            t.TopologicalNode parent,
+ *                            'constant_power' property,
+ *                            'Watt' unit,
+ *                             n.TopologicalIsland island
+ *                         from
+ *                             EnergyConsumer c,
+ *                             Terminal t,
+ *                             TopologicalNode n
+ *                         where
+ *                             c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+ *                             c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+ *                             t.TopologicalNode = n.IdentifiedObject.mRID
+ * @param recorders        Queries for recording data and the recording interval and any aggregations.
+ *                         Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
+ *                         yielding mrid, name, parent, type, property, unit and island for recording data.
+ *                         An example for recording transformer losses:
+ *
+ *                         select
+ *                             concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
+ *                             p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+ *                             p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
+ *                             'losses' type,
+ *                             'power_losses' property,
+ *                             'VA' unit,
+ *                             n.TopologicalIsland island
+ *                         from
+ *                             PowerTransformer p,
+ *                             Terminal t,
+ *                             TopologicalNode n
+ *                         where
+ *                             t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+ *                             t.ACDCTerminal.sequenceNumber > 1 and
+ *                             t.TopologicalNode = n.IdentifiedObject.mRID
+ * @param extras           Queries for data to attach to the GeoJSON point, line and polygon features.
+ *                         Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
+ *                         yielding key-value pairs. The key is the mRID of the object to attach the value to.
+ *                         The query name is used as the key.
+ *                         An example to attach the rated current to each conductor:
+ *
+ *                         select
+ *                             l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key,
+ *                             cast (w.ratedCurrent as string) value
+ *                         from
+ *                             ACLineSegment l,
+ *                             WireInfo w
+ *                         where
+ *                             w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
+ *
+ *                         If this query were named ratedCurrent, the GeoJSON line objects representing cables would have a property, e.g.:
+ *                             "ratedCurrent": "200.0"
+ * @param postprocessors   Operations to be performed after the simulation is complete.
+ *                         Each processor in the list handles one type of operation and each must parse its own JSON.
+ */
 case class SimulationJob
 (
-    /**
-     * A user specified name for the simulation.
-     *
-     * This would be used in chart titles or graph labels when comparing scenarios.
-     */
+    id: String,
     name: String,
-
-    /**
-     * User specified description for the simulation.
-     *
-     * This would be a reminder to the user about why they did the simulation, i.e. a project name.
-     */
     description: String,
-
-    /**
-     * The CIM files used in the simulation.
-     *
-     * If there is more than one file, e.g. an additional switch setting overlay file, then separate the file
-     * names with commas. These are file system dependent names, e.g. hdfs://sandbox:8020/DemoData.rdf.
-     */
     cim: String,
-
-    /**
-     * Options to pass to the CIMReader.
-     *
-     * Unless there is a topology already in the CIM file, this should include ch.ninecode.cim.do_topo_islands=true.
-     */
     cimreaderoptions: Map[String, String],
-
-    /**
-     * The Cassandra keyspace to read measured data from.
-     *
-     * A table named measured_value with an appropriate schema (see simulation_schema.sql) is expected.
-     */
     input_keyspace: String,
-
-    /**
-     * The Cassandra keyspace to save results to.
-     *
-     * A table named simulated_value with an appropriate schema (see simulation_schema.sql) and if summarization
-     * operations are performed additional tables with appropriate schema are expected.
-     */
     output_keyspace: String,
-
-    /**
-     * The Cassandra keyspace replication.
-     *
-     * The replication factor used in the <code>create keyspace if not exists</code> DDL, and hence
-     * <em>used only if the <code>output_keyspace</code> is created.</em>
-     */
     replication: Int,
-
-    /**
-     * The starting time of the simulation.
-     */
     start_time: Calendar,
-
-    /**
-     * The ending time of the simulation.
-     */
     end_time: Calendar,
-
-    /**
-     * The name of the transformers to simulate.
-     *
-     * If this list is empty all transformers in the CIM file will be processed.
-     * The names should reflect "ganged" transformers. For example, if TRA1234 and TRA1235 share a common
-     * low voltage topological node, then the name would be "TRA1234_TRA1235".
-     */
     transformers: Seq[String],
-
-    /**
-     * Queries for driving data.
-     *
-     * Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
-     * yielding mrid, name, parent, type, property, unit and island for playing data.
-     * An example for energy consumed by house connections:
-     *
-     * select
-     *    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-     *    'energy' type,
-     *    concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
-     *    t.TopologicalNode parent,
-     *    'constant_power' property,
-     *    'Watt' unit,
-     *     n.TopologicalIsland island
-     * from
-     *     EnergyConsumer c,
-     *     Terminal t,
-     *     TopologicalNode n
-     * where
-     *     c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
-     *     c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
-     *     t.TopologicalNode = n.IdentifiedObject.mRID
-     */
     players: Seq[SimulationPlayerQuery],
-
-    /**
-     * Queries for recording data and the recording interval and any aggregations.
-     *
-     * Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
-     * yielding mrid, name, parent, type, property, unit and island for recording data.
-     * An example for recording transformer losses:
-     *
-     * select
-     *     concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
-     *     p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-     *     p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
-     *     'losses' type,
-     *     'power_losses' property,
-     *     'VA' unit,
-     *     n.TopologicalIsland island
-     * from
-     *     PowerTransformer p,
-     *     Terminal t,
-     *     TopologicalNode n
-     * where
-     *     t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
-     *     t.ACDCTerminal.sequenceNumber > 1 and
-     *     t.TopologicalNode = n.IdentifiedObject.mRID
-     */
     recorders: Seq[SimulationRecorderQuery],
-
-    /**
-     * Queries for data to attach to the GeoJSON point, line and polygon features.
-     *
-     * Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
-     * yielding key-value pairs. The key is the mRID of the object to attach the value to.
-     * The query name is used as the key.
-     * An example to attach the rated current to each conductor:
-     *
-     * select
-     *     l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key,
-     *     cast (w.ratedCurrent as string) value
-     * from
-     *     ACLineSegment l,
-     *     WireInfo w
-     * where
-     *     w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
-     *
-     * If this query were named ratedCurrent, the GeoJSON line objects representing cables would have a property, e.g.:
-     *     "ratedCurrent": "200.0"
-     */
     extras: Seq[SimulationExtraQuery],
-
-    /**
-     * Operations to be performed after the simulation is complete.
-     *
-     * Each processor in the list handles one type of operation and each must parse its own JSON.
-     *
-     */
     postprocessors: Seq[(SparkSession, SimulationOptions) ⇒ SimulationPostProcessor]
 )
 {
@@ -286,8 +238,8 @@ object SimulationJob
             val value = json.get (MEMBERNAME)
             if (value.getValueType == JsonValue.ValueType.OBJECT)
             {
-                val readeroptions: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
-                val opt = readeroptions.map (x ⇒ (x._1, x._2.toString))
+                val cimreaderoptions: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
+                val opt = cimreaderoptions.map (x ⇒ (x._1, x._2.toString))
                 map ++ opt
             }
             else
@@ -406,13 +358,11 @@ object SimulationJob
                             case ("transform", v: JsonString) ⇒
                                 try
                                 {
-                                    val toolbox: ToolBox[runtime.universe.type] = scala.reflect.runtime.currentMirror.mkToolBox()
                                     val program = v.getString
-                                    val tree: toolbox.u.Tree = toolbox.parse ("import ch.ninecode.sim._; import ch.ninecode.gl._; " + program)
-                                    val compiledCode: () ⇒ Any = toolbox.compile (tree)
-                                    val tx = compiledCode ().asInstanceOf[MeasurementTransform]
                                     // try it
-                                    val p = tx.transform (1.0, 2.0)
+                                    val tx = MeasurementTransform.build (program)
+                                    tx.transform (1.0, 2.0)
+                                    tx.transform3 (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
                                     transform = program
                                 }
                                 catch
@@ -429,16 +379,10 @@ object SimulationJob
 
             }
             else
-            {
                 log.warn ("""JSON member "%s" is not a JSON array (type "%s")""".format (MEMBERNAME, value.getValueType.toString))
-                ret
-            }
         }
         else
-        {
             log.warn ("""JSON member "%s" not found""".format (MEMBERNAME))
-            ret
-        }
 
         ret
     }
@@ -530,6 +474,7 @@ object SimulationJob
 
     def parseJob (options: SimulationOptions, json: JsonObject): List[SimulationJob] =
     {
+        val id = json.getString ("id", java.util.UUID.randomUUID.toString)
         val name = json.getString ("name", "")
         val description = json.getString ("description", "")
         val cim = json.getString ("cim", null)
@@ -547,8 +492,8 @@ object SimulationJob
             val players = parsePlayers (name, json)
             val recorders = parseRecorders (name, json)
             val extras = parseExtras (name, json)
-            val postprocesses = parsePostProcessing (name, json)
-            List (SimulationJob (name, description, cim, cimreaderoptions, read, write, replication, start, end, transformers, players, recorders, extras, postprocesses))
+            val postprocessors = parsePostProcessing (name, json)
+            List (SimulationJob (id, name, description, cim, cimreaderoptions, read, write, replication, start, end, transformers, players, recorders, extras, postprocessors))
         }
     }
 

@@ -42,6 +42,7 @@ class SimulationSuiteIT
                 writer.write (
                     s"""
                     |{
+                    |    "id": "Basic",
                     |    "name": "DemoData",
                     |    "description": "simulation with demo data",
                     |    "cim": "$FILE_DEPOT$FILENAME1.rdf",
@@ -306,135 +307,7 @@ class SimulationSuiteIT
                     |            "query": "select first_value (c.substation) key, cast (sum(e.ratedS) as string) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, ( select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u ) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
                     |        }
                     |    ],
-                    |    "postprocessing":
-                    |    [
-                    |        {
-                    |            "class": "event",
-                    |            "thresholds":
-                    |            [
-                    |                {
-                    |                    "trigger": "high",
-                    |                    "type": "voltage",
-                    |                    "severity": 1,
-                    |                    "reference": "ratedVoltage",
-                    |                    "default": 400.0,
-                    |                    "ratio": 1.10,
-                    |                    "duration": 900000
-                    |                },
-                    |                {
-                    |                    "trigger": "low",
-                    |                    "type": "voltage",
-                    |                    "severity": 1,
-                    |                    "reference": "ratedVoltage",
-                    |                    "default": 400.0,
-                    |                    "ratio": 0.90,
-                    |                    "duration": 900000
-                    |                },
-                    |                {
-                    |                    "trigger": "high",
-                    |                    "type": "voltage",
-                    |                    "severity": 2,
-                    |                    "reference": "ratedVoltage",
-                    |                    "default": 400.0,
-                    |                    "ratio": 1.06,
-                    |                    "duration": 900000
-                    |                },
-                    |                {
-                    |                    "trigger": "low",
-                    |                    "type": "voltage",
-                    |                    "severity": 2,
-                    |                    "reference": "ratedVoltage",
-                    |                    "default": 400.0,
-                    |                    "ratio": 0.94,
-                    |                    "duration": 900000
-                    |                },
-                    |                {
-                    |                    "trigger": "high",
-                    |                    "type": "current",
-                    |                    "severity": 1,
-                    |                    "reference": "ratedCurrent",
-                    |                    "default": 100.0,
-                    |                    "ratio": 1.10,
-                    |                    "duration": 900000
-                    |                },
-                    |                {
-                    |                    "trigger": "high",
-                    |                    "type": "current",
-                    |                    "severity": 1,
-                    |                    "reference": "ratedCurrent",
-                    |                    "default": 100.0,
-                    |                    "ratio": 0.90,
-                    |                    "duration": 10800000
-                    |                },
-                    |                {
-                    |                    "trigger": "high",
-                    |                    "type": "current",
-                    |                    "severity": 2,
-                    |                    "reference": "ratedCurrent",
-                    |                    "default": 100.0,
-                    |                    "ratio": 0.75,
-                    |                    "duration": 50400000
-                    |                },
-                    |                {
-                    |                    "trigger": "high",
-                    |                    "type": "power",
-                    |                    "severity": 1,
-                    |                    "reference": "ratedS",
-                    |                    "default": 630000,
-                    |                    "ratio": 1.10,
-                    |                    "duration": 900000
-                    |                },
-                    |                {
-                    |                    "trigger": "high",
-                    |                    "type": "power",
-                    |                    "severity": 1,
-                    |                    "reference": "ratedS",
-                    |                    "default": 630000,
-                    |                    "ratio": 0.90,
-                    |                    "duration": 10800000
-                    |                },
-                    |                {
-                    |                    "trigger": "high",
-                    |                    "type": "power",
-                    |                    "severity": 2,
-                    |                    "reference": "ratedS",
-                    |                    "default": 630000,
-                    |                    "ratio": 0.75,
-                    |                    "duration": 50400000
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "class": "coincidence_factor",
-                    |            "aggregates":
-                    |            [
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "class": "load_factor",
-                    |            "aggregates":
-                    |            [
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "class": "responsibility_factor",
-                    |            "aggregates":
-                    |            [
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        }
-                    |    ]
+                    |    "postprocessing": []
                     |}
                     |""".stripMargin
                 )
@@ -461,6 +334,7 @@ class SimulationSuiteIT
                 writer.write (
                     s"""
                       |{
+                      |    "id": "Reinforced",
                       |    "name": "DemoDataReinforced",
                       |    "description": "simulation with demo data and reinforcement",
                       |    "cim": "$FILE_DEPOT$FILENAME2.rdf",
@@ -883,6 +757,7 @@ class SimulationSuiteIT
                 writer.write (
                     s"""
                        |{
+                       |    "id": "ThreePhase",
                        |    "name": "DemoData",
                        |    "description": "three phase simulation with demo data",
                        |    "cim": "$FILE_DEPOT$FILENAME1.rdf",
