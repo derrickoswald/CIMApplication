@@ -286,6 +286,7 @@ This is the global events of interest from a post-analysis of the simulated valu
 
 create table if not exists cimapplication.simulation (
     id text,
+    run int,
     name text,
     description text,
     cim text,
@@ -296,11 +297,12 @@ create table if not exists cimapplication.simulation (
     input_keyspace text,
     output_keyspace text,
     transformers list<text>,
-    primary key (id)
+    primary key ((id), run)
 ) with comment = '
 Details about a simulation execution.
 Describes each run of the Simulate code.
-    id - the simulation run identifier, UUID
+    id - the simulation run identifier, UUID or user specified
+    run - the simulation run number, distinguishes executions with the same id
     name - the user supplied name of the simulation
     description - the user supplied description of the simulation
     cim - the CIM file(s) used to run the simulation

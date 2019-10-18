@@ -23,6 +23,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.cql.CassandraConnector
 
 /**
  * Simulation job details.
@@ -59,12 +60,12 @@ import com.datastax.spark.connector._
  *                         An example for energy consumed by house connections:
  *
  *                         select
- *                            c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
- *                            'energy' type,
- *                            concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
- *                            t.TopologicalNode parent,
- *                            'constant_power' property,
- *                            'Watt' unit,
+ *                             c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+ *                             'energy' type,
+ *                             concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+ *                             t.TopologicalNode parent,
+ *                             'constant_power' property,
+ *                             'Watt' unit,
  *                             n.TopologicalIsland island
  *                         from
  *                             EnergyConsumer c,
@@ -74,27 +75,48 @@ import com.datastax.spark.connector._
  *                             c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
  *                             c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
  *                             t.TopologicalNode = n.IdentifiedObject.mRID
+ *
  * @param recorders        Queries for recording data and the recording interval and any aggregations.
  *                         Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
  *                         yielding mrid, name, parent, type, property, unit and island for recording data.
- *                         An example for recording transformer losses:
+ *                         An example for recording transformer output power:
  *
  *                         select
- *                             concat (p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_losses_recorder') name,
- *                             p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
- *                             p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID parent,
- *                             'losses' type,
- *                             'power_losses' property,
+ *                             concat (name_island.name, '_power_recorder') name,
+ *                             name_island.name mrid,
+ *                             name_island.name parent,
+ *                             'power' type,
+ *                             'power_out' property,
  *                             'VA' unit,
- *                             n.TopologicalIsland island
+ *                             name_island.island
  *                         from
- *                             PowerTransformer p,
- *                             Terminal t,
- *                             TopologicalNode n
- *                         where
- *                             t.ConductingEquipment = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
- *                             t.ACDCTerminal.sequenceNumber > 1 and
- *                             t.TopologicalNode = n.IdentifiedObject.mRID
+ *                         (
+ *                             select
+ *                                 concat_ws ('_', sort_array (collect_set (trafos.mrid))) name,
+ *                                 first_value (trafos.island) island
+ *                             from
+ *                             (
+ *                                 select distinct
+ *                                     t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+ *                                     t1.TopologicalNode node,
+ *                                     n.TopologicalIsland island
+ *                                 from
+ *                                     PowerTransformer t,
+ *                                     Terminal t1,
+ *                                     Terminal t2,
+ *                                     TopologicalNode n
+ *                                 where
+ *                                     t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+ *                                     t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+ *                                     t1.ACDCTerminal.sequenceNumber = 2 and
+ *                                     t2.ACDCTerminal.sequenceNumber = 2 and
+ *                                     t1.TopologicalNode = n.IdentifiedObject.mRID and
+ *                                     t2.TopologicalNode = n.IdentifiedObject.mRID
+ *                             ) trafos
+ *                             group by
+ *                                 node
+ *                         ) name_island
+ *
  * @param extras           Queries for data to attach to the GeoJSON point, line and polygon features.
  *                         Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
  *                         yielding key-value pairs. The key is the mRID of the object to attach the value to.
@@ -144,10 +166,23 @@ case class SimulationJob
      */
     def save (session: SparkSession, keyspace: String, id: String, tasks: RDD[SimulationTask]): Unit =
     {
+        // get the highest run number + 1
+        val run = CassandraConnector (session.sparkContext.getConf).withSessionDo (
+            session =>
+            {
+                val resultset = session.execute (s"select max(run) as hi from $keyspace.simulation where id='${id}'")
+                val row = resultset.one
+                if (row.isNull (0))
+                    1
+                else
+                    row.getInt (0) + 1
+            }
+        )
         val current_time = Calendar.getInstance
         val json = session.sparkContext.parallelize (Seq (
             (
                 id,
+                run,
                 name,
                 description,
                 cim,
@@ -160,17 +195,21 @@ case class SimulationJob
                 transformers
             )
         ))
-        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "name", "description", "cim", "cimreaderoptions", "run_time", "start_time", "end_time", "input_keyspace", "output_keyspace", "transformers"))
 
-        val players =
-            tasks.flatMap (
-                task ⇒ task.players.map (player ⇒ (id, task.transformer, player.name, player.mrid, player.`type`, player.property)))
-        players.saveToCassandra (keyspace, "simulation_player", SomeColumns ("simulation", "transformer", "name", "mrid", "type", "property"))
+        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "run", "name", "description", "cim", "cimreaderoptions", "run_time", "start_time", "end_time", "input_keyspace", "output_keyspace", "transformers"))
 
-        val recorders =
-            tasks.flatMap (
-                task ⇒ task.recorders.map (recorder ⇒ (id, task.transformer, recorder.name, recorder.mrid, recorder.`type`, recorder.property, recorder.unit, recorder.interval, recorder.aggregationsMap)))
-        recorders.saveToCassandra (keyspace, "simulation_recorder", SomeColumns ("simulation", "transformer", "name", "mrid", "type", "property", "unit", "interval", "aggregations"))
+        if (run == 1)
+        {
+            val players =
+                tasks.flatMap (
+                    task ⇒ task.players.map (player ⇒ (id, task.transformer, player.name, player.mrid, player.`type`, player.property)))
+            players.saveToCassandra (keyspace, "simulation_player", SomeColumns ("simulation", "transformer", "name", "mrid", "type", "property"))
+
+            val recorders =
+                tasks.flatMap (
+                    task ⇒ task.recorders.map (recorder ⇒ (id, task.transformer, recorder.name, recorder.mrid, recorder.`type`, recorder.property, recorder.unit, recorder.interval, recorder.aggregationsMap)))
+            recorders.saveToCassandra (keyspace, "simulation_recorder", SomeColumns ("simulation", "transformer", "name", "mrid", "type", "property", "unit", "interval", "aggregations"))
+        }
     }
 }
 

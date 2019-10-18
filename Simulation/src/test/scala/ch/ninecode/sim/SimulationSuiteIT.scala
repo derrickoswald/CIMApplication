@@ -1286,6 +1286,7 @@ object SimulationSuiteIT
             "mode" → "DROPMALFORMED",
             "inferSchema" → "true"
         )
+        Schema (session, KEYSPACE, 1, true).make
         println (s"reading $FILE_DEPOT$FILENAME0.csv")
         val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (s"$FILE_DEPOT$FILENAME0.csv")
         val ok = df.rdd.map (row ⇒ (row.getString (0), "energy", row.getTimestamp (1), 900000, row.getDouble (2), 0.0, "Wh"))

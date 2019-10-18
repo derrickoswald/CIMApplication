@@ -227,6 +227,7 @@
                 <configuration>
                     <clusterSize>1</clusterSize>
                     <startNativeTransport>true</startNativeTransport>
+                    <cqlVersion>3.4.4</cqlVersion>
                     <yaml>
 rpc_port: ${cassandra.rpcPort}
 storage_port: ${cassandra.storagePort}
@@ -237,6 +238,11 @@ enable_scripted_user_defined_functions: true
                     <script>${basedir}/src/test/resources/test_simulation_schema.sql</script>
                 </configuration>
                 <dependencies>
+                    <dependency>
+                        <groupId>org.apache.cassandra</groupId>
+                        <artifactId>cassandra-all</artifactId>
+                        <version>3.10</version>
+                    </dependency>
                     <dependency>
                         <groupId>org.apache.logging.log4j</groupId>
                         <artifactId>log4j-cassandra</artifactId>
