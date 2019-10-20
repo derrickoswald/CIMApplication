@@ -139,7 +139,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
                     .keyBy (_.ConductingEquipment))
             .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
-            topological_node_rdd
+                topological_node_rdd
                 .keyBy (_.id))
             .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
             .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")) // (islandid, trafosetname) // ToDo: multiple transformers in the same island that aren't ganged?
@@ -166,8 +166,8 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
     {
         // get nodes by TopologicalIsland
         val members = topological_node_rdd.map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
-    // get terminals by TopologicalIsland
-    val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
+        // get terminals by TopologicalIsland
+        val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
         // get equipment with terminals in different islands as GraphX Edge objects
         conducting_equipment_rdd.keyBy (_.id).join (element_rdd.keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
             .join (terminals.keyBy (_._2.ConductingEquipment)) // (equipmentid, (equipment, (islandid, terminal)))

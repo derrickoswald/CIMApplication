@@ -332,9 +332,9 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
      * @return
      */
     def queryNetwork (
-                         identifiers_islands: IslandMap,
-                         node_maker: RDD[NodeParts] ⇒ RDD[(identifier, GLMNode)],
-                         edge_maker: RDD[EdgeParts] ⇒ RDD[(identifier, GLMEdge)]): (Nodes, Edges) =
+        identifiers_islands: IslandMap,
+        node_maker: RDD[NodeParts] ⇒ RDD[(identifier, GLMNode)],
+        edge_maker: RDD[EdgeParts] ⇒ RDD[(identifier, GLMEdge)]): (Nodes, Edges) =
     {
         // the mapping between island and transformer service area
         val islands_trafos: RDD[(island_id, identifier)] = identifiers_islands.map (_.swap)
@@ -375,7 +375,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         val o: RDD[NodeParts] = nn.groupBy (_._2._1.TopologicalNode)
         val nodes: RDD[(identifier, GLMNode)] = node_maker (o).cache
 
-        // get all equipment with two nodes in the transformer service area that separate different TopologicalIsland (these are the edges)
+        // get all equipment with two nodes in the transformer service area that separate different TopologicalNode (these are the edges)
         val ff: RDD[(Iterable[(identifier, Terminal)], Element)] = terminals_equipment.keyBy (_._2.id).join (get [Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, x._2)).cache
         val tte: RDD[(Iterable[(identifier, Terminal)], Element)] = ff.filter (x ⇒ x._1.size > 1 && (x._1.head._1 == x._1.tail.head._1) && (x._1.head._2.TopologicalNode != x._1.tail.head._2.TopologicalNode))
         // combine parallel edges

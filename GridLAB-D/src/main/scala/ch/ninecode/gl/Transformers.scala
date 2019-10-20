@@ -12,7 +12,7 @@ import ch.ninecode.model._
 
 /**
  * Get information about transformers.
- * Joins PowerTransformer, PowerTransformerEnd and BaseVoltage objects to form complete details about transformers.
+ * Joins PowerTransformer, PowerTransformerEnd, Terminal and BaseVoltage objects to form complete details about transformers.
  *
  * @param session       the Spark session
  * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
@@ -41,7 +41,7 @@ class Transformers (
     /**
      * Default transformer filter predicate.
      *
-     * Eliminates transformers named Messen_Steuern and transformrs under 1000VA.
+     * Eliminates transformers named Messen_Steuern and transformers under 1000VA.
      *
      * @param transformer the transformer to test
      * @return <code>true</code> if the transformer should be kept
@@ -76,21 +76,21 @@ class Transformers (
      */
     def z (power: Double, voltage: Double, angle: Double): Complex =
     {
-        val zmag = (voltage * voltage) / power
+        val magnitude = (voltage * voltage) / power
         val ang = angle * Math.PI / 180.0
-        Complex (Math.cos (ang) * zmag, Math.sin (ang) * zmag)
+        Complex (Math.cos (ang) * magnitude, Math.sin (ang) * magnitude)
     }
 
     /**
      * Generate a transformer instance.
      *
-     * @param trafo joined transformer, ends, terminals and voltages
+     * @param transformer joined transformer, ends, terminals and voltages
      * @return a composite transformer object
      */
-    def to_transformer_data (trafo: (PowerTransformer, Iterable[(PowerTransformerEnd, Terminal, (String, Double))])): TransformerData =
+    def to_transformer_data (transformer: (PowerTransformer, Iterable[(PowerTransformerEnd, Terminal, (String, Double))])): TransformerData =
     {
-        val ends = trafo._2.toArray.sortWith (_._1.TransformerEnd.endNumber < _._1.TransformerEnd.endNumber)
-        TransformerData (trafo._1, ends.map (_._1), ends.map (_._2), ends.map (_._3), null, null)
+        val ends = transformer._2.toArray.sortWith (_._1.TransformerEnd.endNumber < _._1.TransformerEnd.endNumber)
+        TransformerData (transformer._1, ends.map (_._1), ends.map (_._2), ends.map (_._3), null, null)
     }
 
     /**
@@ -146,32 +146,32 @@ class Transformers (
         equivalent.bitfields = Array (0)
 
         // if there is only one supplied angle, apply it to both max and min conditions
-        val anglemax = if (default_supply_network_short_circuit_angle_max.isNaN)
+        val angle_max = if (default_supply_network_short_circuit_angle_max.isNaN)
             default_supply_network_short_circuit_angle_min
         else
             default_supply_network_short_circuit_angle_max
-        val anglemin = if (default_supply_network_short_circuit_angle_min.isNaN)
+        val angle_min = if (default_supply_network_short_circuit_angle_min.isNaN)
             default_supply_network_short_circuit_angle_max
         else
             default_supply_network_short_circuit_angle_min
 
         // compute the impedances
-        val zmax = if (anglemax.isNaN)
+        val impedance_max = if (angle_max.isNaN)
             default_supply_network_short_circuit_impedance_max
         else
-            z (default_supply_network_short_circuit_power_max, voltage._2, anglemax)
-        val zmin = if (anglemin.isNaN)
+            z (default_supply_network_short_circuit_power_max, voltage._2, angle_max)
+        val impedance_min = if (angle_min.isNaN)
             default_supply_network_short_circuit_impedance_min
         else
-            z (default_supply_network_short_circuit_power_min, voltage._2, anglemin)
+            z (default_supply_network_short_circuit_power_min, voltage._2, angle_min)
 
         // decompose sk values into P & Q
-        val maxP = default_supply_network_short_circuit_power_max * Math.cos (zmax.angle)
-        val maxQ = default_supply_network_short_circuit_power_max * Math.sin (zmax.angle)
-        val minP = default_supply_network_short_circuit_power_min * Math.cos (zmin.angle)
-        val minQ = default_supply_network_short_circuit_power_min * Math.sin (zmin.angle)
+        val maxP = default_supply_network_short_circuit_power_max * Math.cos (impedance_max.angle)
+        val maxQ = default_supply_network_short_circuit_power_max * Math.sin (impedance_max.angle)
+        val minP = default_supply_network_short_circuit_power_min * Math.cos (impedance_min.angle)
+        val minQ = default_supply_network_short_circuit_power_min * Math.sin (impedance_min.angle)
 
-        val injection = EquivalentInjection (equivalent, maxP, maxQ, minP, minQ, 0.0, 0.0, zmax.re, 0.0, 0.0, false, false, 0.0, zmax.im, 0.0, 0.0, null)
+        val injection = EquivalentInjection (equivalent, maxP, maxQ, minP, minQ, 0.0, 0.0, impedance_max.re, 0.0, 0.0, false, false, 0.0, impedance_max.im, 0.0, 0.0, null)
         // note: use RegulationStatus to indicate this is a default value, and not a real value
         injection.bitfields = Array (Integer.parseInt ("0001010001001111", 2))
         injection
