@@ -368,7 +368,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def query_measured_value (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar) (players: (String, Iterable[(String, String)])): RDD[SimulationPlayerData] =
+    def query_measured_value (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar, buffer: Int) (players: (String, Iterable[(String, String)])): RDD[SimulationPlayerData] =
     {
         val date_format: SimpleDateFormat =
         {
@@ -376,12 +376,19 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             format.setTimeZone (TimeZone.getTimeZone ("UTC"))
             format
         }
+        def timestamp (calendar: Calendar, buffer: Int): String =
+        {
+            val disposable = calendar.clone.asInstanceOf[Calendar]
+            disposable.setTimeInMillis (disposable.getTimeInMillis + buffer)
+            date_format.format (disposable.getTime)
+        }
 
         val transformer = players._1
         val mrids_transforms: Iterable[(String, String)] = players._2
         val transform_map: Map[String, String] = mrids_transforms.toMap
         val inclause = mrids_transforms.map (_._1).mkString ("mrid in ('", "','", "')")
-        val where = "%s and type = '%s' and time >= '%s' and time < '%s'".format (inclause, `type`, date_format.format (start_time.getTime), date_format.format (finish_time.getTime))
+        val where = s"$inclause and type = '${`type`}' and time >= '${timestamp (start_time, -buffer)}' and time <= '${timestamp (finish_time, buffer)}'"
+println (where)
         if (options.three_phase && !options.fake_three_phase)
             spark
                 .read
@@ -396,14 +403,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     {
                         val mrid = row.getString (0)
                         val period = row.getInt (8)
-                        val time = row.getTimestamp (1).getTime - period // start time
+                        val t = row.getTimestamp (1).getTime
                         // ToDo: should also check units
-                        val factor = `type` match
+                        val (factor, time) = `type` match
                         {
                             case "energy" ⇒
-                                (60.0 * 60.0 * 1000.0) / period
+                                ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
                             case _ ⇒
-                                1.0
+                                (1.0, t)
                         }
                         val program = MeasurementTransform.compile (transform_map(mrid))
                         val real_a = row.getDouble (2) * factor
@@ -433,14 +440,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     {
                         val mrid = row.getString (0)
                         val period = row.getInt (4)
-                        val time = row.getTimestamp (1).getTime - period // start time
+                        val t = row.getTimestamp (1).getTime
                         // ToDo: should also check units
-                        val factor = `type` match
+                        val (factor, time) = `type` match
                         {
                             case "energy" ⇒
-                                (60.0 * 60.0 * 1000.0) / period
+                                ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
                             case _ ⇒
-                                1.0
+                                (1.0, t)
                         }
                         val real = row.getDouble (2) * factor
                         val imag = row.getDouble (3) * factor
@@ -452,7 +459,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 )
     }
 
-    def query_synthesized_value (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar) (players: (String, Iterable[(String, String, String)])): RDD[SimulationPlayerData] =
+    def query_synthesized_value (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar, buffer: Int) (players: (String, Iterable[(String, String, String)])): RDD[SimulationPlayerData] =
     {
         val date_format: SimpleDateFormat =
         {
@@ -460,14 +467,19 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             format.setTimeZone (TimeZone.getTimeZone ("UTC"))
             format
         }
+        def timestamp (calendar: Calendar, buffer: Int): String =
+        {
+            val disposable = calendar.clone.asInstanceOf[Calendar]
+            disposable.setTimeInMillis (disposable.getTimeInMillis + buffer)
+            date_format.format (disposable.getTime)
+        }
 
         val transformer = players._1
         val mrids_syntheses_transforms: Iterable[(String, String, String)] = players._2
         val transform_map: Map[String, String] = mrids_syntheses_transforms.map (x ⇒ (x._1, x._3)).toMap
         // group by synthesis
         val queries: Map[String, Iterable[String]] = mrids_syntheses_transforms.map (x ⇒ (x._2, x._1)).groupBy (_._1).mapValues (x ⇒ x.map (y ⇒ y._2))
-        val where = " and type = '%s' and time >= '%s' and time < '%s'".format (`type`, date_format.format (start_time.getTime), date_format.format (finish_time.getTime))
-        def f (pair: (String, Iterable[(String, String)])): Int = 0
+        val where = s" and type = '${`type`}' and time >= '${timestamp (start_time, -buffer)}' and time <= '${timestamp (finish_time, buffer)}'"
         val results: immutable.Iterable[RDD[SimulationPlayerData]] = queries.map (
             (pair: (String, Iterable[String])) ⇒
             {
@@ -486,14 +498,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                 row ⇒
                                 {
                                     val period = row.getInt (7)
-                                    val time = row.getTimestamp (0).getTime - period // start time
+                                    val t = row.getTimestamp (0).getTime
                                     // ToDo: should also check units
-                                    val factor = `type` match
+                                    val (factor, time) = `type` match
                                     {
                                         case "energy" ⇒
-                                            (60.0 * 60.0 * 1000.0) / period
+                                            ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
                                         case _ ⇒
-                                            1.0
+                                            (1.0, t)
                                     }
                                     val real_a = row.getDouble (1) * factor
                                     val imag_a = row.getDouble (2) * factor
@@ -527,14 +539,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                 row ⇒
                                 {
                                     val period = row.getInt (3)
-                                    val time = row.getTimestamp (0).getTime - period // start time
+                                    val t = row.getTimestamp (0).getTime
                                     // ToDo: should also check units
-                                    val factor = `type` match
+                                    val (factor, time) = `type` match
                                     {
                                         case "energy" ⇒
-                                            (60.0 * 60.0 * 1000.0) / period
+                                            ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
                                         case _ ⇒
-                                            1.0
+                                            (1.0, t)
                                     }
                                     val real = row.getDouble (1) * factor
                                     val imag = row.getDouble (2) * factor
@@ -677,7 +689,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         {
                             // query Cassandra to make one RDD for each trafo
                             log.info ("""querying measured values""")
-                            trafo_house1.map (query_measured_value (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time))
+                            trafo_house1.map (query_measured_value (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time, job.buffer))
                         }
                         else
                             Array ()
@@ -686,7 +698,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         {
                             // query Cassandra to make one RDD for each trafo
                             log.info ("""querying synthesized values""")
-                            trafo_house2.map (query_synthesized_value (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time))
+                            trafo_house2.map (query_synthesized_value (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time, job.buffer))
                         }
                         else
                             Array ()

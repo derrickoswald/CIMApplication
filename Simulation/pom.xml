@@ -195,6 +195,9 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                    <skipAfterFailureCount>1</skipAfterFailureCount>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

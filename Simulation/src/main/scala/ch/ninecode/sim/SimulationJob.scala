@@ -50,6 +50,7 @@ import com.datastax.spark.connector.cql.CassandraConnector
  *                         <em>used only if the <code>output_keyspace</code> is created.</em>
  * @param start_time       The starting date and time of the simulation.
  * @param end_time         The ending date and time of the simulation.
+ * @param buffer           The number of milliseconds of buffer either side of the start⇒end interval to read from measured data.
  * @param transformers     The name of the transformers to simulate.
  *                         If this list is empty all transformers in the CIM file will be processed.
  *                         The names should reflect "ganged" transformers. For example, if TRA1234 and TRA1235 share a common
@@ -149,6 +150,7 @@ case class SimulationJob
     replication: Int,
     start_time: Calendar,
     end_time: Calendar,
+    buffer: Int,
     transformers: Seq[String],
     players: Seq[SimulationPlayerQuery],
     recorders: Seq[SimulationRecorderQuery],
@@ -324,7 +326,7 @@ object SimulationJob
         (input, output, replication)
     }
 
-    def parseInterval (json: JsonObject): (Calendar, Calendar) =
+    def parseInterval (json: JsonObject): (Calendar, Calendar, Int) =
     {
         val MEMBERNAME = "interval"
         val calendar: Calendar = Calendar.getInstance ()
@@ -332,6 +334,7 @@ object SimulationJob
         calendar.setTimeInMillis (0L)
         var start: Calendar = calendar
         var end: Calendar = calendar
+        var buffer: Int = 60 * 60 * 1000 // one hour buffer
 
         val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
         iso_date_format.setCalendar (calendar)
@@ -352,6 +355,7 @@ object SimulationJob
                 {
                     case ("start", v: JsonString) ⇒ start = iso_parse (v.getString)
                     case ("end", v: JsonString) ⇒ end = iso_parse (v.getString)
+                    case ("buffer", v: JsonNumber) ⇒ buffer = v.intValue
                     case (k: String, v: JsonValue) ⇒ log.warn ("""unexpected JSON member or type: %s["%s"] of type "%s"""".format (MEMBERNAME, k, v.getValueType.toString))
                 }
             }
@@ -361,7 +365,7 @@ object SimulationJob
         else
             log.warn ("""JSON member "%s" not found, using defaults""".format (MEMBERNAME))
 
-        (start, end)
+        (start, end, buffer)
     }
 
     def parseTransformers (json: JsonObject): Seq[String] =
@@ -526,13 +530,13 @@ object SimulationJob
         {
             val cimreaderoptions = parseCIMReaderOptions (options, cim, json)
             val (read, write, replication) = parseKeyspaces (json)
-            val (start, end) = parseInterval (json)
+            val (start, end, buffer) = parseInterval (json)
             val transformers = parseTransformers (json)
             val players = parsePlayers (name, json)
             val recorders = parseRecorders (name, json)
             val extras = parseExtras (name, json)
             val postprocessors = parsePostProcessing (name, json)
-            List (SimulationJob (id, name, description, cim, cimreaderoptions, read, write, replication, start, end, transformers, players, recorders, extras, postprocessors))
+            List (SimulationJob (id, name, description, cim, cimreaderoptions, read, write, replication, start, end, buffer, transformers, players, recorders, extras, postprocessors))
         }
     }
 
