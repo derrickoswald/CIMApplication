@@ -59,7 +59,7 @@ class SimulationSuiteIT
                     |    "interval": {
                     |        "start": "2018-01-01T00:00:00.000+0100",
                     |        "end": "2018-02-01T00:00:00.000+0100",
-                    |        "buffer": 1800000
+                    |        "buffer": 3600000
                     |    },
                     |    "keyspaces": {
                     |        "input": "$KEYSPACE",

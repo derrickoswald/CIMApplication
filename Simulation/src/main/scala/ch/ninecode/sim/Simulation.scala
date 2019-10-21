@@ -388,7 +388,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val transform_map: Map[String, String] = mrids_transforms.toMap
         val inclause = mrids_transforms.map (_._1).mkString ("mrid in ('", "','", "')")
         val where = s"$inclause and type = '${`type`}' and time >= '${timestamp (start_time, -buffer)}' and time <= '${timestamp (finish_time, buffer)}'"
-println (where)
         if (options.three_phase && !options.fake_three_phase)
             spark
                 .read
