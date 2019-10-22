@@ -867,11 +867,13 @@ truncate table cimapplication.responsibility_by_day;
                                         TopologicalNode n,
                                         Terminal t,
                                         BusbarSection b,
+                                        BaseVoltage v,
                                         Substation s
                                     where
                                         t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
                                         n.IdentifiedObject.mRID = t.TopologicalNode and
-                                        b.Connector.ConductingEquipment.BaseVoltage = "BaseVoltage_400" and
+                                        b.Connector.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID and
+                                        v.nominalVoltage == 0.4 and
                                         s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType in ('PSRType_Substation', 'PSRType_TransformerStation', 'PSRType_DistributionBox') and
                                         b.Connector.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID
                                 )

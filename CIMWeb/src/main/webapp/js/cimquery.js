@@ -109,7 +109,7 @@ define
                         }
                     }
                 }
-                query (TheQuery, QueryCassandra, TheTable, TheCassandraTable, fn);
+                queryPromise ({ sql: TheQuery, cassandra: QueryCassandra, table: TheTable, cassandra_table: TheCassandraTable }).then (fn);
             }
         }
 
