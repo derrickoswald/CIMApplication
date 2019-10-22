@@ -74,7 +74,14 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-mllib_${version.dependency.scala}</artifactId>
             <version>${version.dependency.spark}</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.intel.analytics.bigdl</groupId>
+            <artifactId>bigdl-SPARK_2.4</artifactId>
+            <version>${version.dependency.bigdl}</version>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
@@ -145,7 +152,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${version.dependency.maven-surefire-plugin}</version>
                 <configuration>
-                    <skipTests>true</skipTests>
+                    <skipTests>false</skipTests>
                 </configuration>
             </plugin>
             <plugin>

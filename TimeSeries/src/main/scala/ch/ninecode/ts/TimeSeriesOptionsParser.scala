@@ -15,7 +15,7 @@ object LogLevels extends Enumeration
 object Operations extends Enumeration
 {
     type Operations = Value
-    val Statistics, Model, Synthesize = Value
+    val Statistics, Meta, Model, Synthesize = Value
 }
 
 class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
@@ -119,6 +119,16 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     cmd (Operations.Statistics.toString)
         .action ((_, c) => c.copy (operation = Operations.Statistics) )
         .text (s"    perform statistical analysis${if (default.operation == Operations.Statistics) " - default" else ""}")
+
+    cmd (Operations.Meta.toString)
+        .action ((_, c) => c.copy (operation = Operations.Meta) )
+        .text (s"    perform metadata extraction${if (default.operation == Operations.Meta) " - default" else ""}")
+        .children (
+            opt [String]("meta_file").
+                action ((x, c) ⇒ c.copy (meta_file = x)).
+                text (s"metadata file name [${default.meta_file}]")
+
+        )
 
     cmd (Operations.Model.toString)
         .action ((_, c) => c.copy (operation = Operations.Model) )

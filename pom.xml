@@ -37,6 +37,7 @@
         <version.dependency.scopt>3.7.0</version.dependency.scopt>
         <version.dependency.java-driver-core>4.2.0</version.dependency.java-driver-core>
         <version.dependency.netty-all>4.1.42.Final</version.dependency.netty-all>
+        <version.dependency.bigdl>0.9.1</version.dependency.bigdl>
 
         <!-- test versions -->
         <version.dependency.junit>4.12</version.dependency.junit>

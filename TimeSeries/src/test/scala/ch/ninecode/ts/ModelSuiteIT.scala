@@ -1,6 +1,5 @@
 package ch.ninecode.ts
 
-import java.io.Closeable
 import java.util.Properties
 
 import org.junit.FixMethodOrder
@@ -12,18 +11,6 @@ import ch.ninecode.ts.TimeSeries.main
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class ModelSuiteIT
 {
-    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
-    {
-        try
-        {
-            block (resource)
-        }
-        finally
-        {
-            resource.close ()
-        }
-    }
-
     def cassandra_port: String =
     {
         val properties: Properties =

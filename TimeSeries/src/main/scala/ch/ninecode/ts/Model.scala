@@ -1,6 +1,5 @@
 package ch.ninecode.ts
 
-import java.io.File
 import java.net.URI
 import java.sql.Timestamp
 import java.util.Calendar
@@ -8,7 +7,6 @@ import java.util.TimeZone
 
 import scala.reflect.runtime.universe.TypeTag
 
-import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
@@ -35,6 +33,10 @@ import org.slf4j.LoggerFactory
 
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
+
+import com.intel.analytics.bigdl.dlframes.DLEstimator
+import com.intel.analytics.bigdl.nn._
+import com.intel.analytics.bigdl.tensor.TensorNumericMath.TensorNumeric.NumericFloat
 
 case class Model (session: SparkSession, options: TimeSeriesOptions)
 {
@@ -63,7 +65,7 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         hdfs.delete (directory, true)
     }
 
-    def makeSimpleModel ()
+    def getRawData: DataFrame =
     {
         def tick[Type_t: TypeTag, Type_period: TypeTag]: UserDefinedFunction = udf [Int, Timestamp, Int](
             (t: Timestamp, period: Int) =>
@@ -101,7 +103,7 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
             .load
             .select ("mrid", "type", "average")
             .persist (StorageLevel.fromString (options.storage_level))
-        val raw = session
+        session
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
@@ -120,8 +122,12 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
             .selectExpr ("mrid", "type", "tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "real_a as value")
             .join (stats, Seq ("mrid", "type"))
             .persist (StorageLevel.fromString (options.storage_level))
+    }
 
+    def makeDecisionTreeRegressorModel ()
+    {
         // split the data into training and test sets (30% held out for testing)
+        val raw = getRawData
         val splits = raw.randomSplit (Array(0.7, 0.3))
         val (trainingData, testData) = (splits(0), splits(1))
 
@@ -182,6 +188,30 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         // save the model
         eraseModelFile ()
         model.save (options.model_file)
+    }
+
+    def makeDLModel ()
+    {
+        // split the data into training and test sets (30% held out for testing)
+        val raw = getRawData
+        val splits = raw.randomSplit (Array(0.7, 0.3))
+        val (trainingData, testData) = (splits(0), splits(1))
+
+        val assembler = new VectorAssembler ()
+            .setInputCols  (Array("tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "average"))
+            .setOutputCol ("features")
+        val train_df = assembler.transform (trainingData)
+        val test_df = assembler.transform (testData)
+
+        val model = Sequential().add (Linear (10, 1))
+        val criterion = MSECriterion ()
+        val estimator = new DLEstimator (model, criterion, Array (10), Array(1))
+            .setLabelCol ("value")
+            .setBatchSize (4)
+            .setMaxEpoch (2)
+
+        val dlModel = estimator.fit (train_df)
+        dlModel.transform (test_df).show (false)
     }
 
     def generateTimeSeries (synthesis: String, start: Calendar, end: Calendar, period: Int, yearly_kWh: Double): Unit =

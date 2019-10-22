@@ -13,6 +13,8 @@ import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+// import com.intel.analytics.bigdl.utils.Engine
+
 object TimeSeries
 {
     val properties: Properties =
@@ -74,6 +76,7 @@ object TimeSeries
 
                     // create the configuration
                     val configuration = new SparkConf (false)
+                    // val configuration = Engine.createSparkConf ()
                     configuration.setAppName (APPLICATION_NAME)
                     if ("" != options.master)
                         configuration.setMaster (options.master)
@@ -95,6 +98,7 @@ object TimeSeries
                     log.info (s"Spark $version session established")
                     if (version.take (SPARK.length) != SPARK.take (version.length))
                         log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
+                    //Engine.init
 
                     val setup = System.nanoTime ()
                     log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
@@ -104,9 +108,12 @@ object TimeSeries
                         case Operations.Statistics =>
                             val ts = TimeSeriesStats (session, options)
                             ts.run ()
+                        case Operations.Meta =>
+                            val meta = TimeSeriesMeta (session, options)
+                            meta.run ()
                         case Operations.Model =>
                             val model = Model (session, options)
-                            model.makeSimpleModel ()
+                            model.makeDecisionTreeRegressorModel ()
                         case Operations.Synthesize =>
                             val model = Model (session, options)
                             model.generateTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh)

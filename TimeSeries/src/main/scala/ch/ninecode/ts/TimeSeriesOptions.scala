@@ -20,6 +20,7 @@ import ch.ninecode.ts.Operations.Operations
  * @param port          Cassandra nativeTransportPort port.
  * @param keyspace      Cassandra keyspace.
  * @param model_file    File name for model save/load.
+ * @param meta_file     File name for metadata.
  * @param operation     The operation to perform: statistical analysis, model building, time series synthesis.
  * @param tree_depth    The depth of the generated decision tree, or array for hyperparameter tuning.
  * @param bins          The maximum number of bins for discretizing continuous features, or array for hyperparameter tuning.
@@ -43,6 +44,7 @@ case class TimeSeriesOptions
     port: Int = 9042,
     keyspace: String = "cimapplication",
     model_file: String = "models/myDecisionTreeRegressorModel",
+    meta_file: String = "meta_utf8.csv",
     operation: Operations = Operations.Synthesize,
     tree_depth: Array[Int] = Array(15),
     bins: Array[Int] = Array(80),
