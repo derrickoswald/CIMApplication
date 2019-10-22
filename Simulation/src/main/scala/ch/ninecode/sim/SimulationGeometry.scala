@@ -1,7 +1,6 @@
 package ch.ninecode.sim
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -10,8 +9,8 @@ import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.WriteConf
 
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.gl.LineEdge
 import ch.ninecode.model._
-
 
 case class SimulationGeometry (session: SparkSession, keyspace: String) extends CIMRDD
 {
@@ -136,23 +135,29 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                 (x: ((Simulation, Transformer, SimulationEdge), Option[KeyValueList])) ⇒
                 {
                     val edge = x._1._3
-                    val world = if (null != edge.world_position)
+                    edge.rawedge match
                     {
-                        val coordinates = edge.world_position.map (p ⇒ List (p._1, p._2)).toList
-                        val geometry = ("LineString", coordinates)
-                        Some ((x._1._1, edge.rawedge.id, "wgs84", geometry, x._2.orNull, x._1._2, "Feature"))
+                        case _: LineEdge =>
+                            val world = if (null != edge.world_position)
+                            {
+                                val coordinates = edge.world_position.map (p ⇒ List (p._1, p._2)).toList
+                                val geometry = ("LineString", coordinates)
+                                Some ((x._1._1, edge.rawedge.id, "wgs84", geometry, x._2.orNull, x._1._2, "Feature"))
+                            }
+                            else
+                                None
+                            val schematic = if (null != edge.schematic_position)
+                            {
+                                val coordinates = edge.schematic_position.map (p ⇒ List (p._1, p._2)).toList
+                                val geometry = ("LineString", coordinates)
+                                Some ((x._1._1, edge.rawedge.id, "pseudo_wgs84", geometry, x._2.orNull, x._1._2, "Feature"))
+                            }
+                            else
+                                None
+                            (world :: schematic :: Nil).flatten
+                        case _ =>
+                            List ()
                     }
-                    else
-                        None
-                    val schematic = if (null != edge.schematic_position)
-                    {
-                        val coordinates = edge.schematic_position.map (p ⇒ List (p._1, p._2)).toList
-                        val geometry = ("LineString", coordinates)
-                        Some ((x._1._1, edge.rawedge.id, "pseudo_wgs84", geometry, x._2.orNull, x._1._2, "Feature"))
-                    }
-                    else
-                        None
-                    (world :: schematic :: Nil).flatten
                 }
             )
         jsons.saveToCassandra (keyspace, "geojson_lines", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))

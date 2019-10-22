@@ -755,13 +755,29 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key,
-                        cast (w.ratedCurrent as string) value
+                        concat_ws ('_', sort_array (collect_set (p.line))) key,
+                        cast (sum (w.ratedCurrent) as string) value
                     from
+                        (
+                            select
+                                concat_ws ('_', sort_array (collect_set (t.TopologicalNode))) nodes,
+                                t.ConductingEquipment line
+                            from
+                                Terminal t,
+                                ACLineSegment l
+                            where
+                                t.TopologicalNode != '' and
+                                t.ConductingEquipment = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID
+                            group by
+                                t.ConductingEquipment
+                        ) p,
                         ACLineSegment l,
                         WireInfo w
                     where
+                        p.line = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
                         w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
+                    group by
+                        p.nodes
                     `
             },
             {
