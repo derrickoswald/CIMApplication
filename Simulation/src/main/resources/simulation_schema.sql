@@ -174,6 +174,23 @@ Statistical properties of measurement_value table aggregated by mrid and type.
     stddev  - the standard deviation of the non-zero measurement values
 ';
 
+create table if not exists cimapplication.measured_value_meta (
+    mrid text,
+    class text,
+    count int,
+    lon double,
+    lat double,
+    primary key (mrid)
+) with comment = '
+Measurement value metadata.
+Auxiliary properties of measurement_value table entries.
+    mrid    - the unique CIM mRID for the element
+    class   - the classification, e.g. "Apartment" or "House", of the smart meter installation
+    count   - the number of meters associated with the mrid
+    lon     - the longitude of the location (°)
+    lat     - the latitude of the location (°)
+';
+
 create table if not exists cimapplication.simulated_value (
     simulation text,
     mrid text,
@@ -461,7 +478,7 @@ create table if not exists cimapplication.geojson_stations (
     type text,
     geometry frozen<cimapplication.polygon_data>,
     properties frozen<map<text,text>>,
-    primary key ((simulation, coordinate_system, transformer), mrid)
+    primary key ((simulation, coordinate_system), mrid)
     ) with comment = '
 GeoJSON for stations.
 Describes each station polygonal object in the simulation.
