@@ -283,6 +283,30 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
             }
         )
 
+        // write to Cassandra
+        def toClasses (classnames: Iterable[String]): Map[String, Int] =
+        {
+            val col = mutable.Map[String, Int] ()
+            classnames.foreach (
+                x =>
+                {
+                    col.get (x) match
+                    {
+                        case Some (existing) =>
+                            col.update (x, existing + 1)
+                        case None =>
+                            col.put (x, 1)
+                    }
+                }
+            )
+            col
+        }
+        val rdd = session.sparkContext.parallelize (classified.toSeq)
+        val raw: RDD[(String, Map[String, Int])] = rdd.groupByKey.mapValues (toClasses)
+        val columns = SomeColumns ("mrid", "classes")
+        val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
+        raw.saveToCassandra  (options.keyspace, "measured_value_meta", columns, writeConf)
+
         // summarize
         type sum = mutable.Map[String,(Int,mutable.Set[Classifier])]
         def process (m: sum, ss: Classifier): sum =
@@ -298,20 +322,6 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
 
         println (s"$unmatched unmatched, matched $matched of ${matched + unmatched} = ${100.0 * (matched.toDouble / (matched.toDouble + unmatched.toDouble))}%")
         arranged.foreach (println (_))
-
-        // write to Cassandra
-        def toClass (classnames: Iterable[String]): (String, Int) =
-        {
-            var count = 0
-            val col = mutable.Set[String] ()
-            classnames.foreach (x => { col += x; count = count + 1 })
-            (col.toArray.mkString ("+"), count)
-        }
-        val rdd = session.sparkContext.parallelize (classified.toSeq)
-        val raw: RDD[(String, String, Int)] = rdd.groupByKey.map (x => (x._1, toClass (x._2))).map (x => (x._1, x._2._1, x._2._2))
-        val columns = SomeColumns ("mrid", "class", "count")
-        val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
-        raw.saveToCassandra  (options.keyspace, "measured_value_meta", columns, writeConf)
 
         source.close ()
     }

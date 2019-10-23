@@ -176,8 +176,7 @@ Statistical properties of measurement_value table aggregated by mrid and type.
 
 create table if not exists cimapplication.measured_value_meta (
     mrid text,
-    class text,
-    count int,
+    classes map<text,int>,
     lon double,
     lat double,
     primary key (mrid)
@@ -185,8 +184,7 @@ create table if not exists cimapplication.measured_value_meta (
 Measurement value metadata.
 Auxiliary properties of measurement_value table entries.
     mrid    - the unique CIM mRID for the element
-    class   - the classification, e.g. "Apartment" or "House", of the smart meter installation
-    count   - the number of meters associated with the mrid
+    classes - the classifications and meter count, e.g. "Apartment"->6 or "House"->1, of the smart meter installation
     lon     - the longitude of the location (°)
     lat     - the latitude of the location (°)
 ';
@@ -236,7 +234,7 @@ create table if not exists cimapplication.synthesized_value (
     units text,
     primary key ((synthesis, type, period), time)
     ) with clustering order by (time asc) and comment = '
-Sythesized values.
+Synthesized values.
 These are synthesized values from synthetic load-profile software or machine learning algorithms generalizing real data.
     synthesis - the synthetic data set name
     type   - the type of value, e.g. energy, power, voltage, current
