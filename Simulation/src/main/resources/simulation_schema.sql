@@ -476,7 +476,7 @@ create table if not exists cimapplication.geojson_stations (
     type text,
     geometry frozen<cimapplication.polygon_data>,
     properties frozen<map<text,text>>,
-    primary key ((simulation, coordinate_system), mrid)
+    primary key ((simulation, coordinate_system), mrid, transformer)
     ) with comment = '
 GeoJSON for stations.
 Describes each station polygonal object in the simulation.
