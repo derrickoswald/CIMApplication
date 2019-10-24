@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory
 
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
-
 import com.intel.analytics.bigdl.dlframes.DLEstimator
 import com.intel.analytics.bigdl.nn._
 import com.intel.analytics.bigdl.tensor.TensorNumericMath.TensorNumeric.NumericFloat
@@ -65,36 +64,42 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         hdfs.delete (directory, true)
     }
 
+    def tick[Type_t: TypeTag, Type_period: TypeTag]: UserDefinedFunction = udf [Int, Timestamp, Int](
+        (t: Timestamp, period: Int) =>
+            ((t.getTime / period) % (24 * 60 * 60 * 1000 / period)).toInt)
+    def day[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
+        (t: Timestamp) =>
+        {
+            val c = Calendar.getInstance ()
+            c.setTimeZone (TimeZone.getTimeZone ("GMT"))
+            c.setTime (t)
+            c.get (Calendar.DAY_OF_WEEK)
+        }
+    )
+    def onehot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf [Int, Int, Int](
+        (day: Int, index: Int) =>
+        {
+            if (day == index) 1 else 0
+        }
+    )
+    def week[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
+        (t: Timestamp) =>
+        {
+            val c = Calendar.getInstance ()
+            c.setTimeZone (TimeZone.getTimeZone ("GMT"))
+            c.setTime (t)
+            c.get (Calendar.WEEK_OF_YEAR)
+        }
+    )
+    def demultiplex[Type_m: TypeTag, Type_c: TypeTag]: UserDefinedFunction = udf [Int, Map[String,Int], String](
+        (map: Map[String, Int], cls: String) =>
+        {
+            map.getOrElse (cls, 0)
+        }
+    )
+
     def getRawData: DataFrame =
     {
-        def tick[Type_t: TypeTag, Type_period: TypeTag]: UserDefinedFunction = udf [Int, Timestamp, Int](
-            (t: Timestamp, period: Int) =>
-                ((t.getTime / period) % (24 * 60 * 60 * 1000 / period)).toInt)
-        def day[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
-            (t: Timestamp) =>
-            {
-                val c = Calendar.getInstance ()
-                c.setTimeZone (TimeZone.getTimeZone ("GMT"))
-                c.setTime (t)
-                c.get (Calendar.DAY_OF_WEEK)
-            }
-        )
-        def onehot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf [Int, Int, Int](
-            (day: Int, index: Int) =>
-            {
-                if (day == index) 1 else 0
-            }
-        )
-        def week[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
-            (t: Timestamp) =>
-            {
-                val c = Calendar.getInstance ()
-                c.setTimeZone (TimeZone.getTimeZone ("GMT"))
-                c.setTime (t)
-                c.get (Calendar.WEEK_OF_YEAR)
-            }
-        )
-
         log.info (s"reading sample data")
         val stats = session
             .read
@@ -121,7 +126,58 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
             .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
             .selectExpr ("mrid", "type", "tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "real_a as value")
             .join (stats, Seq ("mrid", "type"))
+            .drop ("type")
             .persist (StorageLevel.fromString (options.storage_level))
+    }
+
+    def getMetaRawData: DataFrame =
+    {
+        log.info (s"reading sample data")
+        val meta = session
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "measured_value_meta", "keyspace" -> options.keyspace))
+            .load
+            .select ("mrid", "classes")
+            .persist (StorageLevel.fromString (options.storage_level))
+        val classes = meta.rdd.map (_.getMap[String,Int](1)).flatMap (_.keys).distinct.collect.sortWith (_ < _)
+
+        val inclause = meta.select ("mrid").rdd.collect.map (row ⇒ row.getString (0)).mkString ("mrid in ('", "','", "')")
+        val stats = session
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "measured_value_stats", "keyspace" -> options.keyspace))
+            .load
+            .select ("mrid", "type", "average")
+            .persist (StorageLevel.fromString (options.storage_level))
+        val stats_and_classes =
+            stats
+            .join (meta, Seq ("mrid"))
+        var data = session
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
+            .load
+            .filter (s"$inclause and type='energy'")
+            .filter (s"real_a > 0.0")
+            .join (stats_and_classes, Seq ("mrid", "type"))
+
+        data = data
+            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
+            .withColumn ("day", day [Timestamp].apply (functions.col ("time"))).cache
+            .withColumn ("sun", onehot [Int, Int].apply (functions.col ("day"), functions.lit (1)))
+            .withColumn ("mon", onehot [Int, Int].apply (functions.col ("day"), functions.lit (2)))
+            .withColumn ("tue", onehot [Int, Int].apply (functions.col ("day"), functions.lit (3)))
+            .withColumn ("wed", onehot [Int, Int].apply (functions.col ("day"), functions.lit (4)))
+            .withColumn ("thu", onehot [Int, Int].apply (functions.col ("day"), functions.lit (5)))
+            .withColumn ("fri", onehot [Int, Int].apply (functions.col ("day"), functions.lit (6)))
+            .withColumn ("sat", onehot [Int, Int].apply (functions.col ("day"), functions.lit (7)))
+            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
+            .selectExpr ("mrid", "tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "average", "classes", "real_a as value")
+        classes.foreach (cls => data = data.withColumn (cls, demultiplex [Map[String,Int], String].apply (functions.col ("classes"), functions.lit (cls))))
+        data = data.drop ("classes")
+        data.persist (StorageLevel.fromString (options.storage_level))
+        data
     }
 
     def makeDecisionTreeRegressorModel ()
@@ -212,6 +268,75 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
 
         val dlModel = estimator.fit (train_df)
         dlModel.transform (test_df).show (false)
+    }
+
+    def makeMetaDecisionTreeRegressorModel (): Unit =
+    {
+        // split the data into training and test sets (30% held out for testing)
+        val raw = getMetaRawData
+        val splits = raw.randomSplit (Array(0.7, 0.3))
+        val (trainingData, testData) = (splits(0), splits(1))
+        val columns = trainingData.schema.fields.map (_.name).filter (!Array("mrid", "type", "value").contains (_))
+        //println (columns.mkString (","))
+        val assembler = new VectorAssembler ()
+            .setInputCols  (columns)
+            .setOutputCol ("features")
+        val train_df = assembler.transform (trainingData)
+        val test_df = assembler.transform (testData)
+
+        // train a DecisionTree model for regression
+        log.info (s"training model")
+        val regressor = new DecisionTreeRegressor ()
+            .setFeaturesCol ("features")
+            .setLabelCol ("value")
+            .setImpurity ("variance")
+            .setMaxDepth (16)
+            .setMaxBins (32)
+            .setCacheNodeIds (true)
+            .setCheckpointInterval (10)
+        if (-1L != options.seed)
+            regressor.setSeed (options.seed)
+
+        val evaluator = new RegressionEvaluator ()
+            .setLabelCol ("value")
+            .setPredictionCol ("prediction")
+            .setMetricName ("rmse")
+
+        // straight forward training
+        // val model = regressor.fit (train_df)
+
+        // hyperparameter tuning training
+        // construct a grid of parameters to search over
+        val grid = new ParamGridBuilder()
+            .addGrid (regressor.maxDepth, options.tree_depth)
+            .addGrid (regressor.maxBins, options.bins)
+            .addGrid (regressor.minInfoGain, options.info)
+            .build()
+
+        val trainer = new TrainValidationSplit ()
+            .setEstimator (regressor) // in this case the estimator is simply the decision tree regression
+            .setEvaluator (evaluator)
+            .setEstimatorParamMaps (grid)
+            // 70% of the data will be used for training and the remaining 30% for validation
+            .setTrainRatio (0.7)
+        // evaluate up to 2 parameter settings in parallel
+        // .setParallelism (2)
+
+        // run train validation split, and choose the best set of parameters.
+        val fitted = trainer.fit (train_df)
+        val model = fitted.bestModel.asInstanceOf[DecisionTreeRegressionModel]
+
+        val predictions = model.transform (test_df)
+        val rmse = evaluator.evaluate (predictions)
+        log.info (s"root mean squared error (RMSE) on test data = $rmse")
+        log.info (s"tree_depth = ${model.getMaxDepth}")
+        log.info (s"bins = ${model.getMaxBins}")
+        log.info (s"info = ${model.getMinInfoGain}")
+        log.info (s"seed = ${model.getSeed}")
+
+        // save the model
+        eraseModelFile ()
+        model.save (options.model_file)
     }
 
     def generateTimeSeries (synthesis: String, start: Calendar, end: Calendar, period: Int, yearly_kWh: Double): Unit =

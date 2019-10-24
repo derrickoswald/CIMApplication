@@ -249,6 +249,9 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
         }
     }
 
+    def mrid (col: Array[String]): String = if ("" != col(3)) col(3) else col(12)
+
+
     def run ()
     {
         var matched = 0
@@ -261,18 +264,19 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
                 if (!line.contains ("Messpunktbezeichnung"))
                 {
                     val splits = line.split ("[;]")
-                    if ("" != splits(3)) // has a NIS number
+                    val mRID = mrid (splits)
+                    if ("" != mRID) // has a NIS number
                     {
                         val cls = classify (splits(16), splits(15))
                         cls match
                         {
                             case Some (classifier) =>
                                 matched = matched + 1
-                                Some ((splits(3), classifier.cls))
+                                Some ((mRID, classifier.cls))
                             case None =>
                                 unmatched = unmatched + 1
-                                println (splits(3) + " " + splits(7) + " " + splits(16) + " ==== " + splits(15))
-                                Some ((splits(3), unknown.cls))
+                                println (mRID + " " + splits(7) + " " + splits(16) + " ==== " + splits(15))
+                                Some ((mRID, unknown.cls))
                         }
                     }
                     else

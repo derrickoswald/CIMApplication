@@ -114,6 +114,9 @@ object TimeSeries
                         case Operations.Model =>
                             val model = Model (session, options)
                             model.makeDecisionTreeRegressorModel ()
+                        case Operations.MetaModel =>
+                            val model = Model (session, options)
+                            model.makeMetaDecisionTreeRegressorModel ()
                         case Operations.Synthesize =>
                             val model = Model (session, options)
                             model.generateTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh)

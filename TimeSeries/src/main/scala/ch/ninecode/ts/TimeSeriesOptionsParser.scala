@@ -15,7 +15,7 @@ object LogLevels extends Enumeration
 object Operations extends Enumeration
 {
     type Operations = Value
-    val Statistics, Meta, Model, Synthesize = Value
+    val Statistics, Meta, Model, MetaModel, Synthesize = Value
 }
 
 class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
