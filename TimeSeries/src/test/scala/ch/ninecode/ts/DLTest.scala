@@ -25,7 +25,7 @@ class DLTest
     {
         val KEYSPACE = "test"
         val begin = System.nanoTime ()
-        val model = Model (session, TimeSeriesOptions (keyspace = KEYSPACE, model_file = "models/myDLModel"))
+        val model = TimeSeriesModel (session, TimeSeriesOptions (keyspace = KEYSPACE, model_file = "models/myDLModel"))
         model.makeDLModel ()
 
 //        val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSSZ")

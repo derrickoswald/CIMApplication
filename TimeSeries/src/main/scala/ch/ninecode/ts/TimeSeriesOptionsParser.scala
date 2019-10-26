@@ -32,7 +32,7 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     implicit val OperationsRead: scopt.Read[Operations.Value] = scopt.Read.reads (Operations.withName)
 
-    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
+    implicit val string_string_mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
         s =>
         {
             var ret = Map[String, String] ()
@@ -46,6 +46,20 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         }
     )
 
+    implicit val string_int_mapRead: scopt.Read[Map[String,Int]] = scopt.Read.reads (
+        s =>
+        {
+            var ret = Map[String, Int] ()
+            val ss = s.split (",")
+            for (p <- ss)
+            {
+                val kv = p.split ("=")
+                ret = ret + ((kv(0), kv(1).toInt))
+            }
+            ret
+        }
+    )
+
     implicit val IntArrayRead: scopt.Read[Array[Int]] = scopt.Read.reads (_.split (",").map (_.toInt))
 
     implicit val DoubleArrayRead: scopt.Read[Array[Double]] = scopt.Read.reads (_.split (",").map (_.toDouble))
@@ -54,8 +68,8 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     lazy val formatter: SimpleDateFormat =
     {
-        val format = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-        format.setTimeZone (TimeZone.getTimeZone ("UTC"));
+        val format = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        format.setTimeZone (TimeZone.getTimeZone ("UTC"))
         format
     }
 
@@ -151,6 +165,27 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
             text (s"seed value for random number generation [${default.seed}]")
         )
 
+    cmd (Operations.MetaModel.toString)
+        .action ((_, c) => c.copy (operation = Operations.MetaModel) )
+        .text (s"    create a meta model${if (default.operation == Operations.MetaModel) " - default" else ""}")
+        .children (
+            opt [Array[Int]]("tree_depth").
+                action ((x, c) => c.copy (tree_depth = x)).
+                text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (",")}]"),
+
+            opt [Array[Int]]("bins").
+                action ((x, c) => c.copy (bins = x)).
+                text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (",")}]"),
+
+            opt [Array[Double]]("info").
+                action ((x, c) => c.copy (info = x)).
+                text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (",")}]"),
+
+            opt [Long]("seed").
+                action ((x, c) => c.copy (seed = x)).
+                text (s"seed value for random number generation [${default.seed}]")
+        )
+
     cmd (Operations.Synthesize.toString)
         .action ((_, c) => c.copy (operation = Operations.Synthesize) )
         .text (s"    generate a synthetic load profile${if (default.operation == Operations.Synthesize) " - default" else ""}")
@@ -173,7 +208,11 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
             opt [Double]("yearly_kWh").
                 action ((x, c) => c.copy (yearly_kWh = x)).
-                text (s"energy used by the synthesized time series per year (kWh) [${default.yearly_kWh}]")
+                text (s"energy used by the synthesized time series per year (kWh) [${default.yearly_kWh}]"),
+
+            opt [Map[String, Int]]("classes").valueName ("cls1=#,cls2=#").
+                action ((x, c) => c.copy (classes = c.classes ++ x)).
+                text (s"meta class & count, one or more of ${TimeSeriesMeta (null, null).classes.mkString (",")} with instance count [${default.classes.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
         )
 
     help ("help").

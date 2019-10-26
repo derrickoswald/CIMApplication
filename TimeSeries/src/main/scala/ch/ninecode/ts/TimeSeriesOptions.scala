@@ -31,6 +31,7 @@ import ch.ninecode.ts.Operations.Operations
  * @param end           The ending time for the time series.
  * @param period        The number of milliseconds between synthesized readings.
  * @param yearly_kWh    The energy used by the synthesized time series per year (kWh).
+ * @param classes       The class types and counts for synthesis using meta data, e.g. "Apartment=4, General=1".
  */
 case class TimeSeriesOptions
 (
@@ -54,5 +55,6 @@ case class TimeSeriesOptions
     start: Calendar = { val d = "2017-07-19T00:00:00.000+0000"; val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT")); c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime); c },
     end: Calendar = { val d = "2018-03-31T23:45:00.000+0000"; val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT")); c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime); c },
     period: Int = 900000,
-    yearly_kWh: Double = 7200.0
+    yearly_kWh: Double = 7200.0,
+    classes: Map[String, Int] = Map ()
 )

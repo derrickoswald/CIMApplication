@@ -112,14 +112,17 @@ object TimeSeries
                             val meta = TimeSeriesMeta (session, options)
                             meta.run ()
                         case Operations.Model =>
-                            val model = Model (session, options)
+                            val model = TimeSeriesModel (session, options)
                             model.makeDecisionTreeRegressorModel ()
                         case Operations.MetaModel =>
-                            val model = Model (session, options)
+                            val model = TimeSeriesModel (session, options)
                             model.makeMetaDecisionTreeRegressorModel ()
                         case Operations.Synthesize =>
-                            val model = Model (session, options)
-                            model.generateTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh)
+                            val model = TimeSeriesModel (session, options)
+                            if (options.classes.isEmpty)
+                                model.generateSimpleTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh)
+                            else
+                                model.generateMetaTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh, options.classes)
                     }
                     val calculate = System.nanoTime ()
                     log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")

@@ -37,7 +37,7 @@ import com.intel.analytics.bigdl.dlframes.DLEstimator
 import com.intel.analytics.bigdl.nn._
 import com.intel.analytics.bigdl.tensor.TensorNumericMath.TensorNumeric.NumericFloat
 
-case class Model (session: SparkSession, options: TimeSeriesOptions)
+case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 {
     org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (Level.toLevel (options.log_level.toString))
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -53,6 +53,18 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         else
             uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/"
     }
+
+    val day_ordinals: Seq[(String, Int)] = Seq (
+        ("sun", 1),
+        ("mon", 2),
+        ("tue", 3),
+        ("wed", 4),
+        ("thu", 5),
+        ("fri", 6),
+        ("sat", 7))
+    lazy val day_names: Seq[String] = for (d <- day_ordinals) yield d._1
+
+    val class_names: Seq[String] = TimeSeriesMeta (session, options).classes.toSeq
 
     def eraseModelFile ()
     {
@@ -76,7 +88,7 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
             c.get (Calendar.DAY_OF_WEEK)
         }
     )
-    def onehot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf [Int, Int, Int](
+    def one_hot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf [Int, Int, Int](
         (day: Int, index: Int) =>
         {
             if (day == index) 1 else 0
@@ -98,86 +110,85 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         }
     )
 
-    def getRawData: DataFrame =
-    {
-        log.info (s"reading sample data")
-        val stats = session
+    def averages: DataFrame =
+        session
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "measured_value_stats", "keyspace" -> options.keyspace))
             .load
             .select ("mrid", "type", "average")
             .persist (StorageLevel.fromString (options.storage_level))
-        session
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
-            .load
-            .filter (s"real_a > 0.0")
-            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
-            .withColumn ("day", day [Timestamp].apply (functions.col ("time"))).cache
-            .withColumn ("sun", onehot [Int, Int].apply (functions.col ("day"), functions.lit (1)))
-            .withColumn ("mon", onehot [Int, Int].apply (functions.col ("day"), functions.lit (2)))
-            .withColumn ("tue", onehot [Int, Int].apply (functions.col ("day"), functions.lit (3)))
-            .withColumn ("wed", onehot [Int, Int].apply (functions.col ("day"), functions.lit (4)))
-            .withColumn ("thu", onehot [Int, Int].apply (functions.col ("day"), functions.lit (5)))
-            .withColumn ("fri", onehot [Int, Int].apply (functions.col ("day"), functions.lit (6)))
-            .withColumn ("sat", onehot [Int, Int].apply (functions.col ("day"), functions.lit (7)))
-            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
-            .selectExpr ("mrid", "type", "tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "real_a as value")
-            .join (stats, Seq ("mrid", "type"))
-            .drop ("type")
-            .persist (StorageLevel.fromString (options.storage_level))
-    }
 
-    def getMetaRawData: DataFrame =
-    {
-        log.info (s"reading sample data")
-        val meta = session
+    def meta: DataFrame =
+        session
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "measured_value_meta", "keyspace" -> options.keyspace))
             .load
             .select ("mrid", "classes")
             .persist (StorageLevel.fromString (options.storage_level))
-        val classes = meta.rdd.map (_.getMap[String,Int](1)).flatMap (_.keys).distinct.collect.sortWith (_ < _)
 
-        val inclause = meta.select ("mrid").rdd.collect.map (row ⇒ row.getString (0)).mkString ("mrid in ('", "','", "')")
-        val stats = session
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value_stats", "keyspace" -> options.keyspace))
-            .load
-            .select ("mrid", "type", "average")
-            .persist (StorageLevel.fromString (options.storage_level))
-        val stats_and_classes =
-            stats
-            .join (meta, Seq ("mrid"))
+    def gen_day_columns (frame: DataFrame, day_col: String): DataFrame =
+    {
+        var ret = frame
+        day_ordinals.foreach (day => ret = ret.withColumn (day._1, one_hot [Int, Int].apply (functions.col (day_col), functions.lit (day._2))))
+        ret
+    }
+
+    def gen_class_columns (frame: DataFrame, class_col: String): DataFrame =
+    {
+        var ret = frame
+        class_names.foreach (cls => ret = ret.withColumn (cls, demultiplex [Map[String,Int], String].apply (functions.col (class_col), functions.lit (cls))))
+        ret
+    }
+
+    def getRawData: DataFrame =
+    {
+        log.info (s"reading sample data")
         var data = session
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
             .load
-            .filter (s"$inclause and type='energy'")
             .filter (s"real_a > 0.0")
-            .join (stats_and_classes, Seq ("mrid", "type"))
-
-        data = data
             .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
-            .withColumn ("day", day [Timestamp].apply (functions.col ("time"))).cache
-            .withColumn ("sun", onehot [Int, Int].apply (functions.col ("day"), functions.lit (1)))
-            .withColumn ("mon", onehot [Int, Int].apply (functions.col ("day"), functions.lit (2)))
-            .withColumn ("tue", onehot [Int, Int].apply (functions.col ("day"), functions.lit (3)))
-            .withColumn ("wed", onehot [Int, Int].apply (functions.col ("day"), functions.lit (4)))
-            .withColumn ("thu", onehot [Int, Int].apply (functions.col ("day"), functions.lit (5)))
-            .withColumn ("fri", onehot [Int, Int].apply (functions.col ("day"), functions.lit (6)))
-            .withColumn ("sat", onehot [Int, Int].apply (functions.col ("day"), functions.lit (7)))
             .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
-            .selectExpr ("mrid", "tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "average", "classes", "real_a as value")
-        classes.foreach (cls => data = data.withColumn (cls, demultiplex [Map[String,Int], String].apply (functions.col ("classes"), functions.lit (cls))))
-        data = data.drop ("classes")
-        data.persist (StorageLevel.fromString (options.storage_level))
+            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+        data = gen_day_columns (data, "day")
+            .join (averages, Seq ("mrid", "type"))
+        val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names
         data
+            .selectExpr (cols: _*)
+            .drop ("type")
+            .persist (StorageLevel.fromString (options.storage_level))
+    }
+
+    def getMetaRawData: DataFrame =
+    {
+        log.info ("reading meta data")
+        val meta_frame = meta
+        val stats_and_meta =
+            averages
+            .join (meta_frame, Seq ("mrid"))
+        // only use measurements for which we have metadata
+        val in = meta_frame.select ("mrid").rdd.collect.map (row ⇒ row.getString (0)).mkString ("mrid in ('", "','", "')")
+        var data = session
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
+            .load
+            .filter (s"type='energy' and $in") // push down filter
+            .filter (s"real_a > 0.0")
+            .join (stats_and_meta, Seq ("mrid", "type"))
+            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
+            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
+            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+        data = gen_day_columns (data, "day")
+        data = gen_class_columns (data, "classes")
+        val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names ++ class_names
+        data
+            .selectExpr (cols: _*)
+            .persist (StorageLevel.fromString (options.storage_level))
     }
 
     def makeDecisionTreeRegressorModel ()
@@ -187,8 +198,9 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         val splits = raw.randomSplit (Array(0.7, 0.3))
         val (trainingData, testData) = (splits(0), splits(1))
 
+        val cols = Seq ("average", "tick", "week") ++ day_names
         val assembler = new VectorAssembler ()
-            .setInputCols  (Array("tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "average"))
+            .setInputCols  (cols.toArray)
             .setOutputCol ("features")
         val train_df = assembler.transform (trainingData)
         val test_df = assembler.transform (testData)
@@ -246,40 +258,17 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         model.save (options.model_file)
     }
 
-    def makeDLModel ()
-    {
-        // split the data into training and test sets (30% held out for testing)
-        val raw = getRawData
-        val splits = raw.randomSplit (Array(0.7, 0.3))
-        val (trainingData, testData) = (splits(0), splits(1))
-
-        val assembler = new VectorAssembler ()
-            .setInputCols  (Array("tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "average"))
-            .setOutputCol ("features")
-        val train_df = assembler.transform (trainingData)
-        val test_df = assembler.transform (testData)
-
-        val model = Sequential().add (Linear (10, 1))
-        val criterion = MSECriterion ()
-        val estimator = new DLEstimator (model, criterion, Array (10), Array(1))
-            .setLabelCol ("value")
-            .setBatchSize (4)
-            .setMaxEpoch (2)
-
-        val dlModel = estimator.fit (train_df)
-        dlModel.transform (test_df).show (false)
-    }
-
     def makeMetaDecisionTreeRegressorModel (): Unit =
     {
         // split the data into training and test sets (30% held out for testing)
         val raw = getMetaRawData
         val splits = raw.randomSplit (Array(0.7, 0.3))
         val (trainingData, testData) = (splits(0), splits(1))
-        val columns = trainingData.schema.fields.map (_.name).filter (!Array("mrid", "type", "value").contains (_))
+        val cols = Seq ("average", "tick", "week") ++ day_names ++ day_names
+
         //println (columns.mkString (","))
         val assembler = new VectorAssembler ()
-            .setInputCols  (columns)
+            .setInputCols  (cols.toArray)
             .setOutputCol ("features")
         val train_df = assembler.transform (trainingData)
         val test_df = assembler.transform (testData)
@@ -339,8 +328,51 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
         model.save (options.model_file)
     }
 
-    def generateTimeSeries (synthesis: String, start: Calendar, end: Calendar, period: Int, yearly_kWh: Double): Unit =
+    def makeDLModel ()
     {
+        // split the data into training and test sets (30% held out for testing)
+        val raw = getRawData
+        val splits = raw.randomSplit (Array(0.7, 0.3))
+        val (trainingData, testData) = (splits(0), splits(1))
+
+        val cols = Seq ("average", "tick", "week") ++ day_names
+        val assembler = new VectorAssembler ()
+            .setInputCols  (cols.toArray)
+            .setOutputCol ("features")
+        val train_df = assembler.transform (trainingData)
+        val test_df = assembler.transform (testData)
+
+        val model = Sequential().add (Linear (10, 1))
+        val criterion = MSECriterion ()
+        val estimator = new DLEstimator (model, criterion, Array (10), Array(1))
+            .setLabelCol ("value")
+            .setBatchSize (4)
+            .setMaxEpoch (2)
+
+        val dlModel = estimator.fit (train_df)
+        dlModel.transform (test_df).show (false)
+    }
+
+    def save (predictions: DataFrame, synthesis: String, period: Int): Unit =
+    {
+        log.info (s"saving to ${options.keyspace}.synthesized_value")
+        predictions
+            .withColumn ("synthesis", lit (synthesis))
+            .withColumn ("type", lit ("energy"))
+            .withColumn ("period", lit (period))
+            .withColumn ("imag_a", lit (0.0))
+            .withColumn ("units", lit ("Wh"))
+            .select ("synthesis", "type", "time", "period", "real_a", "imag_a", "units")
+        .rdd.saveToCassandra (options.keyspace, "synthesized_value", SomeColumns ("synthesis", "type", "time", "period", "real_a", "imag_a", "units"))
+        log.info (s"synthesized values saved")
+    }
+
+    def generateSimpleTimeSeries (synthesis: String, start: Calendar, end: Calendar, period: Int, yearly_kWh: Double): Unit =
+    {
+        // load the model
+        log.info (s"loading model")
+        val model = DecisionTreeRegressionModel.load (options.model_file)
+
         // generate the feature vector
         log.info (s"generating features")
         val periods = 24 * 60 * 60 * 1000 / period
@@ -355,53 +387,96 @@ case class Model (session: SparkSession, options: TimeSeriesOptions)
             c.setTimeInMillis (millis)
             val day = c.get (Calendar.DAY_OF_WEEK)
             val week = c.get (Calendar.DAY_OF_WEEK)
+            val days = for (d <- 1 to 7) yield (oneHot (day, d))
             start.add (Calendar.MILLISECOND, period)
-            Row (millis, tick, oneHot (day, 1), oneHot (day, 2), oneHot (day, 3), oneHot (day, 4), oneHot (day, 5), oneHot (day, 6), oneHot (day, 7), week, average)
+            Row.fromSeq (Seq[Any] (millis, average, tick, week) ++ days)
         }.takeWhile (_ => start.getTimeInMillis <= end.getTimeInMillis)
 
         // make a dataframe
         val schema = StructType (
             List (
                 StructField ("time", LongType, false),
+                StructField ("average", DoubleType, false),
                 StructField ("tick", IntegerType, false),
-                StructField ("sun", IntegerType, false),
-                StructField ("mon", IntegerType, false),
-                StructField ("tue", IntegerType, false),
-                StructField ("wed", IntegerType, false),
-                StructField ("thu", IntegerType, false),
-                StructField ("fri", IntegerType, false),
-                StructField ("sat", IntegerType, false),
-                StructField ("week", IntegerType, false),
-                StructField ("average", DoubleType, false)
-            )
+                StructField ("week", IntegerType, false))
+            ++ (for (d <- day_names) yield StructField (d, IntegerType, false)).toList
         )
 
         val df = session.createDataFrame (
             session.sparkContext.parallelize (data.toSeq),
             schema
         )
+        val cols = Seq ("average", "tick", "week") ++ day_names
         val assembler = new VectorAssembler ()
-            .setInputCols  (Array("tick", "sun", "mon", "tue", "wed", "thu", "fri", "sat", "week", "average"))
+            .setInputCols  (cols.toArray)
             .setOutputCol ("features")
         val features = assembler.transform (df)
 
         // generate the predictions
         log.info (s"generating model predictions")
-        val model = DecisionTreeRegressionModel.load (options.model_file)
         val predictions = model
             .setPredictionCol ("real_a")
             .transform (features)
 
         // save to the synthesized_value table
-        log.info (s"saving to ${options.keyspace}.synthesized_value")
-        predictions
-            .withColumn ("synthesis", lit (synthesis))
-            .withColumn ("type", lit ("energy"))
-            .withColumn ("period", lit (period))
-            .withColumn ("imag_a", lit (0.0))
-            .withColumn ("units", lit ("Wh"))
-            .select ("synthesis", "type", "time", "period", "real_a", "imag_a", "units")
-            .rdd.saveToCassandra (options.keyspace, "synthesized_value", SomeColumns ("synthesis", "type", "time", "period", "real_a", "imag_a", "units"))
-        log.info (s"synthesized values saved")
+        save (predictions, synthesis, period)
+    }
+
+    def generateMetaTimeSeries (synthesis: String, start: Calendar, end: Calendar, period: Int, yearly_kWh: Double, types: Map[String, Int]): Unit =
+    {
+        // load the model
+        log.info (s"loading model")
+        val model = DecisionTreeRegressionModel.load (options.model_file)
+
+        // generate the feature vector
+        log.info (s"generating features")
+        val periods = 24 * 60 * 60 * 1000 / period
+        val average = yearly_kWh * 1000.0 / 365.25 / periods
+        def oneHot (day: Int, weekday: Int): Int = if (day == weekday) 1 else 0
+        val data = Iterator.continually
+        {
+            val millis: Long = start.getTimeInMillis
+            val tick = ((millis / period) % (24 * 60 * 60 * 1000 / period)).toInt
+            val c = Calendar.getInstance ()
+            c.setTimeZone (TimeZone.getTimeZone ("GMT"))
+            c.setTimeInMillis (millis)
+            val day = c.get (Calendar.DAY_OF_WEEK)
+            val week = c.get (Calendar.DAY_OF_WEEK)
+            start.add (Calendar.MILLISECOND, period)
+            val days = for (d <- 1 to 7) yield oneHot (day, d)
+            val classes = for (c <- class_names) yield if (types.contains (c)) types(c) else 0
+            Row.fromSeq (Seq[Any] (millis, average, tick, week) ++ days ++ classes)
+        }.takeWhile (_ => start.getTimeInMillis <= end.getTimeInMillis)
+
+        // make a dataframe
+        val schema = StructType (
+            List (
+                StructField ("time", LongType, false),
+                StructField ("average", DoubleType, false),
+                StructField ("tick", IntegerType, false),
+                StructField ("week", IntegerType, false))
+            ++ (for (d <- day_names) yield StructField (d, IntegerType, false)).toList
+            ++ (for (c <- class_names) yield StructField (c, IntegerType, false)).toList
+        )
+
+        val df = session.createDataFrame (
+            session.sparkContext.parallelize (data.toSeq),
+            schema
+        )
+        val cols = Seq ("average", "tick", "week") ++ day_names ++ class_names
+        val assembler = new VectorAssembler ()
+            .setInputCols  (cols.toArray)
+            .setOutputCol ("features")
+        val features = assembler.transform (df)
+
+        // generate the predictions
+        log.info (s"generating model predictions")
+        val predictions = model
+            .setPredictionCol ("real_a")
+            .transform (features)
+            .select ("time", "real_a")
+
+        // save to the synthesized_value table
+        save (predictions, synthesis, period)
     }
 }

@@ -35,7 +35,7 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
             Classifier (0, "Laden", "Shop"),
             Classifier (0, "Garage", "Garage"),
             Classifier (0, "Stall", "Shop"),
-            Classifier (0, "Strassenbeleuchtung", "Street Lighting"),
+            Classifier (0, "Strassenbeleuchtung", "StreetLighting"),
             Classifier (0, "Verstärker", "Equipment"),
             Classifier (0, "Praxis", "Office"),
             Classifier (0, "Restaurant", "Restaurant"),
@@ -61,7 +61,7 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
             Classifier (0, "Schopf", "Outbuilding"),
             Classifier (0, "Konditorei", "Shop"),
             Classifier (0, "Café", "Restaurant"),
-            Classifier (0, "Wegbeleuchtung", "Street Lighting"),
+            Classifier (0, "Wegbeleuchtung", "StreetLighting"),
             Classifier (0, "Käserei", "Shop"),
             Classifier (0, "Lagerraum", "Shop"),
             Classifier (0, "Tankstelle", "Shop"),
@@ -81,8 +81,8 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
             Classifier (0, "Magazin", "Shop"),
             Classifier (0, "Druckerei", "Factory"),
             Classifier (0, "Wärmepumpe", "Equipment"),
-            Classifier (0, "Sportplatz", "Street Lighting"),
-            Classifier (0, "Tenniscenter", "Street Lighting"),
+            Classifier (0, "Sportplatz", "StreetLighting"),
+            Classifier (0, "Tenniscenter", "StreetLighting"),
             Classifier (0, "Kapelle", "Church"),
             Classifier (0, "Salon", "Shop"),
             Classifier (0, "Bastelraum", "Shop"),
@@ -135,8 +135,8 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
             Classifier (0, "Bahnhof", "Shop"),
             Classifier (0, "Bibliothek", "Shop"),
             Classifier (0, "Gallerie", "Shop"),
-            Classifier (0, "Beleuchtung", "Street Lighting"),
-            Classifier (0, "Eisenbahnwagen", "Street Lighting"),
+            Classifier (0, "Beleuchtung", "StreetLighting"),
+            Classifier (0, "Eisenbahnwagen", "StreetLighting"),
             Classifier (0, "Haltestelle", "Equipment"),
             Classifier (0, "Tenne", "Outbuilding"),
             Classifier (0, "Gasdruckreduzierung", "Equipment"),
@@ -186,14 +186,17 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
             Classifier (0, "Baugeschäft", "Factory"),
             Classifier (0, "Brennerei", "Factory")
         )
-
-    val map: immutable.Map[String, Classifier] = common.map (x => (x.keyword, x)).toMap
     val apts = Array (
         Classifier (0, "Erdgeschoss", "Apartment"),
         Classifier (0, "Obergeschoss", "Apartment"),
         Classifier (0, "Untergeschoss", "Apartment"),
         Classifier (0, "Dachgeschoss", "Apartment"))
     val unknown = Classifier (0, "", "unknown")
+
+    lazy val all: Array[Classifier] = Array.concat (common, apts, Array(unknown))
+    lazy val classes: Array[String] = all.map (_.cls).distinct.sortWith (_ < _)
+
+    val map: immutable.Map[String, Classifier] = common.map (x => (x.keyword, x)).toMap
     val apt_map: immutable.Map[String, Classifier] = apts.map (x => (x.keyword, x)).toMap
     def classify (in: String, addr: String): Option[Classifier] =
     {
@@ -321,7 +324,7 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
             else
                 m.updated (ss.cls, (lookup._1 + ss.count, lookup._2 += ss))
         }
-        val all = Array.concat (common, apts, Array(unknown))
+
         val arranged = all.foldLeft (mutable.Map[String,(Int,mutable.Set[Classifier])]())(process)
 
         println (s"$unmatched unmatched, matched $matched of ${matched + unmatched} = ${100.0 * (matched.toDouble / (matched.toDouble + unmatched.toDouble))}%")
