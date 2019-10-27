@@ -70,6 +70,48 @@ These are typically smart meter readings, or transformer values from a SCADA sys
     units  - the units for the measurement
 ';
 
+create table if not exists cimapplication.measured_value_stats (
+    mrid text,
+    type text,
+    start timestamp,
+    end timestamp,
+    count int,
+    missing int,
+    minimum double,
+    average double,
+    maximum double,
+    stddev double,
+    primary key ((mrid, type), start)
+) with clustering order by (start asc) and comment = '
+Measurement value statistics.
+Statistical properties of measurement_value table aggregated by mrid and type.
+    mrid    - the unique CIM mRID for the element
+    type    - the type of value, e.g. energy, power, voltage, current
+    start   - the first time at which a measurement was taken in GMT
+    end     - the last time at which a measurement was taken in GMT
+    count   - the number of non-zero measurements
+    missing - the number of zero or missing elements between the start and end time
+    minimum - the minimum non-zero measurement value
+    average - the average non-zero measurement value
+    maximum - the maximum non-zero measurement value
+    stddev  - the standard deviation of the non-zero measurement values
+';
+
+create table if not exists cimapplication.measured_value_meta (
+    mrid text,
+    classes map<text,int>,
+    lon double,
+    lat double,
+    primary key (mrid)
+) with comment = '
+Measurement value metadata.
+Auxiliary properties of measurement_value table entries.
+    mrid    - the unique CIM mRID for the element
+    classes - the classifications and meter count, e.g. "Apartment"->6 or "House"->1, of the smart meter installation
+    lon     - the longitude of the location (°)
+    lat     - the latitude of the location (°)
+';
+
 create table if not exists cimapplication.simulated_value (
     simulation text,
     mrid text,
@@ -115,7 +157,7 @@ create table if not exists cimapplication.synthesized_value (
     units text,
     primary key ((synthesis, type, period), time)
     ) with clustering order by (time asc) and comment = '
-Sythesized values.
+Synthesized values.
 These are synthesized values from synthetic load-profile software or machine learning algorithms generalizing real data.
     synthesis - the synthetic data set name
     type   - the type of value, e.g. energy, power, voltage, current
@@ -182,6 +224,7 @@ This is the global events of interest from a post-analysis of the simulated valu
 
 create table if not exists cimapplication.simulation (
     id text,
+    run int,
     name text,
     description text,
     cim text,
@@ -192,11 +235,12 @@ create table if not exists cimapplication.simulation (
     input_keyspace text,
     output_keyspace text,
     transformers list<text>,
-    primary key (id)
+    primary key ((id), run)
 ) with comment = '
 Details about a simulation execution.
 Describes each run of the Simulate code.
-    id - the simulation run identifier, UUID
+    id - the simulation run identifier, UUID or user specified
+    run - the simulation run number, distinguishes executions with the same id
     name - the user supplied name of the simulation
     description - the user supplied description of the simulation
     cim - the CIM file(s) used to run the simulation
@@ -355,7 +399,7 @@ create table if not exists cimapplication.geojson_stations (
     type text,
     geometry frozen<cimapplication.polygon_data>,
     properties frozen<map<text,text>>,
-    primary key ((simulation, coordinate_system, transformer), mrid)
+    primary key ((simulation, coordinate_system), mrid, transformer)
     ) with comment = '
 GeoJSON for stations.
 Describes each station polygonal object in the simulation.
