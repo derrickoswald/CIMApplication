@@ -23,9 +23,9 @@ class MetaTest
     {
         val KEYSPACE = "subsample"
         val begin = System.nanoTime ()
-        val model = TimeSeriesModel (session, TimeSeriesOptions (keyspace = KEYSPACE, log_level = LogLevels.INFO, model_file = "hdfs://sandbox:8020/models/myMetaModel16"))
+        val model = TimeSeriesModel (session, TimeSeriesOptions (keyspace = KEYSPACE, log_level = LogLevels.INFO, tree_depth=Array(8), model_file = "hdfs://sandbox:8020/models/myMetaModel16"))
 
-//        model.makeMetaDecisionTreeRegressorModel ()
+        model.makeMetaDecisionTreeRegressorModel ()
         val modeled = System.nanoTime ()
         println ("modelling time: " + (modeled - begin) / 1e9 + " seconds")
 

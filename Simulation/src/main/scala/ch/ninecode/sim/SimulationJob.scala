@@ -61,9 +61,9 @@ import com.datastax.spark.connector.cql.CassandraConnector
  *                         An example for energy consumed by house connections:
  *
  *                         select
- *                             c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+ *                             c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
  *                             'energy' type,
- *                             concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+ *                             concat(c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
  *                             t.TopologicalNode parent,
  *                             'constant_power' property,
  *                             'Watt' unit,
@@ -73,8 +73,8 @@ import com.datastax.spark.connector.cql.CassandraConnector
  *                             Terminal t,
  *                             TopologicalNode n
  *                         where
- *                             c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
- *                             c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+ *                             c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+ *                             c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
  *                             t.TopologicalNode = n.IdentifiedObject.mRID
  *
  * @param recorders        Queries for recording data and the recording interval and any aggregations.

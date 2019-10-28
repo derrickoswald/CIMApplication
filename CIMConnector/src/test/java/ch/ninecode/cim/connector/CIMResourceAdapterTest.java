@@ -286,7 +286,7 @@ public class CIMResourceAdapterTest
         spec2.setFunctionName (CIMInteractionSpec.GET_DATAFRAME_FUNCTION);
         final MappedRecord input2 = factory.getRecordFactory ().createMappedRecord (CIMMappedRecord.INPUT);
         input2.setRecordShortDescription ("record containing the sql query with key query");
-        input2.put (CIMFunction.QUERY, "select s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName aliasName, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name name, s.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.ConductingEquipment.Equipment.PowerSystemResource.Location = p.Location and p.sequenceNumber = 1");
+        input2.put (CIMFunction.QUERY, "select s.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mRID, s.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName aliasName, s.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name name, s.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description description, p.xPosition, p.yPosition from EnergyConsumer s, PositionPoint p where s.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.Location = p.Location and p.sequenceNumber = 1");
         final Interaction interaction2 = connection.createInteraction ();
         final Record output2 = interaction2.execute (spec2, input2);
         assertNotNull ("output", output2);

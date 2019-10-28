@@ -5,14 +5,14 @@
 
 define
 (
-    ["mustache", "cim", "./locationmaker", "./powersystemresourcemaker", "./conductingequipmentmaker", "model/Common", "model/Core"],
+    ["mustache", "cim", "./locationmaker", "./powersystemresourcemaker", "./conductingequipmentmaker", "model/Common", "model/Core", "model/StateVariables"],
     /**
      * @summary Make a CIM object at the Conductor level.
      * @description Digitizes a line and makes a Conductor element with connectivity.
      * @exports conductormaker
      * @version 1.0
      */
-    function (mustache, cim, LocationMaker, PowerSystemResourceMaker, ConductingEquipmentMaker, Common, Core)
+    function (mustache, cim, LocationMaker, PowerSystemResourceMaker, ConductingEquipmentMaker, Common, Core, StateVariables)
     {
         class ConductorMaker extends PowerSystemResourceMaker
         {
@@ -48,16 +48,40 @@ define
     <div class='col-sm-8'>
         <select id='cable_name' class='form-control custom-select'>
 {{#cables}}
-            <option value='{{id}}'{{#isSelected}} selected{{/isSelected}}>{{name}}</option>
+            <option value='{{id}}' data-parameters='{{parameters}}'{{#isSelected}} selected{{/isSelected}}>{{name}}</option>
 {{/cables}}
         </select>
     </div>
 </div>
 `;
                 const cimmap = this._cimmap;
-                const wireinfos = cimmap.fetch ("WireInfo", info => info.PerLengthParameters);
-                // for now we only understand the first PerLengthSequenceImpedance
-                const cables = wireinfos.filter (info => cimmap.get ("PerLengthSequenceImpedance", info.PerLengthParameters[0]));
+                const line_parameters = cimmap.fetch ("PerLengthLineParameter", param => param.WireAssemblyInfo);
+                const cables = line_parameters.flatMap (
+                    param =>
+                    {
+                        let ret = [];
+                        const wai = this._cimmap.get ("WireAssemblyInfo", param.WireAssemblyInfo);
+                        if (wai)
+                        {
+                            const wpi = this._cimmap.fetch ("WirePhaseInfo",
+                                wpi =>
+                                {
+                                    if (wpi.WireAssemblyInfo === wai.id)
+                                        return (wpi.WireInfo);
+                                    else
+                                        return (null);
+                                }
+                            );
+                            if (wpi.length > 0)
+                            {
+                                const wire_info = this._cimmap.get ("WireInfo", wpi[0].WireInfo);
+                                if (wire_info)
+                                    ret = [{id: wire_info.id, parameters: param.id, name: wire_info.name }]; // won't fit: + " [max " + wire_info.ratedCurrent + "A]"
+                            }
+                        }
+                        return (ret);
+                    }
+                );
                 function fn ()
                 {
                     return (proto && (proto.AssetDatasheet === this.id));
@@ -78,9 +102,8 @@ define
                 if (cable_name)
                 {
                     parameters.description = cable_name.options[cable_name.selectedIndex].text;
-                    cable_name = cable_name.value;
-                    parameters.AssetDatasheet = cable_name; // add the cable type
-                    parameters.PerLengthImpedance = this._cimmap.get ("WireInfo", cable_name).PerLengthParameters[0]; // add the per length parameters
+                    parameters.AssetDatasheet = cable_name.value; // add the wire info
+                    parameters.PerLengthImpedance = cable_name.selectedOptions[0].getAttribute("data-parameters"); // add the per length parameters
                 }
                 // ToDo: make this dependent on ProductAssetModel.usageKind (from AssetInfo.AssetModel) when we add aerial wires
                 parameters.PSRType = "PSRType_Underground";
@@ -181,21 +204,21 @@ define
                 line.length = this.distance (pp);
                 const eqm = new ConductingEquipmentMaker (this._cimmap, this._cimedit, this._digitizer);
                 array = array.concat (eqm.ensure_voltages ());
-                array = array.concat (eqm.ensure_status ());
                 line.normallyInService = true;
-                line.SvStatus = eqm.in_use ();
                 if (!line.BaseVoltage)
                     line.BaseVoltage = eqm.low_voltage ();
                 if (line.PerLengthImpedance)
                 {
                     // do we really want to set r+jx and r0+jx0 from length and PerLengthSequenceImpedance? Seems redundant.
                     const plsi = this._cimmap.get ("PerLengthSequenceImpedance", line.PerLengthImpedance);
-                    const km = line.length / 1e3;
-                    line.r = plsi.r * km;
-                    line.x = plsi.x * km;
-                    line.r0 = plsi.r0 * km;
-                    line.x0 = plsi.x0 * km;
+                    const m = line.length;
+                    line.r = plsi.r * m;
+                    line.x = plsi.x * m;
+                    line.r0 = plsi.r0 * m;
+                    line.x0 = plsi.x0 * m;
                 }
+                const svname = line.id + "_status";
+                array.push (new StateVariables.SvStatus ({ EditDisposition: "new", cls: "SvStatus", id: svname, mRID: svname, name: svname, description: "Status for " + line.id + ".", inService: true, ConductingEquipment: line.id }, this._cimedit.new_features ()));
 
                 return (array);
             }

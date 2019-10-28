@@ -79,7 +79,7 @@ truncate table cimapplication.responsibility_by_day;
         //        "players": [
         //            {
         //                "title": "house services",
-        //                "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s'"
+        //                "query": "select c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'energy' type, 'constant_power' property, 'Watt' unit from EnergyConsumer c, Terminal t, TopologicalNode n where c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID and n.TopologicalIsland = '%s'"
         //            }
         //        ],
         //        "recorders": [
@@ -110,7 +110,7 @@ truncate table cimapplication.responsibility_by_day;
         //        "extras": [
         //            {
         //                "title": "nominalVoltage",
-        //                "query": "select e.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
+        //                "query": "select e.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (v.nominalVoltage * 1000.0 as string) value from EnergyConsumer e, BaseVoltage v where e.ConductingEquipment.BaseVoltage = v.IdentifiedObject.mRID"
         //            }
         //        ]
         //    }
@@ -125,9 +125,9 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         'energy' type,
-                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        concat(c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
                         t.TopologicalNode parent,
                         'constant_power' property,
                         'Watt' unit,
@@ -137,8 +137,8 @@ truncate table cimapplication.responsibility_by_day;
                         Terminal t,
                         TopologicalNode n
                     where
-                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
                         t.TopologicalNode = n.IdentifiedObject.mRID
                     `
             },
@@ -147,9 +147,9 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         'energy' type,
-                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        concat(c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
                         t.TopologicalNode parent,
                         'constant_power' property,
                         'Watt' unit,
@@ -159,8 +159,8 @@ truncate table cimapplication.responsibility_by_day;
                         Terminal t,
                         TopologicalNode n
                     where
-                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
                         t.TopologicalNode = n.IdentifiedObject.mRID
                     `,
                 "transform": "new MeasurementTransform { override def transform (real: Double, imag: Double): (Double, Double) = { val input = Complex (real, imag); val output = input * 1.1; (output.re, output.im) } }"
@@ -170,9 +170,9 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         'energy' type,
-                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        concat(c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
                         t.TopologicalNode parent,
                         'constant_power' property,
                         'Watt' unit,
@@ -182,8 +182,8 @@ truncate table cimapplication.responsibility_by_day;
                         Terminal t,
                         TopologicalNode n
                     where
-                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
                         t.TopologicalNode = n.IdentifiedObject.mRID
                     `,
                 "transform": "new MeasurementTransform { override def transform (real: Double, imag: Double): (Double, Double) = { val cosphi = Complex (0.9, Math.sqrt (1.0 - 0.9 * 0.9)); val input = Complex (real, imag); val output = input * cosphi; (output.re, output.im) } }"
@@ -193,9 +193,9 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         'energy' type,
-                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        concat(c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
                         t.TopologicalNode parent,
                         'constant_power' property,
                         'Watt' unit,
@@ -205,8 +205,8 @@ truncate table cimapplication.responsibility_by_day;
                         Terminal t,
                         TopologicalNode n
                     where
-                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
                         t.TopologicalNode = n.IdentifiedObject.mRID
                     `,
                 "transform": "new MeasurementTransform { override def transform (real: Double, imag: Double): (Double, Double) = { val angle = (Math.random () * (90.0 - 75.0) + 75.0) * Math.PI / 180.0; cosphi = Complex (Math.cos (angle), Math.sin (angle)); val input = Complex (real, imag); val output = input * cosphi; (output.re, output.im) } }"
@@ -216,10 +216,10 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         l.LoadDynamics.IdentifiedObject.name synthesis,
                         'energy' type,
-                        concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+                        concat(c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
                         t.TopologicalNode parent,
                         'constant_power' property,
                         'Watt' unit,
@@ -230,9 +230,9 @@ truncate table cimapplication.responsibility_by_day;
                         Terminal t,
                         TopologicalNode n
                     where
-                        c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_newHouseService' and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_newHouseService' and
                         c.LoadDynamics = l.LoadDynamics.IdentifiedObject.mRID and
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
                         t.TopologicalNode = n.IdentifiedObject.mRID
                     `
             }
@@ -550,8 +550,8 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        concat (c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
                         n.IdentifiedObject.mRID parent,
                         'voltage' type,
                         'voltage' property,
@@ -562,7 +562,7 @@ truncate table cimapplication.responsibility_by_day;
                         Terminal t,
                         EnergyConsumer c
                     where
-                        t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        t.ConductingEquipment = c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
                         n.IdentifiedObject.mRID = t.TopologicalNode
                     `,
                 "interval": 900,
@@ -590,9 +590,9 @@ truncate table cimapplication.responsibility_by_day;
                 "query":
                     `
                     select
-                        concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
-                        c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-                        concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load_object') parent,
+                        concat (c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,
+                        c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                        concat (c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load_object') parent,
                         'power' type,
                         'power' property,
                         'VA' unit,
@@ -602,7 +602,7 @@ truncate table cimapplication.responsibility_by_day;
                         Terminal t,
                         EnergyConsumer c
                     where
-                        t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+                        t.ConductingEquipment = c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
                         n.IdentifiedObject.mRID = t.TopologicalNode
                     `,
                 "interval": 900,
@@ -807,8 +807,8 @@ truncate table cimapplication.responsibility_by_day;
                     from
                         (
                             select
-                                c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
-                                c.ConductingEquipment.BaseVoltage voltage
+                                c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+                                c.EnergyConnection.ConductingEquipment.BaseVoltage voltage
                             from
                                 EnergyConsumer c
                         union

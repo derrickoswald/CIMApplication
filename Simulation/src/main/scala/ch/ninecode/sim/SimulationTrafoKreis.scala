@@ -64,11 +64,11 @@ case class SimulationTrafoKreis
     def newSwitch (id: String): Switch =
     {
         val basic = BasicElement (null, id)
-        val obj = IdentifiedObject (basic, null, null, id, null, List(), List())
-        val psr = PowerSystemResource (obj, null, List(), List(), List(), null, List(), List(), List(), List(), null, List())
-        val equipment = Equipment (psr, false, false, List(), List(), null, List(), List(), List(), List(), List(), List(), List(), List(), List())
-        val conducting = ConductingEquipment (equipment, null, null, null, List(), List(), null, List())
-        Switch (conducting, false, false, 0, false, 0, null, null, List(), null, null, List(), List())
+        val obj = IdentifiedObject (basic, null, null, id, null, null, null, null, null, null)
+        val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
+        val equipment = Equipment (psr, false, false, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null)
+        val conducting = ConductingEquipment (equipment, null, null, null, null, null, null, null)
+        Switch (conducting, false, false, 0, false, 0, null, null, null, null, null, null, null, null)
     }
 
     def alterEdgeNode (edge: GLMEdge, original_node: String, new_node: String): GLMEdge =

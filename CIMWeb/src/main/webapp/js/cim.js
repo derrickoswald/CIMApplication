@@ -6,7 +6,7 @@
  */
 define
 (
-    ["model/base", "model/AssetInfo", "model/Assets", "model/AsynchronousMachineDynamics", "model/AuxiliaryEquipment", "model/Common", "model/CongestionRevenueRights", "model/Contingency", "model/ControlArea", "model/Core", "model/Customers", "model/DC", "model/DiagramLayout", "model/DiscontinuousExcitationControlDynamics", "model/Domain", "model/Equivalents", "model/ExcitationSystemDynamics", "model/ExistingEnumExtensions", "model/ExternalInputs", "model/Faults", "model/GenerationTrainingSimulation", "model/ICCP", "model/IEC61968", "model/IEC61970", "model/IEC62325", "model/InfAssetInfo", "model/InfAssets", "model/InfCommon", "model/InfCongestionRevenueRights", "model/InfCustomers", "model/InfDomain", "model/InfERPSupport", "model/InfEnergyScheduling", "model/InfEnergySource", "model/InfExternalInputs", "model/InfFinancial", "model/InfLocations", "model/InfMarketOperations", "model/InfMarketResults", "model/InfNewAssets", "model/InfOperationalLimits", "model/InfParticipantInterfaces", "model/InfReservation", "model/InfSIPS", "model/InfTypeAsset", "model/InfWiresExt", "model/InfWork", "model/LoadControl", "model/LoadDynamics", "model/LoadModel", "model/LoadModel2", "model/MarketCommon", "model/MarketManagement", "model/MarketOpCommon", "model/MarketPlan", "model/MarketQualitySystem", "model/MarketResults", "model/Meas", "model/MechanicalLoadDynamics", "model/Metering", "model/MktDomain", "model/ModelAuthority", "model/ModelDescription", "model/OperationalLimits", "model/Operations", "model/OverexcitationLimiterDynamics", "model/PFVArControllerType1Dynamics", "model/PFVArControllerType2Dynamics", "model/PackageDependencies", "model/ParticipantInterfaces", "model/PaymentMetering", "model/PowerSystemProject", "model/PowerSystemStabilizerDynamics", "model/Production", "model/Protection", "model/ReadingTypeEnumerations", "model/ReferenceData", "model/SCADA", "model/StandardInterconnections", "model/StandardModels", "model/StateVariables", "model/SynchronousMachineDynamics", "model/Topology", "model/TurbineGovernorDynamics", "model/TurbineLoadControllerDynamics", "model/UnderexcitationLimiterDynamics", "model/UserDefinedModels", "model/VoltageAdjusterDynamics", "model/VoltageCompensatorDynamics", "model/WindDynamics", "model/Wires", "model/Work"],
+    ["model/base", "model/AlternateModels", "model/AssetInfo", "model/AssetMeas", "model/Assets", "model/AsynchronousMachineDynamics", "model/AuxiliaryEquipment", "model/CSC", "model/Common", "model/CongestionRevenueRights", "model/Contingency", "model/ControlArea", "model/Core", "model/Customers", "model/DC", "model/DER", "model/DiagramLayout", "model/DiscontinuousExcitationControlDynamics", "model/Domain", "model/EnergyArea", "model/EnvDomain", "model/Environmental", "model/Equivalents", "model/ExcitationSystemDynamics", "model/ExternalInputs", "model/Faults", "model/Feeder", "model/GenerationTrainingSimulation", "model/GenericDataSet", "model/HVDCDynamics", "model/ICCPConfiguration", "model/IEC61968", "model/IEC61970", "model/IEC62325", "model/InfAssetInfo", "model/InfAssets", "model/InfAssets2", "model/InfAvailabilityPlans", "model/InfCommon", "model/InfCongestionRevenueRights", "model/InfCustomers", "model/InfDomain", "model/InfERPSupport", "model/InfEnergyScheduling", "model/InfExternalInputs", "model/InfFinancial", "model/InfHVDCDynamics", "model/InfLocations", "model/InfMarketOpCommon", "model/InfMarketOperations", "model/InfMarketResults", "model/InfOperationalLimits", "model/InfParticipantInterfaces", "model/InfReferenceData", "model/InfReservation", "model/InfSIPS", "model/InfTypeAsset", "model/InfWiresExt", "model/InfWork", "model/LoadControl", "model/LoadDynamics", "model/LoadModel", "model/LoadModel2", "model/MarketCommon", "model/MarketManagement", "model/MarketOpCommon", "model/MarketPlan", "model/MarketQualitySystem", "model/MarketResults", "model/Meas", "model/MechanicalLoadDynamics", "model/Metering", "model/MktDomain", "model/ModelOperations", "model/NetworkModelFrames", "model/NetworkModelProjects", "model/OperationalLimits", "model/Operations", "model/OverexcitationLimiterDynamics", "model/PFVArControllerType1Dynamics", "model/PFVArControllerType2Dynamics", "model/PackageDependencies", "model/ParticipantInterfaces", "model/PaymentMetering", "model/PowerSystemStabilizerDynamics", "model/Production", "model/Protection", "model/ReferenceData", "model/SCADA", "model/StandardInterconnections", "model/StandardModels", "model/StateVariables", "model/StaticVarCompensatorDynamics", "model/SynchronousMachineDynamics", "model/Topology", "model/TurbineGovernorDynamics", "model/TurbineLoadControllerDynamics", "model/UnderexcitationLimiterDynamics", "model/UserDefinedModels", "model/VSC", "model/VoltageAdjusterDynamics", "model/VoltageCompensatorDynamics", "model/WindDynamics", "model/Wires", "model/Work", "model/unused"],
     /**
      * @summary CIM file reading functions.
      * @description Read an XML file with a restricted profile
@@ -15,7 +15,7 @@ define
      * @exports cim
      * @version 1.0
      */
-    function (base, AssetInfo, Assets, AsynchronousMachineDynamics, AuxiliaryEquipment, Common, CongestionRevenueRights, Contingency, ControlArea, Core, Customers, DC, DiagramLayout, DiscontinuousExcitationControlDynamics, Domain, Equivalents, ExcitationSystemDynamics, ExistingEnumExtensions, ExternalInputs, Faults, GenerationTrainingSimulation, ICCP, IEC61968, IEC61970, IEC62325, InfAssetInfo, InfAssets, InfCommon, InfCongestionRevenueRights, InfCustomers, InfDomain, InfERPSupport, InfEnergyScheduling, InfEnergySource, InfExternalInputs, InfFinancial, InfLocations, InfMarketOperations, InfMarketResults, InfNewAssets, InfOperationalLimits, InfParticipantInterfaces, InfReservation, InfSIPS, InfTypeAsset, InfWiresExt, InfWork, LoadControl, LoadDynamics, LoadModel, LoadModel2, MarketCommon, MarketManagement, MarketOpCommon, MarketPlan, MarketQualitySystem, MarketResults, Meas, MechanicalLoadDynamics, Metering, MktDomain, ModelAuthority, ModelDescription, OperationalLimits, Operations, OverexcitationLimiterDynamics, PFVArControllerType1Dynamics, PFVArControllerType2Dynamics, PackageDependencies, ParticipantInterfaces, PaymentMetering, PowerSystemProject, PowerSystemStabilizerDynamics, Production, Protection, ReadingTypeEnumerations, ReferenceData, SCADA, StandardInterconnections, StandardModels, StateVariables, SynchronousMachineDynamics, Topology, TurbineGovernorDynamics, TurbineLoadControllerDynamics, UnderexcitationLimiterDynamics, UserDefinedModels, VoltageAdjusterDynamics, VoltageCompensatorDynamics, WindDynamics, Wires, Work)
+    function (base, AlternateModels, AssetInfo, AssetMeas, Assets, AsynchronousMachineDynamics, AuxiliaryEquipment, CSC, Common, CongestionRevenueRights, Contingency, ControlArea, Core, Customers, DC, DER, DiagramLayout, DiscontinuousExcitationControlDynamics, Domain, EnergyArea, EnvDomain, Environmental, Equivalents, ExcitationSystemDynamics, ExternalInputs, Faults, Feeder, GenerationTrainingSimulation, GenericDataSet, HVDCDynamics, ICCPConfiguration, IEC61968, IEC61970, IEC62325, InfAssetInfo, InfAssets, InfAssets2, InfAvailabilityPlans, InfCommon, InfCongestionRevenueRights, InfCustomers, InfDomain, InfERPSupport, InfEnergyScheduling, InfExternalInputs, InfFinancial, InfHVDCDynamics, InfLocations, InfMarketOpCommon, InfMarketOperations, InfMarketResults, InfOperationalLimits, InfParticipantInterfaces, InfReferenceData, InfReservation, InfSIPS, InfTypeAsset, InfWiresExt, InfWork, LoadControl, LoadDynamics, LoadModel, LoadModel2, MarketCommon, MarketManagement, MarketOpCommon, MarketPlan, MarketQualitySystem, MarketResults, Meas, MechanicalLoadDynamics, Metering, MktDomain, ModelOperations, NetworkModelFrames, NetworkModelProjects, OperationalLimits, Operations, OverexcitationLimiterDynamics, PFVArControllerType1Dynamics, PFVArControllerType2Dynamics, PackageDependencies, ParticipantInterfaces, PaymentMetering, PowerSystemStabilizerDynamics, Production, Protection, ReferenceData, SCADA, StandardInterconnections, StandardModels, StateVariables, StaticVarCompensatorDynamics, SynchronousMachineDynamics, Topology, TurbineGovernorDynamics, TurbineLoadControllerDynamics, UnderexcitationLimiterDynamics, UserDefinedModels, VSC, VoltageAdjusterDynamics, VoltageCompensatorDynamics, WindDynamics, Wires, Work, unused)
     {
         /**
          * The size of chunks to read into memory.
@@ -184,7 +184,7 @@ define
                 }
 
                 // parse RDF, i.e. <rdf:RDF xmlns:dm="http://iec.ch/2002/schema/CIM_difference_model#" xmlns:cim="http://iec.ch/TC57/2010/CIM-schema-cim15#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-                regex = /<rdf:RDF([\s\S]*?)>\s*/g;
+                regex = /<(?:.*:)?RDF([\s\S]*?)>\s*/g;
                 if (null != regex.exec (subxml))
                 {
                     context.offset += regex.lastIndex;
@@ -247,7 +247,7 @@ define
                         const bytes = encode_utf8 (xml.substring (0, read + context.offset)).length;
                         // check for done
                         let done = false;
-                        const regex = /\s*<\/rdf:RDF>\s*/g;
+                        const regex = /\s*<\/(?:.*:)?RDF>\s*/g;
                         if (null != regex.exec (xml.substring (read + context.offset)))
                         {
                             context.end_character += regex.lastIndex;
@@ -382,14 +382,10 @@ define
             let trailer;
             if (difference_model)
             {
+                alert ("difference model functionality not yet implemented for CIM100 (cim17)");
                 header = [
 `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<rdf:RDF xmlns:cim="http://iec.ch/TC57/2013/CIM-schema-cim16#" xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#" xmlns:dm="http://iec.ch/TC57/61970-552/DifferenceModel/1#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-	<dm:DifferenceModel rdf:about="` + about + `">
-		<md:Model.created>` + date + `</md:Model.created>
-		<md:Model.description>` + description + `</md:Model.description>
-		<md:Model.modelingAuthoritySet>http://9code.ch/</md:Model.modelingAuthoritySet>
-		<md:Model.profile>https://github.com/derrickoswald/CIMSpace</md:Model.profile>`
+<rdf:RDF xmlns:cim="http://iec.ch/TC57/2016/CIM-schema-cim17#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">`
                 ];
                 trailer = [
 `	</dm:DifferenceModel>
@@ -400,13 +396,7 @@ define
             {
                 header = [
 `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<rdf:RDF xmlns:cim="http://iec.ch/TC57/2013/CIM-schema-cim16#" xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#" xmlns:dm="http://iec.ch/TC57/61970-552/DifferenceModel/1#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-	<md:FullModel rdf:about="` + about + `">
-		<md:Model.created>` + date + `</md:Model.created>
-		<md:Model.description>` + description + `</md:Model.description>
-		<md:Model.modelingAuthoritySet>http://9code.ch/</md:Model.modelingAuthoritySet>
-		<md:Model.profile>https://github.com/derrickoswald/CIMSpace</md:Model.profile>
-	</md:FullModel>`
+<rdf:RDF xmlns:cim="http://iec.ch/TC57/2016/CIM-schema-cim17#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">`
                 ];
                 trailer = [
 `</rdf:RDF>`

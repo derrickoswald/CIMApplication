@@ -51,7 +51,7 @@ import javax.transaction.xa.XAResource;
 )
 public class CIMResourceAdapter implements ResourceAdapter
 {
-    protected String _YarnConfigurationPath = "/home/derrick/spark/spark-2.4.3-bin-hadoop2.7/conf/";
+    protected String _YarnConfigurationPath = "/home/derrick/spark/spark-2.4.4-bin-hadoop2.7/conf/";
     protected String _SparkDriverMemory = "1g";
     protected String _SparkExecutorMemory = "4g";
 
@@ -122,7 +122,7 @@ public class CIMResourceAdapter implements ResourceAdapter
     (
         type = String.class,
         description = "Path to Yarn configuration files such as core-site.xml and yarn-site.xml.",
-        defaultValue = "/home/derrick/spark-1.6.0-bin-hadoop2.6/conf",
+        defaultValue = "/home/derrick/spark/spark-2.4.4-bin-hadoop2.7/conf/",
         ignore = false,
         supportsDynamicUpdates = false,
         confidential = false

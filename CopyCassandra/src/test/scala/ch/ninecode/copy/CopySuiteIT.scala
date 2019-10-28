@@ -1,4 +1,4 @@
-package test.scala.ch.ninecode.copy
+package ch.ninecode.copy
 
 import java.util.Properties
 
@@ -44,7 +44,7 @@ class CopySuiteIT
             "--master", "local[*]",
             "--source_host", "beach",
             "--source_port", "9042",
-            "--source_keyspace", "test",
+            "--source_keyspace", "subsample",
             "--target_host", "localhost",
             "--target_port", cassandra_port.toString,
             "--target_keyspace", TARGET_KEYSPACE))
