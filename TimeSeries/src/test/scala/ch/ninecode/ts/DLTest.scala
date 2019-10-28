@@ -16,6 +16,8 @@ import org.junit.runners.MethodSorters
 
 import com.intel.analytics.bigdl.utils.Engine
 
+import ch.ninecode.ts.TimeSeries.jarForObject
+
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class DLTest
 {
@@ -78,13 +80,17 @@ object DLTest
         configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
         configuration.set ("spark.cassandra.connection.host", "beach")
         configuration.set ("spark.cassandra.connection.port", "9042")
+        val s1 = jarForObject (ch.ninecode.ts.TimeSeriesOptions ())
+        val s2 = jarForObject (com.datastax.spark.connector.SomeColumns ())
+        val s3 = jarForObject (new org.apache.spark.mllib.stat.test.BinarySampleBeanInfo ())
+        val s4 = jarForObject (new com.intel.analytics.bigdl.utils.LayerException (null, null))
+        val s5 = jarForObject (com.intel.analytics.bigdl.models.utils.DistriOptimizerPerfParam())
         configuration.setJars (Array (
-            "/home/derrick/.m2/repository/com/datastax/spark/spark-cassandra-connector_2.11/2.4.1/spark-cassandra-connector_2.11-2.4.1.jar",
-            "/home/derrick/.m2/repository/com/intel/analytics/bigdl/bigdl-SPARK_2.4/0.9.1/bigdl-SPARK_2.4-0.9.1.jar",
-            "/home/derrick/.m2/repository/com/intel/analytics/bigdl/spark-version/2.0-SPARK_2.4/0.9.1/2.0-SPARK_2.4-0.9.1.jar",
-            "/home/derrick/.m2/repository/com/intel/analytics/bigdl/core/dist/all/0.9.1/all-0.9.1.jar",
-            "/home/derrick/.m2/repository/org/apache/spark/spark-mllib_2.11/2.4.3/spark-mllib_2.11-2.4.3.jar",
-            "/home/derrick/code/CIMApplication/TimeSeries/TimeSeries-2.11-2.4.3-2.5.0.jar"))
+            s1,
+            s2,
+            s3,
+            s4,
+            s5))
 
         session = SparkSession.builder.config (configuration).getOrCreate
         session.sparkContext.setLogLevel ("WARN")

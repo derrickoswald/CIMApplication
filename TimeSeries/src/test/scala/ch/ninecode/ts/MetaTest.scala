@@ -2,10 +2,8 @@ package ch.ninecode.ts
 
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.TimeZone
 
-import ch.ninecode.ts.TimeSeries.jarForObject
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.junit.AfterClass
@@ -13,6 +11,8 @@ import org.junit.BeforeClass
 import org.junit.FixMethodOrder
 import org.junit.Test
 import org.junit.runners.MethodSorters
+
+import ch.ninecode.ts.TimeSeries.jarForObject
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class MetaTest
@@ -72,11 +72,12 @@ object MetaTest
         configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
         configuration.set ("spark.cassandra.connection.host", "beach")
         configuration.set ("spark.cassandra.connection.port", "9042")
-        // twitter asshat shit:
+        val s1 = jarForObject (ch.ninecode.ts.TimeSeriesOptions ())
+        val s2 = jarForObject (com.datastax.spark.connector.SomeColumns ())
         val s3 = jarForObject (new com.twitter.jsr166e.LongAdder ())
         configuration.setJars (Array (
-            "/home/derrick/.m2/repository/com/datastax/spark/spark-cassandra-connector_2.11/2.4.1/spark-cassandra-connector_2.11-2.4.1.jar",
-            "/home/derrick/code/CIMApplication/TimeSeries/target/TimeSeries-2.11-2.4.3-2.5.0.jar",
+            s1,
+            s2,
             s3))
 
         session = SparkSession.builder.config (configuration).getOrCreate
