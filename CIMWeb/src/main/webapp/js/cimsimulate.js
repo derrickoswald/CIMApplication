@@ -1185,7 +1185,7 @@ truncate table cimapplication.responsibility_by_day;
 
             const url = util.home () + "cim/estimation" + verbose + keep;
             util.makeRequest ("POST", url, jsonify (json)).then (
-                (xmlthttp) =>
+                (xmlhttp) =>
                 {
                     try
                     {
