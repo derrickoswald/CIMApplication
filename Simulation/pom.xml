@@ -196,6 +196,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <runOrder>reversealphabetical</runOrder>
                     <skipAfterFailureCount>1</skipAfterFailureCount>
                 </configuration>
             </plugin>
