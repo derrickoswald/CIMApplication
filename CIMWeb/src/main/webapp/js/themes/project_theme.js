@@ -28,8 +28,7 @@ define
             constructor ()
             {
                 super ();
-                // ToDo: UI mechanism to choose input keyspace
-                this._input_keyspace = "cimapplication";
+                this._project = undefined;
                 this._legend = new ProjectLegend (this);
                 this._project_points =
                 {
@@ -594,80 +593,22 @@ define
                 this._extents = extents;
             }
 
-            // color the polygons based on whether they have data or not
-            checkForData ()
+            setProject (project)
             {
-                const self = this;
-                cimquery.queryPromise ({ sql: `select name, elements from ${ self._keyspace }.transformers`, cassandra: true })
-                    .then (
-                        function (trafos)
-                        {
-                            Promise.all (
-                                trafos.map (
-                                    function (trafo)
-                                    {
-                                        const transformer = trafo.name;
-                                        const elements = trafo.elements;
-                                        // make a list of EnergyConsumer
-                                        const houses = [];
-                                        for (let id in elements)
-                                            if (elements.hasOwnProperty (id))
-                                                if (elements[id] === "EnergyConsumer")
-                                                    houses.push(id);
-                                        // now see if any of the houses has meter data
-                                        const inclause = "mrid in (" + houses.map (x => "'" + x + "'").join (",") + ")";
-                                        if (houses.length === 0)
-                                            return (Promise.resolve ());
-                                        else
-                                            return (
-                                                cimquery.queryPromise ({ sql: `select TOUNIXTIMESTAMP(time) as time from ${ self._input_keyspace }.measured_value where ${ inclause } and type='energy' limit 1`, cassandra: true })
-                                                    .then (
-                                                        function (data)
-                                                        {
-                                                            if (data.length > 0)
-                                                            {
-                                                                // find the polygon in the GeoJSON set and update it's color and a time at which to check for data
-                                                                const polygon = self._project_polygons.features.find (x => x.properties.name === transformer);
-                                                                if (polygon)
-                                                                {
-                                                                    polygon.properties.color = "#00ff00";
-                                                                    polygon.properties.time = data[0].time;
-                                                                }
-                                                            }
-                                                        }
-                                                    )
-                                                );
-                                    }
-                                )
-                            ).then (
-                                function ()
-                                {
-                                    self._TheMap.getSource ("areas").setData (self._project_polygons);
-                                }
-                            );
-                        }
-                    );
-            }
-
-            setProject (keyspace, id)
-            {
-                this._keyspace = keyspace;
-                this._project = id;
+                this._project = project;
                 this._consumers_with_data = {};
-                const self = this;
-                const promise = cimquery.queryPromise ({ sql: `select json type, geometry, properties from ${ keyspace }.transformer_service_area where id='${ id }'`, cassandra: true })
-                    .then (data => self.setProjectGeoJSON_Polygons.call (self, data))
+                const promise = cimquery.queryPromise ({ sql: `select json type, geometry, properties from ${ this._project.keyspace }.transformer_service_area where id='${ this._project.id }'`, cassandra: true })
+                    .then (data => this.setProjectGeoJSON_Polygons (data))
                     .then (() =>
                         {
-                            self._TheMap.getSource ("areas").setData (self._project_polygons);
-                            self._TheMap.getSource ("nodes").setData (self._project_points);
+                            this._TheMap.getSource ("areas").setData (this._project_polygons);
+                            this._TheMap.getSource ("nodes").setData (this._project_points);
                         }
                     )
-                    .then (() => cimquery.queryPromise ({ sql: `select * from ${ keyspace }.boundary_switches where id='${ id }'`, cassandra: true }))
-                    .then (data => self.setProjectGeoJSON_Lines.call (self, data))
-                    .then (() => self._TheMap.getSource ("edges").setData (self._project_lines))
-                    .then (() => self._cimmap.set_data (null))
-                    .then (() => self.checkForData ());
+                    .then (() => cimquery.queryPromise ({ sql: `select * from ${ this._project.keyspace }.boundary_switches where id='${ this._project.id }'`, cassandra: true }))
+                    .then (data => this.setProjectGeoJSON_Lines (data))
+                    .then (() => this._TheMap.getSource ("edges").setData (this._project_lines))
+                    .then (() => this._cimmap.set_data (null));
 
                 return (promise);
             }
