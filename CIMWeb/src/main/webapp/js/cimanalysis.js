@@ -6,7 +6,7 @@
  */
 define
 (
-    ["util", "mustache", "cim", "cimmap", "themes/analysis_theme"],
+    ["util", "lib/mustache", "cim", "cimmap", "themes/analysis_theme"],
     /**
      * @summary Functions to perform short circuit calculations.
      * @name cimanalysis

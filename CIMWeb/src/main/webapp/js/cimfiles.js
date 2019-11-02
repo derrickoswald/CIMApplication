@@ -6,7 +6,7 @@
  */
 define
 (
-    ["util", "mustache", "cim", "cimmap"],
+    ["util", "lib/mustache", "cim", "cimmap"],
     /**
      * @summary Functions to manage CIM files on HDFS.
      * @name cimfiles

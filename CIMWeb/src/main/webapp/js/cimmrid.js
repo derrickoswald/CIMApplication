@@ -7,8 +7,8 @@ define
 (
     [],
     /**
-     * @summary Gnerate mRID values as best we can.
-     * @description Uses heuristics to create new mRID values following user freindly patterns,
+     * @summary Generate mRID values as best we can.
+     * @description Uses heuristics to create new mRID values following user friendly patterns,
      * and if that fails falls back to Universally Unique Identifiers:
      * http://www.ietf.org/rfc/rfc4122.txt
      * @exports CIMmrid
@@ -23,20 +23,6 @@ define
                 this._cimmap = cimmap;
                 this._default_digits = 4;
                 this._patterns =
-                // {
-                //     "ACLineSegment":    "CAB",
-                //     "Breaker":          "BRK",
-                //     "BusbarSection":    "BUS",
-                //     // use parent as template: "ConnectivityNode": "NOD",
-                //     "Connector":        "CN",
-                //     "EnergyConsumer":   "USR",
-                //     "Fuse":             "FUS",
-                //     "Junction":         "JCN",
-                //     "Switch":           "SW",
-                //     "Substation":       "STA",
-                //     // use parent as template: "Terminal":         "TER",
-                //     "PowerTransformer": "TX"
-                // };
                 {
                     "ACLineSegment":    "KLE",
                     "Breaker":          "BRK",

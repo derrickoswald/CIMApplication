@@ -5,8 +5,8 @@
 
 requirejs.config({
     "paths": {
-      "jquery": "jquery.min",
-      "moment": "moment.min"
+      "jquery": "lib/jquery.min",
+      "moment": "lib/moment.min",
     }
 });
 

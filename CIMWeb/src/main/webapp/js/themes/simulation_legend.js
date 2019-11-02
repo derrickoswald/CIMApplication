@@ -5,7 +5,7 @@
 
 define
 (
-    ["../mustache", "./clock"],
+    ["../lib/mustache", "./clock"],
     /**
      * @summary Simulation legend control.
      * @description UI element for the simulation legend.

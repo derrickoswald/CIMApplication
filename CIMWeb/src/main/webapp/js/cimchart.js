@@ -5,7 +5,7 @@
 
 define
 (
-    ["highstock", "cimquery", "cimcassandra", "mustache"],
+    ["lib/highstock", "cimquery", "cimcassandra", "lib/mustache"],
     /**
      * @summary Chart control.
      * @description UI element for displaying measured, simulated and summarized data.

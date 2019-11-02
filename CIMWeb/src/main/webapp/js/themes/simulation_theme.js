@@ -5,7 +5,7 @@
 
 define
 (
-    ["../mustache", "./default_theme", "./simulation_legend", "./layers", "../cimquery", "../cimchart"],
+    ["../lib/mustache", "./default_theme", "./simulation_legend", "./layers", "../cimquery", "../cimchart"],
     /**
      * @summary Theme on simulation output.
      * @description Theme class for colorizing by simulation summaries like utilization, load factor, and deviation from nominal voltage.

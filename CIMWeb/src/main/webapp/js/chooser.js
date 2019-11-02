@@ -6,7 +6,7 @@
  */
 define
 (
-    ["mustache"],
+    ["lib/mustache"],
     /**
      * @summary UI component to allow multiple text values.
      * @version 1.0

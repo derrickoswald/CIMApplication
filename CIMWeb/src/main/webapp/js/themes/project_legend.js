@@ -5,7 +5,7 @@
 
 define
 (
-    ["../mustache", "../cimquery"],
+    ["../lib/mustache", "../cimquery"],
     /**
      * @summary Project legend control.
      * @description UI element for the project legend.

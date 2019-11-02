@@ -5,7 +5,7 @@
 
 define
 (
-    ["../mustache", "../cimquery", "../cimcassandra"],
+    ["../lib/mustache", "../cimquery", "../cimcassandra"],
     /**
      * @summary Event legend control.
      * @description UI element for the event legend.

@@ -6,7 +6,7 @@
  */
 define
 (
-    ["util", "mustache", "cim", "cimmap", "moment", "daterangepicker"],
+    ["util", "lib/mustache", "cim", "cimmap", "moment", "lib/daterangepicker"],
     /**
      * @summary Functions to perform ingestion.
      * @name cimingest

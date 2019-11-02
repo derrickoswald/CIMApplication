@@ -5,7 +5,7 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "cimapp", "chooser", "themes/simulation_theme", "moment", "daterangepicker"],
+    ["lib/mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "cimapp", "chooser", "themes/simulation_theme", "moment", "lib/daterangepicker"],
     /**
      * @summary Functions to simulate using CIM files and measurement time series in Cassandra.
      * Clean up with script:
