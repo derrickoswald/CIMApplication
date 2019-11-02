@@ -511,7 +511,7 @@ define
                 this._loaded = [];
                 this.clear ();
                 const self = this;
-                const promise = cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_polygons where simulation='${ self._simulation.id }'`, cassandra: true })
+                const promise = cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_polygons where simulation='${ self._simulation.id }' and coordinate_system='wgs84'`, cassandra: true })
                     .then (data => self.setEventGeoJSON_Polygons.call (self, data))
                     .then (() =>
                         {
@@ -615,12 +615,12 @@ define
             {
                 const self = this;
                 this._loaded.push (transformer);
-                const promise = cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_points where simulation='${ self._simulation.id }' and transformer='${ transformer }' allow filtering`, cassandra: true })
+                const promise = cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_points where simulation='${ self._simulation.id }' and coordinate_system='wgs84' and transformer='${ transformer }' allow filtering`, cassandra: true })
                     .then (data => self.setEventGeoJSON_Points.call (self, data))
                     .then (() => self._TheMap.getSource ("nodes").setData (self._event_points))
                     .then (() => self._cimmap.set_data (null))
                     .then (() => self.checkForVoltageEvents.call (self))
-                    .then (() => cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_lines where simulation='${ self._simulation.id }' and transformer='${ transformer }' allow filtering`, cassandra: true }))
+                    .then (() => cimquery.queryPromise ({ sql: `select json mrid, type, geometry, properties from ${ self._simulation.output_keyspace }.geojson_lines where simulation='${ self._simulation.id }' and coordinate_system='wgs84' and transformer='${ transformer }' allow filtering`, cassandra: true }))
                     .then (data => self.setEventGeoJSON_Lines.call (self, data))
                     .then (() => self.checkForCurrentEvents.call (self));
             }

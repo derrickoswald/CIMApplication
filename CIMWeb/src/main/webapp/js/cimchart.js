@@ -127,19 +127,18 @@ define
 
             initialize ()
             {
-                let self = this;
                 cimcassandra.getAllSimulationsWithDetails ()
                 .then (
                     (simulations) =>
                     {
-                        self._simulations = simulations;
+                        this._simulations = simulations;
 
                         // for now, jam the chooseSimulations in the blank panel
                         this.chooseSimulations (document.getElementById ("chart"));
 
                         // check for an already selected element
-                        if (self._cimmap.get_selected_feature ())
-                            self.selection_change (self._cimmap.get_selected_feature (), self._cimmap.get_selected_features ());
+                        if (this._cimmap.get_selected_feature ())
+                            this.selection_change (this._cimmap.get_selected_feature (), this._cimmap.get_selected_features ());
                     }
                 );
             }
@@ -154,12 +153,11 @@ define
                     // this._theChart.showLoading ("Querying Cassandra...");
                     // const simulation = this._simulations[0];
                     // console.log ("from " + event.min + " to " + event.max);
-                    // const self = this;
                     // cimquery.queryPromise ({sql: `select * from ${ simulation.output_keyspace }.simulation`, cassandra: true})
                     //     .then (data =>
                     //         {
                     //             // chart.series[0].setData(data);
-                    //             self._theChart.hideLoading ();
+                    //             this._theChart.hideLoading ();
                     //         }
                     //     );
                 }
@@ -364,7 +362,6 @@ define
     {{/queries}}
 `;
                     sources.innerHTML = mustache.render (template, { queries: queries });
-                    const self = this;
                     Promise.all (
                         queries.map (
                             query =>
@@ -389,8 +386,8 @@ define
                             }
                         )
                     )
-                    .then (series => self.setChart.call (self, feature, series))
-                    .then (() => self.checkForEvents.call (self, feature));
+                    .then (series => this.setChart.call (this, feature, series))
+                    .then (() => this.checkForEvents.call (this, feature));
                 }
                 else
                 {
@@ -405,7 +402,6 @@ define
                     );
                     if (0 !== keyspaces.length)
                     {
-                        const self = this;
                         Promise.all (
                             keyspaces.map (
                                 keyspace =>
@@ -437,9 +433,9 @@ define
                             {
                                 const data = series.filter (x => 0 !== x.data.length);
                                 if (0 !== data.length)
-                                    self.setChart.call (self, feature, data);
+                                    this.setChart.call (this, feature, data);
                                 else
-                                    self.clearChart ("<b>no data for " + feature + "</b>");
+                                    this.clearChart ("<b>no data for " + feature + "</b>");
                             }
                         );
                     }
@@ -450,13 +446,12 @@ define
 
             checkForEvents (feature)
             {
-                const self = this;
-                self._simulations.filter (x => self._selected_simulations.includes (x.id)).forEach (
+                this._simulations.filter (x => this._selected_simulations.includes (x.id)).forEach (
                     simulation =>
                     {
                         cimquery.queryPromise ({ sql: `select mrid, type, severity, TOUNIXTIMESTAMP(start_time) as start_time, TOUNIXTIMESTAMP(end_time) as end_time from ${ simulation.output_keyspace }.simulation_event where simulation='${ simulation.id }' and mrid = '${ feature }' limit 5000 allow filtering`, cassandra: true })
                             .then (
-                                function (events)
+                                (events) =>
                                 {
                                     // console.log (JSON.stringify (events, null, 4));
                                     events.forEach (
@@ -466,7 +461,7 @@ define
                                                 from: event.start_time,
                                                 to: event.end_time
                                             };
-                                            self._theChart.xAxis.map (
+                                            this._theChart.xAxis.map (
                                                 axis =>
                                                 {
                                                     const band = axis.addPlotBand (range);

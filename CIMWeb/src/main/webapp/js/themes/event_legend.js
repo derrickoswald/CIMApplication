@@ -49,29 +49,28 @@ define
                 this._container = document.createElement ("div");
                 this._container.className = "mapboxgl-ctrl";
                 // refresh simulations
-                const self = this;
                 cimcassandra.getAllSimulations ().then (
                     simulations =>
                     {
-                        self._simulations = simulations;
+                        this._simulations = simulations;
                         const item = {
                             name: "Choose simulation",
                             id: "",
                             selected: true
                         };
-                        self._simulations.push (item);
+                        this._simulations.push (item);
                         // display the list
-                        self._container.innerHTML = mustache.render (
-                            self._template,
+                        this._container.innerHTML = mustache.render (
+                            this._template,
                             {
-                                "simulations": self._simulations
+                                "simulations": this._simulations
                             }
                         );
-                        self._simulations.splice (self._simulations.length - 1, 1);
+                        this._simulations.splice (this._simulations.length - 1, 1);
                         // handle close button
-                        self._container.getElementsByClassName ("close")[0].onclick = self.close.bind (self);
+                        this._container.getElementsByClassName ("close")[0].onclick = this.close.bind (this);
                         // handle changes
-                        document.getElementById ("current_simulation").onchange = self.changeSimulation.bind (self);
+                        document.getElementById ("current_simulation").onchange = this.changeSimulation.bind (this);
 
                     }
                 );

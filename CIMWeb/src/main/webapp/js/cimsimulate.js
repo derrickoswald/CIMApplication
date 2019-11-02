@@ -1198,7 +1198,7 @@ truncate table cimapplication.responsibility_by_day;
                             {
                                 const theme = new SimulationTheme ();
                                 theme.setSimulation (TheSimulation.keyspaces.output, simulation_id).then (
-                                    function ()
+                                    () =>
                                     {
                                         cimmap.get_themer ().removeTheme (theme);
                                         cimmap.get_themer ().addTheme (theme, true);
@@ -1213,7 +1213,7 @@ truncate table cimapplication.responsibility_by_day;
                                         sql: "select json * from " + TheSimulation.keyspaces.output + ".simulation where id='" + simulation_id + "'"
                                     }
                                 ).then (
-                                    function (resultset)
+                                    (resultset) =>
                                     {
                                         const json = JSON.parse (resultset[0]["[json]"]);
                                         document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
@@ -1236,7 +1236,7 @@ truncate table cimapplication.responsibility_by_day;
             {
                 const theme = new SimulationTheme ();
                 theme.setSimulation (TheSimulation.keyspaces.output, simulation_id).then (
-                    function ()
+                    () =>
                     {
                         cimmap.get_themer ().removeTheme (theme);
                         cimmap.get_themer ().addTheme (theme, true);
@@ -1254,7 +1254,7 @@ truncate table cimapplication.responsibility_by_day;
                         sql: "select json * from " + TheSimulation.keyspaces.output + ".simulation where id='" + simulation_id + "'"
                     }
                 ).then (
-                    function (resultset)
+                    (resultset) =>
                     {
                         const json = JSON.parse (resultset[0]["[json]"]);
                         document.getElementById ("results").innerHTML = "<pre>\n" +  jsonify (json) + "\n</pre>";
@@ -1292,7 +1292,7 @@ truncate table cimapplication.responsibility_by_day;
         {
             const ret = [];
             PlayerChooser.context.items.forEach (
-                function (item)
+                (item) =>
                 {
                     if ("" !== item.value)
                     {
@@ -1312,7 +1312,7 @@ truncate table cimapplication.responsibility_by_day;
         {
             const ret = [];
             RecorderChooser.context.items.forEach (
-                function (item)
+                (item) =>
                 {
                     if ("" !== item.value)
                     {
@@ -1331,7 +1331,7 @@ truncate table cimapplication.responsibility_by_day;
         {
             const ret = [];
             ExtraChooser.context.items.forEach (
-                function (item)
+                (item) =>
                 {
                     if ("" !== item.value)
                     {
@@ -1547,7 +1547,7 @@ truncate table cimapplication.responsibility_by_day;
                         The queries to use to pick player (load) elements.
                     </small>
                     `;
-                PlayerChooser = new Chooser ("players", "Players", "Player", PlayerChoices.map (function (x) { return (x.title); }), help);
+                PlayerChooser = new Chooser ("players", "Players", "Player", PlayerChoices.map (x => x.title), help);
             }
             PlayerChooser.render ();
             if (null == RecorderChooser)
@@ -1558,7 +1558,7 @@ truncate table cimapplication.responsibility_by_day;
                         The queries to use to pick recorder elements.
                     </small>
                     `;
-                RecorderChooser = new Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (function (x) { return (x.title); }), help);
+                RecorderChooser = new Chooser ("recorders", "Recorders", "Recorder", RecorderChoices.map (x => x.title), help);
             }
             RecorderChooser.render ();
             if (null == ExtraChooser)
@@ -1569,7 +1569,7 @@ truncate table cimapplication.responsibility_by_day;
                         The queries to add data to the generated JSON objects.
                     </small>
                     `;
-                ExtraChooser = new Chooser ("extras", "Extras", "Extra", ExtraChoices.map (function (x) { return (x.title); }), help);
+                ExtraChooser = new Chooser ("extras", "Extras", "Extra", ExtraChoices.map (x => x.title), help);
             }
             ExtraChooser.render ();
 
@@ -1612,7 +1612,7 @@ truncate table cimapplication.responsibility_by_day;
                         sql: "select keyspace_name from system_schema.tables where table_name = 'simulation' and keyspace_name = 'cimapplication' allow filtering".replace ("cimapplication", TheSimulation.keyspaces.output)
                     }
                 ).then (
-                    function (resultset)
+                    (resultset) =>
                     {
                         if (resultset.length > 0)
                             return (
@@ -1632,7 +1632,7 @@ truncate table cimapplication.responsibility_by_day;
         {
             return (
                 cimfiles.fetch ("\\").then (
-                    function (response)
+                    (response) =>
                     {
                         if (response.status === "OK")
                         {
@@ -1676,7 +1676,7 @@ truncate table cimapplication.responsibility_by_day;
                         sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " where time < " + start.getTime () + " limit 1 allow filtering"
                     }
                 ).then (
-                    function (resultset)
+                    (resultset) =>
                     {
                         if (0 === resultset.length)
                             return (start);
@@ -1690,7 +1690,7 @@ truncate table cimapplication.responsibility_by_day;
                                         sql: "select min(time) as lo from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " where mrid = '" + resultset[0].mrid + "' and time < " + time.getTime () + " allow filtering"
                                     }
                                 ).then (
-                                    function (resultset)
+                                    (resultset) =>
                                     {
                                         if ((0 === resultset.length) || (null == resultset[0]["lo"]))
                                             return (time);
@@ -1714,7 +1714,7 @@ truncate table cimapplication.responsibility_by_day;
                         sql: "select mrid, time from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " where time > " + end.getTime () + " limit 1 allow filtering"
                     }
                 ).then (
-                    function (resultset)
+                    (resultset) =>
                     {
                         if (0 === resultset.length)
                             return (end);
@@ -1728,7 +1728,7 @@ truncate table cimapplication.responsibility_by_day;
                                         sql: "select max(time) as hi from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " where mrid = '" + resultset[0].mrid + "' and time > " + time.getTime () + " allow filtering"
                                     }
                                 ).then (
-                                    function (resultset)
+                                    (resultset) =>
                                     {
                                         if ((0 === resultset.length) || (null == resultset[0]["hi"]))
                                             return (time);
@@ -1756,7 +1756,7 @@ truncate table cimapplication.responsibility_by_day;
                         sql: "select time from cimapplication.measured_value".replace ("cimapplication", TheSimulation.keyspaces.input) + " limit 1"
                     }
                 ).then (
-                    function (resultset)
+                    (resultset) =>
                     {
                         if (0 === resultset.length)
                             alert ("no data found in cimapplication.measured_value table".replace ("cimapplication", TheSimulation.keyspaces.input));
@@ -1764,7 +1764,7 @@ truncate table cimapplication.responsibility_by_day;
                         {
                             const time = new Date (resultset[0].time);
                             Promise.all ([getEarliestDate (time), getLatestDate (time)]).then (
-                                function (minmax)
+                                (minmax) =>
                                 {
                                     const start = minmax[0];
                                     const end = minmax[1];
@@ -1803,11 +1803,11 @@ truncate table cimapplication.responsibility_by_day;
         {
             return (
                 new Promise (
-                    function (resolve, reject)
+                    (resolve, reject) =>
                     {
                         // as a heuristic set the replication factor to 1 if local and 2 otherwise (sandbox)
                         cimapp.pong (false).then (
-                            function (result)
+                            (result) =>
                             {
                                 TheSimulation.keyspaces.replication = ("local[*]" === result.spark_instance.spark_master) ? 1 : 2;
                                 resolve ();
@@ -1820,10 +1820,9 @@ truncate table cimapplication.responsibility_by_day;
 
         function get_keyspaces ()
         {
-            const self = this;
             return (
                 new Promise (
-                    function (resolve, reject)
+                    (resolve, reject) =>
                     {
                         cimquery.queryPromise (
                             {
@@ -1831,9 +1830,9 @@ truncate table cimapplication.responsibility_by_day;
                                 sql: "select * from system_schema.keyspaces"
                             }
                         ).then (
-                            function (result)
+                            (result) =>
                             {
-                                self.setKeySpaces (result.map (x => x.keyspace_name).filter (
+                                this.setKeySpaces (result.map (x => x.keyspace_name).filter (
                                         x =>
                                         {
                                             switch (x)
@@ -1865,8 +1864,7 @@ truncate table cimapplication.responsibility_by_day;
          */
         function initialize ()
         {
-            const self = this;
-            setReplication ().then (get_keyspaces.bind (self)).then (render.bind (self));
+            setReplication ().then (get_keyspaces.bind (this)).then (render.bind (this));
         }
 
         return (
