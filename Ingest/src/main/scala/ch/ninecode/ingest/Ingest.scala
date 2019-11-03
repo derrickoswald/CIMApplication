@@ -5,10 +5,8 @@ import java.io.FileOutputStream
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.TimeZone
 import java.util.regex.Pattern
 import java.util.zip.ZipInputStream
@@ -69,7 +67,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     val ZuluTimestampFormat: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSS")
     ZuluTimestampFormat.setCalendar (ZuluTimeCalendar)
 
-    case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
+    lazy val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
 
     def map_csv_options: mutable.HashMap[String, String] =
     {
@@ -93,51 +91,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         mapping_options.put ("inferSchema", "true")
 
         mapping_options
-    }
-
-    def to_reading (s: (String, Row)): (String, Reading) =
-    {
-        val time = s._2.getTimestamp (0)
-        (s._1 + time.toString, Reading (s._1, time, s._2.getInt (6) * 60, (for (i <- 0 until 96) yield
-            {
-                if (s._2.isNullAt (7 + (2 * i))) 0.0 else s._2.getDouble (7 + (2 * i))
-            }).toArray))
-    }
-
-    def sum (a: Reading, b: Reading): Reading =
-    {
-        val values: Array[Double] = new Array[Double](math.max (a.values.length, b.values.length))
-        for (i ← a.values.indices)
-            values (i) = a.values (i)
-        for (i ← b.values.indices)
-            values (i) = values (i) + b.values (i)
-        Reading (a.mRID, a.time, a.period, values)
-    }
-
-    /**
-     * Make tuples suitable for Cassandra:
-     * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-     *
-     * @param reading the reading from the csv
-     * @return the list of time series records
-     */
-    def to_timeseries (reading: Reading): IndexedSeq[MeasuredValue] =
-    {
-        // Note: reading.period is in seconds and we need milliseconds for Cassandra
-        val period = 1000 * reading.period
-
-        // reading.time thinks it's in GMT but it's not
-        // so use the timezone to convert it to GMT
-        val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
-        val measurement_time = new Date (timestamp.getTime).getTime
-        for
-            {
-            i <- reading.values.indices
-            time = measurement_time + period * i
-            if (time >= options.mintime) && (time < options.maxtime)
-        }
-            yield
-                (reading.mRID, "energy", time, period, 1000.0 * reading.values (i), 0.0, "Wh")
     }
 
     // build a file system configuration, including core-site.xml
@@ -196,7 +149,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     def readFile (file: String): Array[Byte] =
     {
         try
-        Files.readAllBytes (Paths.get (file))
+            Files.readAllBytes (Paths.get (file))
         catch
         {
             case e: Exception =>
@@ -283,57 +236,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         ret
     }
 
-    def sub_belvis (filename: String, measurement_options: Map[String, String], join_table: Map[String, String]): Unit =
-    {
-        // we assume a very specific format since there is no header
-        val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (filename)
-        val rdd = df.rdd
-        val raw = rdd.keyBy (row => join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
-        val readings: RDD[MeasuredValue] = raw.reduceByKey (sum).values.flatMap (to_timeseries)
-        val ok: RDD[MeasuredValue] = readings.filter (_._1 != null)
-        ok.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-        df.unpersist (false)
-        rdd.unpersist (false)
-        raw.unpersist (false)
-        readings.unpersist (false)
-        ok.unpersist (false)
-    }
-
-    def process_belvis (join_table: Map[String, String])(file: String): Unit =
-    {
-        val measurement_csv_options = immutable.HashMap (
-            "header" → "false",
-            "ignoreLeadingWhiteSpace" → "false",
-            "ignoreTrailingWhiteSpace" → "false",
-            "sep" → ";",
-            "quote" → "\"",
-            "escape" → "\\",
-            "encoding" → "UTF-8",
-            "comment" → "#",
-            "nullValue" → "",
-            "nanValue" → "NaN",
-            "positiveInf" → "Inf",
-            "negativeInf" → "-Inf",
-            "dateFormat" → "yyyy-MM-dd",
-            "timestampFormat" → "dd.MM.yyyy HH:mm",
-            "mode" → "DROPMALFORMED",
-            "inferSchema" → "true"
-        )
-
-        val belvis_files: Seq[String] = getFiles (file)
-        for (filename ← belvis_files)
-        {
-            val start = System.nanoTime ()
-            sub_belvis (filename, measurement_csv_options, join_table)
-            if (!options.nocopy)
-                hdfs.delete (new Path (filename), false)
-            val end = System.nanoTime ()
-            log.info (s"process $filename: ${(end - start) / 1e9} seconds")
-        }
-    }
-
-    val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
-
     /**
      * Decode an OBIS code into actionable values.
      *
@@ -398,13 +300,91 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             ("", false, false, s"'$code' has an OBIS code format error", 0.0)
     }
 
+    def complex (measurements: Iterable[MeasuredValue]): MeasuredValue =
+    {
+        val a = measurements.head
+        (a._1, a._2, a._3, a._4, measurements.map (_._5).sum, measurements.map (_._6).sum, a._7)
+    }
+
+    /**
+     * Make tuples suitable for Cassandra:
+     * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+     *
+     * @param line one line from the BelVis file
+     */
+    def parse_belvis_line (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
+    {
+        val ONE_MINUTE_IN_MILLIS = 60000
+
+        val fields = line.split (";")
+        // eliminate blank lines at the end
+        if (fields.length > 1)
+        {
+            val datetime = MeasurementDateTimeFormat2.parse (fields (0))
+            val mrid = join_table.getOrElse (fields (1), null)
+            if (null != mrid)
+            {
+                val (typ, real, imag, units, factor) = decode_obis (fields (2), fields (3), "1.0")
+                val time = datetime.getTime
+                val period = fields (6).toInt
+                val interval = period * ONE_MINUTE_IN_MILLIS
+                val list = for
+                    {
+                    i ← 7 until fields.length by 2
+                    reading = fields (i)
+                    if "" != reading
+                    value = reading.toDouble * factor
+                    slot = (i - 7) / 2
+                    timestamp = time + (interval * slot)
+                    if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
+                }
+                    yield
+                        (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
+                // discard all zero records
+                if (list.exists (x => x._5 != 0.0 || x._6 != 0.0))
+                    list
+                else
+                    List ()
+            }
+            else
+                List ()
+        }
+        else
+            List ()
+    }
+
+    def sub_belvis (filename: String, join_table: Map[String, String]): Unit =
+    {
+        // it's almost a CSV file
+        // for daylight savings time changes, not all lines have the same number of columns
+        val lines = session.sparkContext.textFile (filename)
+        val rdd = lines.flatMap (parse_belvis_line (join_table))
+        // combine real and imaginary parts
+        val grouped = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+        grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+    }
+
+    def process_belvis (join_table: Map[String, String])(file: String): Unit =
+    {
+        val belvis_files: Seq[String] = getFiles (file)
+        for (filename ← belvis_files)
+        {
+            val start = System.nanoTime ()
+            sub_belvis (filename, join_table)
+            if (!options.nocopy)
+                hdfs.delete (new Path (filename), false)
+            val end = System.nanoTime ()
+            log.info (s"process $filename: ${(end - start) / 1e9} seconds")
+        }
+    }
+
     /**
      * Make tuples suitable for Cassandra:
      * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
      *
      * @param line one line from the LPEx file
      */
-    def to_tuples (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
+    def parse_lpex_line (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
     {
         val ONE_MINUTE_IN_MILLIS = 60000
 
@@ -422,7 +402,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 val period = fields (14).toInt
                 val interval = period * ONE_MINUTE_IN_MILLIS
                 val list = for
-                    {
+                {
                     i ← 15 until fields.length by 2
                     flags = fields (i + 1)
                     if flags == "W"
@@ -446,12 +426,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             List ()
     }
 
-    def complex (measurements: Iterable[MeasuredValue]): MeasuredValue =
-    {
-        val a = measurements.head
-        (a._1, a._2, a._3, a._4, measurements.map (_._5).sum, measurements.map (_._6).sum, a._7)
-    }
-
     def sub_lpex (filename: String, join_table: Map[String, String]): Unit =
     {
         // it's almost a CSV file but they screwed up and gave it a version line
@@ -459,7 +433,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val lines = session.sparkContext.textFile (filename)
         if (lines.first.startsWith ("LPEX V3.0"))
         {
-            val rdd = lines.flatMap (to_tuples (join_table))
+            val rdd = lines.flatMap (parse_lpex_line (join_table))
             // combine real and imaginary parts
             val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
@@ -482,13 +456,14 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def isNumber (s: String): Boolean = s forall Character.isDigit
 
-    def asDouble (s: String): Double = try
-    {
-        s.toDouble
-    } catch
-    {
-        case _: Throwable => 0.0
-    }
+    def asDouble (s: String): Double =
+        try
+        {
+            s.toDouble
+        } catch
+        {
+            case _: Throwable => 0.0
+        }
 
     /**
      * Make tuples suitable for Cassandra:
