@@ -15,7 +15,6 @@ import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.stream.JsonGenerator
 
-import scala.collection.immutable
 import scala.collection.JavaConverters._
 
 import org.apache.log4j.LogManager
@@ -107,6 +106,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     iso_date_format.setCalendar (calendar)
+
+    val cassandra_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSSZ")
+    cassandra_date_format.setCalendar (calendar)
 
     def read (rdf: String, reader_options: Map[String, String] = Map (), storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
     {
@@ -368,202 +370,74 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def query_measured_value (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar, buffer: Int) (players: (String, Iterable[(String, String)])): RDD[SimulationPlayerData] =
+    def timestamp (time: Long, buffer: Int): String =
     {
-        val date_format: SimpleDateFormat =
-        {
-            val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSSZ")
-            format.setTimeZone (TimeZone.getTimeZone ("UTC"))
-            format
-        }
-        def timestamp (calendar: Calendar, buffer: Int): String =
-        {
-            val disposable = calendar.clone.asInstanceOf[Calendar]
-            disposable.setTimeInMillis (disposable.getTimeInMillis + buffer)
-            date_format.format (disposable.getTime)
-        }
-
-        val transformer = players._1
-        val mrids_transforms: Iterable[(String, String)] = players._2
-        val transform_map: Map[String, String] = mrids_transforms.toMap
-        val inclause = mrids_transforms.map (_._1).mkString ("mrid in ('", "','", "')")
-        val where = s"$inclause and type = '${`type`}' and time >= '${timestamp (start_time, -buffer)}' and time <= '${timestamp (finish_time, buffer)}'"
-        if (options.three_phase && !options.fake_three_phase)
-            spark
-                .read
-                .format ("org.apache.spark.sql.cassandra")
-                .options (Map ("table" -> "measured_value", "keyspace" -> keyspace))
-                .load
-                .filter (where)
-                .select ("mrid", "time", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "period")
-                .rdd
-                .map (
-                    row ⇒
-                    {
-                        val mrid = row.getString (0)
-                        val period = row.getInt (8)
-                        val t = row.getTimestamp (1).getTime
-                        // ToDo: should also check units
-                        val (factor, time) = `type` match
-                        {
-                            case "energy" ⇒
-                                ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
-                            case _ ⇒
-                                (1.0, t)
-                        }
-                        val program = MeasurementTransform.compile (transform_map(mrid))
-                        val real_a = row.getDouble (2) * factor
-                        val imag_a = row.getDouble (3) * factor
-                        val (re_a, im_a) = program.transform (real_a, imag_a)
-                        val real_b = row.getDouble (4) * factor
-                        val imag_b = row.getDouble (5) * factor
-                        val (re_b, im_b) = program.transform (real_b, imag_b)
-                        val real_c = row.getDouble (6) * factor
-                        val imag_c = row.getDouble (7) * factor
-                        val (re_c, im_c) = program.transform (real_c, imag_c)
-                        // ToDo: should we keep the period so we can tell if a value is missing?
-                        SimulationPlayerData (transformer, mrid, `type`, time, Array (re_a, im_a, re_b, im_b, re_c, im_c))
-                    }
-                )
-        else
-            spark
-                .read
-                .format ("org.apache.spark.sql.cassandra")
-                .options (Map ("table" -> "measured_value", "keyspace" -> keyspace))
-                .load
-                .filter (where)
-                .select ("mrid", "time", "real_a", "imag_a", "period")
-                .rdd
-                .map (
-                    row ⇒
-                    {
-                        val mrid = row.getString (0)
-                        val period = row.getInt (4)
-                        val t = row.getTimestamp (1).getTime
-                        // ToDo: should also check units
-                        val (factor, time) = `type` match
-                        {
-                            case "energy" ⇒
-                                ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
-                            case _ ⇒
-                                (1.0, t)
-                        }
-                        val real = row.getDouble (2) * factor
-                        val imag = row.getDouble (3) * factor
-                        val program = MeasurementTransform.compile (transform_map(mrid))
-                        val (re, im) = program.transform (real, imag)
-                        // ToDo: should we keep the period so we can tell if a value is missing?
-                        SimulationPlayerData (transformer, mrid, `type`, time, Array (re, im))
-                    }
-                )
+        val disposable = calendar.clone.asInstanceOf[Calendar]
+        disposable.setTimeInMillis (time + buffer)
+        cassandra_date_format.format (disposable.getTime)
     }
 
-    def query_synthesized_value (keyspace: String, `type`: String, start_time: Calendar, finish_time: Calendar, buffer: Int) (players: (String, Iterable[(String, String, String)])): RDD[SimulationPlayerData] =
+    def query_value (keyspace: String, buffer: Int)(set: (Trafo, Iterable[SimulationPlayer])): Iterable[(House, Iterable[SimulationPlayerData])] =
     {
-        val date_format: SimpleDateFormat =
-        {
-            val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSSZ")
-            format.setTimeZone (TimeZone.getTimeZone ("UTC"))
-            format
-        }
-        def timestamp (calendar: Calendar, buffer: Int): String =
-        {
-            val disposable = calendar.clone.asInstanceOf[Calendar]
-            disposable.setTimeInMillis (disposable.getTimeInMillis + buffer)
-            date_format.format (disposable.getTime)
-        }
-
-        val transformer = players._1
-        val mrids_syntheses_transforms: Iterable[(String, String, String)] = players._2
-        val transform_map: Map[String, String] = mrids_syntheses_transforms.map (x ⇒ (x._1, x._3)).toMap
-        // group by synthesis
-        val queries: Map[String, Iterable[String]] = mrids_syntheses_transforms.map (x ⇒ (x._2, x._1)).groupBy (_._1).mapValues (x ⇒ x.map (y ⇒ y._2))
-        val where = s" and type = '${`type`}' and time >= '${timestamp (start_time, -buffer)}' and time <= '${timestamp (finish_time, buffer)}'"
-        val results: immutable.Iterable[RDD[SimulationPlayerData]] = queries.map (
-            (pair: (String, Iterable[String])) ⇒
+        val (transformer, players) = set
+        val phases = if (options.three_phase && !options.fake_three_phase) 3 else 1
+        val data: Iterable[(House, Iterable[SimulationPlayerData])] = players.map (
+            player =>
             {
-                val (synthesis, mrids) = pair
-                val rows =
-                    if (options.three_phase && !options.fake_three_phase)
-                        spark
-                            .read
-                            .format ("org.apache.spark.sql.cassandra")
-                            .options (Map ("table" -> "synthesized_value", "keyspace" -> keyspace))
-                            .load
-                            .filter ("synthesis = '%s'".format (synthesis) + where)
-                            .select ("time", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "period")
-                            .rdd
-                            .flatMap (
-                                row ⇒
+                val (table, where) = if (null == player.synthesis)
+                    (
+                        "measured_value",
+                        s"mrid = '${player.mrid}' and type = '${player.`type`}' and time >= '${timestamp (player.start, -buffer)}' and time <= '${timestamp (player.end, buffer)}'"
+                    )
+                else
+                    (
+                        "synthesized_value",
+                        // ToDo: avoid this hard-coded period
+                        s"synthesis = '${player.synthesis}' and type = '${player.`type`}' period = 900000 and time >= '${timestamp (player.start, -buffer)}' and time <= '${timestamp (player.end, buffer)}'"
+                    )
+                val columns = if (phases == 3)
+                    Seq ("time", "period", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
+                else
+                    Seq ("time", "period", "real_a", "imag_a", "real_b")
+                val raw =
+                    spark
+                    .read
+                    .format ("org.apache.spark.sql.cassandra")
+                    .options (Map ("table" -> table, "keyspace" -> keyspace))
+                    .load
+                    .filter (where)
+                    .selectExpr (columns: _*)
+                    .rdd
+                    .map (
+                        row ⇒
+                            {
+                                val t = row.getTimestamp (0).getTime
+                                val period = row.getInt (1)
+                                // ToDo: should also check units
+                                val (factor, time) = player.`type` match
                                 {
-                                    val period = row.getInt (7)
-                                    val t = row.getTimestamp (0).getTime
-                                    // ToDo: should also check units
-                                    val (factor, time) = `type` match
-                                    {
-                                        case "energy" ⇒
-                                            ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
-                                        case _ ⇒
-                                            (1.0, t)
-                                    }
-                                    val real_a = row.getDouble (1) * factor
-                                    val imag_a = row.getDouble (2) * factor
-                                    val real_b = row.getDouble (3) * factor
-                                    val imag_b = row.getDouble (4) * factor
-                                    val real_c = row.getDouble (5) * factor
-                                    val imag_c = row.getDouble (6) * factor
-                                    mrids.map (
-                                        mrid ⇒
-                                        {
-                                            val program = MeasurementTransform.compile (transform_map(mrid))
-                                            val (re_a, im_a) = program.transform (real_a, imag_a)
-                                            val (re_b, im_b) = program.transform (real_b, imag_b)
-                                            val (re_c, im_c) = program.transform (real_c, imag_c)
-                                            // ToDo: should we keep the period so we can tell if a value is missing?
-                                            SimulationPlayerData (transformer, mrid, `type`, time, Array (re_a, im_a, re_b, im_b, re_c, im_c))
-                                        }
-                                    )
+                                    case "energy" ⇒
+                                        ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
+                                    case _ ⇒
+                                        (1.0, t)
                                 }
-                            )
-                    else
-                        spark
-                            .read
-                            .format ("org.apache.spark.sql.cassandra")
-                            .options (Map ("table" -> "synthesized_value", "keyspace" -> keyspace))
-                            .load
-                            .filter ("synthesis = '%s'".format (synthesis) + where)
-                            .select ("time", "real_a", "imag_a", "period")
-                            .rdd
-                            .flatMap (
-                                row ⇒
-                                {
-                                    val period = row.getInt (3)
-                                    val t = row.getTimestamp (0).getTime
-                                    // ToDo: should also check units
-                                    val (factor, time) = `type` match
-                                    {
-                                        case "energy" ⇒
-                                            ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
-                                        case _ ⇒
-                                            (1.0, t)
-                                    }
-                                    val real = row.getDouble (1) * factor
-                                    val imag = row.getDouble (2) * factor
-                                    mrids.map (
-                                        mrid ⇒
-                                        {
-                                            val program = MeasurementTransform.compile (transform_map(mrid))
-                                            val (re, im) = program.transform (real, imag)
-                                            // ToDo: should we keep the period so we can tell if a value is missing?
-                                            SimulationPlayerData (transformer, mrid, `type`, time, Array (re, im))
-                                        }
-                                    )
-                                }
-                            )
-                rows
+                                val program = MeasurementTransform.compile (player.transform)
+                                val values =
+                                    (for (i <- 1 to phases;
+                                          re = i * 2;
+                                          im = re + 1;
+                                          (real, imag) = program.transform (row.getDouble (re) * factor, row.getDouble (im) * factor))
+                                    yield
+                                        List (real, imag)).flatten.toArray
+                                SimulationPlayerData (transformer, player.mrid, player.`type`, time, values)
+                            }
+                    )
+                    .toLocalIterator
+                    .toIterable
+                (player.mrid, raw)
             }
         )
-        session.sparkContext.union (results.toArray)
+        data
     }
 
     def simulate (batch: Seq[SimulationJob]): Seq[String] =
@@ -674,7 +548,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     if (0 != numsimulations)
                     {
                         val direction = SimulationDirection (options.workdir, options.verbose)
-                        val simulations = _simulations.map (x ⇒ x.copy (directions = direction.execute (x)))
+                        val simulations: RDD[SimulationTrafoKreis] = _simulations.map (x ⇒ x.copy (directions = direction.execute (x)))
                             .persist (options.storage_level).setName (s"${job.id}_simulations")
                         _simulations.unpersist (false)
 
@@ -682,37 +556,23 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         val geo = SimulationGeometry (session, job.output_keyspace)
                         geo.storeGeometry (job.id, simulations)
 
-                        // determine which players for which transformers
-                        val trafo_house1 = simulations.flatMap (x ⇒ x.players.filter (_.synthesis == null).map (y ⇒ (x.transformer.transformer_name, (y.mrid, y.transform)))).groupByKey.collect
-                        val measured_rdds: Array[RDD[SimulationPlayerData]] = if (0 != trafo_house1.length)
-                        {
-                            // query Cassandra to make one RDD for each trafo
-                            log.info ("""querying measured values""")
-                            trafo_house1.map (query_measured_value (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time, job.buffer))
-                        }
-                        else
-                            Array ()
-                        val trafo_house2 = simulations.flatMap (x ⇒ x.players.filter (_.synthesis != null).map (y ⇒ (x.transformer.transformer_name, (y.mrid, y.synthesis, y.transform)))).groupByKey.collect
-                        val synthesized_rdds: Array[RDD[SimulationPlayerData]] = if (0 != trafo_house2.length)
-                        {
-                            // query Cassandra to make one RDD for each trafo
-                            log.info ("""querying synthesized values""")
-                            trafo_house2.map (query_synthesized_value (job.input_keyspace, "energy", simulations.first.start_time, simulations.first.finish_time, job.buffer))
-                        }
-                        else
-                            Array ()
-
-                        // build one giant RDD
-                        val timeseries = session.sparkContext.union (measured_rdds ++ synthesized_rdds)
-
-                        // join to the simulation
-                        val packages = simulations.keyBy (_.transformer.transformer_name)
-                            .leftOuterJoin (timeseries.groupBy (_.transformer)).values
-                            .mapValues (_.getOrElse (List()).groupBy (_.mrid))
+                        log.info ("""querying player data""")
+                        val query = query_value (job.input_keyspace, job.buffer)_
+                        val player_data = simulations
+                            .map (simulation => (simulation.transformer.transformer_name, simulation.players))
+                            .collect
+                            .map (x => (x._1, query (x)))
+                        val player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] = spark.sparkContext.parallelize (player_data).persist (options.storage_level)
 
                         log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
                         val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.three_phase, options.fake_three_phase, options.keep, options.verbose)
-                        val raw_results = packages.map (runner.execute)
+                        val raw_results =
+                            simulations
+                            .keyBy (_.transformer.transformer_name)
+                            .join (player_rdd)
+                            .values
+                            .map (x => runner.execute (x._1, x._2.toMap))
+                            .persist (options.storage_level)
                         raw_results.flatMap (_._1).collect.foreach (log.error)
                         val results = raw_results.flatMap (_._2).persist (options.storage_level).setName (s"${job.id}_results")
 
@@ -721,6 +581,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl"), consistencyLevel = ConsistencyLevel.ANY))
                         log.info ("""saved GridLAB-D simulation results""")
                         results.unpersist (false)
+                        raw_results.unpersist (false)
+                        player_rdd.unpersist (false)
                     }
 
                     // clean up

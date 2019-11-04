@@ -15,8 +15,6 @@ import scala.io.Source
 import scala.sys.process.Process
 import scala.sys.process.ProcessLogger
 
-import com.datastax.driver.core.ResultSetFuture
-
 import org.apache.log4j.LogManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -355,28 +353,26 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
         )
     }
 
-    def execute (args: (SimulationTrafoKreis, Map[String, Iterable[SimulationPlayerData]])): (List[String], Iterable[SimulationResult]) =
+    def execute (trafo: SimulationTrafoKreis, data: Map[String, Iterable[SimulationPlayerData]]): (List[String], Iterable[SimulationResult]) =
     {
-        val trafo = args._1
-        val data = args._2
         log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
 
         write_glm (trafo, workdir)
 
         // match the players to the data
         val players: Iterable[(SimulationPlayer, Iterable[SimulationPlayerData])] =
-        trafo.players.map (
-            player ⇒
-            {
-                data.find (x ⇒ x._1 == player.mrid) match
+            trafo.players.map (
+                player ⇒
                 {
-                    case Some (records) ⇒
-                        (player, records._2)
-                    case None ⇒
-                        (player, List())
+                    data.find (x ⇒ x._1 == player.mrid) match
+                    {
+                        case Some (records) ⇒
+                            (player, records._2)
+                        case None ⇒
+                            (player, List())
+                    }
                 }
-            }
-        )
+            )
 
         // create the player files
         players.foreach (create_player_csv (workdir + trafo.directory))
