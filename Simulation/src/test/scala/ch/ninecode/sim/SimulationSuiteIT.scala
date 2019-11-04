@@ -1249,7 +1249,11 @@ object SimulationSuiteIT
             in.close ()
             p
         }
-        properties.getProperty ("nativeTransportPort", "9042")
+        val p = properties.getProperty ("nativeTransportPort", "9042")
+        if ("" == p)
+            "9042"
+        else
+            p
     }
 
     def populate_measured_data (): Unit =
