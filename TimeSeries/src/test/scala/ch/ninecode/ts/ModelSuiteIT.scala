@@ -24,40 +24,50 @@ class ModelSuiteIT
         properties.getProperty ("nativeTransportPort", "9042")
     }
 
+    def time[R](template: String)(block: => R): R =
+    {
+        val t0 = System.nanoTime ()
+        val ret = block
+        val t1 = System.nanoTime ()
+        println (template.format ((t1 - t0) / 1e9))
+        ret
+    }
+
     @Test def makeModel ()
     {
         val KEYSPACE = "test"
-
-        val begin = System.nanoTime ()
-        main (Array (
-            "Model", "--unittest",
-            "--master", "local[*]",
-            "--logging", "INFO",
-            "--host", "localhost",
-            "--port", cassandra_port,
-            "--keyspace", KEYSPACE,
-            "--tree_depth", "8", // it's just quicker this way
-            "--model_file", "target/models/myDecisionTreeRegressorModel"))
-
-        val modeled = System.nanoTime ()
-        println ("modelling time: " + (modeled - begin) / 1e9 + " seconds")
-
         val kWh = 205.49709 * 96 * 365.25 / 1000.0
-        main (Array (
-            "Synthesize", "--unittest",
-            "--master", "local[*]",
-            "--logging", "INFO",
-            "--host", "localhost",
-            "--port", cassandra_port,
-            "--keyspace", KEYSPACE,
-            "--model_file", "target/models/myDecisionTreeRegressorModel",
-            "--start", "2017-07-19T00:00:00.000+0000",
-            "--end", "2018-03-31T23:45:00.000+0000",
-            "--yearly_kWh", kWh.toString))
 
-        val finish = System.nanoTime ()
-        println ("synthesis time: " + (finish - modeled) / 1e9 + " seconds")
-        println ("total execution: " + (finish - begin) / 1e9 + " seconds")
+        time ("total execution: %s seconds")
+        {
+            time ("modelling time: %s seconds")
+            {
+                main (Array (
+                    "Model", "--unittest",
+                    "--master", "local[*]",
+                    "--logging", "INFO",
+                    "--host", "localhost",
+                    "--port", cassandra_port,
+                    "--keyspace", KEYSPACE,
+                    "--tree_depth", "8", // it's just quicker this way
+                    "--model_file", "target/models/myDecisionTreeRegressorModel"))
+            }
+
+            time ("synthesis time: %s seconds")
+            {
+                main (Array (
+                    "Synthesize", "--unittest",
+                    "--master", "local[*]",
+                    "--logging", "INFO",
+                    "--host", "localhost",
+                    "--port", cassandra_port,
+                    "--keyspace", KEYSPACE,
+                    "--model_file", "target/models/myDecisionTreeRegressorModel",
+                    "--start", "2017-07-19T00:00:00.000+0000",
+                    "--end", "2018-03-31T23:45:00.000+0000",
+                    "--yearly_kWh", kWh.toString))
+            }
+        }
     }
 }
 

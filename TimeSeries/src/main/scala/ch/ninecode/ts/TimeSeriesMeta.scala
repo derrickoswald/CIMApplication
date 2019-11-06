@@ -253,7 +253,7 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
     }
 
     def mrid (col: Array[String]): String = if ("" != col(3)) col(3) else col(12)
-
+    def meter (col: Array[String]): String = col(7)
 
     def run ()
     {

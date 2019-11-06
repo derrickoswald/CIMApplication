@@ -19,25 +19,18 @@ class MetaTest
 {
     import ch.ninecode.ts.MetaTest._
 
+    def time[R](template: String)(block: => R): R =
+    {
+        val t0 = System.nanoTime ()
+        val ret = block
+        val t1 = System.nanoTime ()
+        println (template.format ((t1 - t0) / 1e9))
+        ret
+    }
+
     @Test def makeModel ()
     {
         val KEYSPACE = "subsample"
-        val begin = System.nanoTime ()
-        val model = TimeSeriesModel (session, TimeSeriesOptions (keyspace = KEYSPACE, log_level = LogLevels.INFO, tree_depth=Array(8), model_file = "hdfs://sandbox:8020/models/myMetaModel16"))
-
-        model.makeMetaDecisionTreeRegressorModel ()
-        val modeled = System.nanoTime ()
-        println ("modelling time: " + (modeled - begin) / 1e9 + " seconds")
-
-//        val kWh = 134.4752 * 96 * 365.25 / 1000.0
-//        val format = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-//        format.setTimeZone (TimeZone.getTimeZone ("UTC"))
-//        val start = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
-//        start.setTimeInMillis (format.parse ("2017-10-22T00:00:00.000+0000").getTime)
-//        val end = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
-//        end.setTimeInMillis (format.parse ("2017-10-25T00:00:00.000+0000").getTime)
-//        model.generateMetaTimeSeries ("HAS2104", start, end, 900000, kWh, Map[String, Int] ("House" -> 1))
-
         val kWh = 894.40999 * 96 * 365.25 / 1000.0
         val format = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
         format.setTimeZone (TimeZone.getTimeZone ("UTC"))
@@ -45,10 +38,19 @@ class MetaTest
         start.setTimeInMillis (format.parse ("2017-10-22T00:00:00.000+0000").getTime)
         val end = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
         end.setTimeInMillis (format.parse ("2017-10-25T00:00:00.000+0000").getTime)
-        model.generateMetaTimeSeries ("HAS7165", start, end, 900000, kWh, Map[String, Int] ("Apartment" -> 12, "General" -> 1))
-        val finish = System.nanoTime ()
-        println ("synthesis time: " + (finish - modeled) / 1e9 + " seconds")
-        println ("total execution: " + (finish - begin) / 1e9 + " seconds")
+
+        time ("total execution: %s seconds")
+        {
+            val model = TimeSeriesModel (session, TimeSeriesOptions (keyspace = KEYSPACE, log_level = LogLevels.INFO, tree_depth=Array(8), model_file = "hdfs://sandbox:8020/models/myMetaModel16"))
+            time ("modelling time: %s seconds")
+            {
+                model.makeMetaDecisionTreeRegressorModel ()
+            }
+            time ("synthesis time: %s seconds")
+            {
+                model.generateMetaTimeSeries ("HAS7165", start, end, 900000, kWh, Map[String, Int] ("Apartment" -> 12, "General" -> 1))
+            }
+        }
     }
 }
 
