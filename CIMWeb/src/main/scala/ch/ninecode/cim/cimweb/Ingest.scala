@@ -50,7 +50,7 @@ class Ingest extends RESTful
 
     def parseOptions (json: JsonObject): IngestOptions =
     {
-        new IngestOptions (
+        IngestOptions (
             verbose = json.getBoolean ("verbose", false),
             host = json.getString ("host", "localhost"),
             port = json.getInt ("port", 9042),

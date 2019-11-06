@@ -13,8 +13,6 @@ import java.util.zip.ZipInputStream
 
 import scala.collection._
 
-import com.datastax.spark.connector.SomeColumns
-import com.datastax.spark.connector._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
@@ -25,6 +23,9 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.DataType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import com.datastax.spark.connector.SomeColumns
+import com.datastax.spark.connector._
 
 /**
  * Import measured data into Cassandra.
@@ -69,28 +70,26 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     lazy val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
 
-    def map_csv_options: mutable.HashMap[String, String] =
+    def map_csv_options: Map[String, String] =
     {
-        val mapping_options = new mutable.HashMap[String, String]()
-
-        mapping_options.put ("header", "true")
-        mapping_options.put ("ignoreLeadingWhiteSpace", "false")
-        mapping_options.put ("ignoreTrailingWhiteSpace", "false")
-        mapping_options.put ("sep", ";")
-        mapping_options.put ("quote", "\"")
-        mapping_options.put ("escape", "\\")
-        mapping_options.put ("encoding", "UTF-8")
-        mapping_options.put ("comment", "#")
-        mapping_options.put ("nullValue", "")
-        mapping_options.put ("nanValue", "NaN")
-        mapping_options.put ("positiveInf", "Inf")
-        mapping_options.put ("negativeInf", "-Inf")
-        mapping_options.put ("dateFormat", "yyyy-MM-dd")
-        mapping_options.put ("timestampFormat", "dd.MM.yyyy HH:mm")
-        mapping_options.put ("mode", "PERMISSIVE")
-        mapping_options.put ("inferSchema", "true")
-
-        mapping_options
+        Map[String, String](
+            "header"                   -> "true",
+            "ignoreLeadingWhiteSpace"  -> "false",
+            "ignoreTrailingWhiteSpace" -> "false",
+            "sep"                      -> ";",
+            "quote"                    -> "\"",
+            "escape"                   -> "\\",
+            "encoding"                 -> "UTF-8",
+            "comment"                  -> "#",
+            "nullValue"                -> "",
+            "nanValue"                 -> "NaN",
+            "positiveInf"              -> "Inf",
+            "negativeInf"              -> "-Inf",
+            "dateFormat"               -> "yyyy-MM-dd",
+            "timestampFormat"          -> "dd.MM.yyyy HH:mm",
+            "mode"                     -> "PERMISSIVE",
+            "inferSchema"              -> "true"
+        )
     }
 
     // build a file system configuration, including core-site.xml
@@ -139,98 +138,96 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             val start = System.nanoTime ()
             val name = s"/${base_name (file)}"
-            val files = putFile (session, name, readFile (file), file.toLowerCase.endsWith (".zip"))
+            val files = putFile (session, name, file, file.toLowerCase.endsWith (".zip"))
             val end = System.nanoTime ()
             log.info (s"copy $file: ${(end - start) / 1e9} seconds")
             files
         }
     }
 
-    def readFile (file: String): Array[Byte] =
-    {
-        try
-            Files.readAllBytes (Paths.get (file))
-        catch
-        {
-            case e: Exception =>
-                log.error (s"""ingest failed for file "$file"""", e)
-                Array ()
-        }
-    }
-
-    def putFile (spark: SparkSession, path: String, data: Array[Byte], unzip: Boolean = false): Seq[String] =
+    /**
+     * Put a file on HDFS
+     * @param spark the Spark session
+     * @param dst the path to save the file
+     * @param src the file to save
+     * @param unzip flag indicating the stream is a ZIP file that needs to be expanded
+     * @return
+     */
+    def putFile (spark: SparkSession, dst: String, src: String, unzip: Boolean = false): Seq[String] =
     {
         var ret = Seq [String]()
         val fs = hdfs
-        val file = new Path (fs.getUri.toString, path)
-        // write the file
+        val file = new Path (fs.getUri.toString, dst)
         try
         {
-            val parent = if (path.endsWith ("/")) file else file.getParent
+            val parent = if (dst.endsWith ("/")) file else file.getParent
             fs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
             if (!parent.isRoot)
                 fs.setPermission (parent, new FsPermission ("ugoa-rwx"))
 
-            if (0 != data.length && !path.endsWith ("/"))
+            if (unzip)
             {
-                if (unzip)
+                try
+                Files.newInputStream(Paths.get (src))
+                catch
                 {
-                    val zip = new ZipInputStream (new ByteArrayInputStream (data))
-                    val buffer = new Array[Byte](1024)
-                    var more = true
-                    do
+                    case e: Exception =>
+                        log.error (s"""ingest failed for file "$file"""", e)
+                        new ByteArrayInputStream (Array[Byte]())
+                }
+                val in = Files.newInputStream (Paths.get (src))
+                val zip = new ZipInputStream (in)
+                val buffer = new Array[Byte](1024)
+                var more = true
+                do
+                {
+                    val entry = zip.getNextEntry
+                    if (null != entry)
                     {
-                        val entry = zip.getNextEntry
-                        if (null != entry)
+                        if (entry.isDirectory)
                         {
-                            if (entry.isDirectory)
-                            {
-                                val path = new Path (parent, entry.getName)
-                                fs.mkdirs (path, new FsPermission ("ugoa-rwx"))
-                                fs.setPermission (path, new FsPermission ("ugoa-rwx"))
-                            }
-                            else
-                            {
-                                val tmp = File.createTempFile ("ingest", null, null)
-                                val stream = new FileOutputStream (tmp)
-                                var eof = false
-                                do
-                                {
-                                    val len = zip.read (buffer, 0, buffer.length)
-                                    if (-1 == len)
-                                        eof = true
-                                    else
-                                        stream.write (buffer, 0, len)
-                                }
-                                while (!eof)
-                                stream.close ()
-                                val f = new Path (parent, entry.getName)
-                                fs.copyFromLocalFile (true, true, new Path (tmp.getAbsolutePath), f)
-                                ret = ret :+ f.toString
-                            }
-                            zip.closeEntry ()
+                            val path = new Path (parent, entry.getName)
+                            fs.mkdirs (path, new FsPermission ("ugoa-rwx"))
+                            fs.setPermission (path, new FsPermission ("ugoa-rwx"))
                         }
                         else
-                            more = false
+                        {
+                            val tmp = File.createTempFile ("ingest", null, null)
+                            val stream = new FileOutputStream (tmp)
+                            var eof = false
+                            do
+                            {
+                                val len = zip.read (buffer, 0, buffer.length)
+                                if (-1 == len)
+                                    eof = true
+                                else
+                                    stream.write (buffer, 0, len)
+                            }
+                            while (!eof)
+                            stream.close ()
+                            val f = new Path (parent, entry.getName)
+                            fs.copyFromLocalFile (true, true, new Path (tmp.getAbsolutePath), f)
+                            ret = ret :+ f.toString
+                        }
+                        zip.closeEntry ()
                     }
-                    while (more)
-                    zip.close ()
+                    else
+                        more = false
                 }
-                else
-                {
-                    val out = fs.create (file)
-                    out.write (data)
-                    out.close ()
-                    ret = ret :+ file.toString
-                }
+                while (more)
+                zip.close ()
             }
             else
-                log.error (f"""putFile could not store ${data.length}%d bytes for path "$path"""")
+            {
+                val f = new Path (parent, dst)
+                fs.copyFromLocalFile (false, true, new Path (src), f)
+                ret = ret :+ file.toString
+            }
         }
         catch
         {
             case e: Exception =>
-                log.error (s"""putFile failed for path "$path" with unzip=$unzip""", e)
+                log.error (s"""putFile failed for "$src" to "$dst" with unzip=$unzip""", e)
         }
 
         ret
@@ -329,7 +326,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 val period = fields (6).toInt
                 val interval = period * ONE_MINUTE_IN_MILLIS
                 val list = for
-                    {
+                {
                     i ← 7 until fields.length by 2
                     reading = fields (i)
                     if "" != reading
@@ -563,7 +560,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 if (options.nocopy)
                     Seq (options.mapping)
                 else
-                    putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
+                    putFile (session, "/" + base_name (options.mapping), options.mapping, options.mapping.toLowerCase.endsWith (".zip"))
             if (mapping_files.nonEmpty)
             {
                 val filename = mapping_files.head
