@@ -2,29 +2,13 @@ package ch.ninecode.on
 
 import java.util.Calendar
 
-import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.SwingNode
-import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
-import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.Breaker
-import ch.ninecode.model.Conductor
-import ch.ninecode.model.Cut
-import ch.ninecode.model.Disconnector
+
 import ch.ninecode.model.Element
-import ch.ninecode.model.Fuse
-import ch.ninecode.model.GroundDisconnector
-import ch.ninecode.model.Jumper
-import ch.ninecode.model.LoadBreakSwitch
-import ch.ninecode.model.MktSwitch
-import ch.ninecode.model.ProtectedSwitch
-import ch.ninecode.model.Recloser
-import ch.ninecode.model.Sectionaliser
-import ch.ninecode.model.Switch
 
 case class USTKreis
 (
