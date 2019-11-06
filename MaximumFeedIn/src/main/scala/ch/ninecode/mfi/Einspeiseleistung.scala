@@ -139,7 +139,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             x ⇒
             {
                 for
-                    {
+                {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     feeder = lookup.getOrElse (x.element, null)
@@ -184,7 +184,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             x ⇒
             {
                 for
-                    {
+                {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     if !options.ignore_other || lookup.getOrElse (x.element, List ()).contains (e.feeder)
@@ -225,7 +225,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         def assign (experiments: Iterable[Experiment])(r: ThreePhaseComplexDataElement): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
         {
             for
-                {
+            {
                 e ← experiments
                 if (e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis)
             }
@@ -390,7 +390,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                     val cdata_iter = t.edges.filter (_.ratedCurrent < Double.PositiveInfinity).groupBy (_.key).values
                         .map (edges ⇒ (edges.map (_.element.id).toArray.sortWith (_ < _)(0), edges.map (_.ratedCurrent).sum))
                     (t.trafo, (transformers, cdata_iter, feeders))
-                }).persist (storage_level)
+                }
+            ).persist (storage_level)
 
             ret = solve_and_analyse (gridlabd, reduced_trafos, experiments).persist (storage_level)
             log.info ("results: " + ret.count)
@@ -419,7 +420,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                         }
                     }
                     experiment.copy (from = from, to = to, step = riser)
-                }).persist (storage_level)
+                }
+            ).persist (storage_level)
 
             val experiment_adjusted = System.nanoTime ()
             log.info ("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
