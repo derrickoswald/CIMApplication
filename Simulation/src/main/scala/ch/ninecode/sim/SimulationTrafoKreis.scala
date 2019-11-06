@@ -22,6 +22,7 @@ import ch.ninecode.model._
  * @param simulation  the primary key for the simulation as stored in the simulation table.
  * @param island      the name of the TopologicalIsland for the low voltage side of the transformer
  * @param transformer the transformer (or set of ganged transformers) servicing the area
+ * @param swing       Either "hi" or "lo" indicating the primary or secondary winding, respectively, for the swing (slack) node.
  * @param raw_nodes   topological nodes for the simulation
  * @param raw_edges   topological edges for the simulation
  * @param start_time  the simulation starting time
@@ -36,6 +37,7 @@ case class SimulationTrafoKreis
     simulation: String,
     island: String,
     transformer: TransformerSet,
+    swing: String,
     var raw_nodes: Iterable[GLMNode],
     var raw_edges: Iterable[GLMEdge],
     start_time: Calendar,
@@ -47,7 +49,6 @@ case class SimulationTrafoKreis
     var hacked: Boolean = false)
 {
     val name: String = transformer.transformer_name
-    val swing_nodes: Array[SwingNode] = Array (SwingNode (transformer.node0, transformer.v0, transformer.transformer_name))
 
     // MASSIVE HACK:
     // due to a bug, BusbarSection power recorders do not record the correct value, just one of the edge powers when using measured_power
@@ -56,6 +57,11 @@ case class SimulationTrafoKreis
     // between the (only?) incoming edge and the node
 
     var transformer_edge = TransformerEdge (transformer.node0, transformer.node1, transformer)
+
+    def swing_nodes: Array[GLMNode] = if ("lo" == swing)
+        nodes.filter (_.id == transformer.node1).toArray
+    else
+        nodes.filter (_.id == transformer.node0).toArray
 
     def attached (node: String): Iterable[GLMEdge] = (raw_edges ++ Seq (transformer_edge)).filter (edge ⇒ (edge.cn1 == node) || (edge.cn2 == node))
 
@@ -286,7 +292,7 @@ case class SimulationTrafoKreis
             transformer_edge = _t
             hacked = true
         }
-        raw_nodes.map (
+        (raw_nodes ++ Seq (SimulationNode (transformer_edge.cn1, transformer_edge.transformer.v0, transformer_edge.transformer.transformer_name, null, null))).map (
             raw ⇒
             {
                 val node = raw.asInstanceOf [SimulationNode]
@@ -294,7 +300,7 @@ case class SimulationTrafoKreis
                 // for power recorders of nodes with players, it has to be attached to the player, not the node
                 // the query has been altered to make the parent name for these nodes have the form <mrid>_load_object
                 val my_player_objects = my_players.map (_.name + "_object").toArray
-                var my_recorders = recorders.filter (x ⇒ x.parent == raw.id || my_player_objects.contains (x.parent))
+                val my_recorders = recorders.filter (x ⇒ x.parent == raw.id || my_player_objects.contains (x.parent))
                 SimulationNode (
                     node.id,
                     node.nominal_voltage,

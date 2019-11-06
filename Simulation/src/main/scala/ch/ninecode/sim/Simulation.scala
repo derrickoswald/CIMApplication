@@ -527,6 +527,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                                 job.id,
                                                 task.island,
                                                 transformerset,
+                                                job.swing,
                                                 task.nodes,
                                                 task.edges,
                                                 task.start,

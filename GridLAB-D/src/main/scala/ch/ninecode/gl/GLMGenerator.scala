@@ -265,7 +265,7 @@ class GLMGenerator
      */
     def gather (rdd: Iterable[String]): String =
     {
-        rdd.fold ("")((x: String, y: String) ⇒ if ("" == x) y else x + y)
+        rdd.fold ("")((x: String, y: String) ⇒ s"$x$y")
     }
 
     /**
@@ -307,14 +307,13 @@ class GLMGenerator
         val phase = if (one_phase) "AN" else "ABCN"
         val swing =
             if (one_phase)
-                s"            voltage_A $voltage;\n"
+                s"            voltage_A $voltage;"
             else
             {
                 val phase_voltage = voltage / math.sqrt (3.0)
              s"""            voltage_A $phase_voltage+0.0d;
                 |            voltage_B $phase_voltage-120.0d;
-                |            voltage_C $phase_voltage+120.0d;
-                |""".stripMargin
+                |            voltage_C $phase_voltage+120.0d;""".stripMargin
             }
 
         s"""
@@ -361,7 +360,8 @@ class GLMGenerator
         val o_strings = swing_nodes.map (emit_slack)
 
         // get the node strings
-        val n_strings = nodes.map (emit_node)
+        val swing_ids = swing_nodes.map (_.id).toSet
+        val n_strings = nodes.filter (node => !swing_ids.contains (node.id)).map (emit_node)
 
         // get the transformer strings
         val t_edges = transformers.map (emit_transformer)
