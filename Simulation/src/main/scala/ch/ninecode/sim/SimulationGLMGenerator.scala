@@ -9,7 +9,7 @@ case class SimulationGLMGenerator
 (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
-    kreis: SimulationTrafoKreis) extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get simulation temparature from json file
+    kreis: SimulationTrafoKreis) extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get simulation temperature from json file
 {
 
     override def name: String = kreis.name
@@ -59,13 +59,13 @@ case class SimulationGLMGenerator
     def emit_player (name: String, parent: String, property: String, phase: String, file: String, suffix: String): String =
     {
         s"""
-        |       object player
-        |       {
-        |           name "$name$suffix";
-        |           parent "$parent";
-        |           property "$property$phase.real,$property$phase.imag";
-        |           file "${ phase_file (file, suffix)}";
-        |       };
+        |        object player
+        |        {
+        |            name "$name$suffix";
+        |            parent "$parent";
+        |            property "$property$phase.real,$property$phase.imag";
+        |            file "${ phase_file (file, suffix)}";
+        |        };
         |""".stripMargin
     }
 
@@ -105,6 +105,14 @@ case class SimulationGLMGenerator
         val recorders = e.recorders.map (emit_recorder).mkString ("")
         val players = e.players.map (emit_edge_player).mkString ("")
         super.emit_edge (e.rawedge) + recorders + players
+    }
+
+    override def emit_slack (node: GLMNode): String =
+    {
+        val n = node.asInstanceOf [SimulationNode]
+        val recorders = n.recorders.map (emit_recorder).mkString ("")
+        val players = n.players.map (emit_node_player (n)).mkString ("")
+        super.emit_slack (node) + recorders + players
     }
 
     override def emit_node (node: GLMNode): String =

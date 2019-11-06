@@ -152,6 +152,7 @@ case class SimulationJob
     end_time: Calendar,
     buffer: Int,
     transformers: Seq[String],
+    swing: String = "hi",
     players: Seq[SimulationPlayerQuery],
     recorders: Seq[SimulationRecorderQuery],
     extras: Seq[SimulationExtraQuery],
@@ -280,7 +281,7 @@ object SimulationJob
             if (value.getValueType == JsonValue.ValueType.OBJECT)
             {
                 val cimreaderoptions: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
-                val opt = cimreaderoptions.map (x ⇒ (x._1, x._2.toString))
+                val opt = cimreaderoptions.map (x ⇒ (x._1, x._2 match { case s: JsonString => s.getString case _ => x._2.toString }))
                 map ++ opt
             }
             else
@@ -521,6 +522,7 @@ object SimulationJob
         val name = json.getString ("name", "")
         val description = json.getString ("description", "")
         val cim = json.getString ("cim", null)
+        val swing = json.getString ("swing", "hi")
         if (null == cim)
         {
             log.error (""""%s" does not specify a CIM file""".format (name))
@@ -536,7 +538,7 @@ object SimulationJob
             val recorders = parseRecorders (name, json)
             val extras = parseExtras (name, json)
             val postprocessors = parsePostProcessing (name, json)
-            List (SimulationJob (id, name, description, cim, cimreaderoptions, read, write, replication, start, end, buffer, transformers, players, recorders, extras, postprocessors))
+            List (SimulationJob (id, name, description, cim, cimreaderoptions, read, write, replication, start, end, buffer, transformers, swing, players, recorders, extras, postprocessors))
         }
     }
 
