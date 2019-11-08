@@ -92,6 +92,8 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     def ratios: Iterable[(Double, Branch)]
 
     def z: Impedanzen
+
+    def fuseThatBlows (ik: Double): Option[Branch]
 }
 
 /**
@@ -134,6 +136,18 @@ case class SimpleBranch (override val from: String, override val to: String, ove
     def reverse: Branch = SimpleBranch (to, from, current, mRID, name, rating)
 
     def ratios: Iterable[(Double, Branch)] = List((1.0, this))
+
+    def fuseThatBlows (ik: Double): Option[Branch] =
+    {
+        val _rating = rating.getOrElse (Double.MaxValue)
+        if (0.0 == _rating)
+            None
+        else
+            if (FData.fuse (ik, this) >= _rating)
+                Some (this)
+            else
+                None
+    }
 }
 
 /**
@@ -180,6 +194,9 @@ case class SeriesBranch (override val from: String, override val to: String, ove
     def ratios: Iterable[(Double, Branch)] = series.last.ratios
 
     def z: Impedanzen = seq.foldRight (Impedanzen (0.0, 0.0, 0.0, 0.0)) ((branch, z) ⇒ branch.z + z)
+
+    def fuseThatBlows (ik: Double): Option[Branch] =
+        series.last.fuseThatBlows (ik) // only check the last fuse to limit the outage impact
 }
 
 /**
@@ -241,6 +258,44 @@ case class ParallelBranch (override val from: String, override val to: String, o
     }
 
     def z: Impedanzen = parallel.tail.foldRight (parallel.head.z) ((branch, z) ⇒ branch.z.parallel (z))
+
+    def fuseThatBlows (ik: Double): Option[Branch] =
+    {
+        val dead = ratios.map (
+            pair =>
+            {
+                val current = pair._1 * Math.abs (ik)
+                if (current.isNaN)
+                    None
+                else
+                    pair._2.fuseThatBlows (current)
+            }
+        ).toArray.flatten
+        if (0 == dead.length)
+            None
+        else
+        {
+            // remove the branch from the parallel set and try again
+            // Note: the fuse blowing would mean recomputing the whole network based on impedance
+            // but we cheat and only look at this small section
+            // ToDo: recompute entire branch
+            val remaining = parallel.filter (!dead.contains(_))
+            if (0 == remaining.size)
+                Some (this)
+            else if (1 == remaining.size)
+                remaining.head.fuseThatBlows (ik) match
+                {
+                    case Some (_) => Some (this)
+                    case _ => None
+                }
+            else
+                this.copy (parallel = remaining).fuseThatBlows (ik) match
+                {
+                    case Some (_) => Some (this)
+                    case _ => None
+                }
+        }
+    }
 }
 
 /**
@@ -285,7 +340,6 @@ case class ComplexBranch (override val from: String, override val to: String, ov
                 None
     }
 
-
     def reverse: Branch = ComplexBranch (to, from, current, basket.map (_.reverse))
 
     def ratios: Iterable[(Double, Branch)] =
@@ -311,6 +365,26 @@ case class ComplexBranch (override val from: String, override val to: String, ov
         var high_impedance = SeriesBranch (from, to, 0.0, basket).z
         // take the worst case from both
         Impedanzen (low_impedance.impedanz_low, low_impedance.null_impedanz_low, high_impedance.impedanz_high, high_impedance.null_impedanz_high)
+    }
+
+    def fuseThatBlows (ik: Double): Option[Branch] =
+    {
+        // cheat here and say any fuse that blows is good enough
+        // ToDo: handle complex network
+        val dead = ratios.map (
+            pair =>
+            {
+                val current = pair._1 * Math.abs (ik)
+                if (current.isNaN)
+                    None
+                else
+                    pair._2.fuseThatBlows (current)
+            }
+        ).toArray.flatten
+        if (0 == dead.length)
+            None
+        else
+            Some (dead(0))
     }
 }
 

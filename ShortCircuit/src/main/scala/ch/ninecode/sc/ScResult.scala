@@ -109,20 +109,18 @@ case class ScResult
 
     def iksplitString: String =
     {
-        val s = if (null == fuses)
+        if (null == fuses)
             ""
         else
             fuses.ratios.map (x ⇒ x._1 * high_ik).map (_.toString).mkString (",")
-        s
     }
 
     def fuseMax: String =
     {
-        val s = if (null == fuses)
+        if (null == fuses)
             ""
         else
             FData.fuses (high_ik, fuses)
-        s
     }
 
     def lastFuseHasMissingValues: Boolean =
@@ -132,11 +130,10 @@ case class ScResult
 
     def fuseOK: Boolean =
     {
-        val b = if (null == fuses)
+        if (null == fuses)
             false
         else
-            FData.fuseOK (high_ik, fuses)
-        b
+            FData.fuseThatBlows (high_ik, fuses).nonEmpty
     }
 
     def toPseudo: PseudoScResult =

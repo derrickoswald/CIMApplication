@@ -41,7 +41,7 @@ class FDataSuite extends FunSuite
                     SimpleBranch ("e", "f", 4.0, "TEI141", "", Some (40.0))))
         assert (branch.asFuse == "([400,400],[125,100],40)", "fuse string")
         assert (branch.asId == "([TEI124,TEI123],[TEI134,TEI135],TEI141)", "id string")
-        assert (FData.fuseOK (123.456, branch), "expected OK")
+        assert (FData.fuseThatBlows (123.456, branch).nonEmpty, "expected OK")
     }
 
     test ("No Current FuseOK")
@@ -60,7 +60,7 @@ class FDataSuite extends FunSuite
                     SimpleBranch ("e", "f", 0.0, "TEI141", "", Some (40.0))))
         assert (branch.asFuse == "([400,400],[125,100],40)", "fuse string")
         assert (branch.asId == "([TEI124,TEI123],[TEI134,TEI135],TEI141)", "id string")
-        assert (FData.fuseOK (123.456, branch), "expected OK")
+        assert (FData.fuseThatBlows (123.456, branch).nonEmpty, "expected OK")
     }
 
     test ("ParallelFuseOK")
@@ -82,7 +82,19 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 2.0, "TEI142", "", Some (40.0))))))
         assert (branch.asFuse == "([400,400],[125,100],[40,40])", "fuse string")
         assert (branch.asId == "([TEI124,TEI123],[TEI134,TEI135],[TEI141,TEI142])", "id string")
-        assert (FData.fuseOK (246.912, branch), "expected OK")
+        assert (FData.fuseThatBlows (246.912, branch).nonEmpty, "expected OK")
+    }
+
+    test ("ParallelFuseOK2")
+    {
+        val branch =
+            ParallelBranch ("c", "d", 0.0,
+                List (
+                    SimpleBranch ("c", "d", 2.0, "TEI141", "", Some (40.0)),
+                    SimpleBranch ("c", "d", 2.0, "TEI142", "", Some (40.0))))
+        assert (branch.asFuse == "[40,40]", "fuse string")
+        assert (branch.asId == "[TEI141,TEI142]", "id string")
+        assert (FData.fuseThatBlows (211.0, branch).nonEmpty, "expected OK")
     }
 
     test ("No Current ParallelFuseOK")
@@ -102,7 +114,7 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", "", Some (40.0)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (40.0))))))
-        assert (FData.fuseOK (246.912, branch), "expected OK")
+        assert (FData.fuseThatBlows (246.912, branch).nonEmpty, "expected OK")
     }
 
     test ("No Current Parallel Fuse Not OK")
@@ -120,9 +132,9 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (100.0)))),
                     ParallelBranch ("e", "f", 0.0,
                         List (
-                            SimpleBranch ("d", "e", 0.0, "TEI134", "", Some (40.0)),
-                            SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (50.0))))))
-        assert (!FData.fuseOK (246.912, branch), "expected Not OK")
+                            SimpleBranch ("e", "f", 0.0, "TEI134", "", Some (50.0)),
+                            SimpleBranch ("e", "f", 0.0, "TEI135", "", Some (50.0))))))
+        assert (FData.fuseThatBlows (246.912, branch).isEmpty, "expected Not OK")
     }
 
     test ("FuseNotOK")
@@ -139,13 +151,13 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI134", "", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "", Some (50.0))))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Fuse0")
     {
         val branch =
-            SeriesBranch ("a", "z", 0.0,
+            SeriesBranch ("c", "f", 0.0,
                 Seq (
                     ParallelBranch ("c", "d", 0.0,
                         List (
@@ -157,7 +169,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "", Some (40.0)),
                     SimpleBranch ("e", "f", 4.0, "TEI15", "", Some (0.0))))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("FuseNone")
@@ -175,7 +187,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "", Some (40.0)),
                     SimpleBranch ("e", "f", 4.0, "TEI15", "", None)))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Series Branch within parallel Branch OK")
@@ -193,7 +205,7 @@ class FDataSuite extends FunSuite
                 )
             )
 
-        assert (FData.fuseOK (280, branch), "expected OK")
+        assert (FData.fuseThatBlows (280, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 2 Fuse+")
@@ -235,7 +247,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI134", "", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "", Some (40.0))))
-        assert (FData.fuseOK (123.456, branch), "expected OK")
+        assert (FData.fuseThatBlows (123.456, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 2 No Current FuseOK")
@@ -253,7 +265,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI134", "", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (100.0)))),
                     SimpleBranch ("e", "f", 0.0, "TEI141", "", Some (40.0))))
-        assert (FData.fuseOK (123.456, branch), "expected OK")
+        assert (FData.fuseThatBlows (123.456, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 2 ParallelFuseOK")
@@ -274,7 +286,7 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 2.0, "TEI134", "", Some (40.0)),
                             SimpleBranch ("d", "e", 2.0, "TEI135", "", Some (40.0))))))
-        assert (FData.fuseOK (246.912, branch), "expected OK")
+        assert (FData.fuseThatBlows (246.912, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 2 No Current ParallelFuseOK")
@@ -295,7 +307,7 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", "", Some (40.0)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (40.0))))))
-        assert (FData.fuseOK (246.912, branch), "expected OK")
+        assert (FData.fuseThatBlows (246.912, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 2 FuseNotOK")
@@ -313,7 +325,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI134", "", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "", Some (50.0))))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Table 2 Fuse0")
@@ -332,7 +344,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "", Some (40.0)),
                     SimpleBranch ("e", "f", 4.0, "TEI15", "", Some (0.0))))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Table 2 FuseNone")
@@ -351,7 +363,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI135", "", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "", Some (40.0)),
                     SimpleBranch ("e", "f", 4.0, "TEI15", "", None)))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Table 2 then 1 Fuse+")
@@ -430,7 +442,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI134", "DIN yadda", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "DIN yadda", Some (100.0)))),
                     SimpleBranch ("e", "f", 0.0, "TEI141", "DIN yadda", Some (40.0))))
-        assert (FData.fuseOK (123.456, branch), "expected OK")
+        assert (FData.fuseThatBlows (123.456, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 3 No Current FuseOK SEV")
@@ -448,7 +460,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI134", "SEV yadda", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "SEV yadda", Some (100.0)))),
                     SimpleBranch ("e", "f", 0.0, "TEI141", "SEV yadda", Some (60.0))))
-        assert (FData.fuseOK (223.456, branch), "expected OK")
+        assert (FData.fuseThatBlows (223.456, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 3 ParallelFuseOK DIN")
@@ -469,7 +481,7 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 2.0, "TEI134", "DIN yadda", Some (40.0)),
                             SimpleBranch ("d", "e", 2.0, "TEI135", "DIN yadda", Some (40.0))))))
-        assert (FData.fuseOK (246.912, branch), "expected OK")
+        assert (FData.fuseThatBlows (246.912, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 3 ParallelFuseOK SEV")
@@ -490,7 +502,7 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 2.0, "TEI134", "SEV yadda", Some (60.0)),
                             SimpleBranch ("d", "e", 2.0, "TEI135", "SEV yadda", Some (60.0))))))
-        assert (FData.fuseOK (446.912, branch), "expected OK")
+        assert (FData.fuseThatBlows (446.912, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 3 No Current ParallelFuseOK DIN")
@@ -511,7 +523,7 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", "DIN yadda", Some (40.0)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "DIN yadda", Some (40.0))))))
-        assert (FData.fuseOK (246.912, branch), "expected OK")
+        assert (FData.fuseThatBlows (246.912, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 3 No Current ParallelFuseOK SEV")
@@ -532,7 +544,7 @@ class FDataSuite extends FunSuite
                         List (
                             SimpleBranch ("d", "e", 0.0, "TEI134", "SEV yadda", Some (60.0)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "SEV yadda", Some (60.0))))))
-        assert (FData.fuseOK (446.912, branch), "expected OK")
+        assert (FData.fuseThatBlows (446.912, branch).nonEmpty, "expected OK")
     }
 
     test ("Table 3 FuseNotOK DIN")
@@ -550,7 +562,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI134", "DIN yadda", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "DIN yadda", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "DIN yadda", Some (50.0))))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Table 3 FuseNotOK SEV")
@@ -568,7 +580,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI134", "SEV yadda", Some (1323.8)),
                             SimpleBranch ("d", "e", 0.0, "TEI135", "SEV yadda", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "SEV yadda", Some (100.0))))
-        assert (!FData.fuseOK (253.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (253.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Table 3 Fuse0 DIN")
@@ -587,7 +599,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI135", "DIN yadda", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "DIN yadda", Some (40.0)),
                     SimpleBranch ("e", "f", 4.0, "TEI15", "DIN yadda", Some (0.0))))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Table 3 Fuse0 SEV")
@@ -606,7 +618,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI135", "SEV yadda", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "SEV yadda", Some (40.0)),
                     SimpleBranch ("e", "f", 4.0, "TEI15", "SEV yadda", Some (0.0))))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Table 3 FuseNone DIN")
@@ -625,7 +637,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI135", "DIN yadda", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "DIN yadda", Some (40.0)),
                     SimpleBranch ("e", "f", 4.0, "TEI15", "DIN yadda", None)))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("Table 3 FuseNone SEV")
@@ -644,7 +656,7 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("d", "e", 0.0, "TEI135", "SEV yadda", Some (100.0)))),
                     SimpleBranch ("e", "f", 4.0, "TEI141", "SEV yadda", Some (40.0)),
                     SimpleBranch ("e", "f", 4.0, "TEI15", "SEV yadda", None)))
-        assert (!FData.fuseOK (123.456, branch), "expected not OK")
+        assert (FData.fuseThatBlows (123.456, branch).isEmpty, "expected not OK")
     }
 
     test ("lastFuseHasMissingValues: simple branch")
@@ -691,7 +703,6 @@ class FDataSuite extends FunSuite
         assert (!FData.lastFuseHasMissingValues (branch1), "has missing values (-1.0)")
         assert (FData.lastFuseHasMissingValues (branch2), "has no missing values")
     }
-
 
     test ("lastFuseHasMissingValues: parallel branch")
     {
@@ -837,15 +848,15 @@ class FDataSuite extends FunSuite
                             SimpleBranch ("a", "z", 5.0, "TEI11", "", Some (50.0)),
                             SeriesBranch ("a", "z", 5.0,
                                 Seq (
-                                    SimpleBranch ("a", "z", 5.0, "TEI21", "", Some (50.0)),
-                                    SimpleBranch ("a", "z", 5.0, "TEI22", "", Some (80.0))
+                                    SimpleBranch ("a", "z", 5.0, "TEI21", "", Some (100.0)),
+                                    SimpleBranch ("a", "z", 5.0, "TEI22", "", Some (100.0))
                                 )
                             )
                         )
                     )
                 )
             )
-        assert (branch.asFuse == "([50,(50,80)])", "asFuse")
+        assert (branch.asFuse == "([50,(100,100)])", "asFuse")
         assert (FData.fuses (280, branch) == "50,50", "expected 50:50 split")
 
         val scr = ScResult (
@@ -869,9 +880,9 @@ class FDataSuite extends FunSuite
             high_x0 = 0.0,
             fuses = branch
         )
-        assert (scr.fuseString == "([50,(50,80)])", "fuseString")
+        assert (scr.fuseString == "([50,(100,100)])", "fuseString")
         assert (scr.iksplitString == "140.0,140.0", "ik split")
-        assert (scr.lastFusesString == "50,80", "lastFusesString")
+        assert (scr.lastFusesString == "50,100", "lastFusesString")
         assert (scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
         assert (scr.fuseMax == "50,50", "expected 50:50 split")
         assert (!scr.fuseOK, "expected not OK")
