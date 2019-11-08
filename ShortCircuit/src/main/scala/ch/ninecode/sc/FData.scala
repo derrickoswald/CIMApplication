@@ -124,36 +124,19 @@ object FData
             branches.ratios.map (x ⇒ (x._1 * Math.abs (ik), x._2)).map (x ⇒ fuse (x._1, x._2).toInt).mkString (",")
     }
 
-    def fuseOK (ik: Double, branches: Branch): Boolean =
+    /**
+     * Determines which fuse, if any, will blow to break the short circuit current.
+     *
+     * @param ik the short circuit current to apply
+     * @param branches the series-parallel set of branches to check
+     * @return the fuse that blows: Some (Branch) or None
+     */
+    def fuseThatBlows (ik: Double, branches: Branch): Option[Branch] =
     {
         if (null == branches)
-            false
+            None
         else
-        {
-            val status: Iterable[Boolean] = for
-            {
-                pair ← branches.ratios
-                current = pair._1 * Math.abs (ik)
-                ok = if (current.isNaN)
-                    false
-                else
-                    pair._2 match
-                    {
-                        case sim: SimpleBranch ⇒
-                            val rating = sim.rating.getOrElse (Double.MaxValue)
-                            if (0.0 == rating)
-                                false
-                            else
-                                fuse (current, sim) >= rating
-                        case ser: SeriesBranch ⇒
-                            fuseOK (current, ser.seq.last)
-                        case par: ParallelBranch ⇒
-                            fuseOK (current, par)
-                    }
-            }
-            yield ok
-            status.forall (x ⇒ x)
-        }
+            branches.fuseThatBlows (ik)
     }
 
     def lastFuseHasMissingValues (branches: Branch): Boolean =
