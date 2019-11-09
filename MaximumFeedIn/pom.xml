@@ -14,6 +14,11 @@
     <description>Calculate the maximum feed-in power at every node of an electric distribution network.</description>
     <inceptionYear>2017</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/MaximumFeedIn</url>
+    <scm>
+        <url>git@github.com:derrickoswald/CIMApplication.git</url>
+        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
+        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
+    </scm>
 
     <dependencies>
 

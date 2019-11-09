@@ -15,6 +15,11 @@
     <description>Show where repeaters are needed to connect smart meters.</description>
     <inceptionYear>2016</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/SmartMeter</url>
+    <scm>
+        <url>git@github.com:derrickoswald/CIMApplication.git</url>
+        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
+        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
+    </scm>
 
     <dependencies>
 

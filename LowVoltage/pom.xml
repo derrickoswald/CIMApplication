@@ -14,7 +14,11 @@
     <description>Generate GridLAB-D models for the low voltage N7 network.</description>
     <inceptionYear>2017</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/LowVoltage</url>
-
+    <scm>
+        <url>git@github.com:derrickoswald/CIMApplication.git</url>
+        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
+        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
+    </scm>
 
     <dependencies>
 

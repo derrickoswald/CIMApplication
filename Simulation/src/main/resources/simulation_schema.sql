@@ -118,6 +118,22 @@ create or replace function cimapplication.week (t timestamp)
         return (c.get (Calendar.WEEK_OF_YEAR));
     $$;
 
+create table if not exists cimapplication.version (
+    program text,
+    build text,
+    version text,
+    time timestamp,
+    primary key ((program), version)
+) with clustering order by (version asc) and comment = '
+Schema version.
+    program - the name and version of the program that created the schema
+    build   - the git commit hash when the program was built
+    version - the schema version, increment for each schema script change
+    time    - schema creation time
+';
+
+insert into cimapplication.version (program, build, version, time) values ('${artifactId} ${version}', '${buildNumber}', '35', toTimestamp(now())) if not exists;
+
 create table if not exists cimapplication.measured_value (
     mrid text,
     type text,

@@ -12,6 +12,11 @@
     <artifactId>CIMEar</artifactId>
     <packaging>ear</packaging>
     <name>CIM Enterprise Application (EAR)</name>
+    <scm>
+        <url>git@github.com:derrickoswald/CIMApplication.git</url>
+        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
+        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
+    </scm>
 
     <dependencies>
 

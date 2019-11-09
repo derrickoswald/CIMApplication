@@ -12,6 +12,11 @@
     <artifactId>CIMWeb</artifactId>
     <packaging>war</packaging>
     <name>CIM Web Application (WAR)</name>
+    <scm>
+        <url>git@github.com:derrickoswald/CIMApplication.git</url>
+        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
+        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
+    </scm>
 
     <properties>
 

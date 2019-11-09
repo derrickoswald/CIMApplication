@@ -12,6 +12,11 @@
     <artifactId>CIMConnector</artifactId>
     <packaging>rar</packaging>
     <name>CIM Resource Adapter (RAR)</name>
+    <scm>
+        <url>git@github.com:derrickoswald/CIMApplication.git</url>
+        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
+        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
+    </scm>
 
     <properties>
         <!-- test dependencies versions -->

@@ -15,6 +15,11 @@
     <description>Copy from one Cassandra instance to another.</description>
     <inceptionYear>2019</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/CopyCassandra</url>
+    <scm>
+        <url>git@github.com:derrickoswald/CIMApplication.git</url>
+        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
+        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
+    </scm>
 
     <properties>
         <version.dependency.log4j>2.12.1</version.dependency.log4j>
