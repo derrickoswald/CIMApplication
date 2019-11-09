@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.SwingNode
 import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
@@ -82,36 +81,22 @@ case class SimulationTrafoKreis
         edge match
         {
             case old: SimulationEdge ⇒
-                SimulationEdge (
-                    if (old.cn1 == original_node) new_node else old.cn1,
-                    if (old.cn2 == original_node) new_node else old.cn2,
-                    alterEdgeNode (old.rawedge, original_node, new_node),
-                    old.world_position,
-                    old.schematic_position,
-                    old.players,
-                    old.recorders
-                )
+                old.copy (
+                    cn1 = if (old.cn1 == original_node) new_node else old.cn1,
+                    cn2 = if (old.cn2 == original_node) new_node else old.cn2,
+                    rawedge = alterEdgeNode (old.rawedge, original_node, new_node))
             case old: SwitchEdge ⇒
-                SwitchEdge (
-                    if (old.cn1 == original_node) new_node else old.cn1,
-                    if (old.cn2 == original_node) new_node else old.cn2,
-                    old.switches
-                )
+                old.copy (
+                    cn1 = if (old.cn1 == original_node) new_node else old.cn1,
+                    cn2 = if (old.cn2 == original_node) new_node else old.cn2)
             case old: LineEdge ⇒
-                LineEdge (
-                    if (old.cn1 == original_node) new_node else old.cn1,
-                    if (old.cn2 == original_node) new_node else old.cn2,
-                    old.lines,
-                    old.base_temperature,
-                    old.DEFAULT_R,
-                    old.DEFAULT_X
-                )
+                old.copy (
+                    cn1 = if (old.cn1 == original_node) new_node else old.cn1,
+                    cn2 = if (old.cn2 == original_node) new_node else old.cn2)
             case old: TransformerEdge ⇒
-                TransformerEdge (
-                    if (old.cn1 == original_node) new_node else old.cn1,
-                    if (old.cn2 == original_node) new_node else old.cn2,
-                    old.transformer
-                )
+                old.copy (
+                    cn1 = if (old.cn1 == original_node) new_node else old.cn1,
+                    cn2 = if (old.cn2 == original_node) new_node else old.cn2)
             case _ ⇒
                 val log: Logger = LoggerFactory.getLogger (getClass)
                 log.error ("unrecognized edge type (%s)".format (edge))
