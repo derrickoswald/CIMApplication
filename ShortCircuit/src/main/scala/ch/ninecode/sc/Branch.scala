@@ -170,7 +170,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def seq: Seq[Branch] = series
 
-    def iter: Iterable[SeriesBranch] = Iterable (this)
+    def iter: Iterable[SeriesBranch] = this.series.toIterable
 
     def lastFuses: Iterable[Branch] = series.last.lastFuses
 
@@ -279,7 +279,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
             // Note: the fuse blowing would mean recomputing the whole network based on impedance
             // but we cheat and only look at this small section
             // ToDo: recompute entire branch
-            val remaining = parallel.filter (!dead.contains(_))
+            val remaining = parallel.filter (x => !dead.contains (x) && !x.iter.exists (dead.contains (_)))
             if (0 == remaining.size)
                 Some (this)
             else if (1 == remaining.size)
