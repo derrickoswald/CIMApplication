@@ -93,6 +93,8 @@ abstract class Branch (val from: String, val to: String, val current: Double)
 
     def z: Impedanzen
 
+    def contents: Iterable[Branch]
+
     def fuseThatBlows (ik: Double): Option[Branch]
 }
 
@@ -137,6 +139,8 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def ratios: Iterable[(Double, Branch)] = List((1.0, this))
 
+    def contents: Iterable[SimpleBranch] = Iterable (this)
+
     def fuseThatBlows (ik: Double): Option[Branch] =
     {
         val _rating = rating.getOrElse (Double.MaxValue)
@@ -170,7 +174,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def seq: Seq[Branch] = series
 
-    def iter: Iterable[SeriesBranch] = this.series.toIterable
+    def iter: Iterable[Branch] = Iterable(this)
 
     def lastFuses: Iterable[Branch] = series.last.lastFuses
 
@@ -194,6 +198,8 @@ case class SeriesBranch (override val from: String, override val to: String, ove
     def ratios: Iterable[(Double, Branch)] = series.last.ratios
 
     def z: Impedanzen = seq.foldRight (Impedanzen (0.0, 0.0, 0.0, 0.0)) ((branch, z) ⇒ branch.z + z)
+
+    def contents: Iterable[Branch] = this.series
 
     def fuseThatBlows (ik: Double): Option[Branch] =
         series.last.fuseThatBlows (ik) // only check the last fuse to limit the outage impact
@@ -259,6 +265,8 @@ case class ParallelBranch (override val from: String, override val to: String, o
 
     def z: Impedanzen = parallel.tail.foldRight (parallel.head.z) ((branch, z) ⇒ branch.z.parallel (z))
 
+    def contents: Iterable[Branch] = parallel
+
     def fuseThatBlows (ik: Double): Option[Branch] =
     {
         val dead = ratios.map (
@@ -279,7 +287,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
             // Note: the fuse blowing would mean recomputing the whole network based on impedance
             // but we cheat and only look at this small section
             // ToDo: recompute entire branch
-            val remaining = parallel.filter (x => !dead.contains (x) && !x.iter.exists (dead.contains (_)))
+            val remaining = parallel.filter (x => !dead.contains (x) && !x.contents.exists (dead.contains (_)))
             if (0 == remaining.size)
                 Some (this)
             else if (1 == remaining.size)
@@ -366,6 +374,8 @@ case class ComplexBranch (override val from: String, override val to: String, ov
         // take the worst case from both
         Impedanzen (low_impedance.impedanz_low, low_impedance.null_impedanz_low, high_impedance.impedanz_high, high_impedance.null_impedanz_high)
     }
+
+    def contents: Iterable[Branch] = basket
 
     def fuseThatBlows (ik: Double): Option[Branch] =
     {
