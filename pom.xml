@@ -9,6 +9,11 @@
     <version>2.11-2.4.4-2.6.0</version>
     <packaging>pom</packaging>
     <name>CIM Application Multimodule</name>
+    <scm>
+        <url>git@github.com:derrickoswald/CIMApplication.git</url>
+        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
+        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
+    </scm>
 
     <properties>
 
