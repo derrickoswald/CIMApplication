@@ -51,10 +51,11 @@ case class ScGLMGenerator
     {
         val voltage = node.nominal_voltage
         val phase = if (one_phase) "AN" else "ABCN"
-        val z = if (isMax)
+        val _z = if (isMax)
             area.transformer.network_short_circuit_impedance_max
         else
             area.transformer.network_short_circuit_impedance_min
+        val z = _z / 1000.0 // per length impedance is per meter now
         val nodename = node.id
 
         // if the network short circuit impedance isn't 0Ω, we have to invent a cable
@@ -72,8 +73,8 @@ case class ScGLMGenerator
                   |        };
                   |""".stripMargin.format (phase, voltage, voltage)
 
-            val line = LineEdge ("N5", node.id, List ())
-            val config = line.make_line_configuration ("N5_configuration", z.re, z.im, 0.0, 0.0, this)
+            val line = LineEdge ("N5", node.id)
+            val config = line.make_line_configuration ("N5_configuration", Sequences (Complex (z.re, z.im), Complex (0.0)), false, this)
             val cable =
                 """
                   |        object overhead_line

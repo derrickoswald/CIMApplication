@@ -2,14 +2,11 @@ package ch.ninecode.gl
 
 import ch.ninecode.model.ACLineSegment
 
-case class LineEdge
+final case class LineEdge
 (
     cn1: String,
     cn2: String,
-    lines: Iterable[ACLineSegment],
-    base_temperature: Double = 20.0,
-    DEFAULT_R: Double = 0.225,
-    DEFAULT_X: Double = 0.068
+    data: LineData
 )
     extends GLMEdge
 {
@@ -21,6 +18,8 @@ case class LineEdge
      * @return The ID of the edge (the mRID of the electrical element).
      */
     def id: String = lines.map (_.id).toArray.sortWith (_ < _).mkString ("_")
+
+    def lines: Iterable[ACLineSegment] = data.lines.map (_.line)
 
     /**
      * Emit a overhead or underground line.
@@ -53,24 +52,6 @@ case class LineEdge
     }
 
     /**
-     * Temperature coefficient of resistance.
-     *
-     * A compromise between copper (0.00393) and aluminum (0.00403) /°C
-     *
-     * It's complicated (http://nvlpubs.nist.gov/nistpubs/bulletin/07/nbsbulletinv7n1p71_A2b.pdf) and depends on the
-     * alloy and how the wire is drawn and worked, e.g.
-     * "good commercial copper furnished for use as electrical conductors, the average deviation of C from the mean value
-     * 0.00393<sub>8</sub> is only o.ooooo<sub>8</sub>, or 0.2%. Also, when the conductivity and temperature coefficient
-     * are altered by annealing or hard-drawing, C has been found to remain constant within the experimental error."
-     */
-    val alpha: Double = 0.004
-
-    /**
-     * Zero ohms.
-     */
-    lazy val zero = Complex (0.0, 0.0)
-
-    /**
      * Get the cable/wire type.
      *
      * @param line The ACLineSegment object to get the type from.
@@ -96,18 +77,17 @@ case class LineEdge
     def configurationName: String =
     {
         val n = lines.map (config_name).map (valid_config_name).toArray.sortWith (_ < _).mkString ("||") + "_configuration"
-        // limit to 64 bytes with null:
-        // typedef struct s_objecttree {
-        //     char name[64];
-        //     OBJECT *obj;
-        //     struct s_objecttree *before, *after;
-        //     int balance; /* unused */
-        // } OBJECTTREE;
+        // limit to 64 bytes (GridLAB-D OBJECTTREE.name is an array of 64 bytes) with null:
         if (n.getBytes.length > 63)
             "_" + Math.abs (n.hashCode ())
         else
             n
     }
+
+    /**
+     * Zero ohms.
+     */
+    lazy val zero = Complex (0.0, 0.0)
 
     /**
      * Convert zero and positive sequence impedance values into the Z matrix diagonal and off diagonal elements.
@@ -129,62 +109,22 @@ case class LineEdge
     }
 
     /**
-     * Temperature adjusted resistance.
-     *
-     * @param temperature target temperature (°C)
-     * @param base        current temperature for the given resistance (°C)
-     * @param r           the given resistance (Ω)
-     * @return the temperature compensated resistance (Ω)
-     */
-    def resistanceAt (temperature: Double, base: Double, r: Double): Double = (1.0 + (alpha * (temperature - base))) * r
-
-    /**
-     * Convert the 0/1 sequence values from the CIM format into a Z matrix.
-     *
-     * @param r         ACLineSegment.r value
-     * @param x         ACLineSegment.x value
-     * @param r0        ACLineSegment.r0 value
-     * @param x0        ACLineSegment.x0 value
-     * @param generator the driver program
-     * @return The diagonal and off-diagonal values for the Z matrix representation of line impedance,
-     *         plus a boolean flag indicating whether the values are the default <code>true</code> or not <code>false</code>.
-     */
-    def zMatrixValues (r: Double, x: Double, r0: Double, x0: Double, generator: GLMGenerator): (Complex, Complex, Boolean) =
-    {
-        if ((0.0 != r) && (0.0 != x))
-        {
-            val z1 = Complex (resistanceAt (generator.targetTemperature, base_temperature, r), x)
-            if (generator.isSinglePhase)
-                (z1, zero, false)
-            else
-            {
-                val z0 = Complex (resistanceAt (generator.targetTemperature, base_temperature, r0), x0)
-                val (diag, off) = sequence2z (z0, z1)
-                (diag, off, false)
-            }
-        }
-        else
-            (Complex (resistanceAt (base_temperature, generator.targetTemperature, DEFAULT_R), DEFAULT_X), zero, true)
-    }
-
-    /**
      * Emit a GridLAB-D line_configuration.
      *
      * @param config    The name of the line configuration.
-     * @param r         ACLineSegment.r value
-     * @param x         ACLineSegment.x value
-     * @param r0        ACLineSegment.r0 value
-     * @param x0        ACLineSegment.x0 value
      * @param generator the driver program
      * @return A string suitable for inclusion in the .glm file.
      */
-    def make_line_configuration (config: String, r: Double, x: Double, r0: Double, x0: Double, generator: GLMGenerator): String =
+    def make_line_configuration (config: String, pli: Sequences, default: Boolean, generator: GLMGenerator): String =
     {
-        val (diag, offd, default) = zMatrixValues (r, x, r0, x0, generator)
-        // ToDo: fix this /km multiplier on the impedance
-        val dia = diag.toString () + " Ohm/km"
-        val off = offd.toString () + " Ohm/km"
-        val warning = if (default) "#warning WARNING: using default line_configuration for " + config + "\n" else ""
+        val warning = if (default) s"#warning WARNING: using default line_configuration for $config\n" else ""
+        val (diag, offd) =
+            if (generator.isSinglePhase)
+                (pli.c1, zero)
+            else
+                sequence2z (pli.c0, pli.c1)
+        val dia = diag.toString () + " Ohm/m"
+        val off = offd.toString () + " Ohm/m"
         val comment =  lines.map (line ⇒
             "            // %s".format (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)).mkString ("\n", "\n", "")
         """
@@ -204,57 +144,6 @@ case class LineEdge
           |""".stripMargin.format (warning, comment, config, dia, off, off, off, dia, off, off, off, dia)
     }
 
-
-    /**
-     * Compute parallel impedance.
-     *
-     * See: http://hyperphysics.phy-astr.gsu.edu/hbase/electric/imped.html
-     *
-     * @param r1 Real part of impedance 1.
-     * @param x1 Imaginary part of impedance 1.
-     * @param r2 Real part of impedance 2.
-     * @param x2 Imaginary part of impedance 2.
-     * @return The parallel impedance (real, imaginary).
-     */
-    def parallel (r1: Double, x1: Double, r2: Double, x2: Double): (Double, Double) =
-    {
-        val rs = r1 + r2
-        val xs = x1 + x2
-        val rp = r1 * r2
-        val xp = x1 * x2
-        val r = (((rp - xp) * rs) + (((x1 * r2) + (x2 * r1)) * xs)) / ((rs * rs) + (xs * xs))
-        val x = ((((x1 * r2) + (x2 * r1)) * rs) - ((rp - xp) * xs)) / ((rs * rs) + (xs * xs))
-        (r, x)
-    }
-
-    /**
-     * Compute the equivalent impedance.
-     *
-     * @return (z1, z0) (Ω/km)
-     */
-    def impedance: (Complex, Complex) =
-    {
-        val line = lines.head
-        var rt = if (0 == line.r) DEFAULT_R else line.r
-        var xt = if (0 == line.x) DEFAULT_X else line.x
-        var r0t = if (0 == line.r0) DEFAULT_R else line.r0
-        var x0t = if (0 == line.x0) DEFAULT_X else line.x0
-        for (line ← lines.tail)
-        {
-            val rl = if (0 == line.r) DEFAULT_R else line.r
-            val xl = if (0 == line.x) DEFAULT_X else line.x
-            val rl0 = if (0 == line.r0) DEFAULT_R else line.r0
-            val xl0 = if (0 == line.x0) DEFAULT_X else line.x0
-            val (r, x) = parallel (rt, xt, rl, xl)
-            val (r0, x0) = parallel (r0t, x0t, rl0, xl0)
-            rt = r
-            xt = x
-            r0t = r0
-            x0t = x0
-        }
-        (Complex (rt, xt), Complex (r0t, x0t))
-    }
-
     /**
      * Emit the configuration for the edge.
      *
@@ -263,7 +152,34 @@ case class LineEdge
      */
     def configuration (generator: GLMGenerator): String =
     {
-        val (z1, z0) = impedance
-        make_line_configuration (configurationName, z1.re, z1.im, z0.re, z0.im, generator)
+        val pli = data.perLengthImpedanceAt (generator.targetTemperature)
+        make_line_configuration (configurationName, pli, data.perLengthImpedanceIsDefault, generator)
     }
+}
+
+object LineEdge
+{/**
+     * @deprecated Use the LineData constructor
+     * @param n1 one node
+     * @param n2 the other node
+     * @param lines the ACLineSegment in this edge
+     * @param base_temperature the temperature of resistance properties in the CIM file
+     * @return an edge for GridLAB-D
+     */
+    def apply (
+        n1: String,
+        n2: String,
+        lines: Iterable[ACLineSegment],
+        base_temperature: Double = LineDetails.CIM_BASE_TEMPERATURE
+    ): LineEdge =
+    {
+        LineDetails.CIM_BASE_TEMPERATURE = base_temperature
+        LineEdge (n1, n2, LineData (lines.toArray.map (line => LineDetails (line, null, null, None, None))))
+    }
+
+    def apply (
+        cn1: String,
+        cn2: String
+    ): LineEdge = LineEdge (cn1, cn2, Iterable[ACLineSegment]())
+
 }

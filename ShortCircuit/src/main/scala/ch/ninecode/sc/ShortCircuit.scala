@@ -547,11 +547,24 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                         {
                                             val line = cable.lines.head
                                             val dist_km = line.Conductor.len / 1000.0
-                                            val z = Impedanzen (
+                                            var z = Impedanzen (
                                                 Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
                                                 Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
                                                 Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
                                                 Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
+                                            for (l <- cable.lines.tail)
+                                            {
+                                                val z1 = Impedanzen (
+                                                    Complex (resistanceAt (options.low_temperature, options.base_temperature, l.r) * dist_km, l.x * dist_km),
+                                                    Complex (resistanceAt (options.low_temperature, options.base_temperature, l.r0) * dist_km, l.x0 * dist_km),
+                                                    Complex (resistanceAt (options.high_temperature, options.base_temperature, l.r) * dist_km, l.x * dist_km),
+                                                    Complex (resistanceAt (options.high_temperature, options.base_temperature, l.r0) * dist_km, l.x0 * dist_km))
+                                                z = Impedanzen (
+                                                    z.impedanz_low.parallel_impedanz (z1.impedanz_low),
+                                                    z.null_impedanz_low.parallel_impedanz (z1.null_impedanz_low),
+                                                    z.impedanz_high.parallel_impedanz (z1.impedanz_high),
+                                                    z.null_impedanz_high.parallel_impedanz (z1.null_impedanz_high))
+                                            }
                                             val name = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
                                             if (v1 > v2)
                                                 List (SimpleBranch (x.cn1, x.cn2, ((voltage1.value_a - voltage2.value_a) / z.impedanz_low).modulus, x.id, name, None, z))
