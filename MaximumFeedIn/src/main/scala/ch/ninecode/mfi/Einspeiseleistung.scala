@@ -312,8 +312,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // https://en.wikipedia.org/wiki/Power_factor
         // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
         // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
-        // So, without it being stated we assume PF is lagging and that a negative power factor is actually an indicator of a leading power factor.
-        val phi = math.signum (options.cosphi) * math.acos (math.abs (options.cosphi))
+        // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
+        val phi = - math.signum (options.cosphi) * math.acos (math.abs (options.cosphi))
         val unitvector = new Complex (math.cos (phi), math.sin (phi))
 
         def addrow (time: Calendar, power: Double): Unit =

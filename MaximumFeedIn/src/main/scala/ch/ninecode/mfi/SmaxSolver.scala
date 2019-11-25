@@ -11,8 +11,11 @@ import ch.ninecode.gl.Complex
  */
 case class SmaxSolver (threshold: Double, cosphi: Double)
 {
-    val phi: Double = Math.acos (cosphi)
-    val sinphi: Double = Math.sin (phi)
+    // https://en.wikipedia.org/wiki/Power_factor
+    // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
+    // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
+    // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
+    val phi: Double = - Math.acos (cosphi) * Math.signum (cosphi)
     val k: Double = 1.0 + threshold
 
     def bruteForceSolve (vn: Double, z: Complex): Complex =
@@ -20,6 +23,14 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
         def toRadians (index: Double): Double = index * Math.PI / 180.0 / 1000.0
 
         val v = k * vn
+        def S (theta: Double): Complex =
+        {
+            val c = math.cos (theta)
+            val s = math.sin (theta)
+            val vc = v * Complex (c, s)
+            val i = (vc - vn) / z
+            vc * ~i
+        }
         var angle: Int = 0
         var diff: Double = Double.MaxValue
         for (index ← -90000 to 90000) // thousandths of a degree in the range where cos() is positive
@@ -38,10 +49,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
                 }
             }
         }
-        val rad = toRadians (angle)
-        val vc = Complex (v * Math.cos (rad), v * Math.sin (rad))
-        val i = (vc - vn) / z
-        val power = vc * ~i
+        val power = S (toRadians (angle))
         power
     }
 
@@ -54,7 +62,9 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
         val v = k * vn
         def S (theta: Double): Complex =
         {
-            val vc = Complex (v * Math.cos (theta), v * Math.sin (theta))
+            val c = math.cos (theta)
+            val s = math.sin (theta)
+            val vc = v * Complex (c, s)
             val i = (vc - vn) / z
             vc * ~i
         }

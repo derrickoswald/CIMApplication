@@ -113,7 +113,7 @@ class EinspeiseleistungOptionsParser (APPLICATION_NAME: String, APPLICATION_VERS
 
     opt [Double]("cosphi").valueName ("D").
         action ((x, c) => c.copy (cosphi = x)).
-        text (f"power factor for new photo-voltaic installations [${default.cosphi}%g]")
+        text (f"power factor for photo-voltaic installations, positive leading, negative lagging [${default.cosphi}%g]")
 
     opt [Double]("voltage_threshold").valueName ("D").
         action ((x, c) => c.copy (voltage_threshold = x)).
