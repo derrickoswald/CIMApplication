@@ -95,7 +95,14 @@ abstract class Branch (val from: String, val to: String, val current: Double)
 
     def contents: Iterable[Branch]
 
-    def fuseThatBlows (ik: Double): Option[Branch]
+    /**
+     * Check if a fuse would blow given the short circuit power and the network of cables and fuses.
+     *
+     * @param ik short-circuit current to check against
+     * @return tuple with a boolean <code>true</code> if the network would change because of the short circuit, or <code>false</code> if it would not,
+     *         and either the remaining network with the change, or the original network if there would be no change
+     */
+    def checkFuses (ik: Double): (Boolean, Option[Branch])
 }
 
 /**
@@ -105,6 +112,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
  * @param to      the 'to' node
  * @param current the current through this branch in the GridLAB-D experiment
  * @param mRID    the mRID of the CIM element
+ * @param name    the name of the CIM element
  * @param rating  the current rating if it is a fuse
  * @param z       the positive and zero sequence impedances at the operational temperatures
  */
@@ -141,16 +149,21 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def contents: Iterable[SimpleBranch] = Iterable (this)
 
-    def fuseThatBlows (ik: Double): Option[Branch] =
+    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
     {
-        val _rating = rating.getOrElse (Double.MaxValue)
-        if (0.0 == _rating)
-            None
-        else
-            if (FData.fuse (ik, this) >= _rating)
-                Some (this)
+        if (isFuse)
+        {
+            val _rating = rating.getOrElse (Double.MaxValue)
+            if (0.0 == _rating)
+                (false, None)
             else
-                None
+                if (FData.fuse (ik, this) >= _rating)
+                    (true, None)
+                else
+                    (false, Some (this))
+        }
+        else
+            (false, Some (this))
     }
 }
 
@@ -181,11 +194,18 @@ case class SeriesBranch (override val from: String, override val to: String, ove
     def justFuses: Option[Branch] =
     {
         val fuses = series.flatMap (_.justFuses)
-        if ((fuses.size == 1) && fuses.head.isInstanceOf [SimpleBranch])
-        {
-            val branch = fuses.head.asInstanceOf [SimpleBranch]
-            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.name, branch.rating))
-        }
+        if (1 == fuses.size)
+            fuses.head match
+            {
+                case b: SimpleBranch =>
+                    Some (SimpleBranch (this.from, this.to, this.current, b.mRID, b.name, b.rating, b.z))
+                case p: ParallelBranch =>
+                    Some (ParallelBranch (this.from, this.to, this.current, p.parallel))
+                case s: SeriesBranch =>
+                    Some (SeriesBranch (this.from, this.to, this.current, s.series))
+                case c: ComplexBranch =>
+                    Some (ComplexBranch (this.from, this.to, this.current, c.basket))
+            }
         else
             if (fuses.nonEmpty)
                 Some (SeriesBranch (this.from, this.to, this.current, fuses))
@@ -201,8 +221,38 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def contents: Iterable[Branch] = this.series
 
-    def fuseThatBlows (ik: Double): Option[Branch] =
-        series.last.fuseThatBlows (ik) // only check the last fuse to limit the outage impact
+    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
+    {
+        // check if the last fuse blows, ToDo: not quite right, another series element could blow
+        def fuses (arg: (Boolean, Option[Branch])): Option[(Boolean, Option[Branch])] =
+        {
+            val (blown, br) = arg
+            if (blown)
+                Some (arg)
+            else
+                br match
+                {
+                    case Some (branch) =>
+                        branch.justFuses match
+                        {
+                            case Some (b) => Some ((blown, Some (b)))
+                            case None => None
+                        }
+                    case None => Some (arg)
+                }
+        }
+        val new_series: Seq[(Boolean, Option[Branch])] = series.map (_.checkFuses (ik)).flatMap (fuses)
+        if (0 < new_series.size)
+        {
+            val blows = new_series.last._1
+            if (blows)
+                (blows, None)
+            else
+                (false, Some (this))
+        }
+        else
+            (false, Some (this))
+    }
 }
 
 /**
@@ -232,11 +282,18 @@ case class ParallelBranch (override val from: String, override val to: String, o
     def justFuses: Option[Branch] =
     {
         val fuses = parallel.flatMap (_.justFuses)
-        if ((fuses.size == 1) && fuses.head.isInstanceOf [SimpleBranch])
-        {
-            val branch = fuses.head.asInstanceOf [SimpleBranch]
-            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.name, branch.rating)) // ToDo: parallel cables and fuses makes no sense, what's the current rating?
-        }
+        if (1 == fuses.size)
+            fuses.head match
+            {
+                case b: SimpleBranch =>
+                    Some (SimpleBranch (this.from, this.to, this.current, b.mRID, b.name, b.rating, b.z))
+                case p: ParallelBranch =>
+                    Some (ParallelBranch (this.from, this.to, this.current, p.parallel))
+                case s: SeriesBranch =>
+                    Some (SeriesBranch (this.from, this.to, this.current, s.series))
+                case c: ComplexBranch =>
+                    Some (ComplexBranch (this.from, this.to, this.current, c.basket))
+            }
         else
             if (fuses.nonEmpty)
                 Some (ParallelBranch (this.from, this.to, this.current, fuses))
@@ -267,42 +324,30 @@ case class ParallelBranch (override val from: String, override val to: String, o
 
     def contents: Iterable[Branch] = parallel
 
-    def fuseThatBlows (ik: Double): Option[Branch] =
+    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
     {
-        val dead = ratios.map (
+        val new_parallel = ratios.map (
             pair =>
             {
-                val current = pair._1 * Math.abs (ik)
+                val (fraction, branch) = pair
+                val current = fraction * Math.abs (ik)
                 if (current.isNaN)
-                    None
+                    (false, None)
                 else
-                    pair._2.fuseThatBlows (current)
+                    branch.checkFuses (current)
             }
-        ).toArray.flatten
-        if (0 == dead.length)
-            None
-        else
+        )
+        val blows = new_parallel.exists (_._1)
+        if (blows)
         {
-            // remove the branch from the parallel set and try again
-            // Note: the fuse blowing would mean recomputing the whole network based on impedance
-            // but we cheat and only look at this small section
-            // ToDo: recompute entire branch
-            val remaining = parallel.filter (x => !dead.contains (x) && !x.contents.exists (dead.contains (_)))
-            if (0 == remaining.size)
-                Some (this)
-            else if (1 == remaining.size)
-                remaining.head.fuseThatBlows (ik) match
-                {
-                    case Some (_) => Some (this)
-                    case _ => None
-                }
+            val remaining = new_parallel.flatMap (_._2)
+            if (remaining.nonEmpty)
+                (blows, Some (ParallelBranch (from, to, current, remaining)))
             else
-                this.copy (parallel = remaining).fuseThatBlows (ik) match
-                {
-                    case Some (_) => Some (this)
-                    case _ => None
-                }
+                (blows, None)
         }
+        else
+            (false, Some (this))
     }
 }
 
@@ -336,11 +381,18 @@ case class ComplexBranch (override val from: String, override val to: String, ov
     def justFuses: Option[Branch] =
     {
         val fuses = basket.flatMap (_.justFuses)
-        if ((fuses.length == 1) && fuses.head.isInstanceOf [SimpleBranch])
-        {
-            val branch = fuses.head.asInstanceOf [SimpleBranch]
-            Some (SimpleBranch (this.from, this.to, this.current, branch.mRID, branch.name, branch.rating)) // ToDo: parallel cables and fuses makes no sense, what's the current rating?
-        }
+        if (1 == fuses.length)
+            fuses.head match
+            {
+                case b: SimpleBranch =>
+                    Some (SimpleBranch (this.from, this.to, this.current, b.mRID, b.name, b.rating, b.z))
+                case p: ParallelBranch =>
+                    Some (ParallelBranch (this.from, this.to, this.current, p.parallel))
+                case s: SeriesBranch =>
+                    Some (SeriesBranch (this.from, this.to, this.current, s.series))
+                case c: ComplexBranch =>
+                    Some (ComplexBranch (this.from, this.to, this.current, c.basket))
+            }
         else
             if (fuses.nonEmpty)
                 Some (ComplexBranch (this.from, this.to, this.current, fuses))
@@ -377,24 +429,24 @@ case class ComplexBranch (override val from: String, override val to: String, ov
 
     def contents: Iterable[Branch] = basket
 
-    def fuseThatBlows (ik: Double): Option[Branch] =
+    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
     {
-        // cheat here and say any fuse that blows is good enough
-        // ToDo: handle complex network
-        val dead = ratios.map (
+        val new_complex = ratios.map (
             pair =>
             {
-                val current = pair._1 * Math.abs (ik)
+                val (fraction, branch) = pair
+                val current = fraction * Math.abs (ik)
                 if (current.isNaN)
-                    None
+                    (false, None)
                 else
-                    pair._2.fuseThatBlows (current)
+                    branch.checkFuses (current)
             }
-        ).toArray.flatten
-        if (0 == dead.length)
-            None
+        )
+        val blows = new_complex.exists (_._1)
+        if (blows)
+            (blows, Some (ComplexBranch (from, to, current, new_complex.flatMap (_._2).toArray)))
         else
-            Some (dead(0))
+            (false, Some (this))
     }
 }
 

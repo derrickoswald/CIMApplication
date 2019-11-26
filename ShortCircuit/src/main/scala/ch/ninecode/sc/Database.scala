@@ -260,7 +260,7 @@ object Database
                         datainsert2.setDouble (15, batch (i).high_ik3pol)
                         datainsert2.setDouble (16, batch (i).high_ip)
                         datainsert2.setDouble (17, batch (i).high_sk)
-                        if (null == batch (i).fuses)
+                        if (null == batch (i).branches)
                         {
                             datainsert2.setNull (18, Types.VARCHAR)
                             datainsert2.setNull (19, Types.VARCHAR)
@@ -279,7 +279,7 @@ object Database
                             if (batch (i).lastFuseHasMissingValues)
                                 datainsert2.setNull (23, Types.BOOLEAN)
                             else
-                                datainsert2.setBoolean (23, batch (i).fuseOK)
+                                datainsert2.setBoolean (23, batch (i).fuseOK (options.cmin))
                         }
                         datainsert2.executeUpdate ()
                     }
