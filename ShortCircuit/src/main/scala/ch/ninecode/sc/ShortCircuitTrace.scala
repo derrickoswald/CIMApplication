@@ -39,8 +39,8 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
         {
             val errors = ScError.combine_errors (v.errors, message.errors, options.messagemax)
             val z = if ((null != message.ref) && (null != message.edge)) message.ref + message.edge else v.impedance
-            val fuses = if (null != message.fuses) message.fuses else v.fuses
-            v.copy (source_id = message.source_id, source_impedance = message.source_impedance, id_prev = message.previous_node, impedance = z, fuses = fuses, errors = errors)
+            val branches = if (null != message.fuses) message.fuses else v.branches
+            v.copy (source_id = message.source_id, source_impedance = message.source_impedance, id_prev = message.previous_node, impedance = z, branches = branches, errors = errors)
         }
     }
 
@@ -90,8 +90,8 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         log.error (error.message)
                         // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                         Iterator (
-                            (triplet.dstId, ScMessage (dst.source_id, dst.source_impedance, null, null, src.fuses, src.id_seq, List (error))),
-                            (triplet.srcId, ScMessage (src.source_id, dst.source_impedance, null, null, src.fuses, dst.id_seq, List (error)))
+                            (triplet.dstId, ScMessage (dst.source_id, dst.source_impedance, null, null, src.branches, src.id_seq, List (error))),
+                            (triplet.srcId, ScMessage (src.source_id, dst.source_impedance, null, null, src.branches, dst.id_seq, List (error)))
                         )
                     }
                 case _ ⇒
@@ -111,9 +111,9 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                     {
                         val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
                         val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
-                        val fuses = triplet.attr.fusesTo (triplet.srcAttr.fuses)
+                        val branches = triplet.attr.fusesTo (triplet.srcAttr.branches)
                         val errors = triplet.attr.hasIssues (triplet.srcAttr.errors, options)
-                        val message = ScMessage (triplet.srcAttr.source_id, triplet.srcAttr.source_impedance, from, to, fuses, triplet.srcAttr.id_seq, errors)
+                        val message = ScMessage (triplet.srcAttr.source_id, triplet.srcAttr.source_impedance, from, to, branches, triplet.srcAttr.id_seq, errors)
                         if (log.isDebugEnabled)
                             log.debug ("%s <-- %s".format (triplet.dstAttr.id_seq, message.asString))
                         Iterator ((triplet.dstId, message))
@@ -126,9 +126,9 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         {
                             val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
                             val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)
-                            val fuses = triplet.attr.fusesTo (triplet.dstAttr.fuses)
+                            val branches = triplet.attr.fusesTo (triplet.dstAttr.branches)
                             val errors = triplet.attr.hasIssues (triplet.dstAttr.errors, options)
-                            val message = ScMessage (triplet.dstAttr.source_id, triplet.dstAttr.source_impedance, from, to, fuses, triplet.dstAttr.id_seq, errors)
+                            val message = ScMessage (triplet.dstAttr.source_id, triplet.dstAttr.source_impedance, from, to, branches, triplet.dstAttr.id_seq, errors)
                             if (log.isDebugEnabled)
                                 log.debug ("%s <-- %s".format (triplet.srcAttr.id_seq, message.asString))
                             Iterator ((triplet.srcId, message))

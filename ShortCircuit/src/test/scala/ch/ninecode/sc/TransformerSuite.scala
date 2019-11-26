@@ -85,7 +85,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
             val csv = string.collect
             println ("results: " + csv.length)
             println (ScResult.csv_header)
@@ -141,7 +141,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
             val csv = string.collect
             println ("results: " + csv.length)
             println (ScResult.csv_header)
@@ -199,7 +199,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
             val csv = string.collect
             println ("results: " + csv.length)
             println (ScResult.csv_header)

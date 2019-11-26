@@ -124,21 +124,6 @@ object FData
             branches.ratios.map (x ⇒ (x._1 * Math.abs (ik), x._2)).map (x ⇒ fuse (x._1, x._2).toInt).mkString (",")
     }
 
-    /**
-     * Determines which fuse, if any, will blow to break the short circuit current.
-     *
-     * @param ik the short circuit current to apply
-     * @param branches the series-parallel set of branches to check
-     * @return the fuse that blows: Some (Branch) or None
-     */
-    def fuseThatBlows (ik: Double, branches: Branch): Option[Branch] =
-    {
-        if (null == branches)
-            None
-        else
-            branches.fuseThatBlows (ik)
-    }
-
     def lastFuseHasMissingValues (branches: Branch): Boolean =
     {
         if (null == branches)

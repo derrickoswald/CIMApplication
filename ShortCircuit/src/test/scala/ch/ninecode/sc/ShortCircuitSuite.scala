@@ -121,7 +121,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -186,7 +186,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -253,7 +253,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -322,7 +322,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -391,7 +391,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -458,7 +458,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -521,7 +521,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -588,7 +588,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -666,7 +666,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -734,7 +734,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)
@@ -802,7 +802,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
             val path = new File (output)
             FileUtils.deleteQuietly (path)

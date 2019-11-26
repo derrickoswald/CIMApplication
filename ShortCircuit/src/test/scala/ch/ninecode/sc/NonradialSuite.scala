@@ -95,7 +95,7 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
             // output SQLite database
             Database.store (sc_options)(results)
 
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
             val csv = string.collect
             println ("results: " + csv.length)
             println (ScResult.csv_header)
@@ -151,7 +151,7 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
             // output SQLite database
             Database.store (sc_options)(results)
 
-            val string = results.sortBy (_.tx).map (_.csv)
+            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
             val csv = string.collect
             println ("results: " + csv.length)
             println (ScResult.csv_header)
