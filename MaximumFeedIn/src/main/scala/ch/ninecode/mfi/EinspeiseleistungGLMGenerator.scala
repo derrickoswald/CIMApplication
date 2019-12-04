@@ -190,20 +190,19 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
             def PVPower (maxp: Double): String =
             {
-                val phi = math.signum (cosPhi) * acos (math.abs (cosPhi))
+                // https://en.wikipedia.org/wiki/Power_factor
+                // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
+                // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
+                // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
+                val phi = - math.signum (cosPhi) * acos (math.abs (cosPhi))
                 new Complex (-maxp * math.cos (phi), -maxp * math.sin (phi)).asString (6)
             }
 
-            // https://en.wikipedia.org/wiki/Power_factor
-            // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
-            // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
-            // So, without it being stated we assume PF is lagging and that a negative power factor is actually an indicator of a leading power factor.
-            val maxP = new Complex (-ratedNetMaxP * math.abs (cosPhi), ratedNetMaxP * math.signum (cosPhi) * sin (acos (math.abs (cosPhi))))
             if (ratedNetMaxP > 0)
             {
                 val phase = if (one_phase) "AN" else "ABCN"
                 val power = if (one_phase)
-                    s"""            constant_power_A ${maxP.asString (6)};""".stripMargin
+                    s"""            constant_power_A ${PVPower (ratedNetMaxP)};""".stripMargin
                 else
                 {
                     val maxP3 = PVPower (ratedNetMaxP / 3.0)

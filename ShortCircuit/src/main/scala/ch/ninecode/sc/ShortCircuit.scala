@@ -266,14 +266,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     calculate_one (v2, node.impedance.impedanz_high, node.impedance.null_impedanz_high))
         val costerm = MaximumStartingCurrent.costerm (node.impedance.impedanz_low, options)
 
-        ScResult (node.id_seq, equipment, terminal, container,
+        ScResult (node.id_seq, equipment, node.voltage, terminal, container,
             if (null == node.errors) List () else node.errors.map (_.toString),
             node.source_id, node.source_impedance, node.id_prev,
             node.impedance.impedanz_low.re, node.impedance.impedanz_low.im, node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
             low.ik, low.ik3pol, low.ip, low.sk, costerm,
             low.imax_3ph_low, low.imax_1ph_low, low.imax_2ph_low, low.imax_3ph_med, low.imax_1ph_med, low.imax_2ph_med,
             node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
-            high.ik, high.ik3pol, high.ip, high.sk, node.fuses)
+            high.ik, high.ik3pol, high.ip, high.sk, node.branches)
     }
 
 
@@ -504,9 +504,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      * parallel components) with the edge impedances.
      *
      * @param exp all the data, the simulation and specific experiment plus all the voltage readings
-     * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, impedance at the node and an equivalent circuit
+     * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, secondary impedance of the source transformer and an equivalent circuit
      */
-    def toImpedance (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Impedanzen, Branch) =
+    def evaluate (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (String, String, String, Double, Impedanzen, Branch) =
     {
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
         val transformer = trafokreis.transformer
@@ -595,10 +595,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         // compute the impedance from start to end
         val tx = StartingTrafos (0L, 0L, transformer)
-        val (z, path) = if (null == branch)
+        val path = if (null == branch)
         {
             if (experiment.mrid == trafokreis.transformer.node1)
-                (tx.secondary_impedance, null)
+                null
             else
             {
                 log.error (
@@ -609,18 +609,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 val sum = directs.map (_.current).sum
                 // generate a fake impedance
                 val complex = ComplexBranch (trafokreis.transformer.node1, experiment.mrid, sum, branches.toArray)
-                val z = complex.z + tx.secondary_impedance
-                (z, complex.justFuses.orNull)
+                complex
             }
         }
         else
-        {
-            // use r0=r1 & x0=x1 for trafos, with no temperature effect on transformer impedance
-            val z = branch.z + tx.secondary_impedance
-            // assign current values to each branch
-            (z, branch.justFuses.orNull)
-        }
-        (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, z, path)
+            branch
+        (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, tx.secondary_impedance, path)
     }
 
     /**
@@ -653,7 +647,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val groups = simulations.flatMap (simulation ⇒ simulation.experiments.map (experiment ⇒ (simulation, experiment))).keyBy (pair ⇒ pair._2.trafo + "_" + pair._2.t1.getTimeInMillis.toString)
         val exp = groups.join (values).values
 
-        val z = exp.map (toImpedance)
+        val z = exp.map (evaluate)
         val anal = System.nanoTime ()
         log.info ("analyse: %s seconds".format ((anal - read) / 1e9))
         z
@@ -668,7 +662,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      * @param simulations the RDD of transformer service areas to which this analysis should be applied
      * @param temperature the temerature at which to evaluate the impedances (°C)
      * @param isMax       If <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
-     * @return the RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, impedance at the node and fuse network
+     * @return the RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, supplying transformer impedance and network
      */
     def remedial (simulations: RDD[SimulationTransformerServiceArea], temperature: Double, isMax: Boolean): RDD[(String, String, String, Double, Impedanzen, Branch)] =
     {
@@ -821,7 +815,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     high_ik3pol = 0.0,
                     high_ip = 0.0,
                     high_sk = 0.0,
-                    fuses = null)
+                    branches = null)
         }
     }
 
@@ -916,29 +910,29 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                         start_time = now,
                         directory = x._2.transformer_name)
             )
-            // perform remedial simulations produces (trafoid, nodeid, equipment, voltage, Z, Fuses)
-            val z = remedial (simulations, options.low_temperature, true).persist (storage_level)
-            log.info ("""ran %s experiments""".format (z.count ()))
+            // perform remedial simulations produces (trafoid, nodeid, equipment, voltage, trafo.Z, Branch)
+            val results = remedial (simulations, options.low_temperature, true).persist (storage_level)
+            log.info ("""ran %s experiments""".format (results.count ()))
             // map to the type returned by the trace, use the existing value where possible
             val original_keyed = original_results.keyBy (x ⇒ x.tx + "_" + x.node)
             // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
-            val new_nodes = z.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
+            val new_nodes = results.keyBy (x ⇒ x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
                 x ⇒
                 {
                     val v = x._1._4
-                    val fuses = x._1._6
-                    val z = x._1._5
+                    val branches = x._1._6
+                    val ztrafo = x._1._5
+                    val z = if (null == branches) ztrafo else ztrafo + branches.z
                     x._2 match
                     {
                         case Some (original) ⇒
                             (
-                                ScNode (original.node, v, original.tx, original.tx_impedance, original.prev, z, fuses, List (ScError (false, false, "computed by load-flow"))), // replace the errors
+                                ScNode (original.node, v, original.tx, original.tx_impedance, original.prev, z, branches, List (ScError (false, false, "computed by load-flow"))), // replace the errors
                                 original.terminal, original.equipment, original.container
                             )
                         case None ⇒
-                            val c = Complex(0)
                             (
-                                ScNode (x._1._2, v, x._1._1, c, null, z, null, List ()),
+                                ScNode (x._1._2, v, x._1._1, Complex(0), null, ztrafo, null, List ()),
                                 1, x._1._3, ""
                             )
                     }

@@ -7,6 +7,7 @@ import ch.ninecode.gl.Complex
  *
  * @param node         TopologicalNode mRID
  * @param equipment    conducting equipment mRID
+ * @param voltage      nominal node voltage (V)
  * @param terminal     number for equipment
  * @param container    container for equipment
  * @param errors       errors encountered in processing
@@ -35,12 +36,13 @@ import ch.ninecode.gl.Complex
  * @param high_ik3pol  three phase bolted short circuit current at maximum impedance (A)
  * @param high_ip      maximum aperiodic short-circuit current according to IEC 60909-0 at maximum impedance (A)
  * @param high_sk      short-circuit power at the point of common coupling at maximum impedance (VA)
- * @param fuses        list of fuse values from the source (primary of feeding transformer) to this node
+ * @param branches     network from the source (primary of feeding transformer) to this node
  */
 case class ScResult
 (
     node: String,
     equipment: String,
+    voltage: Double,
     terminal: Int,
     container: String,
     errors: List[String],
@@ -70,70 +72,132 @@ case class ScResult
     high_ik3pol: Double = 0.0,
     high_ip: Double = 0.0,
     high_sk: Double = 0.0,
-    fuses: Branch
+    branches: Branch
 )
 {
-    def csv: String =
+    def csv (cmin: Double): String =
         node + ";" + equipment + ";" + terminal + ";" + container + ";" + (if (null != errors) errors.mkString (",") else "") + ";" + tx + ";" +
             low_ik + ";" + low_ik3pol + ";" + low_ip + ";" + low_r + ";" + low_x + ";" + low_r0 + ";" + low_x0 + ";" + low_sk + ";" + costerm + ";" +
             imax_3ph_low + ";" + imax_1ph_low + ";" + imax_2ph_low + ";" + imax_3ph_med + ";" + imax_1ph_med + ";" + imax_2ph_med + ";" +
             high_r + ";" + high_x + ";" + high_r0 + ";" + high_x0 + ";" + high_ik + ";" + high_ik3pol + ";" + high_ip + ";" + high_sk + ";" +
-            fuseString + ";" + lastFusesString + ";" + iksplitString + ";" + fuseMax + ";" + fuseOK
+            fuseString + ";" + lastFusesString + ";" + iksplitString + ";" + fuseMax + ";" + fuseOK (cmin)
 
     def fuseString: String =
     {
-        val s = if (null == fuses)
+        val s = if (null == branches)
             ""
         else
-            fuses.asFuse
+            branches.justFuses match
+            {
+                case Some (branch) => branch.asFuse
+                case None => ""
+            }
         s
     }
 
     def lastFusesString: String =
     {
-        val s = if (null == fuses)
+        val s = if (null == branches)
             ""
         else
-            fuses.lastFuses.map (_.asFuse).mkString (",")
+            branches.justFuses match
+            {
+                case Some (branch) => branch.lastFuses.map (_.asFuse).mkString (",")
+                case None => ""
+            }
         s
     }
 
     def lastFusesId: String =
     {
-        val s = if (null == fuses)
+        val s = if (null == branches)
             ""
         else
-            fuses.lastFuses.map (_.asId).mkString (",")
+            branches.justFuses match
+            {
+                case Some (branch) => branch.lastFuses.map (_.asId).mkString (",")
+                case None => ""
+            }
         s
     }
 
     def iksplitString: String =
     {
-        if (null == fuses)
+        if (null == branches)
             ""
         else
-            fuses.ratios.map (x ⇒ x._1 * high_ik).map (_.toString).mkString (",")
+            branches.justFuses match
+            {
+                case Some (branch) => branch.ratios.map (x ⇒ x._1 * high_ik).map (_.toString).mkString (",")
+                case None => ""
+            }
     }
 
     def fuseMax: String =
     {
-        if (null == fuses)
+        if (null == branches)
             ""
         else
-            FData.fuses (high_ik, fuses)
+            branches.justFuses match
+            {
+                case Some (branch) => FData.fuses (high_ik, branch)
+                case None => ""
+            }
     }
 
     def lastFuseHasMissingValues: Boolean =
     {
-        FData.lastFuseHasMissingValues (fuses)
+        branches.justFuses match
+        {
+            case Some (branch) => FData.lastFuseHasMissingValues (branch)
+            case None => true
+        }
     }
 
-    def fuseOK: Boolean =
+    def calculate_ik (voltage: Double, cmin: Double, impedanz: Complex, null_impedanz: Complex): Double =
     {
-        if (null == fuses)
+        val root3 = Math.sqrt (3.0)
+
+        // Einpoligen Kurzschlussstrom berechnen
+        val ik_z = root3 * cmin * voltage
+        val ik_n_sqrt1 = !impedanz
+        val ik_n_sqrt2 = !null_impedanz
+        val ik_n = 2 * ik_n_sqrt1 + ik_n_sqrt2
+        ik_z / ik_n
+    }
+
+    /**
+     * Check the network fuses to see if the short-circuit current could be interrupted.
+     *
+     * @return <code>true</code> if the network would be interrupted because of the short circuit, or <code>false</code> otherwise
+     */
+    def fuseOK (cmin: Double): Boolean =
+    {
+        if (null == branches)
             false
         else
-            FData.fuseThatBlows (high_ik, fuses).nonEmpty
+        {
+            var network = branches
+            var changed = false
+            // recompute the impedance of the trafo and the EquivalentInjection together
+            val high_z = Impedanzen (Complex (low_r, low_x), Complex (low_r0, low_x0), Complex (high_r, high_x), Complex (high_r0, high_x0))
+            val supply_z = high_z - network.z
+            do
+            {
+                val z = supply_z + network.z
+                // first time through this should be high_ik
+                val ik = calculate_ik (voltage, cmin, z.impedanz_high, z.null_impedanz_high)
+                val (blows, newnet) = network.checkFuses (ik)
+                changed = blows
+                network = newnet match
+                {
+                    case Some (n) => n
+                    case None => null
+                }
+            }
+            while (changed && (null != network))
+            null == network
+        }
     }
 
     def toPseudo: PseudoScResult =
@@ -169,7 +233,14 @@ case class ScResult
             high_ik3pol,
             high_ip,
             high_sk,
-            if (null != fuses) fuses.asString else ""
+            if (null != branches)
+                branches.justFuses match
+                {
+                    case Some (branch) => branch.asString
+                    case None => ""
+                }
+            else
+                ""
         )
     }
 }

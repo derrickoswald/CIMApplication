@@ -11,8 +11,8 @@ import ch.ninecode.gl.Graphable
  * @param source_id the feeding transformer
  * @param source_impedance the feeding transformer impedance at the secondary (Ω)
  * @param id_prev   the previous node
- * @param impedance the impedance from the transformer to this node
- * @param fuses     the network of fuses encountered on the path from the source to this node
+ * @param impedance the impedance of the transformer secondary supplying this node
+ * @param branches  the network encountered on the path from the source to this node
  * @param errors    the list of errors and warnings encountered
  */
 case class ScNode (
@@ -22,7 +22,7 @@ case class ScNode (
     source_impedance: Complex,
     id_prev: String,
     impedance: Impedanzen,
-    fuses: Branch,
+    branches: Branch,
     errors: List[ScError])
 extends Graphable
 {
