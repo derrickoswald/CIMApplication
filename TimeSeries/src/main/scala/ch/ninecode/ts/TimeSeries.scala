@@ -117,6 +117,9 @@ object TimeSeries
                         case Operations.MetaModel =>
                             val model = TimeSeriesModel (session, options)
                             model.makeMetaDecisionTreeRegressorModel ()
+                        case Operations.SimpleMetaModel =>
+                            val model = TimeSeriesModel (session, options)
+                            model.makeSingleMetaDecisionTreeRegressorModel ()
                         case Operations.Synthesize =>
                             val model = TimeSeriesModel (session, options)
                             if (options.classes.isEmpty)

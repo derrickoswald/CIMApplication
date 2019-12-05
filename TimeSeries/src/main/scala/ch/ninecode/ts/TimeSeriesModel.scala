@@ -66,13 +66,13 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 
     val class_names: Seq[String] = TimeSeriesMeta (session, options).classes.toSeq
 
-    def eraseModelFile ()
+    def eraseModelFile (suffix: String = "")
     {
         val hdfs_configuration = new Configuration ()
         hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
         hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
         val hdfs = FileSystem.get (URI.create (model_file_uri), hdfs_configuration)
-        val directory = new Path (options.model_file)
+        val directory = new Path (s"${options.model_file}$suffix")
         hdfs.delete (directory, true)
     }
 
@@ -191,6 +191,34 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .persist (StorageLevel.fromString (options.storage_level))
     }
 
+    def getSingleMetaRawData (cls: String): DataFrame =
+    {
+        log.info ("reading meta data")
+        val meta_frame = meta
+        val stats_and_meta =
+            averages
+                .join (meta_frame, Seq ("mrid"))
+        // only use measurements for which we have metadata
+        val in = meta_frame.select ("mrid").rdd.collect.map (row ⇒ row.getString (0)).mkString ("mrid in ('", "','", "')")
+        var data = session
+            .read
+            .format ("org.apache.spark.sql.cassandra")
+            .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
+            .load
+            .filter (s"type='energy' and $in") // push down filter
+            .filter (s"real_a > 0.0")
+            .join (stats_and_meta, Seq ("mrid", "type"))
+            .filter (s"classes['$cls'] = 1")
+            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
+            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
+            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+        data = gen_day_columns (data, "day")
+        val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names
+        data
+            .selectExpr (cols: _*)
+            .persist (StorageLevel.fromString (options.storage_level))
+    }
+
     def makeDecisionTreeRegressorModel ()
     {
         // split the data into training and test sets (30% held out for testing)
@@ -264,9 +292,9 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         val raw = getMetaRawData
         val splits = raw.randomSplit (Array(0.7, 0.3))
         val (trainingData, testData) = (splits(0), splits(1))
-        val cols = Seq ("average", "tick", "week") ++ day_names ++ day_names
+        val cols = Seq ("average", "tick", "week") ++ day_names ++ class_names
 
-        //println (columns.mkString (","))
+        //println (cols.mkString (","))
         val assembler = new VectorAssembler ()
             .setInputCols  (cols.toArray)
             .setOutputCol ("features")
@@ -328,6 +356,79 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         model.save (options.model_file)
     }
 
+    def makeSingleMetaDecisionTreeRegressorModel (): Unit =
+    {
+        for (cls <- TimeSeriesMeta (session, options).classes)
+        {
+            // split the data into training and test sets (30% held out for testing)
+            val raw = getSingleMetaRawData (cls)
+            val splits = raw.randomSplit (Array(0.7, 0.3))
+            val (trainingData, testData) = (splits(0), splits(1))
+            val cols = Seq ("average", "tick", "week") ++ day_names
+
+            //println (columns.mkString (","))
+            val assembler = new VectorAssembler ()
+                .setInputCols  (cols.toArray)
+                .setOutputCol ("features")
+            val train_df = assembler.transform (trainingData)
+            val test_df = assembler.transform (testData)
+
+            // train a DecisionTree model for regression
+            log.info (s"training model $cls")
+            val regressor = new DecisionTreeRegressor ()
+                .setFeaturesCol ("features")
+                .setLabelCol ("value")
+                .setImpurity ("variance")
+                .setMaxDepth (16)
+                .setMaxBins (32)
+                .setCacheNodeIds (true)
+                .setCheckpointInterval (10)
+            if (-1L != options.seed)
+                regressor.setSeed (options.seed)
+
+            val evaluator = new RegressionEvaluator ()
+                .setLabelCol ("value")
+                .setPredictionCol ("prediction")
+                .setMetricName ("rmse")
+
+            // straight forward training
+            // val model = regressor.fit (train_df)
+
+            // hyperparameter tuning training
+            // construct a grid of parameters to search over
+            val grid = new ParamGridBuilder()
+                .addGrid (regressor.maxDepth, options.tree_depth)
+                .addGrid (regressor.maxBins, options.bins)
+                .addGrid (regressor.minInfoGain, options.info)
+                .build()
+
+            val trainer = new TrainValidationSplit ()
+                .setEstimator (regressor) // in this case the estimator is simply the decision tree regression
+                .setEvaluator (evaluator)
+                .setEstimatorParamMaps (grid)
+                // 70% of the data will be used for training and the remaining 30% for validation
+                .setTrainRatio (0.7)
+            // evaluate up to 2 parameter settings in parallel
+            // .setParallelism (2)
+
+            // run train validation split, and choose the best set of parameters.
+            val fitted = trainer.fit (train_df)
+            val model = fitted.bestModel.asInstanceOf[DecisionTreeRegressionModel]
+
+            val predictions = model.transform (test_df)
+            val rmse = evaluator.evaluate (predictions)
+            log.info (s"root mean squared error (RMSE) on test data = $rmse")
+            log.info (s"tree_depth = ${model.getMaxDepth}")
+            log.info (s"bins = ${model.getMaxBins}")
+            log.info (s"info = ${model.getMinInfoGain}")
+            log.info (s"seed = ${model.getSeed}")
+
+            // save the model
+            eraseModelFile (cls)
+            model.save (s"${options.model_file}$cls")
+        }
+    }
+
     def makeDLModel ()
     {
         // split the data into training and test sets (30% held out for testing)
@@ -369,10 +470,6 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 
     def generateSimpleTimeSeries (synthesis: String, start: Calendar, end: Calendar, period: Int, yearly_kWh: Double): Unit =
     {
-        // load the model
-        log.info (s"loading model")
-        val model = DecisionTreeRegressionModel.load (options.model_file)
-
         // generate the feature vector
         log.info (s"generating features")
         val periods = 24 * 60 * 60 * 1000 / period
@@ -412,6 +509,10 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .setOutputCol ("features")
         val features = assembler.transform (df)
 
+        // load the model
+        log.info (s"loading model ${options.model_file}")
+        val model = DecisionTreeRegressionModel.load (options.model_file)
+
         // generate the predictions
         log.info (s"generating model predictions")
         val predictions = model
@@ -424,10 +525,6 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 
     def generateMetaTimeSeries (synthesis: String, start: Calendar, end: Calendar, period: Int, yearly_kWh: Double, types: Map[String, Int]): Unit =
     {
-        // load the model
-        log.info (s"loading model")
-        val model = DecisionTreeRegressionModel.load (options.model_file)
-
         // generate the feature vector
         log.info (s"generating features")
         val periods = 24 * 60 * 60 * 1000 / period
@@ -469,6 +566,10 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .setOutputCol ("features")
         val features = assembler.transform (df)
 
+        // load the model
+        log.info (s"loading model ${options.model_file}")
+        val model = DecisionTreeRegressionModel.load (options.model_file)
+
         // generate the predictions
         log.info (s"generating model predictions")
         val predictions = model
@@ -478,5 +579,79 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 
         // save to the synthesized_value table
         save (predictions, synthesis, period)
+    }
+
+    def generateSingleMetaTimeSeries (synthesis: String, start: Calendar, end: Calendar, period: Int, yearly_kWh: Double, types: Map[String, Int]): Unit =
+    {
+        // generate the feature vector
+        log.info (s"generating features")
+        val periods = 24 * 60 * 60 * 1000 / period
+        val average = yearly_kWh * 1000.0 / 365.25 / periods
+        def oneHot (day: Int, weekday: Int): Int = if (day == weekday) 1 else 0
+        val data = Iterator.continually
+        {
+            val millis: Long = start.getTimeInMillis
+            val tick = ((millis / period) % (24 * 60 * 60 * 1000 / period)).toInt
+            val c = Calendar.getInstance ()
+            c.setTimeZone (TimeZone.getTimeZone ("GMT"))
+            c.setTimeInMillis (millis)
+            val day = c.get (Calendar.DAY_OF_WEEK)
+            val week = c.get (Calendar.DAY_OF_WEEK)
+            start.add (Calendar.MILLISECOND, period)
+            val days = for (d <- 1 to 7) yield oneHot (day, d)
+            Row.fromSeq (Seq[Any] (millis, average, tick, week) ++ days)
+        }.takeWhile (_ => start.getTimeInMillis <= end.getTimeInMillis)
+
+        // make a dataframe
+        val schema = StructType (
+            List (
+                StructField ("time", LongType, false),
+                StructField ("average", DoubleType, false),
+                StructField ("tick", IntegerType, false),
+                StructField ("week", IntegerType, false))
+                ++ (for (d <- day_names) yield StructField (d, IntegerType, false)).toList
+        )
+
+        val df = session.createDataFrame (
+            session.sparkContext.parallelize (data.toSeq),
+            schema
+        )
+        val cols = Seq ("average", "tick", "week") ++ day_names
+        val assembler = new VectorAssembler ()
+            .setInputCols  (cols.toArray)
+            .setOutputCol ("features")
+        val features = assembler.transform (df)
+
+        // sum over class types
+        var sum =
+            features
+                .select ("time")
+                .withColumn ("sum", lit (0.0))
+
+        for (cls <- TimeSeriesMeta (session, options).classes
+             if types.contains (cls))
+        {
+            // load the model
+            val file = s"${options.model_file}$cls"
+            log.info (s"loading model $file")
+            val model = DecisionTreeRegressionModel.load (file)
+
+            // generate the predictions
+            log.info (s"generating model predictions")
+            val predictions = model
+                .setPredictionCol ("real_a")
+                .transform (features)
+                .select ("time", "real_a")
+            sum =
+                sum
+                .join (predictions.withColumn ("value", lit (types(cls)) * predictions ("real_a")), "time")
+                .withColumn ("total", sum ("sum") + predictions (("value")))
+                .select ("time", "total")
+                .withColumnRenamed ("total", "sum")
+
+        }
+
+        // save to the synthesized_value table
+        save (sum, synthesis, period)
     }
 }

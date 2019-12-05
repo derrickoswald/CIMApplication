@@ -15,9 +15,9 @@ import org.junit.runners.MethodSorters
 import ch.ninecode.ts.TimeSeries.jarForObject
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-class MetaTest
+class SimpleMetaTest
 {
-    import ch.ninecode.ts.MetaTest._
+    import ch.ninecode.ts.SimpleMetaTest._
 
     def time[R](template: String)(block: => R): R =
     {
@@ -43,19 +43,19 @@ class MetaTest
             val model = TimeSeriesModel (session, TimeSeriesOptions (keyspace = KEYSPACE, log_level = LogLevels.INFO, tree_depth=Array(8), model_file = "hdfs://sandbox:8020/models/myMetaModel16"))
             time ("modelling time: %s seconds")
             {
-                model.makeMetaDecisionTreeRegressorModel ()
+                model.makeSingleMetaDecisionTreeRegressorModel ()
             }
             time ("synthesis time: %s seconds")
             {
-                model.generateMetaTimeSeries ("HAS7165", start, end, 900000, kWh, Map[String, Int] ("Apartment" -> 12, "General" -> 1))
+                model.generateSingleMetaTimeSeries ("HAS7165", start, end, 900000, kWh, Map[String, Int] ("Apartment" -> 12, "General" -> 1))
             }
         }
     }
 }
 
-object MetaTest
+object SimpleMetaTest
 {
-    val KEYSPACE = "subsample"
+    val KEYSPACE = "meterdata"
     var session: SparkSession = _
 
     @BeforeClass def before ()

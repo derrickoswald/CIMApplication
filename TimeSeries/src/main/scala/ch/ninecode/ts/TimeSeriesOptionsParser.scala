@@ -15,7 +15,7 @@ object LogLevels extends Enumeration
 object Operations extends Enumeration
 {
     type Operations = Value
-    val Statistics, Meta, Model, MetaModel, Synthesize = Value
+    val Statistics, Meta, Model, MetaModel, SimpleMetaModel, Synthesize = Value
 }
 
 class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
@@ -168,6 +168,27 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     cmd (Operations.MetaModel.toString)
         .action ((_, c) => c.copy (operation = Operations.MetaModel) )
         .text (s"    create a meta model${if (default.operation == Operations.MetaModel) " - default" else ""}")
+        .children (
+            opt [Array[Int]]("tree_depth").
+                action ((x, c) => c.copy (tree_depth = x)).
+                text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (",")}]"),
+
+            opt [Array[Int]]("bins").
+                action ((x, c) => c.copy (bins = x)).
+                text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (",")}]"),
+
+            opt [Array[Double]]("info").
+                action ((x, c) => c.copy (info = x)).
+                text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (",")}]"),
+
+            opt [Long]("seed").
+                action ((x, c) => c.copy (seed = x)).
+                text (s"seed value for random number generation [${default.seed}]")
+        )
+
+    cmd (Operations.SimpleMetaModel.toString)
+        .action ((_, c) => c.copy (operation = Operations.SimpleMetaModel) )
+        .text (s"    create a meta model for each separate class${if (default.operation == Operations.SimpleMetaModel) " - default" else ""}")
         .children (
             opt [Array[Int]]("tree_depth").
                 action ((x, c) => c.copy (tree_depth = x)).

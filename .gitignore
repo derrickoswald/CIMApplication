@@ -35,6 +35,7 @@ results/
 
 # Misc #
 glslogs/
+models/
 *.log
 /bin/
 .cache-main
