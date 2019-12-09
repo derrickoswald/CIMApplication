@@ -109,7 +109,7 @@ class EinspeiseleistungOptionsParser (APPLICATION_NAME: String, APPLICATION_VERS
 
     opt [Double]("precalcfactor").valueName ("D").
         action ((x, c) => c.copy (precalc_factor = x)).
-        text (f"factor to multiply precalculation results for gridlabd [${default.precalc_factor}%g]")
+        text (f"factor to multiply precalculation results for GridLAB-D [${default.precalc_factor}%g]")
 
     opt [Double]("cosphi").valueName ("D").
         action ((x, c) => c.copy (cosphi = x)).
