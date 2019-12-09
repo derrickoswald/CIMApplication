@@ -31,6 +31,7 @@ project/
 data/
 private_data/
 simulation/
+simulation_three_phase/
 results/
 
 # Misc #
