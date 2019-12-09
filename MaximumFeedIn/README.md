@@ -275,7 +275,7 @@ The simulation files are copied locally from HDFS, in order for gridlabd to oper
 Erasing is highly recommended.The files can be found in the `work` directory (standalone) or `userlogs` directory (yarn).
 
 ### simulation
-Performs the [Load Flow](#load flow) phase only using the results
+Performs the [Load Flow](#load%20flow) phase only using the results
 of a prior [Pre-Calculation](#pre-calculation) as specified by the simulation number.
 This allows the processing to proceed in two phases separated by an arbitrary amount of time
 or to re-execute a failed job.
@@ -290,22 +290,22 @@ $ spark-submit /opt/code/MaximumFeedIn-2.11-2.4.4-2.6.0-jar-with-dependencies.ja
 ### reference
 Use this reference (simulation) number for a comparison to the current [Pre-Calculation](#pre-calculation)
 to determine which transformers have new photo-voltaic installations or have changed the estimated
-power sufficiently, and hence need to be simulated with [Load Flow](#load flow).
+power sufficiently, and hence need to be simulated with [Load Flow](#load%20flow).
 This mode is used to avoid recomputing transformer circuits that have not changed.
 
 ### delta
 The amount of power difference, relative to the reference value,
-that will trigger a [Load Flow](#load flow) simulation
+that will trigger a [Load Flow](#load%20flow) simulation
 when in `--reference` mode.
 
 ### precalcfactor
 The scaling to be performed on [Pre-Calculation](#pre-calculation) feed-in value
-to set the upper limit for [Load Flow](#load flow) ramp up.
+to set the upper limit for [Load Flow](#load%20flow) ramp up.
 
 ### cosphi
 The power factor which will be used for new photo-voltaic installations.
 A positive CosPhi indicates a leading power factor for new PV, while a negative CosPhi indicates a lagging power factor.
-See the discussion below under [Power Factor](#power factor).
+See the discussion below under [Power Factor](#power%20factor).
 
 ### voltage_threshold 
 This specifies the threshold for voltage that will be used for each node on the same feeder (of the trafo station) as the house on which
