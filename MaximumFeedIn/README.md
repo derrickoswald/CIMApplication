@@ -20,6 +20,7 @@ For each house (CIM class EnergyConsumer) it determines at
 what power level the injected current would raise the line voltage above 3% of nominal or would
 cause the maximum rated current of any cable to be exceeded or would cause the power rating of the transformer
 to be exceeded.
+For load-flow computations it uses [GridLAB-D](https://www.gridlabd.org/).
 
 The output is a simple SQLite database providing, the maximum power in Watts for each house
 (in CIM speak: the ConnectivityNode of each single terminal ConductingEquipment rdf:ID),
@@ -75,8 +76,10 @@ For example, a typical cable element and its asset info record are shown below.
 ```
 
 This 47.5m underground cable, of 4 conductors of 50 sq. mm. each, has a positive sequence impedance of 0.519+0.084jΩ
-per Kilometer and is in service at 400 Volts with a maximum rated current of 170 Amps.
+per kilometer and is in service at 400 Volts with a maximum rated current of 170 Amps.
 Not shown is that topologically, it is connected to a house and an intermediate junction.
+
+_NOTE: this is an error on our part, the impedances in the ACLineSegment are *not* supposed to be per kilometer._
 
 # Preparation
 
@@ -86,11 +89,11 @@ HDFS
 The data file to be processed needs to be uploaded to HDFS. A command like this can be used:
 ```
 hdfs dfs -mkdir /data
-hdfs dfs -put NIS_CIM_Export_sias_current_20161220.rdf /data
+hdfs dfs -put cimfile.rdf /data
 ```
 
 For some HDFS configuration settings, the directory for simulation files may need to be created and given write access permissions for the user executing the program.
-At the moment this is hard-coded as `/simulation`.
+This defaults to `/simulation` but can be altered with the `--outputfile` parameter.
 In the absence of specific user information, all write rights can be given:
 ```
 hdfs dfs -mkdir /simulation
@@ -118,52 +121,49 @@ A bit of help text is available if you use the `--help` switch:
 ```
 spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.4.4-2.6.0-jar-with-dependencies.jar --help
 MaximumFeedIn 2.11-2.4.4-2.6.0
-Usage: MaximumFeedIn [otions] [<CIM> <CIM> ...]
+Usage: MaximumFeedIn [options] [<CIM> <CIM> ...]
 
-Calculate maximum feed-in power without reinforcement or exceeding voltage, current or power constraints.
-
-  --help                   prints this usage text
-  --version                Scala: 2.11, Spark: 2.4.4, MaximumFeedIn: 2.6.0
-  --quiet                  suppress informational messages [false]
   --master MASTER_URL      spark://host:port, mesos://host:port, yarn, or local[*]
   --opts k1=v1,k2=v2       Spark options [spark.graphx.pregel.checkpointInterval=8,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.ui.showConsoleProgress=false]
   --storage_level <value>  storage level for RDD serialization [MEMORY_AND_DISK_SER]
   --deduplicate            de-duplicate input (striped) files [false]
+  --logging <value>        log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN [OFF]
+  --checkpoint <dir>       checkpoint directory on HDFS, e.g. hdfs://... []
+  --verbose                turns on the INFO messages logging [false]
   --three                  use three phase computations [false]
   --precalculation         only calculates threshold and EEA existence for all HAS, assuming no EEA [false]
   --trafos <TRA file>      file of transformer names (one per line) to process []
   --export_only            generates glm files only - no solve or analyse operations [false]
   --all                    process all transformers (not just those with EEA) [false]
   --erase                  clean up (delete) simulation files [false]
-  --logging <value>        log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN
-  --checkpoint <dir>       checkpoint directory on HDFS, e.g. hdfs://...
-  --simulation N           simulation number (precalc) to use for transformer list
-  --reference N            simulation number (precalc) to use as reference for transformer list
+  --simulation N           simulation number (precalc) to use for transformer list [-1]
+  --reference N            simulation number (precalc) to use as reference for transformer list [-1]
   --delta D                delta power difference threshold for reference comparison [1.00000e-06]
-  --precalcfactor D        factor to multiply precalculation results for gridlabd [2.50000]
-  --cosphi D               power factor for new photo-voltaic installations [1.00000]
+  --precalcfactor D        factor to multiply precalculation results for GridLAB-D [2.50000]
+  --cosphi D               power factor for photo-voltaic installations, positive leading, negative lagging [1.00000]
   --voltage_threshold D    the voltage threshold for the feeder of the house under test [3.00000%]
   --voltage_threshold2 D   the voltage threshold for neighboring feeders of the house under test [3.00000%]
   --ignore_other           ignore cable currents on neighboring feeders [false]
-  --cable_impedance_limit  cables with higher impedances for R1 will not be processed with gridlabd [5.00000]
-  --workdir <dir>          shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files
+  --cable_impedance_limit D cables with higher impedances for R1 will not be processed with GridLAB-D [5.00000Ω]
+  --workdir <dir>          shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files []
+  --outputfile <file>      name of the SQLite database results file [simulation/results.db]
   <CIM> <CIM> ...          CIM rdf files to process
+  --version                Scala: 2.11, Spark: 2.4.4, MaximumFeedIn: 2.6.0
+
+Calculate maximum feed-in power without reinforcement or exceeding voltage, current or power constraints.
 ```
 
-_NOTE: It is important to understand that options before the jar file are consumed (and normally understood) by `spark-submit`,
+_NOTE: It is important to understand that options before the jar file name are consumed (and normally understood) by `spark-submit`,
 while options after the jar file are passed to the `MaximumFeedIn` program.
 
-The resulting SQLite database is created in the local directory `./simulation/results.db`,
+The resulting SQLite database is `simulation/results.db`,
 i.e. the path relative to where the `spark-submit` command was executed.
 
 ## Options
 
-### quiet
-Together with the --logging option and log4j.properties configuration of Spark,
-this controls if informational messages from the application are emitted.
-
 ### master
-Allows specifying the Spark master (same meaning as spark-submit) when `MaximumFeedIn` is run in debug mode in a development environment.
+Allows specifying the Spark master (same meaning as spark-submit) when `MaximumFeedIn` is
+run in debug mode in a development environment.
 Normally this should not be used by end users.
 Within the program, the Spark session is accessed via `getOrCreate`,
 so it should be benign to specify the same master as for `spark-submit`.
@@ -174,7 +174,10 @@ When specified, options are in the form of
 [Spark Properties](https://spark.apache.org/docs/latest/configuration.html#viewing-spark-properties)
 (just like the _Arbitrary Spark configuration property_ `--conf` option for `spark-submit`),
 and not the form used by spark-submit.
-For example spark-submit uses `--driver-memory 2g`, while `--opts` uses `spark.driver.memory=2g`.
+For example spark-submit uses `--executor-memory 2g`, while `--opts` uses `spark.executor.memory=2g`.
+
+_Note: only some configuration properties can be set after the Spark context is created.
+In general, options available via `spark-submit` options are **not** settable._
 
 ### storage_level
 The [object serialization](http://spark.apache.org/docs/latest/tuning.html#data-serialization) storage level
@@ -185,40 +188,9 @@ When using striped or tiled RDF files as input, this option will eliminate
 duplicated elements contained in multiple files.
 Only distinctly identified (rdf:ID) CIM elements are kept, duplicates are discarded.
 
-### three
-Changes from the default of single phase simulation to three phase simulation.
-In general, the results should be the same between the two choices,
-so the default is the less memory and disk intensive single phase.
-
-### precalculation
-Performs the [Pre-Calculation](#pre-calculation) phase only
-that calculates the maximum feed-in power for houses
-under the assumption of no other installed systems feeding in power.
-This allows the processing to proceed in two phases separated by an arbitrary amount of time.
-The simulation number (database primary key) is output on the screen at completion,
-to be used as the `--simulation` option.
-
-### trafos
-Allows the specification of a file containing a list of transformers to process.
-A typical use-case is to correct one or more problem areas
-without processing the entire set of transformer areas.
-
-### export_only
-Creates the GridLAB-D .glm files for the transformer areas,
-but doesn't use them to compute feed-in power.
-A typical use case is to generate GridLAB-D model files for some other analysis.
-
-### all
-Performs load-flow simulation on all transformer areas in the input CIM file irregardless of
-whether they have existing feed-in installations or not.
-Normal processing would only perform the [Pre-Calculation](#pre-calculation) phase for
-transformer areas without confounding feed-in sources.
-
-### erase
-Deletes generated simulation files from the local directory of each worker node in the cluster. The simulation files are copied locally from HDFS, in order for gridlabd to operate on them. Erasing is highly recommended. The files can be found in the `work` directory (standalone) or `userlogs` directory (yarn).
-
 ### logging
-Specifies the logging level (verbosity) of log records. This overrides the logging level specified in log4j.properties.
+Specifies the logging level (verbosity) of log records.
+This overrides the logging level specified in log4j.properties.
 
 ### checkpointdir
 Specifies the checkpoint directory and turns checkpointing on - if not specified no checkpointing occurs.
@@ -234,9 +206,76 @@ _NOTE: checkpoint storage must be manually managed (it will not be erased automa
 ```
 hdfs dfs -rm -R "/checkpoint/*"
 ```
+### verbose
+Together with the --logging option and log4j.properties configuration of Spark,
+this controls if informational messages from the application are emitted.
+If verbose is specified, the `--logging` and log4j.properties settings of
+some critical classes in MaximumFeedIn are overridden with the INFO level
+to provide some feedback on processing stages. 
+
+### three
+Changes from the default of single phase simulation to three phase simulation.
+In general, the results should be the same between the two choices,
+so the default (`false`) is the less memory and disk intensive single phase calculations.
+
+A single phase calculation could have been done by simply dropping two of three phases
+and scaling the transformer and consumer power, but instead, the Line-to-Line voltage is used,
+which leads to √3 × line current and hence full power on one phase for the transformer and consumer.
+
+The following table summarizes the scaling in single phase calculations
+to equal the results for three phase simulation:
+
+| Property | 1-phase | 3-phase |
+|----------|---------|---------|
+|Voltage|Line-to-Line (√3 × L-N)| Line-to-Neutral|
+|Current|√3 × line current|line current|
+|Transformer Power|transformer power on one phase|three phase power|
+|Transformer Current|transformer current on one phase|three phase current|
+|EnergyConsumer Power|PV power on one phase|three phase PV power|
+
+For limit checks, the line current is scaled by 1÷√3, since cables are specified as current per phase conductor.
+The voltage limit is already relative (`--voltage_threshold`, default 3%) and the transformer power
+and PV power are computed directly.
+
+### precalculation
+Performs the [Pre-Calculation](#pre-calculation) phase only.
+This calculates the maximum feed-in power for houses
+under the assumption that no other installed systems are feeding in power.
+This allows the processing to proceed in two phases separated by an arbitrary amount of time.
+The simulation number (database primary key) is output on the screen at completion,
+to be used as the `--simulation` option.
+
+### trafos
+Allows the specification of a file containing a list of transformers to process.
+A typical use-case is to correct one or more problem areas
+without processing the entire set of transformer areas.
+The file should consist of one transformer name per line.
+For the case of ganged (parallel) transformers the names are alphabetically sorted
+and concatenated by an underscore character.
+An example file might look like this:
+```
+TRA12345
+TRA7894_TRA7895
+```
+
+### export_only
+Creates the GridLAB-D .glm files for the transformer areas,
+but doesn't use them to compute feed-in power.
+A typical use case is to generate GridLAB-D model files for some other analysis.
+
+### all
+Performs load-flow simulation on all transformer areas in the input CIM file irregardless of
+whether they have existing feed-in installations or not.
+Normal processing would only perform the [Pre-Calculation](#pre-calculation) phase for
+transformer areas without confounding feed-in sources or non-radial networks.
+
+### erase
+Deletes generated simulation files from the local directory of each worker node in the cluster.
+The simulation files are copied locally from HDFS, in order for gridlabd to operate on them.
+Erasing is highly recommended.The files can be found in the `work` directory (standalone) or `userlogs` directory (yarn).
 
 ### simulation
-Performs the [Load Flow](#load-flow) phase only using the results
+Performs the [Load Flow](#load flow) phase only using the results
 of a prior [Pre-Calculation](#pre-calculation) as specified by the simulation number.
 This allows the processing to proceed in two phases separated by an arbitrary amount of time
 or to re-execute a failed job.
@@ -251,36 +290,55 @@ $ spark-submit /opt/code/MaximumFeedIn-2.11-2.4.4-2.6.0-jar-with-dependencies.ja
 ### reference
 Use this reference (simulation) number for a comparison to the current [Pre-Calculation](#pre-calculation)
 to determine which transformers have new photo-voltaic installations or have changed the estimated
-power sufficiently, and hence need to be simulated with [Load Flow](#load-flow).
+power sufficiently, and hence need to be simulated with [Load Flow](#load flow).
 This mode is used to avoid recomputing transformer circuits that have not changed.
 
 ### delta
 The amount of power difference, relative to the reference value,
-that will trigger a [Load Flow](#load-flow) simulation
+that will trigger a [Load Flow](#load flow) simulation
 when in `--reference` mode.
 
 ### precalcfactor
 The scaling to be performed on [Pre-Calculation](#pre-calculation) feed-in value
-to set the upper limit for [Load Flow](#load-flow) ramp up.
+to set the upper limit for [Load Flow](#load flow) ramp up.
 
 ### cosphi
-power factor which will be used for new photo-voltaic installations
+The power factor which will be used for new photo-voltaic installations.
+A positive CosPhi indicates a leading power factor for new PV, while a negative CosPhi indicates a lagging power factor.
+See the discussion below under [Power Factor](#power factor).
 
 ### voltage_threshold 
-this threshold for voltage will be used for each node on the same feeder (of the trafo station) as the house, on which
-the photo-voltaic is currently tested 
+This specifies the threshold for voltage that will be used for each node on the same feeder (of the trafo station) as the house on which
+the photo-voltaic is currently tested.
 
 ### voltage_threshold2 
-this threshold for voltage will be used for each node NOT on the same feeder (of the trafo station) as the house, on which
-the photo-voltaic is currently tested
+This threshold for voltage will be used for each node NOT on the same feeder (of the trafo station) as the house on which
+the photo-voltaic is currently tested.
 
 ### ignore_other
-the current check for ac line segments can be ignored for lines which are NOT on the same feeder as the house, which is 
-under test 
+The current check for AC line segments can be ignored for lines which are NOT on the same feeder as the house which is 
+under test.
 
 ### cable_impedance_limit
-cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with too high impedance values
+cables with a R1 value higher than this are not calculated with GridLAB-D.
+The reason is bad performance, and sometimes non-convergence, with too high impedance values.
 
+### workdir
+This parameter specifies the directory for intermediate files.
+For distributed processing (more than one Spark node) a common directory (HDFS or NFS share)
+accessible by the driver and all worker nodes can be specified.
+If it isn't specified the working directory is in the same location as the input files.
+
+### outputfile
+This parameter allows the placement of the output SQLite file.
+
+### version
+Outputs the version of Scala, Spark and MaximumFeedIn for the jar.
+The Scala and Spark versions were used at compile time, so deviations from these values
+when running MaximumFeedIn can cause failure is arcane and subtle ways.
+If `--verbose` is specified or the log4j logging level is INFO,
+the program reports the Spark version abtained from the session. 
+  
 # Processing
 
 The CIM file is read into Spark using a custom reader, [CIMReader](https://github.com/derrickoswald/CIMReader).
@@ -289,7 +347,7 @@ The reader produces a set of
 one for [each CIM element class](https://derrickoswald.github.io/CIMSpark/doc/scaladocs/#ch.ninecode.model.package).
 It also executes a topological analysis to identify a reduced subset of nodes
 (sets of electrically identical ConnectivityNode elements - 
-connected with zero Ohm conductors such as bus bars or closed switches)
+connected with zero Ohm (0Ω) conductors such as bus bars or closed switches)
 and topological islands isolated by transformers and open switches.
 Usually, each power transformer (or set of ganged transformers) supplies one topological island.
 
@@ -301,22 +359,23 @@ as well as the cable that can sustain the least maximum current.
 From these values a best-case upper bound on maximum injected power can be computed for each node,
 if the assumption is made that no other neighbors are also injecting power (the majority of cases).
 This step also identifies the houses that already have a photo-voltaic or wind power installation
-that is already feeding the network, which provides a list of topological islands that require `Load Flow` simulation.
+that is already feeding the network, or networks that have a non-radial topology.
+This provides a list of topological islands that require `Load Flow` simulation.
 
 ## Load Flow
 
-For topological islands with existing feed-in installations, a load-flow calculation is performed using
-using [GridLAB-D](http://www.gridlabd.org/).
+For topological islands with existing feed-in installations or non-radial topology,
+a load-flow calculation is performed using [GridLAB-D](http://www.gridlabd.org/).
 The program writes the island's equivalent circuit as
 a [.glm](http://gridlab-d.sourceforge.net/wiki/index.php/Creating_GLM_Files) file
 for GridLAB-D and also generates simulated power injection
 [player](http://gridlab-d.sourceforge.net/wiki/index.php/Player) files for each house.
 Each player is a staircase ramp of negative load values,
-from zero to the maximum determined by the `Pre Calculation`
+from zero to the maximum determined by the `Pre-Calculation`
 with each house (ConnectivityNode) being time-multiplexed with the other nodes in the transformer service area.
 It then executes GridLAB-D to run load flow calculations.
-The results of the load flow (voltages at each house and current through each conductor and the transformer)
-are analyzed to find the maximum power at which voltages are still within tolerance and currents don't
+The results of the load flow (voltages at each house, current through each conductor and the transformer power)
+are analyzed to find the maximum power at which voltages are still within tolerance, and currents and powers don't
 exceed rated maximums.
 A second simulation is performed to fine tune the result,
 this time with the load step ramp for only the 10kW around the maximum determined in the first step
@@ -329,7 +388,7 @@ This is the only step that runs only on the master node.
 The schema of the database is two tables and a view:
 ```
 $ sqlite3 simulation/results.db 
-SQLite version 3.8.7.1 2014-10-29 13:59:56
+SQLite version 3.30.1 2019-10-10 20:19:45
 Enter ".help" for usage hints.
 sqlite> .schema
 CREATE TABLE simulation
@@ -339,13 +398,15 @@ CREATE TABLE simulation
     description text,                     -- textual description of the simulation run
     time text                             -- the date and time at which the simulation was run
 );
-CREATE INDEX epoc on simulation (time);
+CREATE TABLE sqlite_sequence(name,seq);
+CREATE INDEX epoch on simulation (time);
 CREATE TABLE results
     -- table of calculated maximum feed-in values
 (
     id integer primary key autoincrement, -- unique id for each simulation result
     simulation integer,                   -- foreign key to corresponding simulation table program execution
-    trafo text,                           -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+    trafo text,                           -- mRID of the PowerTransformer (or ganged transformers) supplying the house
+    feeder text,                          -- mRID of the Connector supplying the house from the substation
     house text,                           -- mRID of the EnergyConsumer at this feed-in node
     maximum double,                       -- maximum feed-in power (W)
     eea integer,                          -- the number of PV installations at this feed-in node
@@ -360,8 +421,9 @@ CREATE VIEW intermediate as
         0 Priority,             -- low priority for precalculated values
         s.description Analysis, -- 'Threshold Precalculation'
         datetime(s.time/1000, 'unixepoch', 'localtime') Date, -- textual program execution time
-        s.time When_Epoc,       -- numeric program execution time
-        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+        s.time When_Epoch,      -- numeric program execution time
+        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the house
+        r.feeder Feeder,        -- mRID of the Connector supplying the house from the substation
         r.house House,          -- mRID of the EnergyConsumer at this feed-in node
         r.maximum Maximum,      -- maximum feed-in power (W)
         r.reason Reason,        -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
@@ -377,8 +439,9 @@ union
         1 Priority,             -- high priority for load-flow values
         s.description Analysis, -- 'Einspeiseleistung'
         datetime(s.time/1000, 'unixepoch', 'localtime') Date, -- textual program execution time
-        s.time When_Epoc,       -- numeric program execution time
-        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+        s.time When_Epoch,      -- numeric program execution time
+        r.trafo Transformer,    -- mRID of the PowerTransformer (or ganged transformers) supplying the house
+        r.feeder Feeder,        -- mRID of the Connector supplying the house from the substation
         r.house House,          -- mRID of the EnergyConsumer at this feed-in node
         r.maximum Maximum,      -- maximum feed-in power (W)
         r.reason Reason,        -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
@@ -388,17 +451,19 @@ union
         results r               -- result values
     where
         s.description = 'Einspeiseleistung' and -- select only load-flow values
-        s.id = r.simulation     -- join the program execution with the result value;
+        s.id = r.simulation     -- join the program execution with the result value
+/* intermediate(Priority,Analysis,Date,When_Epoch,Transformer,Feeder,House,Maximum,Reason,Details) */;
 CREATE VIEW feedin as
     -- view of the most recent best estimated value of maximum feed-in power
     select
         i.Analysis,             -- type of analysis, prefer 'Einspeiseleistung'
-        i.Transformer,          -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+        i.Transformer,          -- mRID of the PowerTransformer (or ganged transformers) supplying the house
+        i.Feeder,               -- mRID of the Connector supplying the house from the substation
         i.House,                -- mRID of the EnergyConsumer at this feed-in node
         i.Maximum,              -- maximum feed-in power (W)
         i.Reason,               -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
         i.Details,              -- details regarding the limiting criteria
-        max(i.When_Epoc) When_Epoc -- select only the most recent value
+        max(i.When_Epoch) When_Epoch -- select only the most recent value
     from
         intermediate i          -- staging view
     where
@@ -409,17 +474,19 @@ union
     select
         i.Analysis,             -- type of analysis, fall back to 'Threshold Precalculation'
         i.Transformer,          -- mRID of the PowerTransformer (or ganged transformers) supplying the energy consumer
+        i.Feeder,               -- mRID of the Connector supplying the house from the substation
         i.House,                -- mRID of the EnergyConsumer at this feed-in node
         i.Maximum,              -- maximum feed-in power (W)
         i.Reason,               -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
         i.Details,              -- details regarding the limiting criteria
-        max(i.When_Epoc) When_Epoc -- select only the most recent value
+        max(i.When_Epoch) When_Epoch -- select only the most recent value
     from
         intermediate i          -- staging view
     where
         House not in (select House from intermediate where Priority = 1 group By House) -- select precalculated values if no load-flow value is present
     group by
-        House                   -- for each unique EnergyConsumer mRID;
+        House                   -- for each unique EnergyConsumer mRID
+/* feedin(Analysis,Transformer,Feeder,House,Maximum,Reason,Details,When_Epoch) */;
 ```
 
 The `feedin` view provides the _best and most current_ estimate of the maximum feed in power.
@@ -437,9 +504,70 @@ For our system there were three choices for the location of the bus
 ![SWING Bus Options](https://rawgit.com/derrickoswald/CIMApplication/master/MaximumFeedIn/img/swing%20bus%20choices.svg "SWING Bus Options")
 
 1. transformer low voltage node (usually 400v)
-2. transformer high voltage node (usually 16kV)
+2. transformer high voltage node (usually 20kV)
 3. foreign power attachment node (usually 132kV)
 
 The transformer low voltage node would eliminate the transformer from the evaluation, which was deemed inappropriate.
-The foreign power attachment point requires an accurate model of the middle voltage system, which is not available
-at all stations. Hence, the SWING busses are set as the high voltage pins of the distribution transformers.
+The foreign power attachment point requires an accurate model of the medium voltage network, which is not always
+available at all stations.
+Hence, the SWING busses are set as the high voltage pins of the distribution transformers.
+
+# Power Factor
+
+Most photovoltaics (PV) are only set up to inject power at unity power factor - they only produce active (real) power.
+This has the effect of reducing the power factor, as the grid supplies less active power,
+but the same amount of reactive power as before the PV was installed. This is undesirable.
+
+The inverter of a PV with reactive power control can be configured to produce both active and
+reactive power - a non-unity power factor - which ameliorates the problem.
+
+The MaximumFeedIn application allows the specification of across-the-board power factor for proposed new PV,
+and also accepts power factor values of existing PV as an attribute in the `SolarGeneratingUnit` object.
+
+_Note: Currently (using CIM16) the attribute for existing PV power factor is `normalPF`,
+which was originally intended to be `Generating unit economic participation factor` and
+hence is not correct usage. 
+With the switch to CIM100, the PowerElectronicsConnection class will be used instead._
+
+## Leading and Lagging Loads
+
+A brief overview of leading and lagging loads will illustrate the concepts.
+
+Power is the product of the voltage and **complex conjugate** of the current.
+As shown below a lagging power factor (inductive load) is produced by a
+positive voltage and negative reactive portion of current:
+
+![Lagging Power Factor](https://rawgit.com/derrickoswald/CIMApplication/master/MaximumFeedIn/img/lagging.svg "Lagging Power Factor")
+
+In the rotation of the phasors, the current lags (is behind in time) the voltage that produces it.
+
+Conversely, a leading power factor is produced by a
+positive voltage and positive reactive portion of current:
+
+![Leading Power Factor](https://rawgit.com/derrickoswald/CIMApplication/master/MaximumFeedIn/img/leading.svg "Leading Power Factor")
+
+## Leading and Lagging Negative Loads
+
+The model for a PV in GridLAB-D is a negative load.
+In order to obtain a power in the second quadrant (II), the negative load is a
+negative voltage and negative reactive portion of current:
+
+![Negative Leading Load](https://rawgit.com/derrickoswald/CIMApplication/master/MaximumFeedIn/img/negative_leading.svg "Negative Leading Load")
+
+Of less interest is power in the third quadrant (III), where the negative load is a
+negative voltage and positive reactive portion of current:
+
+![Negative Lagging Load](https://rawgit.com/derrickoswald/CIMApplication/master/MaximumFeedIn/img/negative_lagging.svg "Negative Lagging Load")
+
+## cosphi parameter
+
+The choice of cosine is unfortunate because it is an [even function](https://en.wikipedia.org/wiki/Even_and_odd_functions#Even_functions).
+Both a positive and a negative reactive component yield a positive cosine.
+So, normally an additional bit of information is provided to indicate leading or lagging.
+Normally in electric grid references a lagging power factor is assumed.
+For the purposes of the MaximumFeedIn program a minus sign (-) on the cosphi parameter indicates
+a lagging negative load.
+So, without a negative sign, a positive cosphi parameter (which is the normal grid reference)
+specifies a negative leading load,
+putting the resulting apparent power in the second quadrant (II).
+
