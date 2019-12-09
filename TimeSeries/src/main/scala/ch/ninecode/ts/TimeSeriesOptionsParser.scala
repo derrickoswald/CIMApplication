@@ -83,6 +83,18 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
             }
     }
 
+    def perYear (average_Wh: Double): Double =
+    {
+        val periods = 24 * 60 * 60 * 1000 / default.period
+        average_Wh * periods * 365.25 / 1000.0
+    }
+
+    def perPeriod (yearly_kWh: Double): Double =
+    {
+        val periods = 24 * 60 * 60 * 1000 / default.period
+        yearly_kWh * 1000.0 / 365.25 / periods
+    }
+
     version ("version").
         validate (Unit => { versionout = true; Right (Unit) }).
             text ("Scala: %s, Spark: %s, %s: %s".format (
@@ -231,6 +243,10 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
                 action ((x, c) => c.copy (yearly_kWh = x)).
                 text (s"energy used by the synthesized time series per year (kWh) [${default.yearly_kWh}]"),
 
+            opt [Double]("average_Wh").
+                action ((x, c) => c.copy (yearly_kWh = perYear (x))).
+                text (s"energy used by the synthesized time series per period (Wh), alternative form for yearly_kWh [${perPeriod (default.yearly_kWh)}]"),
+
             opt [Map[String, Int]]("classes").valueName ("cls1=#,cls2=#").
                 action ((x, c) => c.copy (classes = c.classes ++ x)).
                 text (s"meta class & count, one or more of ${TimeSeriesMeta (null, null).classes.mkString (",")} with instance count [${default.classes.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
@@ -243,8 +259,9 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     checkConfig (o => { o.valid = !(helpout || versionout); Right (Unit) })
 
     note ("""
-Performs three functions:
+Performs four functions:
 Analyze smart meter data for min, average, max and standard deviation.
+Extract meta data.
 Generate a decision tree regression model.
 Synthesize load profiles from the model.
 """)
