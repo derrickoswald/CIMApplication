@@ -571,3 +571,8 @@ So, without a negative sign, a positive cosphi parameter (which is the normal gr
 specifies a negative leading load,
 putting the resulting apparent power in the second quadrant (II).
 
+## Smax
+
+For the Precalculation phase, a non-unity PV cosphi complicates the normal direct
+calculation of maximum PV power as described in
+[Deriving the Smax Algorithm for Non-unity Power Factors](doc/Deriving%20the%20Smax%20Algorithm%20for%20Non-unity%20Power%20Factors%204.pdf).
