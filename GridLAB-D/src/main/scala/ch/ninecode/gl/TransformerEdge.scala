@@ -1,5 +1,7 @@
 package ch.ninecode.gl
 
+import ch.ninecode.model.PowerTransformerEnd
+
 case class TransformerEdge
 (
     cn1: String,
@@ -10,6 +12,13 @@ case class TransformerEdge
 {
     def id: String = transformer.transformer_name
 
+    // check if this is a multi-winding transformer
+    lazy val lv_windings: Array[PowerTransformerEnd] =
+        for (winding <- transformer.transformers(0).ends
+             if winding.TransformerEnd.endNumber > 1)
+            yield winding
+    lazy val multiwinding: Boolean = lv_windings.length > 1
+
     /**
      * Emit a transformer.
      *
@@ -18,17 +27,62 @@ case class TransformerEdge
      */
     override def emit (generator: GLMGenerator): String =
     {
-        """
-          |        object transformer
-          |        {
-          |            name "%s";
-          |            phases %s;
-          |            from "%s";
-          |            to "%s";
-          |            configuration "%s";
-          |        };
-          |""".stripMargin.format (transformer.transformer_name, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, configurationName)
-        // ToDo: was transformer.node0, transformer.node1: can we get rid of those
+        val phase = if (generator.isSinglePhase) "AN" else "ABCN"
+        if (multiwinding)
+        {
+            val intermediate = s"${transformer.node0}_intermediate"
+            val int =
+                s"""
+                  |        object meter
+                  |        {
+                  |            name "$intermediate";
+                  |            phases $phase;
+                  |            bustype PQ;
+                  |            nominal_voltage ${transformer.transformers(0).voltages(0)._2}V;
+                  |        };
+                  |""".stripMargin
+            val prim =
+            s"""
+                |        object transformer
+                |        {
+                |            name "${transformer.transformer_name}";
+                |            phases $phase;
+                |            from "${transformer.node0}";
+                |            to "$intermediate";
+                |            configuration "$configurationName";
+                |        };
+                |""".stripMargin
+            val sec = for (winding <- lv_windings)
+                yield
+                {
+                    val config = configurationName
+                    val number = winding.TransformerEnd.endNumber - 1
+                    val conf = s"${config}_winding_$number"
+
+                    s"""
+                        |        object transformer
+                        |        {
+                        |            name "${transformer.transformer_name}_$number";
+                        |            phases $phase;
+                        |            from "$intermediate";
+                        |            to "${transformer.transformers(0).terminals(number).TopologicalNode}";
+                        |            configuration "$conf";
+                        |        };
+                        |""".stripMargin
+                }
+            int + prim + sec.mkString
+        }
+        else
+        s"""
+            |        object transformer
+            |        {
+            |            name "${transformer.transformer_name}";
+            |            phases $phase;
+            |            from "${transformer.node0}";
+            |            to "${transformer.node1}";
+            |            configuration "$configurationName";
+            |        };
+            |""".stripMargin
     }
 
     /**
@@ -110,19 +164,52 @@ case class TransformerEdge
         // ToDo: should be DELTA_GWYE (Dyn5), pick up windingConnection values from CIM (see https://www.answers.com/Q/What_is_the_meaning_of_DYN_11_on_a_transformer_nameplate)
         val connect = if (generator.isSinglePhase) "WYE_WYE" else "DELTA_GWYE"
 
+        val ret =
         s"""$warn
-        |        object transformer_configuration
-        |        {
-        |$comment
-        |            name "$config";
-        |            connect_type $connect;
-        |            install_type PADMOUNT;
-        |            power_rating ${transformer.power_rating / 1000.0};
-        |            primary_voltage ${transformer.v0};
-        |            secondary_voltage ${transformer.v1};
-        |            resistance ${total_impedance.re};
-        |            reactance ${total_impedance.im};
-        |        };
-        |""".stripMargin
+            |        object transformer_configuration
+            |        {
+            |$comment
+            |            name "$config";
+            |            connect_type $connect;
+            |            install_type PADMOUNT;
+            |            power_rating ${transformer.power_rating / 1000.0};
+            |            primary_voltage ${transformer.v0};
+            |            secondary_voltage ${if (multiwinding) transformer.v0 else transformer.v1};
+            |            resistance ${total_impedance.re};
+            |            reactance ${total_impedance.im};
+            |        };
+            |""".stripMargin
+
+        val w = if (multiwinding)
+        {
+            // we need to emit pseudo configurations
+            val c = for (winding <- lv_windings)
+                yield
+                {
+                    val number = winding.TransformerEnd.endNumber - 1
+                    val comment = s"\n            // multi-winding transformer low voltage winding $number"
+                    val conf = s"${config}_winding_$number"
+                    val v = transformer.transformers(0).voltages(number)._2
+
+                    s"""
+                        |        object transformer_configuration
+                        |        {
+                        |$comment
+                        |            name "$conf";
+                        |            connect_type $connect;
+                        |            power_rating ${transformer.power_rating / 1000.0};
+                        |            primary_voltage ${transformer.v0};
+                        |            secondary_voltage $v;
+                        |            resistance 1e-9;
+                        |            reactance 1e-9;
+                        |        };
+                        |""".stripMargin
+                }
+            c.mkString
+        }
+        else
+            ""
+
+        ret + w
     }
 }

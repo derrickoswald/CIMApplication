@@ -200,14 +200,20 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         houses.keyBy (_.id).leftOuterJoin (psrtype).values.map (calc_max_feeding_power (options))
     }
 
-    def trafo_mapping (transformers: TransformerSet): StartingTrafo =
+    def trafo_mapping (transformers: TransformerSet): Iterable[StartingTrafo] =
     {
         val pn = PreNode ("", 0.0, null)
         val v0 = pn.vertex_id (transformers.node0)
-        val v1 = pn.vertex_id (transformers.node1)
         val ratedS = transformers.power_rating
         val impedance = transformers.total_impedance_per_unit._1
-        StartingTrafo (v0, v1, transformers.transformer_name, impedance, ratedS)
+        for (end <- transformers.transformers(0).ends
+             if end.TransformerEnd.endNumber > 1)
+            yield
+            {
+                val number = end.TransformerEnd.endNumber - 1
+                val v1 = pn.vertex_id (transformers.transformers(0).terminals(number).TopologicalNode)
+                StartingTrafo (v0, v1, transformers.transformer_name, impedance, ratedS)
+            }
     }
 
     /**
@@ -244,7 +250,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
     def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerSet], options: EinspeiseleistungOptions): PreCalculationResults =
     {
 
-        val graph = trace (initial, transformers.map (trafo_mapping), feeders)
+        val graph = trace (initial, transformers.flatMap (trafo_mapping), feeders)
 
         // raw nodes
         val nodes: VertexRDD[PowerFeedingNode] = graph.vertices.filter (_._2.source_obj != null)

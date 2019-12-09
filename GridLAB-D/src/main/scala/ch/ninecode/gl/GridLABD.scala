@@ -133,7 +133,7 @@ class GridLABD
     /**
      * Return <code>true</code> if there is connectivity through the edge (if the Pregel algorithm should continue tracing) or not.
      */
-    def connected (element: Element): Boolean =
+    def connected (element: Element, v1: Double, v2: Double): Boolean =
     {
         val clazz = element.getClass.getName
         val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
@@ -153,7 +153,7 @@ class GridLABD
             case "Sectionaliser" ⇒ !element.asInstanceOf [Sectionaliser].Switch.normalOpen
             case "Conductor" ⇒ true
             case "ACLineSegment" ⇒ true
-            case "PowerTransformer" ⇒ false
+            case "PowerTransformer" ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
             case _ ⇒
                 log.error ("trace setup encountered edge " + element.id + " with unhandled class '" + cls + "', assumed conducting")
                 true
@@ -188,7 +188,7 @@ class GridLABD
                         "voltage (%sV) regulator edge %s".format (v1, element.id)
                     // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
                     else
-                        if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
+                        if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting ToDo: don't hard code these  voltage values
                             "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, element.id)
                         else
                             null
@@ -259,7 +259,7 @@ class GridLABD
                                 node_name (terminals (i)),
                                 volts (i),
                                 terminals (0).ConductingEquipment,
-                                connected (e),
+                                connected (e, volts (0), volts (i)),
                                 hasIssues (e, terminals.length, volts (0), volts (i)),
                                 ratedCurrent,
                                 e)

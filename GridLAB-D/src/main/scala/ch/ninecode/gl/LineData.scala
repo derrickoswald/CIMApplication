@@ -19,7 +19,15 @@ final case class LineData (lines: Iterable[LineDetails])
     def node1: String = lines.head.terminal2.TopologicalNode
 
     /** @return a summary string for the lines */
-    override def toString: String = s"${lines.map (_.toString).mkString ("||")} from $node0 to $node1"
+    override def toString: String =
+    {
+        val l = lines.map (_.toString).mkString ("||")
+        if ((null != lines.head.terminal1) && (null != lines.head.terminal2))
+            s"$l from $node0 to $node1"
+        else
+            l
+    }
+
 
     def perLengthImpedanceAt (temperature: Double = CIM_BASE_TEMPERATURE): Sequences =
         lines.map (_.perLengthImpedanceAt (temperature)).foldLeft (Sequences ()) ((x, y) ⇒ x + y.reciprocal).reciprocal

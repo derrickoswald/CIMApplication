@@ -91,6 +91,10 @@ class SparkSuite extends FunSuite
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
     {
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Main$").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.ShortCircuit").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Database").setLevel (org.apache.log4j.Level.INFO)
+
         // create the configuration
         val configuration = new SparkConf (false)
         configuration.setAppName ("ShortCircuitSuite")
@@ -113,7 +117,6 @@ class SparkSuite extends FunSuite
 
         // create the fixture
         val session = SparkSession.builder.config (configuration).getOrCreate // create the fixture
-        session.sparkContext.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         try
         {
             withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
