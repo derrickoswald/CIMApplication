@@ -176,7 +176,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             val ntp = CIMNetworkTopologyProcessor (session)
             val ele = ntp.process (
                 CIMTopologyOptions (
-                    identify_islands = false,
+                    identify_islands = true,
                     force_retain_switches = Unforced,
                     force_retain_fuses = ForceTrue,
                     default_switch_open_state = false,
@@ -195,7 +195,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 default_short_circuit_power_min = 600.0e6,
                 default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
                 base_temperature = 20.0,
-                low_temperature = 20.0)
+                low_temperature = 20.0,
+                workdir = "./results/")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 

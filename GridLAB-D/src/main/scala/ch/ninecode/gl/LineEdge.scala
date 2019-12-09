@@ -87,7 +87,7 @@ final case class LineEdge
     /**
      * Zero ohms.
      */
-    lazy val zero = Complex (0.0, 0.0)
+    lazy val zero: Complex = Complex (0.0, 0.0)
 
     /**
      * Convert zero and positive sequence impedance values into the Z matrix diagonal and off diagonal elements.
@@ -123,8 +123,8 @@ final case class LineEdge
                 (pli.c1, zero)
             else
                 sequence2z (pli.c0, pli.c1)
-        val dia = diag.toString () + " Ohm/m"
-        val off = offd.toString () + " Ohm/m"
+        val dia = diag.asString (8) + " Ohm/m"
+        val off = offd.asString (8) + " Ohm/m"
         val comment =  lines.map (line ⇒
             "            // %s".format (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)).mkString ("\n", "\n", "")
         """
