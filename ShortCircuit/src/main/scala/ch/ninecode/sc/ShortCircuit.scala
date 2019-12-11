@@ -812,7 +812,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     {
         val element = elements.head
         val trafo = subtransmission_trafos.filter (data => data.transformer.id == element.id)
-        TransformerEdge (cn1, cn2, TransformerSet (Array (trafo.headOption.orNull)))
+        TransformerEdge (cn1, cn2, TransformerSet (trafo))
     }
 
     def edge_maker (subtransmission_trafos: Array[TransformerData]) (rdd: RDD[EdgeParts]): RDD[(identifier, GLMEdge)] =
@@ -938,7 +938,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
             val problem_trafos_islands = problem_transformers.keyBy (x ⇒ x.transformer_name).join (trafos_islands).values // (transformerset, islandid)
             val island_helper = new Island (session, storage_level, options.cable_impedance_limit)
-            val graph_stuff = island_helper.queryNetwork (problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)), node_maker, edge_maker (subtransmission_trafos)) // ([nodes], [edges])
+            val trafo_island_mapping = problem_trafos_islands.map (x ⇒ (x._1.transformer_name, x._2)) // (trafosetid, islandid)
+            val graph_stuff = island_helper.queryNetwork (trafo_island_mapping, node_maker, edge_maker (subtransmission_trafos)) // ([nodes], [edges])
             val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
@@ -1056,7 +1057,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             results = zero (verboten_trafos, results)
         if (0 != problem_trafosets.count)
         {
-            val subtransmission_trafos = transformer_data.filter (trafo => trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0))).collect // ToDo: don't hard code these voltage values
+            def subtransmission (trafo: TransformerData): Boolean =
+            {
+                trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) || // ToDo: don't hard code these voltage values
+                trafo.ends.length > 2
+            }
+            val subtransmission_trafos = transformer_data.filter (subtransmission).collect
             results = fix (problem_trafosets, results, subtransmission_trafos)
         }
 

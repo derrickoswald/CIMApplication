@@ -207,7 +207,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (results.filter (_.equipment == "USR0001").first ().errors.exists (_.startsWith ("INVALID")), "USR0001 should be invalid")
-            assert (results.filter (_.equipment == "USR0002").first ().errors.exists (_.startsWith ("INVALID")), "USR0002 should be invalid")
+            assert (near (results.filter (_.equipment == "USR0001").first ().high_ik, 200.528465600727))
+            assert (near (results.filter (_.equipment == "USR0002").first ().high_ik, 170.281577472793))
     }
 }
