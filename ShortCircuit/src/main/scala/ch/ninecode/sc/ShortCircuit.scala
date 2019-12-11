@@ -49,12 +49,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val default_impendanz = Impedanzen (
-        Complex (Double.PositiveInfinity, Double.PositiveInfinity),
-        Complex (Double.PositiveInfinity, Double.PositiveInfinity),
-        Complex (Double.PositiveInfinity, Double.PositiveInfinity),
-        Complex (Double.PositiveInfinity, Double.PositiveInfinity))
-    val default_node = ScNode ("", 0.0, null, null, null, null, null, null)
+    val default_node: ScNode = ScNode ("", 0.0, null, null, null, null, null, null)
 
     def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
     {
@@ -413,15 +408,27 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 buddies = network.filter (x ⇒ (branch.from == x.to) || (branch.from == x.from && branch != x))
                 if buddies.size == 1
                 buddy = buddies.head
-                if branch.from == buddy.to
             }
             yield (branch, buddy)
         if (series.nonEmpty)
         {
             // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-            val pair = series.head
-            val rest = network.filter (x ⇒ pair._1 != x && pair._2 != x)
-            (true, Seq (pair._2.add_in_series (pair._1)) ++ rest)
+            val (branch, buddy) = series.head
+            val rest = network.filter (x ⇒ branch != x && buddy != x)
+            val new_series = if (branch.from == buddy.to)
+                buddy.add_in_series (branch)
+            else
+                // choose the simplest element to reverse
+                branch match
+                {
+                    case _: SimpleBranch =>
+                        buddy.add_in_series (branch.reverse)
+                    case _: TransformerBranch =>
+                        buddy.add_in_series (branch.reverse)
+                    case _ =>
+                        buddy.reverse.add_in_series (branch)
+                }
+            (true, Seq (new_series) ++ rest)
         }
         else
             (false, network)
@@ -453,7 +460,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             (false, network)
     }
 
-    def reduce (branches: Iterable[SimpleBranch], trafo_nodes: Array[String], mrid: String): Iterable[Branch] =
+    def reduce (branches: Iterable[Branch], trafo_nodes: Array[String], mrid: String): Iterable[Branch] =
     {
         // step by step reduce the network to a single branch through series and parallel reductions
         var done = false
@@ -583,10 +590,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                                 List (SimpleBranch (x.cn2, x.cn1, ((voltage2.value_a - voltage1.value_a) / z.impedanz_low).modulus, x.id, name, None, z))
                                         }
                                     case transformer: TransformerEdge =>
-                                        if (v1 > v2)
-                                            List (SimpleBranch (x.cn1, x.cn2, 0.0, transformer.transformer.transformer_name, x.id))
-                                        else
-                                            List (SimpleBranch (x.cn2, x.cn1, 0.0, transformer.transformer.transformer_name, x.id))
+                                        List (TransformerBranch (x.cn1, x.cn2, 0.0, transformer.transformer.transformer_name, x.id,
+                                            transformer.transformer.power_rating, v1, v2, transformer.transformer.total_impedance_per_unit._1))
                                     case _ ⇒
                                         // e.g. transformer: TransformerEdge which never happens since the transformer is not included in the edges list
                                         log.error ("unexpected edge type %s".format (x.toString))
@@ -605,9 +610,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         )
 
         // eliminate branches in the tree than only have one end connected - except for the starting and ending node
-        def no_stubs (edges: Iterable[SimpleBranch], start: Array[String], end: String) (branch: SimpleBranch): Boolean =
+        def no_stubs (edges: Iterable[Branch], start: Array[String], end: String) (branch: Branch): Boolean =
         {
-            start.contains (branch.from) || (end == branch.to) || (edges.exists (edge ⇒ edge.from == branch.to) && edges.exists (edge ⇒ edge.to == branch.from))
+            start.contains (branch.from) || (end == branch.to) ||
+            (edges.exists (edge ⇒ edge != branch && (branch.to == edge.to || branch.to == edge.from))
+                && edges.exists (edge ⇒ edge != branch && (branch.from == edge.to || branch.from == edge.from)))
         }
 
         // reduce the tree to (hopefully) one branch spanning from start to end
@@ -960,7 +967,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     val v = x._1._4
                     val branches = x._1._6
                     val ztrafo = x._1._5
-                    val z = if (null == branches) ztrafo else ztrafo + branches.z
+                    val z = if (null == branches) ztrafo else branches.z (ztrafo)
                     x._2 match
                     {
                         case Some (original) ⇒

@@ -91,7 +91,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     // ratios of currents with the branch that the portion applies to
     def ratios: Iterable[(Double, Branch)]
 
-    def z: Impedanzen
+    def z (in: Impedanzen): Impedanzen
 
     def contents: Iterable[Branch]
 
@@ -143,9 +143,11 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def justFuses: Option[Branch] = if (isFuse) Some (this) else None
 
-    def reverse: Branch = SimpleBranch (to, from, current, mRID, name, rating)
+    def reverse: Branch = SimpleBranch (to, from, current, mRID, name, rating, z)
 
     def ratios: Iterable[(Double, Branch)] = List((1.0, this))
+
+    def z (in: Impedanzen): Impedanzen = in + z
 
     def contents: Iterable[SimpleBranch] = Iterable (this)
 
@@ -164,6 +166,64 @@ case class SimpleBranch (override val from: String, override val to: String, ove
         }
         else
             (false, Some (this))
+    }
+}
+
+/**
+ * A transformer branch.
+ *
+ * @param from    the 'from' node
+ * @param to      the 'to' node
+ * @param current the current through this branch in the GridLAB-D experiment
+ * @param mRID    the mRID of the CIM element
+ * @param name    the name of the CIM element
+ * @param pu      the per unit impedance
+ */
+case class TransformerBranch (override val from: String, override val to: String, override val current: Double, mRID: String, name: String,
+                              s: Double, vfrom: Double, vto: Double, pu: Complex) extends Branch (from, to, current)
+{
+    override def toString: String = """TransformerBranch ("%s" ⇒ "%s" %sA %s %s)""".format (
+        from,
+        to,
+        current,
+        mRID,
+        if (null != name) name else "")
+
+    def asString: String = "%s".format (mRID)
+
+    def asFuse: String = ""
+
+    def asId: String = ""
+
+    def seq: Seq[TransformerBranch] = Seq (this)
+
+    def iter: Iterable[TransformerBranch] = Iterable (this)
+
+    def isFuse: Boolean = false
+
+    def lastFuses: Iterable[Branch] = Seq ()
+
+    def justFuses: Option[Branch] = None
+
+    def reverse: Branch = TransformerBranch (to, from, current, mRID, name, s, vto, vfrom, pu)
+
+    def ratios: Iterable[(Double, Branch)] = List((1.0, this))
+
+    def contents: Iterable[TransformerBranch] = Iterable (this)
+
+    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
+    {
+        (false, Some (this))
+    }
+
+    def z (in: Impedanzen): Impedanzen =
+    {
+        val base_ohms = vto * vto / s
+        val secondary_z = pu * base_ohms
+        val ratio = vto / vfrom
+        val ratio2 = ratio * ratio
+        // use r0=r1 & x0=x1 for trafos, assume the temperature effects are negligible
+        in * ratio2 + Impedanzen (secondary_z, secondary_z, secondary_z, secondary_z)
     }
 }
 
@@ -217,7 +277,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def ratios: Iterable[(Double, Branch)] = series.last.ratios
 
-    def z: Impedanzen = seq.foldRight (Impedanzen (0.0, 0.0, 0.0, 0.0)) ((branch, z) ⇒ branch.z + z)
+    def z (in: Impedanzen): Impedanzen = seq.foldLeft (in) ((z, branch) ⇒ branch.z (z))
 
     def contents: Iterable[Branch] = this.series
 
@@ -310,9 +370,9 @@ case class ParallelBranch (override val from: String, override val to: String, o
         if (0.0 == sum)
         {
             // use impedances
-            val impedance = z.impedanz_low.modulus
+            val impedance = z (Impedanzen ()).impedanz_low.modulus
             if (0.0 != impedance)
-                parallel.map (branch ⇒ (impedance / branch.z.impedanz_low.modulus, branch)) // ToDo: use vector math
+                parallel.map (branch ⇒ (impedance / branch.z (Impedanzen ()).impedanz_low.modulus, branch)) // ToDo: use vector math
             else
                 parallel.map (x ⇒ (1.0 / parallel.size, x)) // split equally
         }
@@ -320,7 +380,11 @@ case class ParallelBranch (override val from: String, override val to: String, o
             parallel.map (x ⇒ (x.current / sum, x))
     }
 
-    def z: Impedanzen = parallel.tail.foldRight (parallel.head.z) ((branch, z) ⇒ branch.z.parallel (z))
+    def z (in: Impedanzen): Impedanzen =
+    {
+        val pz = parallel.map (_.z (Impedanzen ()))
+        in + pz.tail.foldLeft (pz.head) ((z, bz) ⇒ bz.parallel (z))
+    }
 
     def contents: Iterable[Branch] = parallel
 
@@ -411,18 +475,18 @@ case class ComplexBranch (override val from: String, override val to: String, ov
      * NOTE: this is totally wrong. It just puts a upper and lower bound on the actual impedance.
      * @return a fake impedance value
      */
-    def z: Impedanzen =
+    def z (in: Impedanzen): Impedanzen =
     {
         // compute the lowest impedance as three parallel branch circuits (this will be used for the low temperature values)
         var low_impedance = Impedanzen (0.0, 0.0, 0.0, 0.0)
         val start_branches = basket.filter (_.from == from)
-        if (0 != start_branches.length) low_impedance = low_impedance + (if (1 < start_branches.length) ParallelBranch (from, to, 0.0, start_branches) else SeriesBranch (from, to, 0.0, start_branches)).z
+        if (0 != start_branches.length) low_impedance = low_impedance + (if (1 < start_branches.length) ParallelBranch (from, to, 0.0, start_branches) else SeriesBranch (from, to, 0.0, start_branches)).z (in)
         val middle_branches = basket.filter (x ⇒ x.from != from && x.to != to)
-        if (0 != middle_branches.length) low_impedance = low_impedance + (if (1 < middle_branches.length) ParallelBranch (from, to, 0.0, middle_branches) else SeriesBranch (from, to, 0.0, middle_branches)).z
+        if (0 != middle_branches.length) low_impedance = low_impedance + (if (1 < middle_branches.length) ParallelBranch (from, to, 0.0, middle_branches) else SeriesBranch (from, to, 0.0, middle_branches)).z (in)
         val end_branches = basket.filter (_.to == to)
-        if (0 != end_branches.length) low_impedance = low_impedance + (if (1 < end_branches.length) ParallelBranch (from, to, 0.0, end_branches) else SeriesBranch (from, to, 0.0, end_branches)).z
+        if (0 != end_branches.length) low_impedance = low_impedance + (if (1 < end_branches.length) ParallelBranch (from, to, 0.0, end_branches) else SeriesBranch (from, to, 0.0, end_branches)).z (in)
         // compute the highest impedance as series branches (this will be used for the high temperature values)
-        var high_impedance = SeriesBranch (from, to, 0.0, basket).z
+        var high_impedance = SeriesBranch (from, to, 0.0, basket).z (in)
         // take the worst case from both
         Impedanzen (low_impedance.impedanz_low, low_impedance.null_impedanz_low, high_impedance.impedanz_high, high_impedance.null_impedanz_high)
     }
@@ -452,12 +516,13 @@ case class ComplexBranch (override val from: String, override val to: String, ov
 
 object Branch
 {
-    def apply (from: String, to: String, current: Double, mRID: String, name: String, rating: Option[Double]) = SimpleBranch (from, to, current, mRID, name, rating)
+    def apply (from: String, to: String, current: Double, mRID: String, name: String, rating: Option[Double]): SimpleBranch = SimpleBranch (from, to, current, mRID, name, rating)
 
-    def apply (from: String, to: String, current: Double, series: Seq[Branch]) = SeriesBranch (from, to, current, series)
+    def apply (from: String, to: String, current: Double, mRID: String, name: String, s: Double, vfrom: Double, vto: Double, pu: Complex): TransformerBranch = TransformerBranch (from, to, current, mRID, name, s, vfrom, vto, pu)
 
-    def apply (from: String, to: String, current: Double, parallel: Iterable[Branch]) = ParallelBranch (from, to, current, parallel)
+    def apply (from: String, to: String, current: Double, series: Seq[Branch]): SeriesBranch = SeriesBranch (from, to, current, series)
 
-    def apply (from: String, to: String, current: Double, basket: Array[Branch]) = ComplexBranch (from, to, current, basket)
+    def apply (from: String, to: String, current: Double, parallel: Iterable[Branch]): ParallelBranch = ParallelBranch (from, to, current, parallel)
+
+    def apply (from: String, to: String, current: Double, basket: Array[Branch]): ComplexBranch = ComplexBranch (from, to, current, basket)
 }
-

@@ -181,10 +181,10 @@ case class ScResult
             var changed = false
             // recompute the impedance of the trafo and the EquivalentInjection together
             val high_z = Impedanzen (Complex (low_r, low_x), Complex (low_r0, low_x0), Complex (high_r, high_x), Complex (high_r0, high_x0))
-            val supply_z = high_z - network.z
+            val supply_z = high_z - network.z (Impedanzen ())
             do
             {
-                val z = supply_z + network.z
+                val z = network.z (supply_z)
                 // first time through this should be high_ik
                 val ik = calculate_ik (voltage, cmin, z.impedanz_high, z.null_impedanz_high)
                 val (blows, newnet) = network.checkFuses (ik)
