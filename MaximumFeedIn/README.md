@@ -236,7 +236,7 @@ hdfs dfs -rm -R "/checkpoint/*"
 ```
 
 ### simulation
-Performs the [Load Flow](#load-flow) phase only using the results
+Performs the [Load Flow](#load flow) phase only using the results
 of a prior [Pre-Calculation](#pre-calculation) as specified by the simulation number.
 This allows the processing to proceed in two phases separated by an arbitrary amount of time
 or to re-execute a failed job.
@@ -251,17 +251,17 @@ $ spark-submit /opt/code/MaximumFeedIn-2.11-2.4.3-2.5.0-jar-with-dependencies.ja
 ### reference
 Use this reference (simulation) number for a comparison to the current [Pre-Calculation](#pre-calculation)
 to determine which transformers have new photo-voltaic installations or have changed the estimated
-power sufficiently, and hence need to be simulated with [Load Flow](#load-flow).
+power sufficiently, and hence need to be simulated with [Load Flow](#load flow).
 This mode is used to avoid recomputing transformer circuits that have not changed.
 
 ### delta
 The amount of power difference, relative to the reference value,
-that will trigger a [Load Flow](#load-flow) simulation
+that will trigger a [Load Flow](#load flow) simulation
 when in `--reference` mode.
 
 ### precalcfactor
 The scaling to be performed on [Pre-Calculation](#pre-calculation) feed-in value
-to set the upper limit for [Load Flow](#load-flow) ramp up.
+to set the upper limit for [Load Flow](#load flow) ramp up.
 
 ### cosphi
 power factor which will be used for new photo-voltaic installations

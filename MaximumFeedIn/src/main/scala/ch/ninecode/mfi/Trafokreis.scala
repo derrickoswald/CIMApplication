@@ -3,6 +3,7 @@ package ch.ninecode.mfi
 import java.util.Calendar
 
 import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.TransformerData
 import ch.ninecode.gl.TransformerSet
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -26,7 +27,8 @@ case class Trafokreis
     nodes: Iterable[PowerFeedingNode],
     edges: Iterable[PreEdge],
     houses: Iterable[MaxPowerFeedingNodeEEA],
-    options: EinspeiseleistungOptions
+    options: EinspeiseleistungOptions,
+    subtransmission_trafos: Array[TransformerData] = Array()
 )
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -44,7 +46,10 @@ case class Trafokreis
         math.ceil (node.max_power_feeding * margin / step) * step // limit as ceiling(d*margin%) in thousands
     }
 
-    def significant (h: MaxPowerFeedingNodeEEA): Boolean = h.psr_type == "PSRType_HouseService" && h.max_power_feeding > 1000.0 // only do houses where we know it's more than a kilowatt
+    def significant (h: MaxPowerFeedingNodeEEA): Boolean =
+        h.psr_type == "PSRType_HouseService" &&
+        // only do houses where we know it's more than a kilowatt or it's zero because of a three winding transformer
+        (h.max_power_feeding > 1000.0 || 0 != h.reason.indexOf ("transformer windings for edge"))
 
     def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)): Experiment =
     {

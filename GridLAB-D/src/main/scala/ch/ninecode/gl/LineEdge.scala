@@ -182,8 +182,8 @@ case class LineEdge
     {
         val (diag, offd, default) = zMatrixValues (r, x, r0, x0, generator)
         // ToDo: fix this /km multiplier on the impedance
-        val dia = diag.toString () + " Ohm/km"
-        val off = offd.toString () + " Ohm/km"
+        val dia = diag.asString (8) + " Ohm/km"
+        val off = offd.asString (8) + " Ohm/km"
         val warning = if (default) "#warning WARNING: using default line_configuration for " + config + "\n" else ""
         val comment =  lines.map (line ⇒
             "            // %s".format (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)).mkString ("\n", "\n", "")

@@ -158,11 +158,8 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (results.filter (_.equipment == "USR0001").first ().low_sk == 0.0, "USER001 power")
-            assert (results.filter (_.equipment == "USR0001").first ().errors.contains (ScError (false, true, "%s transformer windings for edge %s".format (3, "TX0001")).toString), "USER001 errors")
-            assert (results.filter (_.equipment == "USR0002").first ().low_sk == 0.0, "USER002 power")
-            assert (results.filter (_.equipment == "USR0002").first ().errors.contains (ScError (false, true, "%s transformer windings for edge %s".format (3, "TX0001")).toString), "USER002 errors")
-            assert (results.filter (_.equipment == "USR0003").first ().low_sk == 0.0, "USER003 power")
-            assert (results.filter (_.equipment == "USR0003").first ().errors.contains (ScError (false, true, "%s transformer windings for edge %s".format (3, "TX0001")).toString), "USER003 errors")
+            assert (near (results.filter (_.equipment == "USR0001").first ().low_sk, 2090402.35156741))
+            assert (near (results.filter (_.equipment == "USR0002").first ().low_sk, 6208872.30165506))
+            assert (near (results.filter (_.equipment == "USR0003").first ().low_sk, 6185870.27299348))
     }
 }
