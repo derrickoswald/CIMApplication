@@ -31,7 +31,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
     /**
      * Return <code>true</code> if there is connectivity through the edge (if the Pregel algorithm should continue tracing) or not.
      */
-    def connected (element: Element): Boolean =
+    def connected (element: Element, v1: Double, v2: Double): Boolean =
     {
         val clazz = element.getClass.getName
         val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
@@ -51,7 +51,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
             case "Sectionaliser" ⇒ !element.asInstanceOf [Sectionaliser].Switch.normalOpen
             case "Conductor" ⇒ true
             case "ACLineSegment" ⇒ true
-            case "PowerTransformer" ⇒ false
+            case "PowerTransformer" ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
             case _ ⇒
                 log.error ("trace setup encountered edge " + element.id + " with unhandled class '" + cls + "', assumed conducting")
                 true
@@ -109,7 +109,6 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         if (null != cond)
         {
             // get the equipment
-            val conn = connected (element)
             // Note: we eliminate 230V edges because transformer information doesn't exist and
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
             if (!terminals.map (_._2).contains (230.0))
@@ -126,7 +125,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
                                 "",
                                 terminals (0)._2,
                                 terminals (0)._1.ConductingEquipment,
-                                conn,
+                                connected (element, terminals (0)._2, 0.0),
                                 null,
                                 ratedCurrent,
                                 element)
@@ -141,7 +140,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
                                 terminals (i)._1.TopologicalNode,
                                 terminals (i)._2,
                                 terminals (0)._1.ConductingEquipment,
-                                conn,
+                                connected (element, terminals (0)._2, terminals (i)._2),
                                 hasIssues (element, terminals.length, terminals (0)._2, terminals (i)._2),
                                 ratedCurrent,
                                 element)
@@ -337,7 +336,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         edge_maker: RDD[EdgeParts] ⇒ RDD[(identifier, GLMEdge)]): (Nodes, Edges) =
     {
         // the mapping between island and transformer service area
-        val islands_trafos: RDD[(island_id, identifier)] = identifiers_islands.map (_.swap)
+        val islands_trafos: RDD[(island_id, identifier)] = identifiers_islands.map (_.swap).distinct
         // get nodes by TopologicalIsland
         val members: RDD[(node_id, island_id)] = get [TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland))
         // get terminals by TopologicalIsland

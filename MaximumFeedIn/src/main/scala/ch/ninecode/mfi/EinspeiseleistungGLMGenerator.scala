@@ -4,8 +4,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import scala.math._
-
 import ch.ninecode.gl._
+import ch.ninecode.model.Element
 import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
 
@@ -20,9 +20,23 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def finish_time: Calendar = trafokreis.finish_time
 
-    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
+    def makeTransformerEdge (elements: Iterable[Element], cn1: String, cn2: String): TransformerEdge =
+    {
+        val element = elements.head
+        val trafo = trafokreis.subtransmission_trafos.filter (data => data.transformer.id == element.id)
+        TransformerEdge (cn1, cn2, TransformerSet (Array (trafo.headOption.orNull)))
+    }
+
+    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2, makeTransformerEdge))
 
     override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (trafokreis.transformers.node0, trafokreis.transformers.node1, trafokreis.transformers))
+
+    override def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
+    {
+        val subtransmission_trafos = edges.filter (edge => edge match { case _: TransformerEdge => true case _ => false }).asInstanceOf[Iterable[TransformerEdge]]
+        val trafos = transformers ++ subtransmission_trafos
+        trafos.groupBy (_.configurationName).values.map (_.head.configuration (this))
+    }
 
     override def swing_nodes: Iterable[GLMNode] = List (SwingNode (trafokreis.swing_node, trafokreis.swing_node_voltage, trafokreis.trafo))
 

@@ -42,9 +42,11 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      */
     val openMask: Int = Switch.fields.indexOf ("open")
 
+    val voltage_rdd: RDD[BaseVoltage] = getOrElse [BaseVoltage]
     val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse [ConductingEquipment]
     val element_rdd: RDD[Element] = getOrElse [Element]("Elements")
     val power_transformer_rdd: RDD[PowerTransformer] = getOrElse [PowerTransformer]
+    val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse [PowerTransformerEnd]
     val terminal_rdd: RDD[Terminal] = getOrElse [Terminal]
     val topological_island_rdd: RDD[TopologicalIsland] = getOrElse [TopologicalIsland]
     val topological_node_rdd: RDD[TopologicalNode] = getOrElse [TopologicalNode]
@@ -57,7 +59,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      */
     def vertex_id (string: String): VertexId =
     {
-        var h = 2166136261l
+        var h = 2166136261L
         for (c ← string)
             h = (h * 16777619) ^ c
         h
@@ -90,7 +92,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      * @param element The element to test.
      * @return <code>true</code> if the element is effectively one node, <code>false</code> otherwise.
      */
-    def isSameArea (element: Element): Boolean =
+    def isSameArea (element: Element, v1: Double, v2: Double): Boolean =
     {
         element match
         {
@@ -105,11 +107,22 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
             case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch)
             case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch)
             case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
-            case _: PowerTransformer ⇒ false
+            case _: PowerTransformer ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
             case _ ⇒
                 log.warn ("transformer service area processor encountered edge with unhandled class '" + element.getClass.getName + "', assumed same transformer service area")
                 true
         }
+    }
+
+    def heavy (voltages: collection.Map[String, Double]) (arg: (String, (PowerTransformer, Option[Iterable[PowerTransformerEnd]]))): Boolean =
+    {
+        val (_, (_, e)) = arg
+        val ends = e.getOrElse (Iterable()).toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+        val v = ends.map (t => voltages.getOrElse (t.TransformerEnd.BaseVoltage, 0.0))
+        if (v.length < 2)
+            false
+        else
+            v.head > 1000.0 && v.tail.forall (v => v <= 1000.0 && v > 230.0) // ToDo: don't hard code these voltage values
     }
 
     /**
@@ -130,19 +143,40 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      */
     def island_trafoset_rdd: RDD[(String, String)] =
     {
+        // get a map of voltages
+        // ToDo: fix this 1kV multiplier on the voltages
+        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
+
+        // get all power transformers for transformer service areas
+        val power_transformers = power_transformer_rdd
+            .keyBy (_.id)
+            .leftOuterJoin (
+                power_transformer_end_rdd
+                    .keyBy (_.PowerTransformer)
+                    .groupByKey)
+            .filter (heavy (voltages))
+            .map (_._2._1)
+
         // get all transformer set secondary TopologicalIsland names
-        val islands_trafos = power_transformer_rdd
+        val islands_trafos: RDD[(String, String)] = power_transformers
             .keyBy (_.id)
             .join (
                 terminal_rdd
-                    .filter (_.ACDCTerminal.sequenceNumber == 2)
+                    .filter (_.ACDCTerminal.sequenceNumber > 1)
                     .keyBy (_.ConductingEquipment))
             .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
                 topological_node_rdd
                 .keyBy (_.id))
-            .map (x ⇒ (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
-            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")) // (islandid, trafosetname) // ToDo: multiple transformers in the same island that aren't ganged?
+            .map (x ⇒ (x._1, (x._2._2.TopologicalIsland, x._2._1))) // (nodeid, (islandid, trafoid))
+            .groupByKey.values // (islandid, trafoid)
+            .flatMap (
+                it =>
+                {
+                    val trafo_set_name = it.map (_._2).toArray.sortWith (_ < _).mkString ("_")
+                    it.map (x => (x._1, trafo_set_name))
+                }
+            ) // (islandid, trafosetname)
         islands_trafos.persist (storage_level)
     }
 
@@ -164,21 +198,26 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      */
     def edges: RDD[Edge[EdgeData]] =
     {
+        // get voltages
+        val voltages = voltage_rdd.map (v => (v.id, v.nominalVoltage * 1000.0)).collect.toMap // ToDo: fix this 1000V multiplier
         // get nodes by TopologicalIsland
-        val members = topological_node_rdd.map (node ⇒ (node.id, node.TopologicalIsland)) // (nodeid, islandid)
+        val members = topological_node_rdd.map (node ⇒ (node.id, (node.TopologicalIsland, voltages(node.BaseVoltage)))) // (nodeid, (islandid, volts))
         // get terminals by TopologicalIsland
-        val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // (islandid, terminal)
+        val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // ((islandid, volts), terminal)
         // get equipment with terminals in different islands as GraphX Edge objects
         conducting_equipment_rdd.keyBy (_.id).join (element_rdd.keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
-            .join (terminals.keyBy (_._2.ConductingEquipment)) // (equipmentid, (equipment, (islandid, terminal)))
-            .groupByKey.values.filter (x ⇒ (x.size > 1) && !x.forall (y ⇒ y._2._1 == x.head._2._1)) // Iterable[(equipment, (islandid, terminal))]
+            .join (terminals.keyBy (_._2.ConductingEquipment)) // (equipmentid, (equipment, ((islandid, volts), terminal)))
+            .groupByKey.values.filter (x ⇒ (x.size > 1) && !x.forall (y ⇒ y._2._1._1 == x.head._2._1._1)) // Iterable[(equipment, (islandid, terminal))]
             .map (
-            x ⇒
-            {
-                val equipment = x.head._1
-                val connected = isSameArea (x.head._1)
-                Edge (vertex_id (x.head._2._1), vertex_id (x.tail.head._2._1), EdgeData (equipment.id, connected))
-            }) // Edge[EdgeData]
+                x ⇒
+                {
+                    val equipment = x.head._1
+                    val v1 = x.head._2._1._2
+                    val v2 = x.tail.head._2._1._2
+                    val connected = if (v1 > v2) isSameArea (x.head._1, v1, v2) else isSameArea (x.head._1, v2, v1) // ToDo: not really correct just to sort by magnitude
+                    Edge (vertex_id (x.head._2._1._1), vertex_id (x.tail.head._2._1._1), EdgeData (equipment.id, connected))
+                }
+            ) // Edge[EdgeData]
     }
 
     /**
@@ -285,7 +324,8 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         log.info ("tracing transformer service areas")
         val graph = identifyTransformerServiceAreas
         log.info ("mapping islands to transformer service areas")
-        val pairs = graph.vertices.map (v ⇒ (v._2.island_label, v._2.area_label)) // (islandid, areaid)
+        val candidates = graph.vertices.filter (null != _._2.area_label)
+        val pairs = candidates.map (v ⇒ (v._2.island_label, v._2.area_label)).distinct // (islandid, areaid)
         val areas = island_trafoset_rdd.join (pairs).values.map (_.swap) // (areaid, trafosetname)
         pairs.map (_.swap).join (areas).values.persist (storage_level) // (islandid, trafosetname)
     }

@@ -380,7 +380,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             val countset = statement.executeQuery ("select count() from results where simulation = (select max(simulation) from results)")
             while (countset.next)
             {
-                assert (countset.getInt (1) == 12, "should have 12 results")
+                assert (countset.getInt (1) == 5, "should have 5 results")
             }
             countset.close ()
 
@@ -388,21 +388,13 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
             while (resultset.next)
             {
                 if (resultset.getString (1) == "TX0003")
-                {
-                    assert (resultset.getObject (3) == null, "maximum")
-                    assert (resultset.getString (4) == "no results", "special transformer")
-                    assert (resultset.getString (5) == "low voltage (1000.0V:400.0V) subtransmission edge TX0003")
-                }
+                    fail ("""transformer "TX00003" should not be present""")
                 else
                     if (resultset.getString (1) == "TX0002")
                     {
-                        assert (resultset.getObject (3) == null, "all results on TX00002 have no value for maximum")
-                        assert (resultset.getString (4) == "no results", "special transformer")
-                        assert (resultset.getString (5) == "3 transformer windings for edge TX0002", "three winding transformer")
-                    }
-                    else
-                    {
-                        assert (resultset.getString (4) == "current limit", "normal transformer")
+                        assert (resultset.getObject (3) != null, "all results on TX00002 should have a value for maximum")
+                        assert (resultset.getString (4) == "current limit", "load-flow should find a current limit")
+                        assert (resultset.getString (5).contains (" > 67.0 Amps"), "limit should be set by GKN 3x10re/10 1/0.6 kV limit of 67 Amps")
                     }
             }
             resultset.close ()
@@ -413,7 +405,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
     def simulation (outputfile: String = "simulation/results.db"): String =
     {
         Class.forName ("org.sqlite.JDBC") // load the sqlite-JDBC driver using the current class loader
-        using (DriverManager.getConnection (s"jdbc:sqlite:${outputfile}"))
+        using (DriverManager.getConnection (s"jdbc:sqlite:$outputfile"))
         {
             connection =>
                 using (connection.createStatement ())

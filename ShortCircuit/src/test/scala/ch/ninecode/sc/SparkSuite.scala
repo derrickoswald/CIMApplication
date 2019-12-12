@@ -5,14 +5,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.net.Inet4Address
-import java.net.InetAddress
-import java.net.NetworkInterface
-import java.util
 import java.util.zip.ZipInputStream
-
-import scala.collection.JavaConverters._
-import org.scalatest.fixture.FunSuite
 
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
@@ -21,7 +14,9 @@ import org.apache.spark.sql.SparkSession
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
 
-class SparkSuite extends FunSuite
+import org.scalatest.fixture
+
+class SparkSuite extends fixture.FunSuite
 {
     type FixtureParam = SparkSession
 
@@ -89,8 +84,20 @@ class SparkSuite extends FunSuite
         }
     }
 
+    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3): Boolean =
+    {
+        val diff = number - reference
+        val ret = Math.abs (diff) < epsilon
+        if (!ret) println ("""%s vs. reference %s differs by more than %s (%s)""".format (number, reference, epsilon, diff))
+        ret
+    }
+
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
     {
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Main$").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.ShortCircuit").setLevel (org.apache.log4j.Level.INFO)
+        org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Database").setLevel (org.apache.log4j.Level.INFO)
+
         // create the configuration
         val configuration = new SparkConf (false)
         configuration.setAppName ("ShortCircuitSuite")
@@ -113,7 +120,6 @@ class SparkSuite extends FunSuite
 
         // create the fixture
         val session = SparkSession.builder.config (configuration).getOrCreate // create the fixture
-        session.sparkContext.setLogLevel ("INFO") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
         try
         {
             withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test

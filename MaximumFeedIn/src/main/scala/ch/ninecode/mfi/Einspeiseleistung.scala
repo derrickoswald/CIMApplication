@@ -24,6 +24,7 @@ import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.Solar
 import ch.ninecode.gl.ThreePhaseComplexDataElement
+import ch.ninecode.gl.TransformerData
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.ConductingEquipment
@@ -58,12 +59,12 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     if (USE_UTC)
         _DateFormat.setTimeZone (TimeZone.getTimeZone ("UTC"))
 
-    def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions)(arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
+    def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions, subtransmission_trafos: Array[TransformerData])(arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
     {
         arg match
         {
             case (trafokreise, (transformers, Some (x))) =>
-                Trafokreis (start, trafokreise, transformers, x._1, x._2, x._3, options)
+                Trafokreis (start, trafokreise, transformers, x._1, x._2, x._3, options, subtransmission_trafos)
             case _ =>
                 null
         }
@@ -540,7 +541,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else
         {
             // do all low voltage power transformers
-            val niederspannug = transformer_data.filter (td => (td.v0 != 400.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code this low voltage value
+            val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these  voltage values
             niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
         }
         transformers.persist (storage_level)
@@ -568,7 +569,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             precalc_results.has.filter (x => changed.contains (x.mrid))
         }
         else
-            precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network") || (x.reason == "heuristic limit"))
+            precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network") || (x.reason == "heuristic limit") || (-1 != x.reason.indexOf ("subtransmission edge")))
 
         // get a list of invalid nodes and group by transformer
         val invalid = houses.filter (_.problem).keyBy (_.source_obj).groupByKey
@@ -591,8 +592,9 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
             val trafokreise = trafo_list.keyBy (_.transformer_name).leftOuterJoin (grouped_precalc_results)
             val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
+            val subtransmission_trafos = transformer_data.filter (trafo => trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0))).collect // ToDo: don't hard code these voltage values
 
-            val filtered_trafos = trafokreise.filter (_._2._2.isDefined).map (makeTrafokreis (t0, options))
+            val filtered_trafos = trafokreise.filter (_._2._2.isDefined).map (makeTrafokreis (t0, options, subtransmission_trafos))
             val count = trafo_list.count
             log.info ("filtered_trafos: " + count)
             if (0 != count)

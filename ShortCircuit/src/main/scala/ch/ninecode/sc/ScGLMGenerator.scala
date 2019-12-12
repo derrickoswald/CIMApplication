@@ -30,6 +30,13 @@ case class ScGLMGenerator
 
     override def edges: Iterable[GLMEdge] = area.edges
 
+    override def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
+    {
+        val subtransmission_trafos = edges.filter (edge => edge match { case _: TransformerEdge => true case _ => false }).asInstanceOf[Iterable[TransformerEdge]]
+        val trafos = transformers ++ subtransmission_trafos
+        trafos.groupBy (_.configurationName).values.map (_.head.configuration (this))
+    }
+
     override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (area.transformer.node0, area.transformer.node1, area.transformer))
 
     override def swing_nodes: Iterable[GLMNode] = area.swing_nodes

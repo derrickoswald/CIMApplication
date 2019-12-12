@@ -113,6 +113,12 @@ object GLMEdge
         }
     }
 
+    def transformermaker (elements: Iterable[Element], cn1: String, cn2: String): TransformerEdge =
+    {
+        log.error (s"edge from $cn1 to $cn2 has PowerTransformer class: ${elements.head.id}")
+        TransformerEdge (cn1, cn2, null)
+    }
+
     /**
      * Temporary measure until we figure out how to create subclasses of GMLEdge from:
      *   - PreNode/PreEdge trace results
@@ -125,7 +131,7 @@ object GLMEdge
      * @return a type of edge
      */
     def toGLMEdge (elements: Iterable[Element], cn1: String, cn2: String,
-       makeTransformerEdge: (Iterable[Element], String, String) ⇒ TransformerEdge = (elements: Iterable[Element], cn1: String, cn2: String) ⇒ TransformerEdge (cn1, cn2, null)): GLMEdge =
+       makeTransformerEdge: (Iterable[Element], String, String) ⇒ TransformerEdge = transformermaker): GLMEdge =
     {
         // for now, we handle Conductor, Switch and eventually PowerTransformer
         var tagged = elements.map (x ⇒ (baseClass (x), x))
@@ -147,7 +153,6 @@ object GLMEdge
                 // DEFAULT_R: Double = 0.225,
                 // DEFAULT_X: Double = 0.068
             case "PowerTransformer" ⇒
-                log.error ("edge from %s to %s has PowerTransformer class: %s".format (cn1, cn2, tagged.map (x ⇒ "%s:%s".format (classname (x._2), x._2.id)).mkString (",")))
                 makeTransformerEdge (elements, cn1, cn2)
             case _ ⇒
                 log.error ("edge from %s to %s has unhandled class type '%s'".format (cn1, cn2, tagged.head._1))
