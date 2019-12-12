@@ -244,7 +244,7 @@ truncate table cimapplication.responsibility_by_day;
         let RecorderChooser;
         const RecorderChoices = [
             {
-                "title": "All PowerTransformer output power",
+                "title": "All PowerTransformer input power",
                 "query":
                     `
                     select
@@ -252,7 +252,7 @@ truncate table cimapplication.responsibility_by_day;
                         name_island.name mrid,
                         name_island.name parent,
                         'power' type,
-                        'power_out' property,
+                        'power_in' property,
                         'VA' unit,
                         name_island.island
                     from
