@@ -205,7 +205,7 @@ Auxiliary properties of measurement_value table entries.
     lat     - the latitude of the location (°)
 ';
 
-create index meta_idx ON cimapplication.measured_value_meta (ENTRIES(classes));
+create index if not exists meta_idx on cimapplication.measured_value_meta (ENTRIES(classes));
 
 create table if not exists cimapplication.simulated_value (
     simulation text,
