@@ -11,11 +11,15 @@ import java.util.Properties
 import java.util.zip.ZipInputStream
 
 import scala.collection._
+import scala.collection.JavaConverters._
 
-import com.datastax.spark.connector.SomeColumns
-import com.datastax.spark.connector._
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
+
+import com.datastax.driver.core.Cluster
+import com.datastax.driver.core.Row
+import com.datastax.spark.connector.SomeColumns
+import com.datastax.spark.connector._
 
 import org.junit.AfterClass
 import org.junit.BeforeClass
@@ -61,6 +65,12 @@ class SimulationSuiteIT
                     |        "end": "2018-02-01T00:00:00.000+0100",
                     |        "buffer": 3600000
                     |    },
+                    |    "temperatures": {
+                    |        "cim_temperature": 20.0,
+                    |        "simulation_temperature": 20.0
+                    |    },
+                    |    "swing": "hi",
+                    |    "swing_voltage_factor": 1.0,
                     |    "keyspaces": {
                     |        "input": "$KEYSPACE",
                     |        "output": "$KEYSPACE",
@@ -336,7 +346,7 @@ class SimulationSuiteIT
                     s"""
                       |{
                       |    "id": "Reinforced",
-                      |    "name": "DemoDataReinforced",
+                      |    "name": "Reinforced Simulation Test",
                       |    "description": "simulation with demo data and reinforcement",
                       |    "cim": "$FILE_DEPOT$FILENAME2.rdf",
                       |    "cimreaderoptions": {
@@ -354,6 +364,12 @@ class SimulationSuiteIT
                       |        "end": "2018-02-01T00:00:00.000+0100",
                       |        "buffer": 3600000
                       |    },
+                      |    "temperatures": {
+                      |        "cim_temperature": 20.0,
+                      |        "simulation_temperature": 20.0
+                      |    },
+                      |    "swing": "hi",
+                      |    "swing_voltage_factor": 1.0,
                       |    "keyspaces": {
                       |        "input": "$KEYSPACE",
                       |        "output": "$KEYSPACE",
@@ -760,7 +776,7 @@ class SimulationSuiteIT
                     s"""
                        |{
                        |    "id": "ThreePhase",
-                       |    "name": "DemoData",
+                       |    "name": "Three Phase Simulation Test",
                        |    "description": "three phase simulation with demo data",
                        |    "cim": "$FILE_DEPOT$FILENAME1.rdf",
                        |    "cimreaderoptions": {
@@ -778,6 +794,12 @@ class SimulationSuiteIT
                        |        "end": "2018-02-01T00:00:00.000+0100",
                        |        "buffer": 3600000
                        |    },
+                       |    "temperatures": {
+                       |        "cim_temperature": 20.0,
+                       |        "simulation_temperature": 20.0
+                       |    },
+                       |    "swing": "hi",
+                       |    "swing_voltage_factor": 1.0,
                        |    "keyspaces": {
                        |        "input": "$KEYSPACE",
                        |        "output": "$KEYSPACE",
@@ -1149,6 +1171,168 @@ class SimulationSuiteIT
                 json
             )
         )
+        new File (json).delete
+    }
+
+    @Test def VoltageFactor ()
+    {
+        val ID_SIMULATION = "VoltageFactor"
+        val json = s"$FILE_DEPOT$FILENAME1.json"
+        using (new PrintWriter (new File (json), "UTF-8"))
+        {
+            writer =>
+                writer.write (
+                    s"""
+                       |{
+                       |    "id": "$ID_SIMULATION",
+                       |    "name": "Voltage Factor Simulation Test",
+                       |    "description": "simulation with 103% slack voltage",
+                       |    "cim": "$FILE_DEPOT$FILENAME1.rdf",
+                       |    "cimreaderoptions": {
+                       |        "ch.ninecode.cim.do_about": false,
+                       |        "ch.ninecode.cim.do_normalize": false,
+                       |        "ch.ninecode.cim.do_deduplication": false,
+                       |        "ch.ninecode.cim.make_edges": false,
+                       |        "ch.ninecode.cim.do_join": false,
+                       |        "ch.ninecode.cim.do_topo_islands": false,
+                       |        "ch.ninecode.cim.do_topo": false,
+                       |        "ch.ninecode.cim.split_maxsize": 67108864
+                       |    },
+                       |    "interval": {
+                       |        "start": "2018-01-01T00:00:00.000+0100",
+                       |        "end": "2018-02-01T00:00:00.000+0100",
+                       |        "buffer": 3600000
+                       |    },
+                       |    "temperatures": {
+                       |        "cim_temperature": 20.0,
+                       |        "simulation_temperature": 20.0
+                       |    },
+                       |    "swing": "hi",
+                       |    "swing_voltage_factor": 1.03,
+                       |    "keyspaces": {
+                       |        "input": "$KEYSPACE",
+                       |        "output": "$KEYSPACE",
+                       |        "replication": 1
+                       |    },
+                       |    "players": [
+                       |        {
+                       |            "title": "Measured power for all PSRType_HouseService house services",
+                       |            "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID "
+                       |        }
+                       |    ],
+                       |    "recorders": [
+                       |        {
+                       |            "title": "All PowerTransformer input power",
+                       |            "query": "select concat (name_island.name, '_power_recorder') name, name_island.name mrid, name_island.name parent, 'power' type, 'power_in' property, 'VA' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All BusbarSection node voltages",
+                       |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All EnergyConsumer node voltages",
+                       |            "query": "select concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name, c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, EnergyConsumer c where t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        }
+                       |    ],
+                       |    "transformers": [],
+                       |    "extras": [
+                       |        {
+                       |            "title": "ratedCurrent",
+                       |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
+                       |        },
+                       |        {
+                       |            "title": "ratedS",
+                       |            "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, cast (sum (e.ratedS) as string) value from Terminal t, PowerTransformerEnd e where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 group by t.TopologicalNode"
+                       |        },
+                       |        {
+                       |            "title": "nominalVoltage",
+                       |            "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
+                       |        }
+                       |    ],
+                       |    "postprocessing": []
+                       |}
+                       |""".stripMargin
+                )
+        }
+        Main.main (
+            Array (
+                "--unittest",
+                "--master", "local[2]",
+                "--verbose",
+                "--keep",
+                "--host", "localhost",
+                "--port", cassandra_port,
+                "--workdir", s"$wd$FILE_DEPOT",
+                json))
+        using (Cluster.builder.addContactPoint ("localhost").withPort (cassandra_port.toInt).build.connect)
+        {
+            cassandraSession =>
+                val sql = s"select * from $KEYSPACE.simulated_value where simulation='$ID_SIMULATION' and type='voltage' and period=900000 allow filtering"
+                def mag (row: Row): Double =
+                {
+                    val r = row.getDouble ("real_a")
+                    val i = row.getDouble ("imag_a")
+                    Math.sqrt (r * r + i * i)
+                }
+                assert (cassandraSession.execute (sql).all.asScala.forall (row => mag (row) > 409.5)) // min is 409.92237
+        }
         new File (json).delete
     }
 }
