@@ -309,6 +309,10 @@ create table if not exists cimapplication.simulation (
     run_time timestamp,
     start_time timestamp,
     end_time timestamp,
+    cim_temperature double,
+    simulation_temperature double,
+    swing text,
+    swing_voltage_factor double,
     input_keyspace text,
     output_keyspace text,
     transformers list<text>,
@@ -325,6 +329,10 @@ Describes each run of the Simulate code.
     run_time - the time at which the simulation was executed
     start_time - the simulation start time in GMT
     end_time - the simulation end time in GMT
+    cim_temperature - the assumed temperature of the CIM file(s) (°C)
+    simulation_temperature - the temperature of the simulation (°C)
+    swing - if "hi" the slack bus is on the primary, if "lo" on the secondary, of the transformer
+    swing_voltage_factor - multiplicative factor to apply to the nominal slack voltage
     input_keyspace - the Cassandra keyspace for measurement data
     output_keyspace - The Cassandra keyspace for simulated results data
     transformers - the list of PowerTransformer mRID used to determine topological islands, an empty list indicates all

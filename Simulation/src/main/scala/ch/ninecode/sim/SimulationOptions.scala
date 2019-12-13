@@ -8,94 +8,47 @@ object LogLevels extends Enumeration
     val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
 }
 
+/**
+ *
+ * @param valid False if either help or version requested (i.e. don't proceed with execution).
+ * @param unittest If <code>true</code>, don't call sys.exit().
+ * @param verbose If <code>true</code>, emit progress messages.
+ * @param master Spark master.
+ * @param options Spark options.
+ * @param host Cassandra connection host.
+ * @param port Cassandra connection port.
+ * @param log_level Logging level.
+ * @param checkpoint Session RDD checkpoint directory.
+ * @param workdir  Working directory for executors.
+ * @param storage_level Storage level for RDD serialization.
+ * @param three_phase If <code>true</code>, simulate in three phase flag.
+ * @param fake_three_phase If <code>true</code>, convert single phase meter readings into three phase.
+ * @param keep If <code>true</code>, keep glm and input/output files in workdir.
+ * @param simulationonly If <code>true</code>, only perform simulation, not postprocessing.
+ * @param postprocessonly If <code>true</code>, only perform postprocessing, not simulation.
+ * @param simulation Simulation JSON files.
+ */
 case class SimulationOptions
 (
-    /**
-     * False if either help or version requested (i.e. don't proceed with execution).
-     */
     var valid: Boolean = true,
-
-    /**
-     * If <code>true</code>, don't call sys.exit().
-     */
     unittest: Boolean = false,
-
-    /**
-     * If <code>true</code>, emit progress messages.
-     */
     verbose: Boolean = false,
-
-    /**
-     * Spark master.
-     */
     master: String = "",
-
-    /**
-     * Spark options.
-     */
     options: Map[String, String] = Map (
         "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
         "spark.ui.showConsoleProgress" -> "false",
         "spark.sql.warehouse.dir" -> "file:///tmp/"
     ),
-
-    /**
-     * Cassandra connection host.
-     */
     host: String = "localhost",
-
-    /**
-     * Cassandra connection port.
-     */
     port: Int = 9042,
-
-    /**
-     * Logging level.
-     */
     log_level: LogLevels.Value = LogLevels.OFF,
-
-    /**
-     * Session RDD checkpoint directory.
-     */
     checkpoint: String = "",
-
-    /**
-     * Working directory for executors.
-     */
     workdir: String = "simulation/",
-
-    /**
-     * Storage level for RDD serialization.
-     */
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
-
-    /**
-     * Simulate in three phase flag.
-     */
     three_phase: Boolean = false,
-
-    /**
-     * Convert single phase meter readings into three phase flag.
-     */
     fake_three_phase: Boolean = false,
-
-    /**
-     * If <code>true</code>, keep glm and input/output files in workdir.
-     */
     keep: Boolean = false,
-
-    /**
-     * Only perform simulation.
-     */
     simulationonly: Boolean = false,
-
-    /**
-     * Only perform postprocessing.
-     */
     postprocessonly: Boolean = false,
-
-    /**
-     * Simulation JSON files.
-     */
     simulation: Seq[String] = Seq ()
 )

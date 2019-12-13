@@ -37,10 +37,23 @@ import ch.ninecode.gl.ThreePhaseComplexDataElement
  * @param workdir   the directory to create the .glm and location of /input_data and /output_data directories
  * @param three_phase if <code>true</code> simulate in three phase
  * @param fake_three_phase if <code>true</code> convert single phase readings on phase A into three phase
+ * @param cim_temperature the temperature of the elements in the CIM file (°C)
+ * @param simulation_temperature the temperature at which to run the simulation (°C)
+ * @param swing_voltage_factor factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal
  * @param keep      when <code>true</code> do not delete the generated .glm, player and recorder files
  * @param verbose   when <code>true</code> set the log level for this class as INFO
  */
-case class SimulationRunner (cassandra: String, keyspace: String, workdir: String, three_phase: Boolean, fake_three_phase: Boolean, keep: Boolean = false, verbose: Boolean = false) extends Serializable
+case class SimulationRunner (
+    cassandra: String,
+    keyspace: String,
+    workdir: String,
+    three_phase: Boolean,
+    fake_three_phase: Boolean,
+    cim_temperature: Double = 20.0,
+    simulation_temperature: Double = 20.0,
+    swing_voltage_factor: Double = 1.0,
+    keep: Boolean = false,
+    verbose: Boolean = false) extends Serializable
 {
     if (verbose)
         LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
@@ -78,7 +91,14 @@ case class SimulationRunner (cassandra: String, keyspace: String, workdir: Strin
     def write_glm (trafo: SimulationTrafoKreis, workdir: String): Unit =
     {
         log.info ("""generating %s""".format (trafo.directory + trafo.transformer.transformer_name + ".glm"))
-        val generator = SimulationGLMGenerator (one_phase = !three_phase, date_format = glm_date_format, trafo)
+        val generator = SimulationGLMGenerator (
+            one_phase = !three_phase,
+            date_format = glm_date_format,
+            cim_temperature = cim_temperature,
+            simulation_temperature = simulation_temperature,
+            swing_voltage_factor = swing_voltage_factor,
+            kreis = trafo)
+
         val text = generator.make_glm ()
         val file = new File (workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
         file.getParentFile.mkdirs

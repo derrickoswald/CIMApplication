@@ -566,7 +566,11 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         val player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] = spark.sparkContext.parallelize (player_data).persist (options.storage_level)
 
                         log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
-                        val runner = SimulationRunner (options.host, job.output_keyspace, options.workdir, options.three_phase, options.fake_three_phase, options.keep, options.verbose)
+                        val runner = SimulationRunner (
+                            options.host, job.output_keyspace, options.workdir,
+                            options.three_phase, options.fake_three_phase,
+                            job.cim_temperature, job.simulation_temperature, job.swing_voltage_factor,
+                            options.keep, options.verbose)
                         val raw_results =
                             simulations
                             .keyBy (_.transformer.transformer_name)

@@ -55,6 +55,12 @@ truncate table cimapplication.responsibility_by_day;
                     "start": "2017-07-18T00:00:00.000+0100",
                     "end": "2017-07-19T00:00:00.000+0100"
                 },
+                temperatures: {
+                    "cim_temperature": 20.0,
+                    "simulation_temperature": 20.0
+                },
+                swing: "hi",
+                swing_voltage_factor: 1.0,
                 // Cassandra keyspaces
                 keyspaces: {
                     // the Cassandra keyspace where measurement data is read from for player files
@@ -1001,6 +1007,13 @@ truncate table cimapplication.responsibility_by_day;
             TheSimulation.cim = document.getElementById ("cim_file").value;
             TheSimulation.keyspaces.input = document.getElementById ("input_keyspace").value;
             TheSimulation.keyspaces.output = document.getElementById ("output_keyspace").value;
+            TheSimulation.temperatures =
+            {
+                cim_temperature: 20.0,
+                simulation_temperature: 20.0
+            };
+            TheSimulation.swing = "hi";
+            TheSimulation.swing_voltage_factor = 1.0;
             TheSimulation.transformers = query_transformers ();
             TheSimulation.players = query_players ();
             TheSimulation.recorders = query_recorders ();
@@ -1663,7 +1676,8 @@ truncate table cimapplication.responsibility_by_day;
             TheSimulation.interval =
             {
                 start: start.toISOString ().replace ("Z", "+0000"), // "2018-04-24T19:24:27.884Z"
-                end: end.toISOString ().replace ("Z", "+0000")
+                end: end.toISOString ().replace ("Z", "+0000"),
+                buffer: 60 * 1000 // one hour in milliseconds
             }
         }
 

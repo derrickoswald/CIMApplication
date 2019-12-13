@@ -11,11 +11,12 @@ import java.util.{Calendar, TimeZone}
  * simulation start and stop times, etc.
  *
  * @param one_phase           If <code>true</code> generate a single phase .glm file.
- * @param temperature         The temperature of the elements in the .glm file (°C).
+ * @param temperature         The reference temperature of the elements in the CIM file (°C).
  * @param date_format         The date format to use within the .glm file.
  * @param emit_voltage_dump   if <code>true</code> add a voltage dump element to the .glm prefix text
  * @param emit_impedance_dump if <code>true</code> add a impedance dump element to the .glm prefix text
  * @param emit_fault_check    if <code>true</code> add a fault check element to the .glm prefix text
+ * @param swing_voltage_factor Factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal.
  */
 class GLMGenerator
 (
@@ -29,7 +30,8 @@ class GLMGenerator
     },
     emit_voltage_dump: Boolean = false,
     emit_impedance_dump: Boolean = false,
-    emit_fault_check: Boolean = false)
+    emit_fault_check: Boolean = false,
+    swing_voltage_factor: Double = 1.0)
     extends Serializable
 {
     /**
@@ -303,7 +305,7 @@ class GLMGenerator
     def emit_slack (node: GLMNode): String =
     {
         val name = node.id
-        val voltage = node.nominal_voltage
+        val voltage = node.nominal_voltage * swing_voltage_factor
         val phase = if (one_phase) "AN" else "ABCN"
         val swing =
             if (one_phase)
@@ -322,7 +324,7 @@ class GLMGenerator
         |            name "$name";
         |            phases $phase;
         |            bustype SWING;
-        |            nominal_voltage ${voltage}V;
+        |            nominal_voltage ${node.nominal_voltage}V;
         |$swing
         |        };
         |""".stripMargin
