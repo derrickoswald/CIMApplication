@@ -5,11 +5,27 @@ import java.util.Calendar
 
 import ch.ninecode.gl._
 
-case class SimulationGLMGenerator
-(
+/**
+ * GridLAB-D glm file generator.
+ *
+ * @param one_phase            If <code>true</code> generate a single phase .glm file.
+ * @param date_format          The date format to use within the .glm file.
+ * @param cim_temperature      The temperature of the elements in the CIM file (°C).
+ * @param simulation_temperature The temperature of the elements in the .glm file (°C).
+ * @param swing_voltage_factor Factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal.
+ * @param kreis                The transformer service area to generate a .glm file for.
+ */
+case class SimulationGLMGenerator (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
-    kreis: SimulationTrafoKreis) extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get simulation temperature from json file
+    cim_temperature: Double,
+    simulation_temperature: Double,
+    swing_voltage_factor: Double,
+    kreis: SimulationTrafoKreis) extends GLMGenerator (
+        one_phase = one_phase,
+        temperature = cim_temperature,
+        date_format = date_format,
+        swing_voltage_factor = swing_voltage_factor)
 {
 
     override def name: String = kreis.name
@@ -19,6 +35,8 @@ case class SimulationGLMGenerator
     override def start_time: Calendar = kreis.start_time
 
     override def finish_time: Calendar = kreis.finish_time
+
+    override def targetTemperature: Double = simulation_temperature
 
     override def edges: Iterable[SimulationEdge] = kreis.edges
 

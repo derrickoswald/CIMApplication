@@ -51,6 +51,9 @@ import com.datastax.spark.connector.cql.CassandraConnector
  * @param start_time       The starting date and time of the simulation.
  * @param end_time         The ending date and time of the simulation.
  * @param buffer           The number of milliseconds of buffer either side of the start⇒end interval to read from measured data.
+ * @param cim_temperature  The temperature of the elements in the CIM file (°C).
+ * @param simulation_temperature The temperature at which the simulation is to be run (°C).
+ * @param swing_voltage_factor The factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal.
  * @param transformers     The name of the transformers to simulate.
  *                         If this list is empty all transformers in the CIM file will be processed.
  *                         The names should reflect "ganged" transformers. For example, if TRA1234 and TRA1235 share a common
@@ -151,6 +154,9 @@ case class SimulationJob
     start_time: Calendar,
     end_time: Calendar,
     buffer: Int,
+    cim_temperature: Double,
+    simulation_temperature: Double,
+    swing_voltage_factor: Double,
     transformers: Seq[String],
     swing: String = "hi",
     players: Seq[SimulationPlayerQuery],
@@ -173,7 +179,7 @@ case class SimulationJob
         val run = CassandraConnector (session.sparkContext.getConf).withSessionDo (
             session =>
             {
-                val resultset = session.execute (s"select max(run) as hi from $keyspace.simulation where id='${id}'")
+                val resultset = session.execute (s"select max(run) as hi from $keyspace.simulation where id='$id'")
                 val row = resultset.one
                 if (row.isNull (0))
                     1
@@ -193,13 +199,21 @@ case class SimulationJob
                 current_time,
                 start_time,
                 end_time,
+                cim_temperature,
+                simulation_temperature,
+                swing,
+                swing_voltage_factor,
                 input_keyspace,
                 output_keyspace,
                 transformers
             )
         ))
 
-        json.saveToCassandra (keyspace, "simulation", SomeColumns ("id", "run", "name", "description", "cim", "cimreaderoptions", "run_time", "start_time", "end_time", "input_keyspace", "output_keyspace", "transformers"))
+        json.saveToCassandra (keyspace, "simulation",
+            SomeColumns ("id", "run", "name", "description", "cim", "cimreaderoptions",
+                "run_time", "start_time", "end_time",
+                "cim_temperature", "simulation_temperature", "swing", "swing_voltage_factor",
+                "input_keyspace", "output_keyspace", "transformers"))
 
         if (run == 1)
         {
@@ -369,6 +383,35 @@ object SimulationJob
         (start, end, buffer)
     }
 
+
+    def parseTemperatures (json: JsonObject): (Double, Double) =
+    {
+        val MEMBERNAME = "temperatures"
+        var cim_temperature: Double = 20.0
+        var simulation_temperature: Double = 20.0
+
+        if (json.containsKey (MEMBERNAME))
+        {
+            val value = json.get (MEMBERNAME)
+            if (value.getValueType == JsonValue.ValueType.OBJECT)
+            {
+                val keyspaces: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
+                keyspaces.foreach
+                {
+                    case ("cim_temperature", v: JsonNumber) ⇒ cim_temperature = v.doubleValue
+                    case ("simulation_temperature", v: JsonNumber) ⇒ simulation_temperature = v.doubleValue
+                    case (k: String, v: JsonValue) ⇒ log.warn ("""unexpected JSON member or type: %s["%s"] of type "%s"""".format (MEMBERNAME, k, v.getValueType.toString))
+                }
+            }
+            else
+                log.warn ("""JSON member "%s" is not a JSON object (type "%s")""".format (MEMBERNAME, value.getValueType.toString))
+        }
+        else
+            log.warn ("""JSON member "%s" not found, using defaults""".format (MEMBERNAME))
+
+        (cim_temperature, simulation_temperature)
+    }
+
     def parseTransformers (json: JsonObject): Seq[String] =
     {
         // ToDo: more robust checking
@@ -522,7 +565,6 @@ object SimulationJob
         val name = json.getString ("name", "")
         val description = json.getString ("description", "")
         val cim = json.getString ("cim", null)
-        val swing = json.getString ("swing", "hi")
         if (null == cim)
         {
             log.error (""""%s" does not specify a CIM file""".format (name))
@@ -533,12 +575,35 @@ object SimulationJob
             val cimreaderoptions = parseCIMReaderOptions (options, cim, json)
             val (read, write, replication) = parseKeyspaces (json)
             val (start, end, buffer) = parseInterval (json)
+            val (cim_temperature, simulation_temperature) = parseTemperatures (json)
+            val swing = json.getString ("swing", "hi")
+            val swing_voltage_factor = if (json.containsKey ("swing_voltage_factor")) json.getJsonNumber ("swing_voltage_factor") .doubleValue () else 1.0
             val transformers = parseTransformers (json)
             val players = parsePlayers (name, json)
             val recorders = parseRecorders (name, json)
             val extras = parseExtras (name, json)
             val postprocessors = parsePostProcessing (name, json)
-            List (SimulationJob (id, name, description, cim, cimreaderoptions, read, write, replication, start, end, buffer, transformers, swing, players, recorders, extras, postprocessors))
+            List (SimulationJob (
+                id = id,
+                name = name,
+                description = description,
+                cim = cim,
+                cimreaderoptions = cimreaderoptions,
+                input_keyspace = read,
+                output_keyspace = write,
+                replication = replication,
+                start_time = start,
+                end_time = end,
+                buffer = buffer,
+                cim_temperature = cim_temperature,
+                simulation_temperature = simulation_temperature,
+                swing_voltage_factor = swing_voltage_factor,
+                transformers = transformers,
+                swing = swing,
+                players = players,
+                recorders = recorders,
+                extras = extras,
+                postprocessors = postprocessors))
         }
     }
 
