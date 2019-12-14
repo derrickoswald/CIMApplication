@@ -5,7 +5,7 @@
 
 define
 (
-    ["../lib/mustache", "./diagram", "./project_legend", "./layers", "../cimquery", "../cim", "../cimproject"],
+    ["mustache", "./diagram", "./project_legend", "./layers", "../cimquery", "../cim", "../cimproject"],
     /**
      * @summary Theme of projects.
      * @exports project_theme

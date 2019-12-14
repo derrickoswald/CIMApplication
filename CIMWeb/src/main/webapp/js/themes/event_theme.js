@@ -5,7 +5,7 @@
 
 define
 (
-    ["../lib/mustache", "./default_theme", "./event_legend", "./layers", "../cimquery", "../cim"],
+    ["mustache", "./default_theme", "./event_legend", "./layers", "../cimquery", "../cim"],
     /**
      * @summary Theme of events (overvoltage, overcurrent, overpower).
      * @exports event_theme

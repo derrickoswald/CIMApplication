@@ -5,7 +5,7 @@
 
 define
 (
-    ["../lib/mustache", "./default_theme"],
+    ["mustache", "./default_theme"],
     /**
      * @summary Theme on analysis output.
      * @description Theme class to add popups to conducting equipment with analysis results.

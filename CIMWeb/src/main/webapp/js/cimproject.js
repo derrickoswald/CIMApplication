@@ -5,7 +5,7 @@
 
 define
 (
-    ["lib/mustache", "cimquery", "model/Wires", "model/UserDefinedModels"],
+    ["mustache", "cimquery", "model/Wires", "model/UserDefinedModels"],
     /**
      * @summary Project control.
      * @description UI element for displaying project related information.

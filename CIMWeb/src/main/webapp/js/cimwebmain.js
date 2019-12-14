@@ -7,6 +7,7 @@ requirejs.config({
     "paths": {
       "jquery": "lib/jquery.min",
       "moment": "lib/moment.min",
+      "mustache": "lib/mustache.min"
     }
 });
 

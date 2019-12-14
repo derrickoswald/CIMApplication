@@ -5,7 +5,7 @@
  */
 define
 (
-    ["util", "lib/mustache", "cim", "cimmap"],
+    ["util", "mustache", "cim", "cimmap"],
     /**
      * @summary Functions to query CIM data in memory.
      * @exports cimquery
