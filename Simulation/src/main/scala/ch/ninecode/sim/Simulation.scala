@@ -417,7 +417,16 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                 val (factor, time) = player.`type` match
                                 {
                                     case "energy" ⇒
-                                        ((60.0 * 60.0 * 1000.0) / period, t - period) // start time
+                                        // although energy is an integral over time,
+                                        // the customer prefers to see the value
+                                        // incorrectly "played" at the end of the time period
+                                        // so that meter reading values and player time series
+                                        // may be directly compared,
+                                        // so, instead of
+                                        // val start_time = t - period
+                                        // use just the time instead (the customer is always right)
+                                        val start_time = t
+                                        ((60.0 * 60.0 * 1000.0) / period, start_time)
                                     case _ ⇒
                                         (1.0, t)
                                 }
