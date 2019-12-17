@@ -331,7 +331,6 @@ class SimulationSuiteIT
                 "--keep",
                 "--host", "localhost",
                 "--port", cassandra_port,
-                "--workdir", s"$wd$FILE_DEPOT",
                 json))
         new File (json).delete
     }
@@ -759,7 +758,6 @@ class SimulationSuiteIT
                 "--keep",
                 "--host", "localhost",
                 "--port", cassandra_port,
-                "--workdir", s"$wd$FILE_DEPOT",
                 json
             )
         )
@@ -1167,7 +1165,6 @@ class SimulationSuiteIT
                 "--fake",
                 "--host", "localhost",
                 "--port", cassandra_port,
-                "--workdir", s"$wd$FILE_DEPOT",
                 json
             )
         )
@@ -1319,7 +1316,6 @@ class SimulationSuiteIT
                 "--keep",
                 "--host", "localhost",
                 "--port", cassandra_port,
-                "--workdir", s"$wd$FILE_DEPOT",
                 json))
         using (Cluster.builder.addContactPoint ("localhost").withPort (cassandra_port.toInt).build.connect)
         {
