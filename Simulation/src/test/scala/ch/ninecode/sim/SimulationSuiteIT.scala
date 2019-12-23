@@ -378,7 +378,7 @@ class SimulationSuiteIT
                       |    "players": [
                       |        {
                       |            "title": "Measured power for all house services",
-                      |            "query": "select c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID "
+                      |            "query": "select c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.EnergyConnection.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID ",
                       |            "transform": "new MeasurementTransform{val MILLISECONDS_PER_MINUTE: Int = 60 * 1000;override def transform (data: Array[SimulationPlayerData]): Array[SimulationPlayerData] ={data.map (reading =>reading.`type` match{case \\"energy\\" =>val factor = MILLISECONDS_PER_HOUR / reading.period;val t = reading.time - (reading.period - MILLISECONDS_PER_MINUTE);reading.copy (time = t, readings = reading.readings.map (_ * factor), units = \\"VA\\") case _ =>reading})}}"
                       |        }
                       |    ],
@@ -535,7 +535,7 @@ class SimulationSuiteIT
         {
             cassandraSession =>
                 val sql1 = s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time='2017-12-31 23:00:00.000+0000'"
-                val sql2 = s"select * from $KEYSPACE.simulated_value where simulation='$ID_SIMULATION' and mrid='USR0001' and type='power' and period=900000 and time='2017-12-31 23:00:00.000+0000'";
+                val sql2 = s"select * from $KEYSPACE.simulated_value where simulation='$ID_SIMULATION' and mrid='USR0001' and type='power' and period=900000 and time='2017-12-31 23:00:00.000+0000'"
                 assert (cassandraSession.execute (sql1).all.asScala.head.getDouble ("real_a") * 4 ==
                     cassandraSession.execute (sql2).all.asScala.head.getDouble ("real_a"))
         }
