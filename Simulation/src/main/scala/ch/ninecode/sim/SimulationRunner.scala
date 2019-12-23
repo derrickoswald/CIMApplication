@@ -139,8 +139,15 @@ case class SimulationRunner (
 
     def create_player_csv (file_prefix: String)(arg: (SimulationPlayer, Iterable[SimulationPlayerData])): Unit =
     {
-        val player = arg._1
-        val data = if (arg._2.isEmpty) Array (SimulationPlayerData (null, player.mrid, player.`type`, 0L, Array (0.0, 0.0, 0.0, 0.0, 0.0, 0.0))) else arg._2.toArray.sortBy (_.time)
+        val (player, player_data) = arg
+
+        // transform the data
+        val program = MeasurementTransform.compile (player.transform)
+        val data = if (player_data.isEmpty)
+            Array (SimulationPlayerData ())
+        else
+            program.transform (player_data.toArray.sortBy (_.time))
+
         val file = file_prefix + player.file
         if (three_phase)
         {
