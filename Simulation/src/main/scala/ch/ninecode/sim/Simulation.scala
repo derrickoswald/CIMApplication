@@ -384,21 +384,25 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val data: Iterable[(House, Iterable[SimulationPlayerData])] = players.map (
             player =>
             {
-                val (table, where) = if (null == player.synthesis)
+                val (table, id, typ, where) = if (null == player.synthesis)
                     (
                         "measured_value",
+                        player.mrid,
+                        player.`type`,
                         s"mrid = '${player.mrid}' and type = '${player.`type`}' and time >= '${timestamp (player.start, -buffer)}' and time <= '${timestamp (player.end, buffer)}'"
                     )
                 else
                     (
                         "synthesized_value",
+                        player.synthesis,
+                        player.`type`,
                         // ToDo: avoid this hard-coded period
                         s"synthesis = '${player.synthesis}' and type = '${player.`type`}' period = 900000 and time >= '${timestamp (player.start, -buffer)}' and time <= '${timestamp (player.end, buffer)}'"
                     )
                 val columns = if (phases == 3)
-                    Seq ("time", "period", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
+                    Seq ("time", "period", "units", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
                 else
-                    Seq ("time", "period", "real_a", "imag_a", "real_b")
+                    Seq ("time", "period", "units", "real_a", "imag_a")
                 val raw =
                     spark
                     .read
@@ -408,42 +412,38 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     .filter (where)
                     .selectExpr (columns: _*)
                     .rdd
-                    .map (
-                        row ⇒
+                val transformed: RDD[SimulationPlayerData] =
+                    if (phases == 3)
+                        raw
+                        .map (
+                            row ⇒
                             {
                                 val t = row.getTimestamp (0).getTime
                                 val period = row.getInt (1)
-                                // ToDo: should also check units
-                                val (factor, time) = player.`type` match
-                                {
-                                    case "energy" ⇒
-                                        // although energy is an integral over time,
-                                        // the customer prefers to see the value
-                                        // incorrectly "played" at the end of the time period
-                                        // so that meter reading values and player time series
-                                        // may be directly compared,
-                                        // so, instead of
-                                        // val start_time = t - period
-                                        // use just the time instead (the customer is always right)
-                                        val start_time = t
-                                        ((60.0 * 60.0 * 1000.0) / period, start_time)
-                                    case _ ⇒
-                                        (1.0, t)
-                                }
-                                val program = MeasurementTransform.compile (player.transform)
-                                val values =
-                                    (for (i <- 1 to phases;
-                                          re = i * 2;
-                                          im = re + 1;
-                                          (real, imag) = program.transform (row.getDouble (re) * factor, row.getDouble (im) * factor))
-                                    yield
-                                        List (real, imag)).flatten.toArray
-                                SimulationPlayerData (transformer, player.mrid, player.`type`, time, values)
+                                val units = row.getString (2)
+                                val rea = row.getDouble (3)
+                                val ima = row.getDouble (4)
+                                val reb = row.getDouble (5)
+                                val imb = row.getDouble (6)
+                                val rec = row.getDouble (7)
+                                val imc = row.getDouble (8)
+                                SimulationPlayerData (transformer, id, typ, t, period, units, Array (rea, ima, reb, imb, rec, imc))
                             }
-                    )
-                    .toLocalIterator
-                    .toIterable
-                (player.mrid, raw)
+                        )
+                    else
+                        raw
+                        .map (
+                            row ⇒
+                            {
+                                val t = row.getTimestamp (0).getTime
+                                val period = row.getInt (1)
+                                val units = row.getString (2)
+                                val re = row.getDouble (3)
+                                val im = row.getDouble (4)
+                                SimulationPlayerData (transformer, id, typ, t, period, units, Array (re, im))
+                            }
+                        )
+                (player.mrid, transformed.toLocalIterator.toIterable)
             }
         )
         data

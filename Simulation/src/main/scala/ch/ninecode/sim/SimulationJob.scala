@@ -448,8 +448,7 @@ object SimulationJob
                                     val program = v.getString
                                     // try it
                                     val tx = MeasurementTransform.build (program)
-                                    tx.transform (1.0, 2.0)
-                                    tx.transform3 (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+                                    tx.transform (Array (SimulationPlayerData ("TRA1234", "HAS5678", "energy", Calendar.getInstance.getTimeInMillis, 900000, "Wh", Array (1.0, 2.0))))
                                     transform = program
                                 }
                                 catch
