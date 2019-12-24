@@ -8,7 +8,6 @@ import java.util.TimeZone
 
 import scala.collection._
 import scala.io.Source
-
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -16,15 +15,16 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
+import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.Solar
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerData
+import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.ConductingEquipment
@@ -61,10 +61,12 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
     def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions, subtransmission_trafos: Array[TransformerData])(arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
     {
+        def notTheTransformer (tx: TransformerSet) (edge: GLMEdge): Boolean = edge match { case t: PreEdge => t.id != tx.transformer_name case _ => true }
         arg match
         {
             case (trafokreise, (transformers, Some (x))) =>
-                Trafokreis (start, trafokreise, transformers, x._1, x._2, x._3, options, subtransmission_trafos)
+                val edges = x._2.filter (notTheTransformer (transformers))
+                Trafokreis (start, trafokreise, transformers, x._1, edges, x._3, options, subtransmission_trafos)
             case _ =>
                 null
         }
@@ -569,7 +571,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             precalc_results.has.filter (x => changed.contains (x.mrid))
         }
         else
-            precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network") || (x.reason == "heuristic limit") || (-1 != x.reason.indexOf ("subtransmission edge")))
+            precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network") || (x.reason == "heuristic limit"))
 
         // get a list of invalid nodes and group by transformer
         val invalid = houses.filter (_.problem).keyBy (_.source_obj).groupByKey

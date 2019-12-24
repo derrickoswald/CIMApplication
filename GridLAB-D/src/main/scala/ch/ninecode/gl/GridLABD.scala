@@ -186,12 +186,8 @@ class GridLABD
                 else
                     if (v1 == v2)
                         "voltage (%sV) regulator edge %s".format (v1, element.id)
-                    // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
                     else
-                        if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting ToDo: don't hard code these  voltage values
-                            "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, element.id)
-                        else
-                            null
+                        null
             case _ ⇒
                 null
         }

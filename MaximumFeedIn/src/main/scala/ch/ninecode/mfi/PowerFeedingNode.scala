@@ -41,6 +41,7 @@ case class PowerFeedingNode
         (null != problem) &&
         (
             problem.indexOf ("invalid element") != -1 ||
-            problem.indexOf ("regulator edge") != -1
+            problem.indexOf ("regulator edge") != -1 ||
+            problem.indexOf ("subtransmission edge") != -1
         )
 }
