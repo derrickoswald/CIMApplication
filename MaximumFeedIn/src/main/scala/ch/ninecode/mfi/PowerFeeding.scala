@@ -58,7 +58,13 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     val sum_z = triplet.srcAttr.sum_z + z * dist_km
                     val min_ir = math.min (triplet.srcAttr.min_ir, ir)
                     val feeder = if (null != triplet.dstAttr.feeder) triplet.dstAttr.feeder else triplet.srcAttr.feeder
-                    val problem = if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.srcAttr.problem
+                    val problem =
+                        if (triplet.srcAttr.nominal_voltage < triplet.dstAttr.nominal_voltage && triplet.dstAttr.nominal_voltage <= 1000.0) // ToDo: don't hard code these values
+                            s"low voltage (${triplet.dstAttr.nominal_voltage}V:${triplet.srcAttr.nominal_voltage}V) subtransmission edge ${triplet.attr.id}"
+                        else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem
+                        else if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem
+                        else if (null != triplet.attr.problem) triplet.attr.problem
+                        else triplet.srcAttr.problem
                     val message = PowerFeedingNode (triplet.dstAttr.id, triplet.srcAttr.id, null, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, feeder, sum_z, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.info ("%s --> %s".format (triplet.srcAttr.id, message.asString))
@@ -70,7 +76,13 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     val sum_z = triplet.dstAttr.sum_z + z * dist_km
                     val min_ir = math.min (triplet.dstAttr.min_ir, ir)
                     val feeder = if (null != triplet.srcAttr.feeder) triplet.srcAttr.feeder else triplet.dstAttr.feeder
-                    val problem = if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem else if (null != triplet.attr.problem) triplet.attr.problem else triplet.dstAttr.problem
+                    val problem =
+                        if (triplet.dstAttr.nominal_voltage < triplet.srcAttr.nominal_voltage && triplet.srcAttr.nominal_voltage <= 1000.0) // ToDo: don't hard code these values
+                            s"low voltage (${triplet.srcAttr.nominal_voltage}V:${triplet.dstAttr.nominal_voltage}V) subtransmission edge ${triplet.attr.id}"
+                        else if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem
+                        else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem
+                        else if (null != triplet.attr.problem) triplet.attr.problem
+                        else triplet.dstAttr.problem
                     val message = PowerFeedingNode (triplet.srcAttr.id, triplet.dstAttr.id, null, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
                     if (log.isDebugEnabled)
                         log.info ("%s --> %s".format (triplet.dstAttr.id, message.asString))

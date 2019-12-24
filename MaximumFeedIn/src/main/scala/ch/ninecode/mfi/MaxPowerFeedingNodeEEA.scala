@@ -31,5 +31,6 @@ case class MaxPowerFeedingNodeEEA
 {
     def problem: Boolean =
         reason.indexOf ("invalid element") != -1 ||
-        reason.indexOf ("regulator edge") != -1
+        reason.indexOf ("regulator edge") != -1 ||
+        reason.indexOf ("subtransmission edge") != -1
 }
