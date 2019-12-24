@@ -133,6 +133,7 @@
         <module>MaximumFeedIn</module>
         <module>CopyCassandra</module>
         <module>TimeSeries</module>
+        <module>PandaPower</module>
     </modules>
 
 </project>
