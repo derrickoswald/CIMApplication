@@ -28,7 +28,7 @@ class SimpleMetaTest
         ret
     }
 
-    @Test def makeModel ()
+    /* @Test */ def makeModel ()
     {
         val kWh = 894.40999 * 96 * 365.25 / 1000.0
         val format = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
