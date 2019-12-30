@@ -2,12 +2,6 @@ package ch.ninecode.copy
 
 import java.util.Properties
 
-import scala.collection.JavaConverters._
-
-import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.Row
-import com.datastax.driver.core.Session
-
 import org.junit.Test
 
 import ch.ninecode.copy.Main.main
@@ -38,7 +32,7 @@ class CopySuiteIT
         main (Array ("--unittest", "--help"))
     }
 
-    @Test def Copy ()
+    /* @Test */ def Copy ()
     {
         main (Array ("--unittest",
             "--master", "local[*]",
@@ -48,10 +42,5 @@ class CopySuiteIT
             "--target_host", "localhost",
             "--target_port", cassandra_port.toString,
             "--target_keyspace", TARGET_KEYSPACE))
-
-//        System.in.read
-//        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
-//
-//        session.close ()
     }
 }
