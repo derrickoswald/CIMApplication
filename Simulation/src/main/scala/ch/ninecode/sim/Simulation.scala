@@ -466,7 +466,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
         // get the transformer(s)
         val transformer_data = new Transformers (session, options.storage_level).getTransformers ()
-        val tx = transformer_data.keyBy (_.node1) // (low_voltage_node_name, TransformerData)
+        val tx = transformer_data.keyBy (_.node1.id) // (low_voltage_node_name, TransformerData)
             .join (get [TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
             .map (x ⇒ (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
             .groupByKey.values

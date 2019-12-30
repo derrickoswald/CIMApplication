@@ -2,18 +2,19 @@ package ch.ninecode.mfi
 
 import java.util.Calendar
 
-import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.TransformerData
-import ch.ninecode.gl.TransformerSet
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.TransformerData
+import ch.ninecode.gl.TransformerIsland
 
 /**
  * A work package for gridlab simulation.
  *
  * @param start        Starting time to be used in the simulation.
- * @param trafo        The transformer (or ganged transformers) name to be used as the name of the simulation.
- * @param transformers The feeding transformer (or ganged transformers).
+ * @param trafo        The island name [concatenated transformer(s) (or ganged transformers)] = the simulation name.
+ * @param transformers The feeding transformers (or ganged transformers).
  * @param nodes        The nodes in the transformer service area.
  * @param edges        The edges in the transformer service area.
  * @param houses       The house connections in the transformer service area.
@@ -23,7 +24,7 @@ case class Trafokreis
 (
     start: Calendar,
     trafo: String,
-    transformers: TransformerSet,
+    transformers: TransformerIsland,
     nodes: Iterable[PowerFeedingNode],
     edges: Iterable[PreEdge],
     houses: Iterable[MaxPowerFeedingNodeEEA],
@@ -77,8 +78,4 @@ case class Trafokreis
         t.add (Calendar.SECOND, experiments.length * window)
         t
     }
-
-    def swing_node: String = transformers.node0
-
-    def swing_node_voltage: Double = transformers.v0
 }

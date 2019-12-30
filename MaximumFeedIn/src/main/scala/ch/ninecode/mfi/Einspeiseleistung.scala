@@ -15,6 +15,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
@@ -24,8 +25,7 @@ import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.Solar
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerData
-import ch.ninecode.gl.TransformerEdge
-import ch.ninecode.gl.TransformerSet
+import ch.ninecode.gl.TransformerIsland
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Terminal
@@ -59,17 +59,15 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     if (USE_UTC)
         _DateFormat.setTimeZone (TimeZone.getTimeZone ("UTC"))
 
-    def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions, subtransmission_trafos: Array[TransformerData])(arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
+    def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions, subtransmission_trafos: Array[TransformerData])(arg: (String, (TransformerIsland, (Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])))): Trafokreis =
     {
-        def notTheTransformer (tx: TransformerSet) (edge: GLMEdge): Boolean = edge match { case t: PreEdge => t.id != tx.transformer_name case _ => true }
-        arg match
-        {
-            case (trafokreise, (transformers, Some (x))) =>
-                val edges = x._2.filter (notTheTransformer (transformers))
-                Trafokreis (start, trafokreise, transformers, x._1, edges, x._3, options, subtransmission_trafos)
-            case _ =>
-                null
-        }
+        def notTheTransformer (island: TransformerIsland) (edge: GLMEdge): Boolean =
+            island.transformers.forall (
+                tx =>
+                    edge match { case t: PreEdge => t.id != tx.transformer_name case _ => true }
+            )
+        val (trafokreise, (transformers, (nodes, edges, mpfne))) = arg
+        Trafokreis (start, trafokreise, transformers, nodes, edges.filter (notTheTransformer (transformers)), mpfne, options, subtransmission_trafos)
     }
 
     /**
@@ -91,9 +89,9 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val kw = if (reason == "no limit") Double.PositiveInfinity else experiment.from + (experiment.step * increments)
             current.max match
             {
-                case None ⇒
+                case None =>
                     MaxEinspeiseleistung (experiment.trafo, experiment.feeder, experiment.node, experiment.house, Some (kw), reason, details)
-                case Some (kw1) ⇒
+                case Some (kw1) =>
                     if (kw1 < kw) current else MaxEinspeiseleistung (experiment.trafo, experiment.feeder, experiment.node, experiment.house, Some (kw), reason, details)
             }
         }
@@ -102,14 +100,14 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             a.max match
             {
-                case None ⇒
+                case None =>
                     b
-                case Some (kw1) ⇒
+                case Some (kw1) =>
                     b.max match
                     {
-                        case None ⇒
+                        case None =>
                             a
-                        case Some (kw2) ⇒
+                        case Some (kw2) =>
                             if (kw1 < kw2) a else b
                     }
             }
@@ -122,7 +120,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
     def overvoltage_three_phase (r: ThreePhaseComplexDataElement, threshold: Double): Boolean = (r.value_a.abs > threshold) || (r.value_b.abs > threshold) || (r.value_c.abs > threshold)
 
-    val overvoltage: (ThreePhaseComplexDataElement, Double) ⇒ Boolean = if (options.three) overvoltage_three_phase else overvoltage_one_phase
+    val overvoltage: (ThreePhaseComplexDataElement, Double) => Boolean = if (options.three) overvoltage_three_phase else overvoltage_one_phase
 
     def voltcheck (experiments: Iterable[Experiment], options: EinspeiseleistungOptions, elements: Iterable[ThreePhaseComplexDataElement], feeders: Iterable[(String, String)]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
     {
@@ -138,11 +136,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // could also check for under the minimum; r.value_a.abs < min
 
         // assign an experiment to each measurement - if it's over-voltage
-        elements.filter (x ⇒ (x.units == "Volts") && overvoltage (x, Math.min (max, neighbormax))).flatMap (
-            x ⇒
+        elements.filter (x => (x.units == "Volts") && overvoltage (x, Math.min (max, neighbormax))).flatMap (
+            x =>
             {
                 for
-                    {
+                {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     feeder = lookup.getOrElse (x.element, null)
@@ -158,7 +156,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
     def overcurrent_three_phase (r: ThreePhaseComplexDataElement, threshold: Double): Boolean = (r.value_a.abs > threshold) || (r.value_b.abs > threshold) || (r.value_c.abs > threshold)
 
-    val overcurrent: (ThreePhaseComplexDataElement, Double) ⇒ Boolean = if (options.three) overcurrent_three_phase else overcurrent_one_phase
+    val overcurrent: (ThreePhaseComplexDataElement, Double) => Boolean = if (options.three) overcurrent_three_phase else overcurrent_one_phase
 
     def ampcheck (experiments: Iterable[Experiment], options: EinspeiseleistungOptions, elements: Iterable[ThreePhaseComplexDataElement], cdata: Iterable[(String, Double)], feeders: Iterable[(String, String)]): Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)] =
     {
@@ -183,11 +181,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val cdata_map = cdata.toMap
 
         // assign an experiment to each measurement - if it's over-current
-        elements.filter (x ⇒ (x.units == "Amps") && overcurrent (x, 0.1)).flatMap (
-            x ⇒
+        elements.filter (x => (x.units == "Amps") && overcurrent (x, 0.1)).flatMap (
+            x =>
             {
                 for
-                    {
+                {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     if !options.ignore_other || lookup.getOrElse (x.element, List ()).contains (e.feeder)
@@ -263,7 +261,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
             // establish a "no limit found" default
             val s = experiments.map (
-                x ⇒
+                x =>
                 {
                     (
                         x,
@@ -276,9 +274,9 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
             // rearrange results from "by node" to results "by house"
             val g = s ++ v ++ i ++ p groupBy (_._1.node)
-            val shuffle = experiments.map (x ⇒ (x, g.get (x.node))).filter (_._2.isDefined).map (x ⇒ (x._1, x._2.orNull))
-            val ret = shuffle.map (x ⇒ (x._2.head._1.copy (house = x._1.house), x._2.map (y ⇒ (y._2, y._3, y._4)))) // need to grab the experiment from the node for this house
-            ret.map (x ⇒ finder (x._1, x._2)).toList
+            val shuffle = experiments.map (x => (x, g.get (x.node))).filter (_._2.isDefined).map (x => (x._1, x._2.orNull))
+            val ret = shuffle.map (x => (x._2.head._1.copy (house = x._1.house), x._2.map (y => (y._2, y._3, y._4)))) // need to grab the experiment from the node for this house
+            ret.map (x => finder (x._1, x._2)).toList
         }
         else
         {
@@ -384,23 +382,30 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val c = experiments.map (generate_player_file (gridlabd)).count
             log.info (c.toString + " experiments")
 
-            val reduced_trafos = trafokreise.keyBy (_.trafo).join (feeder_map).values.map (
-                x ⇒
-                {
-                    val t = x._1
-                    val feeders = x._2
-                    val transformers = t.transformers.power_rating
-                    val cdata_iter = t.edges.filter (_.ratedCurrent < Double.PositiveInfinity).groupBy (_.key).values
-                        .map (edges ⇒ (edges.map (_.element.id).toArray.sortWith (_ < _)(0), edges.map (_.ratedCurrent).sum))
-                    (t.trafo, (transformers, cdata_iter, feeders))
-                }).persist (storage_level)
+            val reduced_trafos = trafokreise
+                .flatMap (x => x.transformers.transformers.map (y => (y.transformer_name, x)))
+                .join (feeder_map)
+                .values
+                .groupBy (_._1.transformers.island_name)
+                .values
+                .map (x => (x.head._1, x.flatMap (y => y._2)))
+                .map (
+                    x =>
+                    {
+                        val (trafokreis, feeders) = x
+                        val rating = trafokreis.transformers.power_rating
+                        val cdata_iter = trafokreis.edges.filter (_.ratedCurrent < Double.PositiveInfinity).groupBy (_.key).values
+                            .map (edges => (edges.map (_.element.id).toArray.sortWith (_ < _)(0), edges.map (_.ratedCurrent).sum))
+                        (trafokreis.trafo, (rating, cdata_iter, feeders))
+                    }
+                ).persist (storage_level)
 
             ret = solve_and_analyse (gridlabd, reduced_trafos, experiments).persist (storage_level)
             log.info ("results: " + ret.count)
 
             val b4_experiment = System.nanoTime ()
             val experiments2 = experiments.keyBy (_.house).leftOuterJoin (ret.keyBy (_.house)).map (
-                house ⇒
+                house =>
                 {
                     val experiment = house._2._1
                     val max_option = house._2._2
@@ -427,7 +432,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val experiment_adjusted = System.nanoTime ()
             log.info ("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
 
-            trafokreise.map (t ⇒ gridlabd.cleanup (t.trafo, false, true, options.erase)).count
+            trafokreise.map (t => gridlabd.cleanup (t.trafo, false, true, options.erase)).count
             val d = experiments2.map (generate_player_file (gridlabd)).count
             log.info (d.toString + " experiments")
 
@@ -444,7 +449,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val dbsave = System.nanoTime ()
             log.info ("database save: " + (dbsave - b4_db) / 1e9 + " seconds")
 
-            trafokreise.map (t ⇒ gridlabd.cleanup (t.trafo, options.erase, options.erase, options.erase)).count
+            trafokreise.map (t => gridlabd.cleanup (t.trafo, options.erase, options.erase, options.erase)).count
         }
 
         ret
@@ -497,7 +502,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         reader_options ++= options.cim_reader_options
         reader_options.put ("path", options.files.mkString (","))
         reader_options.put ("ch.ninecode.cim.do_topo", "true")
-        reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        reader_options.put ("ch.ninecode.cim.do_topo_islands", "true")
         reader_options.put ("ch.ninecode.cim.force_retain_switches", "Unforced")
         reader_options.put ("ch.ninecode.cim.force_retain_fuses", "ForceTrue")
         reader_options.put ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")
@@ -532,17 +537,19 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val solar = Solar (session, topologicalnodes = true, storage_level)
         val sdata = solar.getSolarInstallations
 
+        def island (td: TransformerData): String = td.node1.TopologicalIsland
+
         // determine the set of transformers to work on
         val transformers = if (null != trafos)
         {
             val selected = transformer_data.filter (x => trafos.contains (x.transformer.id)).distinct
-            selected.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
+            selected.groupBy (island).values.map (TransformerIsland.apply)
         }
         else
         {
             // do all low voltage power transformers
-            val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these  voltage values
-            niederspannug.groupBy (t => gridlabd.node_name (t.terminal1)).values.map (x ⇒ TransformerSet (x.toArray))
+            val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
+            niederspannug.groupBy (island).values.map (TransformerIsland.apply)
         }
         transformers.persist (storage_level)
         transformers.name = "Transformers"
@@ -550,7 +557,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val prepare = System.nanoTime ()
         log.info ("prepare: " + (prepare - read) / 1e9 + " seconds")
         if (log.isDebugEnabled)
-            transformers.map (trafo ⇒ log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1)))
+            transformers.map (trafo => log.debug (s"$trafo.island_name ${trafo.power_rating / 1000.0}kVA"))
 
         // do the pre-calculation
         val precalc_results =
@@ -569,15 +576,16 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             precalc_results.has.filter (x => changed.contains (x.mrid))
         }
         else
-            precalc_results.has.filter (x ⇒ (x.eea != null) || (x.reason == "non-radial network") || (x.reason == "heuristic limit"))
+            precalc_results.has.filter (x => (x.eea != null) || (x.reason == "non-radial network") || (x.reason == "heuristic limit"))
 
         // get a list of invalid nodes and group by transformer
         val invalid = houses.filter (_.problem).keyBy (_.source_obj).groupByKey
 
-        val trafo_list = houses.keyBy (_.source_obj).groupByKey.subtractByKey (invalid).join (transformers.keyBy (_.transformer_name)).values.map (_._2)
+        val trafo_island = transformers.flatMap (island => island.transformers.map (trafo => (trafo.transformer_name, island)))
+        val trafo_list = houses.keyBy (_.source_obj).groupByKey.subtractByKey (invalid).join (trafo_island).values.map (_._2)
         log.info ("" + trafo_list.count + " transformers to process")
         if (log.isDebugEnabled)
-            trafo_list.foreach (trafo ⇒ log.debug ("%s %gkVA %g:%g".format (trafo.transformer_name, trafo.power_rating / 1000, trafo.v0, trafo.v1)))
+            trafo_list.foreach (trafo => log.debug (s"$trafo.island_name ${trafo.power_rating / 1000.0}kVA"))
 
         val precalc = System.nanoTime ()
         log.info ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
@@ -590,23 +598,29 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val has = precalc_results.has.keyBy (_.source_obj)
             val grouped_precalc_results = vertices.keyBy (_.source_obj.trafo_id).groupWith (edges, has)
 
-            val trafokreise = trafo_list.keyBy (_.transformer_name).leftOuterJoin (grouped_precalc_results)
+            val trafokreise = trafo_list
+                .flatMap (x => x.transformers.map (y => (y.transformer_name, x)))
+                .join (grouped_precalc_results)
+                .values
+                .groupBy (_._1.island_name)
+                .map (
+                    x => (x._1, (x._2.head._1, (x._2.flatMap (y => y._2._1), x._2.flatMap (y => y._2._2), x._2.flatMap (y => y._2._3)))))
             val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
             val subtransmission_trafos = transformer_data.filter (trafo => trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0))).collect // ToDo: don't hard code these voltage values
 
-            val filtered_trafos = trafokreise.filter (_._2._2.isDefined).map (makeTrafokreis (t0, options, subtransmission_trafos))
+            val filtered_trafos = trafokreise.map (makeTrafokreis (t0, options, subtransmission_trafos))
             val count = trafo_list.count
             log.info ("filtered_trafos: " + count)
             if (0 != count)
             {
                 // (trafoid (nodeid, feeder))
-                val trafos_nodes_feeders = vertices.map (x ⇒ (x.source_obj.trafo_id, (x.id, if (null != x.feeder) x.feeder.feeder_id else null)))
+                val trafos_nodes_feeders = vertices.map (x => (x.source_obj.trafo_id, (x.id, if (null != x.feeder) x.feeder.feeder_id else null)))
                 // (nodeid, equipmentid)
                 val nodes_equipment = get [Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get [ConductingEquipment].keyBy (_.id))
-                    .flatMap (x ⇒ x._2._1.map (y ⇒ y.TopologicalNode).toSet.map ((z: String) ⇒ (z, x._2._2.id)))
+                    .flatMap (x => x._2._1.map (y => y.TopologicalNode).toSet.map ((z: String) => (z, x._2._2.id)))
                 // (trafoid, (equipment, feeder)) -- with duplicates, possibly with different feeders, for two terminal equipment
                 val trafo_equipment_feeder = nodes_equipment.join (trafos_nodes_feeders.keyBy (_._2._1)).values
-                    .map (x ⇒ (x._2._1, (x._1, x._2._2._2)))
+                    .map (x => (x._2._1, (x._1, x._2._2._2)))
                 val feeder_map = trafo_equipment_feeder.groupByKey
                 einspeiseleistung (gridlabd, filtered_trafos, feeder_map, storage_level)
                 log.info ("finished " + count + " trafokreis")
