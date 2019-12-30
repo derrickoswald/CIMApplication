@@ -84,13 +84,13 @@ class Transformers (
     /**
      * Generate a transformer instance.
      *
-     * @param transformer joined transformer, ends, terminals and voltages
+     * @param transformer joined transformer, ends, terminals, nodes and voltages
      * @return a composite transformer object
      */
-    def to_transformer_data (transformer: (PowerTransformer, Iterable[(PowerTransformerEnd, Terminal, (String, Double))])): TransformerData =
+    def to_transformer_data (transformer: (PowerTransformer, Iterable[(PowerTransformerEnd, Terminal, (String, Double), TopologicalNode)])): TransformerData =
     {
         val ends = transformer._2.toArray.sortWith (_._1.TransformerEnd.endNumber < _._1.TransformerEnd.endNumber)
-        TransformerData (transformer._1, ends.map (_._1), ends.map (_._2), ends.map (_._3), null, null)
+        TransformerData (transformer._1, ends.map (_._1), ends.map (_._2), ends.map (_._4), ends.map (_._3), null, null)
     }
 
     /**
@@ -106,7 +106,7 @@ class Transformers (
     {
         container match
         {
-            case Some (element) ⇒
+            case Some (element) =>
                 element match
                 {
                     case station: Substation => station.id
@@ -114,7 +114,7 @@ class Transformers (
                     case level: VoltageLevel => level.Substation
                     case _ => throw new Exception ("unknown container type (%s) for transformer".format (element.getClass.toString))
                 }
-            case None ⇒ ""
+            case None => ""
         }
     }
 
@@ -186,8 +186,8 @@ class Transformers (
      */
     def getTransformers
     (
-        transformer_filter: TransformerData ⇒ Boolean = transformer_filter,
-        substation_filter: Substation ⇒ Boolean = substation_filter
+        transformer_filter: TransformerData => Boolean = transformer_filter,
+        substation_filter: Substation => Boolean = substation_filter
     ): RDD[TransformerData] =
     {
         // get ends and terminals
@@ -198,17 +198,30 @@ class Transformers (
         val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
 
         // attach them to the ends
-        val ends_terminals_voltages: RDD[(PowerTransformerEnd, Terminal, (String, Double))] = ends_terminals.map (
-            x ⇒
-            {
-                val base_voltage = x._1.TransformerEnd.BaseVoltage
-                val voltage = voltages.getOrElse (base_voltage, 0.0)
-                (x._1, x._2, (base_voltage, voltage))
-            }
-        )
+        val ends_terminals_voltages: RDD[(PowerTransformerEnd, Terminal, (String, Double))] = ends_terminals
+            .map (
+                x =>
+                {
+                    val base_voltage = x._1.TransformerEnd.BaseVoltage
+                    val voltage = voltages.getOrElse (base_voltage, 0.0)
+                    (x._1, x._2, (base_voltage, voltage))
+                }
+            )
+
+        // attach the nodes
+        val ends_terminals_voltages_nodes: RDD[(PowerTransformerEnd, Terminal, (String, Double), TopologicalNode)] = ends_terminals_voltages
+            .keyBy (_._2.TopologicalNode)
+            .join (getOrElse[TopologicalNode].keyBy (_.id))
+            .values
+            .map (
+                x =>
+                {
+                    (x._1._1, x._1._2, x._1._3, x._2)
+                }
+            )
 
         // get the transformers of interest and join to end information (filter out transformers with less than 2 ends)
-        val ends = ends_terminals_voltages.keyBy (_._1.PowerTransformer).groupByKey.filter (_._2.size >= 2)
+        val ends = ends_terminals_voltages_nodes.keyBy (_._1.PowerTransformer).groupByKey.filter (_._2.size >= 2)
         val transformers = getOrElse [PowerTransformer]
             .keyBy (_.id).join (ends)
             .values.map (to_transformer_data)
@@ -219,18 +232,18 @@ class Transformers (
         val substations_by_id = getOrElse [Substation].filter (substation_filter).keyBy (_.id)
         val transformers_stations = transformers.keyBy (_.transformer.ConductingEquipment.Equipment.EquipmentContainer)
             .leftOuterJoin (get [Element]("Elements").keyBy (_.id)).values
-            .map (x ⇒ (station_fn (x._2), x._1))
+            .map (x => (station_fn (x._2), x._1))
             .leftOuterJoin (substations_by_id).values
-            .map (x ⇒ x._1.copy (station = x._2.orNull))
+            .map (x => x._1.copy (station = x._2.orNull))
 
         // add equivalent injection, or default
         val injections_by_node = getOrElse [EquivalentInjection].keyBy (_.id)
             .join (getOrElse [Terminal].keyBy (_.ConductingEquipment)).values
-            .map (x ⇒ (x._2.TopologicalNode, x._1))
+            .map (x => (x._2.TopologicalNode, x._1))
             .groupByKey.mapValues (_.head)
-        transformers_stations.keyBy (_.node0)
+        transformers_stations.keyBy (_.node0.id)
             .leftOuterJoin (injections_by_node).values
-            .map (x ⇒ x._1.copy (shortcircuit = x._2.getOrElse (default_injection (x._1.transformer.id, if (null != x._1.station) x._1.station.id else "", x._1.voltages (x._1.primary)))))
+            .map (x => x._1.copy (shortcircuit = x._2.getOrElse (default_injection (x._1.transformer.id, if (null != x._1.station) x._1.station.id else "", x._1.voltages (x._1.primary)))))
             .persist (storage_level)
     }
 }

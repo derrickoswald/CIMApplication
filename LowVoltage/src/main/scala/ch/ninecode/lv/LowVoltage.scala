@@ -222,18 +222,22 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         val solar = Solar (session, topologicalnodes = true, storage_level)
         val sdata = solar.getSolarInstallations
 
+        def island (td: TransformerData): String = td.node1.TopologicalIsland
+
         // determine the set of transformers to work on
         val transformers = if (null != trafos)
         {
-            val selected = transformer_data.filter (x => trafos.contains (x.transformer.id))
-            selected.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
+            val selected = transformer_data.filter (x => trafos.contains (x.transformer.id)).distinct
+            selected.groupBy (island).values.map (TransformerIsland.apply)
         }
         else
         {
             // do all low voltage power transformers
-            val niederspannug = transformer_data.filter (td => (td.v0 != 400.0) && (td.v1 == 400.0)) // ToDo: don't hard code this low voltage value
-            niederspannug.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
+            val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
+            niederspannug.groupBy (island).values.map (TransformerIsland.apply)
         }
+        transformers.persist (storage_level)
+        transformers.name = "Transformers"
 
         val prepare = System.nanoTime ()
         log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")
@@ -249,7 +253,8 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
 
         val houses = precalc_results.has
 
-        val trafo_list: RDD[TransformerSet] = houses.keyBy (_.source_obj).groupByKey.join (transformers.keyBy (_.transformer_name)).values.map (_._2)
+        val trafo_island = transformers.flatMap (island => island.transformers.map (trafo => (trafo.transformer_name, island)))
+        val trafo_list = houses.keyBy (_.source_obj).groupByKey.join (trafo_island).values.map (_._2)
         log.info ("" + trafo_list.count + " transformers to process")
 
         val precalc = System.nanoTime ()
@@ -260,7 +265,13 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         val has = precalc_results.has.keyBy (_.source_obj)
         val grouped_precalc_results = vertices.groupWith (edges, has)
 
-        val trafokreise = trafo_list.keyBy (_.transformer_name).leftOuterJoin (grouped_precalc_results)
+        val trafokreise = trafo_list
+            .flatMap (x => x.transformers.map (y => (y.transformer_name, x)))
+            .join (grouped_precalc_results)
+            .values
+            .groupBy (_._1.island_name)
+            .map (
+                x => (x._1, (x._2.head._1, (x._2.flatMap (y => y._2._1), x._2.flatMap (y => y._2._2), x._2.flatMap (y => y._2._3)))))
 
         val raw = getCIMheader (gridlabd)
         val header = if ("" != raw)
@@ -269,20 +280,14 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
             Header (Calendar.getInstance (), "generated header", "", "", Calendar.getInstance (), "")
         val t0 = header.scenarioTime
 
-        def makeTrafokreis (start: Calendar)(arg: (String, (TransformerSet, Option[(Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])]))): Trafokreis =
+        def makeTrafokreis (start: Calendar)(arg: (String, (TransformerIsland, (Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])))): Trafokreis =
         {
-            arg match
-            {
-                case (tk, (tx, Some (x))) =>
-                    Trafokreis (start, tk, tx, x._1, x._2, x._3, EinspeiseleistungOptions ())
-                case _ =>
-                    null
-            }
+            val (trafokreise, (transformers, (nodes, edges, mpfne))) = arg
+            Trafokreis (start, trafokreise, transformers, nodes, edges, mpfne, EinspeiseleistungOptions ())
         }
 
-        val filtered_trafos = trafokreise.filter (_._2._2.isDefined).map (makeTrafokreis (t0))
+        val filtered_trafos = trafokreise.map (makeTrafokreis (t0))
         log.info ("filtered_trafos: " + filtered_trafos.count)
-        val terminals = session.sparkContext.getPersistentRDDs.filter (_._2.name == "Terminal").head._2.asInstanceOf [RDD[Terminal]]
         generate (gridlabd, filtered_trafos)
 
         // rename to the created date

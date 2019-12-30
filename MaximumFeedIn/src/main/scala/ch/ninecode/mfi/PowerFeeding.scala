@@ -8,17 +8,18 @@ import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
+import org.apache.spark.graphx.VertexRDD
 import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.PV
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
+import ch.ninecode.gl.TransformerIsland
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BaseVoltage
@@ -26,7 +27,6 @@ import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Connector
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
-import org.apache.spark.graphx.VertexRDD
 
 class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER) extends CIMRDD with Serializable
 {
@@ -212,20 +212,25 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         houses.keyBy (_.id).leftOuterJoin (psrtype).values.map (calc_max_feeding_power (options))
     }
 
-    def trafo_mapping (transformers: TransformerSet): Iterable[StartingTrafo] =
+    def trafo_mapping (island: TransformerIsland): Iterable[StartingTrafo] =
     {
         val pn = PreNode ("", 0.0, null)
-        val v0 = pn.vertex_id (transformers.node0)
-        val ratedS = transformers.power_rating
-        val impedance = transformers.total_impedance_per_unit._1
-        for (end <- transformers.transformers(0).ends
-             if end.TransformerEnd.endNumber > 1)
-            yield
+        island.transformers.flatMap (
+            transformers =>
             {
-                val number = end.TransformerEnd.endNumber - 1
-                val v1 = pn.vertex_id (transformers.transformers(0).terminals(number).TopologicalNode)
-                StartingTrafo (v0, v1, transformers.transformer_name, impedance, ratedS)
+                val v0 = pn.vertex_id (transformers.node0)
+                val ratedS = transformers.power_rating
+                val impedance = transformers.total_impedance_per_unit._1
+                for (end <- transformers.transformers(0).ends
+                     if end.TransformerEnd.endNumber > 1)
+                    yield
+                    {
+                        val number = end.TransformerEnd.endNumber - 1
+                        val v1 = pn.vertex_id (transformers.transformers(0).terminals(number).TopologicalNode)
+                        StartingTrafo (v0, v1, transformers.transformer_name, impedance, ratedS)
+                    }
             }
+        )
     }
 
     /**
@@ -259,7 +264,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         ret
     }
 
-    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerSet], options: EinspeiseleistungOptions): PreCalculationResults =
+    def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerIsland], options: EinspeiseleistungOptions): PreCalculationResults =
     {
 
         val graph = trace (initial, transformers.flatMap (trafo_mapping), feeders)

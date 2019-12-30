@@ -5,6 +5,7 @@ import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
 
 /**
  * Transformer data.
@@ -14,6 +15,7 @@ import ch.ninecode.model.Terminal
  * @param transformer  The PowerTransformer object.
  * @param ends         The associated PowerTransformerEnd objects ordered by endNumber (which by convention is descending by voltage).
  * @param terminals    The terminals ordered the same as the ends.
+ * @param nodes        The nodes ordered the same as the ends.
  * @param voltages     The voltages ordered the same as the ends (V).
  * @param station      The Substation object where the transformer is located.
  * @param shortcircuit The EquivalentInjection object with the available short circuit power and impedance at the primary.
@@ -23,6 +25,7 @@ case class TransformerData
     transformer: PowerTransformer,
     ends: Array[PowerTransformerEnd],
     terminals: Array[Terminal],
+    nodes: Array[TopologicalNode],
     voltages: Array[(String, Double)],
     station: Substation,
     shortcircuit: EquivalentInjection
@@ -53,8 +56,8 @@ case class TransformerData
     /** @return the Terminal for the transformer primary (high voltage) end */
     def terminal0: Terminal = terminals (primary)
 
-    /** @return the mRID of the TopologicalNode for the transformer primary (high voltage) end */
-    def node0: String = terminal0.TopologicalNode
+    /** @return the TopologicalNode for the transformer primary (high voltage) end */
+    def node0: TopologicalNode = nodes (primary)
 
     /** @return the (assumed) secondary (low voltage) PowerTransformerEnd, for three or more winding transformers this may not be the one you want */
     def end1: PowerTransformerEnd = ends (secondary)
@@ -65,12 +68,9 @@ case class TransformerData
     /** @return the Terminal for the transformer secondary (low voltage) end */
     def terminal1: Terminal = terminals (secondary)
 
-    /** @return the mRID of the TopologicalNode for the transformer secondary (low voltage) end */
-    def node1: String = terminal1.TopologicalNode
-
-    /** @return The mRID of the TopologicalNode for the transformer ordered the same as the ends. */
-    def nodes: Array[String] = terminals.map (_.TopologicalNode)
+    /** @return the TopologicalNode for the transformer secondary (low voltage) end */
+    def node1: TopologicalNode = nodes (secondary)
 
     /** @return a summary string for the transformer */
-    def asString: String = "%s %s %skVA %s %s".format (transformer.id, if (null != station) station.id else "", (end0.ratedS / 1000.0).toInt.toString, voltages.map (_._2.toInt).mkString (":"), nodes.mkString (":"))
+    def asString: String = "%s %s %skVA %s %s".format (transformer.id, if (null != station) station.id else "", (end0.ratedS / 1000.0).toInt.toString, voltages.map (_._2.toInt).mkString (":"), nodes.map (_.id).mkString (":"))
 }

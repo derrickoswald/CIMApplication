@@ -509,4 +509,38 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                     }
             }
     }
+
+    test ("Separated Transformers")
+    {
+        session: SparkSession ⇒
+
+            val begin = System.nanoTime ()
+
+            val filename = s"${FILE_DEPOT}TRA10938_TRA10939.new.rdf"
+
+            val options = EinspeiseleistungOptions (
+                verbose = true,
+                three = false,
+                precalculation = false,
+                trafos = "",
+                export_only = false,
+                all = false,
+                erase = false,
+                simulation = -1,
+                reference = -1,
+                delta = 1e-6,
+                cosphi = 1.0,
+                voltage_threshold = 3.0,
+                voltage_threshold2 = 3.0,
+                ignore_other = false,
+                workdir = "simulation/",
+                outputfile = "simulation/results.db",
+                files = List (filename)
+            )
+            val eins = Einspeiseleistung (session, options)
+            val count = eins.run ()
+
+            val total = System.nanoTime ()
+            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
+    }
 }

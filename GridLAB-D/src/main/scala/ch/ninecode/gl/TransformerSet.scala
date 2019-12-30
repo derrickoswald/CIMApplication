@@ -61,6 +61,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
             log.error ("transformer set " + transformer_name + " has different voltages on terminal 0 " + transformers.map (_.v0).mkString (" "))
         v
     }
+
     val v1: Double =
     {
         val v = transformers.head.v1
@@ -72,21 +73,21 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
     // all primaries and secondaries should be connected to the same nodes (respectively)
     val node0: String =
     {
-        val n = transformers.head.node0
-        if (!transformers.forall (_.node0 == n))
-            log.error ("transformer set " + transformer_name + " has different nodes on terminal 0 " + transformers.map (_.node0).mkString (" "))
+        val n = transformers.head.node0.id
+        if (!transformers.tail.forall (_.node0.id == n))
+            log.error ("transformer set " + transformer_name + " has different nodes on terminal 0 " + transformers.map (_.node0.id).mkString (" "))
         n
     }
+
     val node1: String =
     {
-        val n = transformers.head.node1
-        if (!transformers.forall (_.node1 == n))
-            log.error ("transformer set " + transformer_name + " has different nodes on terminal 1 " + transformers.map (_.node1).mkString (" "))
+        val n = transformers.head.node1.id
+        if (!transformers.tail.forall (_.node1.id == n))
+            log.error ("transformer set " + transformer_name + " has different nodes on terminal 1 " + transformers.map (_.node1.id).mkString (" "))
         n
     }
 
     // make a valid configuration name
-    // ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
     def valid_config_name (string: String): String =
     {
         val s = if ((null == string) || ("" == string))

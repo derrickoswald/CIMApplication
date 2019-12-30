@@ -29,7 +29,11 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2, makeTransformerEdge))
 
-    override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (trafokreis.transformers.node0, trafokreis.transformers.node1, trafokreis.transformers))
+    override def transformers: Iterable[TransformerEdge] =
+        trafokreis.transformers.transformers.map (
+            transformers =>
+                TransformerEdge (transformers.node0, transformers.node1, transformers)
+        )
 
     override def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
     {
@@ -38,7 +42,11 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         trafos.groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 
-    override def swing_nodes: Iterable[GLMNode] = List (SwingNode (trafokreis.swing_node, trafokreis.swing_node_voltage, trafokreis.trafo))
+    override def swing_nodes: Iterable[GLMNode] =
+        trafokreis.transformers.transformers.map (
+            transformers =>
+                SwingNode (transformers.node0, transformers.v0, transformers.transformer_name)
+        )
 
     override def nodes: Iterable[GLMNode] = trafokreis.nodes
 

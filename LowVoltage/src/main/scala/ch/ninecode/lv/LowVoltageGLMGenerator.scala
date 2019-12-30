@@ -39,26 +39,35 @@ class LowVoltageGLMGenerator
 
     override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
 
-    override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (trafokreis.transformers.node0, trafokreis.transformers.node1, trafokreis.transformers))
+    override def transformers: Iterable[TransformerEdge] =
+        trafokreis.transformers.transformers.map (
+            transformers =>
+                TransformerEdge (transformers.node0, transformers.node1, transformers)
+        )
 
     // the swing node is the low voltage pin
-    override def swing_nodes: Iterable[GLMNode] = List (SwingNode (trafokreis.transformers.node1, trafokreis.transformers.v1, trafokreis.transformers.transformer_name))
+    override def swing_nodes: Iterable[GLMNode] =
+        trafokreis.transformers.transformers.map (
+            transformers =>
+                SwingNode (transformers.node1, transformers.v1, transformers.transformer_name)
+        )
 
     override def nodes: Iterable[GLMNode] =
     {
         val swings = swing_nodes.map (_.id).toArray
-        trafokreis.nodes.filter (x => !swings.contains (x.id)).++: (
-            Array (
-                PowerFeedingNode (
-                    trafokreis.transformers.node0,
-                    null,
-                    null,
-                    trafokreis.transformers.v0,
-                    null,
-                    null,
-                    0.0,
-                    Double.PositiveInfinity,
-                    null)))
+        trafokreis.nodes.filter (x => !swings.contains (x.id)).++(
+            trafokreis.transformers.transformers.map (
+                        tx =>
+                            PowerFeedingNode (
+                                tx.node0,
+                                null,
+                                null,
+                                tx.v0,
+                                null,
+                                null,
+                                0.0,
+                                Double.PositiveInfinity,
+                                null)).toSeq)
     }
 
     override def emit_node (node: GLMNode): String =
