@@ -254,7 +254,8 @@ class GLMGenerator
      */
     def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
     {
-        transformers.groupBy (_.configurationName).values.map (_.head.configuration (this))
+        val configurations = transformers.groupBy (_.configurationName).values
+        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
     }
 
     /**

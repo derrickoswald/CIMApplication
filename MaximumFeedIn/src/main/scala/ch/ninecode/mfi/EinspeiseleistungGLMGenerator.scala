@@ -39,7 +39,8 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
     {
         val subtransmission_trafos = edges.filter (edge => edge match { case _: TransformerEdge => true case _ => false }).asInstanceOf[Iterable[TransformerEdge]]
         val trafos = transformers ++ subtransmission_trafos
-        trafos.groupBy (_.configurationName).values.map (_.head.configuration (this))
+        val configurations = trafos.groupBy (_.configurationName).values
+        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
     }
 
     override def swing_nodes: Iterable[GLMNode] =

@@ -469,6 +469,27 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
     }
 
+    def combinePFN (arg: Iterable[Iterable[PowerFeedingNode]]): Iterable[PowerFeedingNode] =
+    {
+        val the_map = mutable.Map[String, PowerFeedingNode]()
+        arg.foreach (x => x.foreach (y => the_map (y.id) = y))
+        the_map.values
+    }
+
+    def combinePE (arg: Iterable[Iterable[PreEdge]]): Iterable[PreEdge] =
+    {
+        val the_map = mutable.Map[String, PreEdge]()
+        arg.foreach (x => x.foreach (y => the_map (y.id) = y))
+        the_map.values
+    }
+
+    def combineMPFN (arg: Iterable[Iterable[MaxPowerFeedingNodeEEA]]): Iterable[MaxPowerFeedingNodeEEA] =
+    {
+        val the_map = mutable.Map[String, MaxPowerFeedingNodeEEA]()
+        arg.foreach (x => x.foreach (y => the_map (y.id_seq) = y))
+        the_map.values
+    }
+
     def run (): Long =
     {
         val start = System.nanoTime ()
@@ -517,10 +538,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
 
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files: _*)
-        log.info (elements.count () + " elements")
+        log.info (s"${elements.count ()} elements")
 
         val read = System.nanoTime ()
-        log.info ("read: " + (read - start) / 1e9 + " seconds")
+        log.info (s"read: ${(read - start) / 1e9} seconds")
 
         // prepare for precalculation
         val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
@@ -552,11 +573,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
             niederspannug.groupBy (island).values.map (TransformerIsland.apply)
         }
-        transformers.persist (storage_level)
-        transformers.name = "Transformers"
+        transformers.persist (storage_level).name = "Transformers"
+
+        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
+        val subtransmission_trafos = transformer_data.filter (trafo => trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0))).collect // ToDo: don't hard code these voltage values
 
         val prepare = System.nanoTime ()
-        log.info ("prepare: " + (prepare - read) / 1e9 + " seconds")
+        log.info (s"prepare: ${(prepare - read) / 1e9} seconds")
         if (log.isDebugEnabled)
             transformers.map (trafo => log.debug (s"$trafo.island_name ${trafo.power_rating / 1000.0}kVA"))
 
@@ -584,12 +607,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         val trafo_island = transformers.flatMap (island => island.transformers.map (trafo => (trafo.transformer_name, island)))
         val trafo_list = houses.keyBy (_.source_obj).groupByKey.subtractByKey (invalid).join (trafo_island).values.map (_._2)
-        log.info ("" + trafo_list.count + " transformers to process")
+        var count = trafo_list.count
+        log.info (s"$count transformers to process")
         if (log.isDebugEnabled)
             trafo_list.foreach (trafo => log.debug (s"$trafo.island_name ${trafo.power_rating / 1000.0}kVA"))
 
         val precalc = System.nanoTime ()
-        log.info ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
+        log.info (s"precalculation: ${(precalc - prepare) / 1e9} seconds")
 
         // do gridlab simulation if not just pre-calculation
         if (!options.precalculation)
@@ -605,13 +629,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 .values
                 .groupBy (_._1.island_name)
                 .map (
-                    x => (x._1, (x._2.head._1, (x._2.flatMap (y => y._2._1), x._2.flatMap (y => y._2._2), x._2.flatMap (y => y._2._3)))))
-            val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
-            val subtransmission_trafos = transformer_data.filter (trafo => trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0))).collect // ToDo: don't hard code these voltage values
+                    x => (x._1, (x._2.head._1, (combinePFN (x._2.map (_._2._1)), combinePE (x._2.map (_._2._2)), combineMPFN (x._2.map (_._2._3))))))
+                .map (makeTrafokreis (t0, options, subtransmission_trafos))
 
-            val filtered_trafos = trafokreise.map (makeTrafokreis (t0, options, subtransmission_trafos))
-            val count = trafo_list.count
-            log.info ("filtered_trafos: " + count)
+            count = trafokreise.count
+            log.info (s"transformer service areas: $count")
             if (0 != count)
             {
                 // (trafoid (nodeid, feeder))
@@ -623,15 +645,15 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 val trafo_equipment_feeder = nodes_equipment.join (trafos_nodes_feeders.keyBy (_._2._1)).values
                     .map (x => (x._2._1, (x._1, x._2._2._2)))
                 val feeder_map = trafo_equipment_feeder.groupByKey
-                einspeiseleistung (gridlabd, filtered_trafos, feeder_map, storage_level)
-                log.info ("finished " + count + " trafokreis")
+                einspeiseleistung (gridlabd, trafokreise, feeder_map, storage_level)
+                log.info (s"finished $count transformer service areas")
             }
         }
 
         val calculate = System.nanoTime ()
-        log.info ("calculate: " + (calculate - precalc) / 1e9 + " seconds")
+        log.info (s"calculate: ${(calculate - precalc) / 1e9} seconds")
 
-        trafo_list.count
+        count
     }
 }
 
