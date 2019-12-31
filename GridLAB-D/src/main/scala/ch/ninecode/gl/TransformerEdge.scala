@@ -154,13 +154,16 @@ case class TransformerEdge
             n
     }
 
-    def configuration (generator: GLMGenerator): String =
+    def configuration (generator: GLMGenerator, remark: String = null): String =
     {
         // see http://gridlab-d.sourceforge.net/wiki/index.php/Power_Flow_User_Guide#Transformer_Configuration_Parameters
         val config = configurationName
         val (total_impedance, default) = transformer.total_impedance_per_unit
         val warn = if (default) s"\n#warning WARNING: using default impedance for $config" else ""
-        val comment =  transformer.transformers.map (trafo => s"            // ${trafo.transformer.id}").mkString ("\n")
+        val comment = if (null == remark)
+            transformer.transformers.map (trafo => s"            // ${trafo.transformer.id}").mkString ("\n")
+        else
+            s"            // $remark"
         // ToDo: should be DELTA_GWYE (Dyn5), pick up windingConnection values from CIM (see https://www.answers.com/Q/What_is_the_meaning_of_DYN_11_on_a_transformer_nameplate)
         val connect = if (generator.isSinglePhase) "WYE_WYE" else "DELTA_GWYE"
 

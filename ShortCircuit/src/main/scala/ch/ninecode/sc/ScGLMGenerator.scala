@@ -34,7 +34,8 @@ case class ScGLMGenerator
     {
         val subtransmission_trafos = edges.filter (edge => edge match { case _: TransformerEdge => true case _ => false }).asInstanceOf[Iterable[TransformerEdge]]
         val trafos = transformers ++ subtransmission_trafos
-        trafos.groupBy (_.configurationName).values.map (_.head.configuration (this))
+        val configurations = trafos.groupBy (_.configurationName).values
+        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
     }
 
     override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (area.transformer.node0, area.transformer.node1, area.transformer))
