@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+
+set -x
+# not sure about this: source /etc/bash.bashrc
+
+# Set default HDFS user if not set
+if [[ -z "${HDFS_USER}" ]]; then
+  export HDFS_USER=spark
+fi
+
+# from start-hadoop:
+
+# Create user for HDFS
+adduser --quiet --no-create-home --disabled-password --gecos "" $HDFS_USER
+# Fix directory permissions
+chown -R $HDFS_USER:$HDFS_USER /opt/hdfs
+chown -R $HDFS_USER:$HDFS_USER $HADOOP_HOME
+
+# from start-hadoop-datanode (edited), expects the name node host as a parameter:
+
+if [[ -z "${1}" ]]; then
+  echo "Name node host not specified" >&2
+  exit 1
+fi
+
+# if localhost, start the name node
+if [[ "localhost" == "${1}" ]]; then
+    export NAMENODE=$(hostname)
+    sed -i "s|\[NAMENODE_HOST\]|$NAMENODE|g" $HADOOP_CONF_DIR/core-site.xml
+    start-hadoop-namenode &
+else
+    # just edit the configuration to set the fs.defaultFS in core-site.xml as is done in start-hadoop
+    export NAMENODE=${1}
+    sed -i "s|\[NAMENODE_HOST\]|$NAMENODE|g" $HADOOP_CONF_DIR/core-site.xml
+fi
+
+# Wait for the name node to be online
+while ! nc -z $NAMENODE 50070; do
+  sleep 2;
+done;
+
+# configure Cassandra cluster
+if [[ -n "${2}" ]]; then
+    export CASSANDRANODE=${2}
+else
+    export CASSANDRANODE=localhost
+fi
+
+# if localhost, start Cassandra
+if [[ "localhost" == "$CASSANDRANODE" ]]; then
+    service cassandra start 2>/dev/null
+    declare -i i
+    i=0
+    until [[ $(nodetool statusbinary 2>/dev/null) == "running" ]]; do
+        echo waiting for Cassandra -- $(nodetool statusbinary 2>/dev/null)
+        sleep 1
+        if [[ $(nodetool statusbinary 2>/dev/null) == "" ]]
+        then
+            i=$(($i+1))
+        fi
+        if [ "$i" -gt 10 ]
+        then
+            # WTF? Cassandra: bigtime fail, see https://issues.apache.org/jira/browse/CASSANDRA-5916
+            echo JVM_OPTS=\"\$JVM_OPTS -Dcassandra.replace_address=$me\" >> /etc/cassandra/cassandra-env.sh
+            # start Cassandra
+            service cassandra start 2>/dev/null
+            declare -i j
+            j=0
+            until [[ $(nodetool statusbinary 2>/dev/null) == "running" ]]; do
+                echo still waiting for Cassandra -- $(nodetool statusbinary 2>/dev/null)
+                sleep 1
+                if [[ $(nodetool statusbinary 2>/dev/null) == "" ]]
+                then
+                    j=$(($j+1))
+                fi
+                if [ "$j" -gt 10 ]
+                then
+                    break
+                fi
+            done
+            break
+        fi
+    done
+    # load Cassandra schema (for a single node)
+    sed -i "s|'replication_factor': 2|'replication_factor': 1|g" /opt/util/bin/simulation_schema.sql
+    cqlsh --file /opt/util/bin/simulation_schema.sql $CASSANDRANODE
+fi
+
+# add Spark and Hadoop configuration directories to shared classpath
+#sed -i "s|shared.loader=|shared.loader=${SPARK_HOME}/conf,${HADOOP_CONF_DIR}|g" /usr/local/tomee/conf/catalina.properties
+
+# add Spark jars to shared classpath
+## sed -i "s|shared.loader=|shared.loader=${SPARK_HOME}/jars/*.jar,|g" /usr/local/tomee/conf/catalina.properties
+
+# add Cassandra configuration directory to shared classpath
+#sed -i "s|shared.loader=|shared.loader=/etc/cassandra,|g" /usr/local/tomee/conf/catalina.properties
+
+# if not localhost, add the Spark master setting as ConnectionURL and Cassandra connect.host as ServerName to the system.properties
+#if [[ "localhost" == "${1}" ]]; then
+#    echo "SparkConnectionFactory.ConnectionURL=local[*]" >> /usr/local/tomee/conf/system.properties
+#    echo "SparkConnectionFactory.ServerName=$CASSANDRANODE" >> /usr/local/tomee/conf/system.properties
+#    echo "CIMResourceAdapter.SparkDriverMemory=4g" >> /usr/local/tomee/conf/system.properties
+#    echo "CIMResourceAdapter.SparkExecutorMemory=4g" >> /usr/local/tomee/conf/system.properties
+#else
+#    echo "SparkConnectionFactory.ConnectionURL=spark://$NAMENODE:7077" >> /usr/local/tomee/conf/system.properties
+#    echo "SparkConnectionFactory.ServerName=$CASSANDRANODE" >> /usr/local/tomee/conf/system.properties
+#    echo "CIMResourceAdapter.SparkDriverMemory=4g" >> /usr/local/tomee/conf/system.properties
+#    echo "CIMResourceAdapter.SparkExecutorMemory=4g" >> /usr/local/tomee/conf/system.properties
+#fi
+
+bin/standalone.sh &
+sleep infinity

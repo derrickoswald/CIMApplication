@@ -18,7 +18,8 @@ import scala.collection.JavaConversions._
 @Path ("/ping")
 class Ping extends RESTful
 {
-    import Ping._
+    lazy val LOGGER_NAME: String = getClass.getName
+    lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
@@ -70,10 +71,4 @@ class Ping extends RESTful
 
         result.toString
     }
-}
-
-object Ping
-{
-    val LOGGER_NAME: String = Ping.getClass.getName
-    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

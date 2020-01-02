@@ -1,5 +1,5 @@
 # build:
-#   $ cd CIMApplication; mvn -DskipTests install; docker build --tag derrickoswald/cimapplication .
+#   $ cd CIMApplication; mvn -DskipTests install; docker build --file TomEE.Dockerfile --tag derrickoswald/cimapplication .
 # run:
 #   $ docker run --rm --publish 9080:9080 --net spark_default --link="spark_master:sandbox" derrickoswald/cimapplication start-tomee sandbox beach
 # access:
@@ -61,11 +61,11 @@ WORKDIR /usr/local/tomee
 
 RUN set -x \
 	&& export TOMEE_VERSION=8.0.0 \
-	&& curl -fSL https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/${TOMEE_VERSION}/apache-tomee-${TOMEE_VERSION}-plus.tar.gz -o tomee.tar.gz \
-	&& tar -zxf tomee.tar.gz \
+	&& curl --fail --show-error --location https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/${TOMEE_VERSION}/apache-tomee-${TOMEE_VERSION}-plus.tar.gz --output tomee.tar.gz \
+	&& tar --gunzip --extract --file=tomee.tar.gz \
 	&& mv apache-tomee-plus-${TOMEE_VERSION}/* /usr/local/tomee \
-	&& rm -Rf apache-tomee-plus-${TOMEE_VERSION} \
-	&& rm bin/*.bat \
+	&& rm --recursive --force apache-tomee-plus-${TOMEE_VERSION} \
+	&& rm /usr/local/tomee/bin/*.bat \
 	&& rm tomee.tar.gz*
 
 # a little more memory than 4049600512 bytes

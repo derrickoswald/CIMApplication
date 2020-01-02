@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
 
+if [[ $1 == wildfly ]]; then
+    Container="wildfly"
+    shift
+elif [[ $1 == tomee ]]; then
+    Container="tomee"
+    shift
+else
+    Container="tomee"
+fi
 set -x
-docker exec --tty --interactive tomee bash
+docker exec --tty --interactive $Container bash

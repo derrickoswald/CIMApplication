@@ -1,27 +1,41 @@
 #!/usr/bin/env bash
 
+if [[ $1 == wildfly ]]; then
+    Container="wildfly"
+    shift
+elif [[ $1 == tomee ]]; then
+    Container="tomee"
+    shift
+else
+    Container="tomee"
+fi
 if [[ $# -eq 0 ]] ; then
     master=localhost
     cassandra=localhost
     network=
     publish="--publish 8080:8080 --publish 4040:4040 --publish 50070:50070"
+    format="{{.NetworkSettings.IPAddress}}"
 else
     master=$1
-    network="--network spark_default"
-    publish=""
     if [[ -n "${2}" ]]; then
         cassandra=$2
     else
         cassandra=$master
     fi
+    network="--network spark_default"
+    publish=""
+    format="{{.NetworkSettings.Networks.spark_default.IPAddress}}"
 fi
-set -x
-docker run --name tomee --hostname tomee --rm $network --env HDFS_USER=${USER} --env HADOOP_USER_NAME=${USER} --publish 9080:9080 $publish derrickoswald/cimapplication:latest start-tomee $master $cassandra &
 
-echo `docker inspect -f {{.State.Running}} tomee`
-until [ "`docker inspect -f {{.State.Running}} tomee`"=="true" ]; do
+set -x
+docker run --name ${Container} --hostname ${Container} --rm $network --env HDFS_USER=${USER} --env HADOOP_USER_NAME=${USER} --publish 9080:9080 --publish 9990:9990 $publish derrickoswald/cimapplication:latest start-${Container} $master $cassandra &
+
+set +x
+echo `docker inspect -f {{.State.Running}} ${Container}  2>/dev/null`
+until [ "`docker inspect -f {{.State.Running}} ${Container} 2>/dev/null`"=="true" ]; do
     sleep 0.5;
 done;
-tomee=$(docker inspect --format='{{.NetworkSettings.Networks.spark_default.IPAddress}}' tomee)
-sudo sed -i '/tomee/c\'"$tomee"' tomee' /etc/hosts
 
+set -x
+ipaddress=$(docker inspect --format=${format} ${Container})
+sudo sed -i '/'"$Container"'/c\'"$ipaddress $Container" /etc/hosts

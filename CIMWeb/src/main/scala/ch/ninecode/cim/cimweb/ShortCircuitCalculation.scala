@@ -29,7 +29,8 @@ import javax.ws.rs.POST
 @Path ("short_circuit")
 class ShortCircuitCalculation extends RESTful
 {
-    import ShortCircuitCalculation._
+    lazy val LOGGER_NAME: String = getClass.getName
+    lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 
     def packRow (resultset: CIMResultSet, meta: ResultSetMetaData): JsonObjectBuilder =
     {
@@ -313,10 +314,4 @@ class ShortCircuitCalculation extends RESTful
         }
         ret.toString
     }
-}
-
-object ShortCircuitCalculation
-{
-    val LOGGER_NAME: String = ShortCircuitCalculation.getClass.getName
-    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

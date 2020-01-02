@@ -35,7 +35,8 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 @Path ("file/")
 class FileOperations extends RESTful
 {
-    import FileOperations._
+    lazy val LOGGER_NAME: String = getClass.getName
+    lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
@@ -270,10 +271,4 @@ class FileOperations extends RESTful
 
         ret.toString
     }
-}
-
-object FileOperations
-{
-    val LOGGER_NAME: String = FileOperations.getClass.getName
-    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

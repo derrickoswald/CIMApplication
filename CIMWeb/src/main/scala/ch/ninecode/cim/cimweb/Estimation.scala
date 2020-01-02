@@ -22,7 +22,8 @@ import ch.ninecode.sim.SimulationOptions
 @Path ("estimation")
 class Estimation extends RESTful
 {
-    import Estimation._
+    lazy val LOGGER_NAME: String = getClass.getName
+    lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 
     @POST
     @Produces (Array (MediaType.APPLICATION_JSON))
@@ -80,10 +81,4 @@ class Estimation extends RESTful
         ret.toString
     }
 
-}
-
-object Estimation
-{
-    val LOGGER_NAME: String = Estimation.getClass.getName
-    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

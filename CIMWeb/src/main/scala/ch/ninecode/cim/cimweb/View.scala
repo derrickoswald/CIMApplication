@@ -25,7 +25,8 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 @Path ("view/")
 class View extends RESTful
 {
-    import View._
+    lazy val LOGGER_NAME: String = getClass.getName
+    lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 
     /**
      * Read CIM features from Spark.
@@ -126,10 +127,4 @@ class View extends RESTful
 
         response
     }
-}
-
-object View
-{
-    val LOGGER_NAME: String = View.getClass.getName
-    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

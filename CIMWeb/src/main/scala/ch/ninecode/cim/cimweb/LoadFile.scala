@@ -27,7 +27,8 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 @Path ("load/")
 class LoadFile extends RESTful
 {
-    import LoadFile._
+    lazy val LOGGER_NAME: String = getClass.getName
+    lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 
     @GET
     @Path ("{path:[^;]*}")
@@ -169,10 +170,4 @@ class LoadFile extends RESTful
 
         ret.toString
     }
-}
-
-object LoadFile
-{
-    val LOGGER_NAME: String = LoadFile.getClass.getName
-    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

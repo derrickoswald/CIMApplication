@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+if [[ $1 == wildfly ]]; then
+    AppServer="Wildfly"
+    shift
+elif [[ $1 == tomee ]]; then
+    AppServer="TomEE"
+    shift
+else
+    AppServer="TomEE"
+fi
+
 set -x
 # mvn clean dependency:purge-local-repository;
-mvn clean -Dmaven.test.skip=true -DskipTests -DskipITs --projects CIMConnector,Ingest,TimeSeries,GridLAB-D,ShortCircuit,MaximumFeedIn,Simulation,Spatial,CIMWeb,CIMEar install; docker build --quiet --tag derrickoswald/cimapplication .
+mvn clean -Dmaven.test.skip=true -DskipTests -DskipITs --projects CIMConnector,Ingest,TimeSeries,GridLAB-D,ShortCircuit,MaximumFeedIn,Simulation,Spatial,CIMWeb,CIMEar install; docker build --quiet --file ${AppServer}.Dockerfile --tag derrickoswald/cimapplication .

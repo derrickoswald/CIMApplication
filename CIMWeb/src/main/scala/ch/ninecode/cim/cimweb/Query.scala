@@ -20,7 +20,8 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 @Path ("query/")
 class Query extends RESTful
 {
-    import Query._
+    lazy val LOGGER_NAME: String = getClass.getName
+    lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 
     /**
      * Execute a Spark SQL query.
@@ -75,10 +76,4 @@ class Query extends RESTful
                 }
         ret.toString
     }
-}
-
-object Query
-{
-    val LOGGER_NAME: String = Query.getClass.getName
-    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }

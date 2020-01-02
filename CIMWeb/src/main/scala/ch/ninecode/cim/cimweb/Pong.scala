@@ -26,7 +26,8 @@ import ch.ninecode.cim.connector.CIMResourceAdapterMetaData
 @Path ("/pong")
 class Pong extends RESTful
 {
-    import Pong._
+    lazy val LOGGER_NAME: String = getClass.getName
+    lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
@@ -183,10 +184,4 @@ class Pong extends RESTful
         result.setResult (ret.build)
         result.toString
     }
-}
-
-object Pong
-{
-    val LOGGER_NAME: String = Pong.getClass.getName
-    val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
 }
