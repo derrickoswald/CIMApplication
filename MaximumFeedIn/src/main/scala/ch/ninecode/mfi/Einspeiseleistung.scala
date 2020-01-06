@@ -486,7 +486,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     def combineMPFN (arg: Iterable[Iterable[MaxPowerFeedingNodeEEA]]): Iterable[MaxPowerFeedingNodeEEA] =
     {
         val the_map = mutable.Map[String, MaxPowerFeedingNodeEEA]()
-        arg.foreach (x => x.foreach (y => the_map (y.id_seq) = y))
+        arg.foreach (x => x.foreach (y => the_map (y.mrid) = y))
         the_map.values
     }
 
