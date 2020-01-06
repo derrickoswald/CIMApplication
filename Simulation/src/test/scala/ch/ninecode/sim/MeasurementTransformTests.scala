@@ -28,7 +28,7 @@ case class Generator (
     }
 }
 
-class SpecificTests
+class MeasurementTransformTests
 {
     @Test def MeasurementTransformTest (): Unit =
     {
