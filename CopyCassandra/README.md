@@ -12,9 +12,9 @@ Operation
 The program needs to be run using `spark-submit`:
 
 ```bash
-spark-submit --master spark://sandbox:7077 CopyCassandra-2.11-2.4.4-2.6.0-jar-with-dependencies.jar --help
+spark-submit --master spark://sandbox:7077 CopyCassandra-2.11-2.4.4-2.7.0-jar-with-dependencies.jar --help
 
-CopyCassandra 2.11-2.4.4-2.6.0
+CopyCassandra 2.11-2.4.4-2.7.0
 Usage: CopyCassandra [options]
 
   --log <value>            log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN [OFF]

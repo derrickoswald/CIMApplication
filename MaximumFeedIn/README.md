@@ -119,8 +119,8 @@ The program is submitted to the cluster with the [spark-submit command](https://
 Of the many arguments to spark-submit, the crucial one to execute the MaximumFeedIn program is the correct full path to the `.jar` file.
 A bit of help text is available if you use the `--help` switch:
 ```
-spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.4.4-2.6.0-jar-with-dependencies.jar --help
-MaximumFeedIn 2.11-2.4.4-2.6.0
+spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.4.4-2.7.0-jar-with-dependencies.jar --help
+MaximumFeedIn 2.11-2.4.4-2.7.0
 Usage: MaximumFeedIn [options] [<CIM> <CIM> ...]
 
   --master MASTER_URL      spark://host:port, mesos://host:port, yarn, or local[*]
@@ -281,10 +281,10 @@ This allows the processing to proceed in two phases separated by an arbitrary am
 or to re-execute a failed job.
 A typical use-case is `--precalculation` followed by `--simulation` after some pause:
 ```
-$ spark-submit /opt/code/MaximumFeedIn-2.11-2.4.4-2.6.0-jar-with-dependencies.jar --precalculation hdfs://...
+$ spark-submit /opt/code/MaximumFeedIn-2.11-2.4.4-2.7.0-jar-with-dependencies.jar --precalculation hdfs://...
 **the simulation number is 42**
 _some time later_
-$ spark-submit /opt/code/MaximumFeedIn-2.11-2.4.4-2.6.0-jar-with-dependencies.jar --simulation 42 hdfs://...
+$ spark-submit /opt/code/MaximumFeedIn-2.11-2.4.4-2.7.0-jar-with-dependencies.jar --simulation 42 hdfs://...
 ```
 
 ### reference
