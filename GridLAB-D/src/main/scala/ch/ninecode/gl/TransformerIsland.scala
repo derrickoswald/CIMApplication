@@ -45,7 +45,10 @@ object TransformerIsland
 {
     def apply (transformers: Iterable[TransformerData]): TransformerIsland =
     {
-        // ToDo: gather the transformers that are truly ganged with both primary and secondary terminals connected to the same TopologicalNode
-        TransformerIsland (transformers.map (t => TransformerSet (Array (t))).toArray)
+        val sets = transformers
+            .groupBy (t => s"${t.node0}_${t.node1}")
+            .map (set => TransformerSet (set._2.toArray))
+            .toArray
+        TransformerIsland (sets)
     }
 }

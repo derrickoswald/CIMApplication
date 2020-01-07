@@ -48,6 +48,10 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             transformers =>
                 SwingNode (transformers.node0, transformers.v0, transformers.transformer_name)
         )
+        // distinct
+        .map (node => (node.id, node))
+        .toMap
+        .values
 
     override def nodes: Iterable[GLMNode] = trafokreis.nodes
 
