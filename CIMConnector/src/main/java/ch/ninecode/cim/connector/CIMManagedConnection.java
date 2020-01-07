@@ -118,7 +118,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find the CIMReader jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.4.3-3.6.0.jar)
+        // ToDo: find a better way to find the CIMReader jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.11-2.4.3-3.6.1.jar)
         return (jarForObject (new DefaultSource ()));
     }
 
@@ -126,7 +126,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find the CIMExport jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMExport-2.11-2.4.3-3.6.0.jar)
+        // ToDo: find a better way to find the CIMExport jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMExport-2.11-2.4.3-3.6.1.jar)
         return (jarForObject (new Schema (null, "", false)));
     }
 

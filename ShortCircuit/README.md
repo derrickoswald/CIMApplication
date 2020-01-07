@@ -26,17 +26,17 @@ mvn package
 ```
 
 This will produce a jar file in the `target/` directory with a name that indicates the Scala, Spark and program versions.
-For example ShortCircuit-2.11-2.4.3-2.5.0-jar-with-dependencies.jar is built for Sala 2.11, Spark 2.4.3 and is version 2.5.0 of the program.
+For example ShortCircuit-2.11-2.4.3-2.5.1-jar-with-dependencies.jar is built for Sala 2.11, Spark 2.4.3 and is version 2.5.1 of the program.
 
 To execute the standalone program use the spark-submit command from within the Spark cluster and specify the CIM file(s) to process:
 ```
-spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=1g --conf spark.executor.memory=1g ShortCircuit-2.11-2.4.3-2.5.0-jar-with-dependencies.jar --logging WARN hdfs://sandbox:8020/cimfile.rdf
+spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=1g --conf spark.executor.memory=1g ShortCircuit-2.11-2.4.3-2.5.1-jar-with-dependencies.jar --logging WARN hdfs://sandbox:8020/cimfile.rdf
 ```
 
 The `--help` option generates a description of the options available:
 
 ```
-ShortCircuit 2.11-2.4.3-2.5.0
+ShortCircuit 2.11-2.4.3-2.5.1
 Usage: ShortCircuit [options] <CIM>,<CIM>...
 
   --quiet                  suppress informational messages [false]

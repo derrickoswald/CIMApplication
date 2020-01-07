@@ -59,11 +59,11 @@ Use the
 [spark-submit](http://spark.apache.org/docs/latest/submitting-applications.html#launching-applications-with-spark-submit)
 command to launch the program. Using the --help switch:
 ```
-$ spark-submit Customer2_NetworkParameters-2.11-2.4.3-2.5.0-jar-with-dependencies.jar --help
+$ spark-submit Customer2_NetworkParameters-2.11-2.4.3-2.5.1-jar-with-dependencies.jar --help
 ```
 will print out a short summary of available parameters like so:
 ```
-Customer2_NetworkParameters 2.11-2.4.3-2.5.0
+Customer2_NetworkParameters 2.11-2.4.3-2.5.1
 Usage: Customer2_NetworkParameters [options] [<CIM>,<CIM>...]
 
 Creates EquivalentInjection objects for the network supplying transformers from external data files.
