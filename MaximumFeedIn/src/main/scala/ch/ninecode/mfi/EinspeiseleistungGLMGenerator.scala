@@ -87,8 +87,8 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         val current = 9999.0 // override so it never trips
         val fuse_details = if (edge.fuse)
             """
-                mean_replacement_time 3600.0;
-                current_limit %sA;""".format (current)
+              |            mean_replacement_time 3600.0;
+              |            current_limit %sA;""".format (current).stripMargin
         else
             ""
 

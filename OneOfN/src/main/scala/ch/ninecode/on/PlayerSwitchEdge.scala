@@ -30,20 +30,20 @@ case class PlayerSwitchEdge
     // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
     val details = if (fuse)
         """
-            mean_replacement_time 3600.0;
-            current_limit %sA;
-            object player
-            {
-                property "status";
-                file "input_data/%s.csv";
-            };""".format (current, id)
+          |        mean_replacement_time 3600.0;
+          |        current_limit %sA;
+          |        object player
+          |        {
+          |            property "status";
+          |            file "input_data/%s.csv";
+          |        };""".format (current, id).stripMargin
     else
         """
-            object player
-            {
-                property "status";
-                file "input_data/%s.csv";
-            };""".format (id)
+          |            object player
+          |            {
+          |                property "status";
+          |                file "input_data/%s.csv";
+          |            };""".format (id).stripMargin
 
         """
           |        object %s
