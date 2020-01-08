@@ -59,8 +59,8 @@ case class SwitchEdge
         // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
         val fuse_details = if (fuse)
             """
-            mean_replacement_time 3600.0;
-            current_limit %sA;""".format (current)
+               |            mean_replacement_time 3600.0;
+               |            current_limit %sA;""".format (current).stripMargin
         else
             ""
         """
