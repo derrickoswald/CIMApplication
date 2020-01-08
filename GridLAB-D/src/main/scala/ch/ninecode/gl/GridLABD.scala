@@ -450,7 +450,8 @@ class GridLABD
                     val scriptPath = "./src/test/resources/pipe.sh"
                     Array [String](
                         "bash",
-                        scriptPath
+                        scriptPath,
+                        workdir_path
                     )
                 }
                 else
