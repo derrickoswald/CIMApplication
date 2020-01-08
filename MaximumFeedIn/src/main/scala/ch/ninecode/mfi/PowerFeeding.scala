@@ -129,7 +129,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         def add_feeder (id: VertexId, v: PreNode, feeder: Option[Feeder]): PowerFeedingNode =
             PowerFeedingNode (v.id, null, null, v.nominal_voltage, null.asInstanceOf [StartingTrafo], feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
 
-        val pregraph = initial.outerJoinVertices (feeders.keyBy (_.node))(add_feeder)
+        val pregraph = initial.outerJoinVertices (feeders.keyBy (_.vertex))(add_feeder)
 
         def starting_map (id: VertexId, v: PowerFeedingNode, trafo: Option[StartingTrafo]): PowerFeedingNode =
             if (trafo.isDefined)
@@ -233,41 +233,10 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         )
     }
 
-    /**
-     * The RDD of feeder objects.
-     *
-     * @return The RDD of feeders.
-     */
-    def feeders: RDD[Feeder] =
-    {
-        // get the list of N7 voltages and allowed power system resource types
-        // ToDo: fix this 1000V multiplier
-        val low_voltages = getOrElse [BaseVoltage].filter (x ⇒ x.nominalVoltage <= 1.0).map (_.id).collect
-        val allowed_PSRTypes = Array ("PSRType_Substation", "PSRType_TransformerStation")
-
-        def isFeeder (element: Element): Boolean =
-            element match
-            {
-                case c: Connector ⇒
-                    low_voltages.contains (c.ConductingEquipment.BaseVoltage) &&
-                        allowed_PSRTypes.contains (c.ConductingEquipment.Equipment.PowerSystemResource.PSRType)
-                case _ ⇒ false
-            }
-
-        // get the list of M7 level feeders in substations
-        val pn = PreNode ("", 0.0, null)
-        val ret = getOrElse [Element]("Elements").keyBy (_.id).join (getOrElse [Terminal].keyBy (_.ConductingEquipment)).values
-            .flatMap (a ⇒ if (isFeeder (a._1)) List (Feeder (pn.vertex_id (a._2.TopologicalNode), a._1.id)) else List ())
-
-        ret.persist (storage_level)
-        ret.name = "Feeders"
-        ret
-    }
-
     def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerIsland], options: EinspeiseleistungOptions): PreCalculationResults =
     {
-
-        val graph = trace (initial, transformers.flatMap (trafo_mapping), feeders)
+        val feeders = new Feeders (session, storage_level)
+        val graph = trace (initial, transformers.flatMap (trafo_mapping), feeders.getFeeders ())
 
         // raw nodes
         val nodes: VertexRDD[PowerFeedingNode] = graph.vertices.filter (_._2.source_obj != null)

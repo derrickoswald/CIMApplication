@@ -446,6 +446,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
                 outputfile = "simulation_three_phase/results.db",
+                workdir = "simulation_three_phase/",
                 files = List (filename),
                 precalc_factor = 2.5
             )
@@ -469,6 +470,7 @@ class GridLABDSuite extends fixture.FunSuite with BeforeAndAfter
                 voltage_threshold2 = 3.0,
                 ignore_other = false,
                 outputfile = "simulation_three_phase/results.db",
+                workdir = "simulation_three_phase/",
                 files = List (filename),
                 precalc_factor = 2.5
             )

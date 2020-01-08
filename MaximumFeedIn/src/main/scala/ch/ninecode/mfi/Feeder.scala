@@ -2,10 +2,21 @@ package ch.ninecode.mfi
 
 import org.apache.spark.graphx.VertexId
 
+import ch.ninecode.gl.Graphable
+
 /**
- * Start of feeder branch.
+ * Start of a feeder branch.
  *
- * @param node      The VertexId for the associated node.
- * @param feeder_id The mRID of the feeder source (abgang).
+ * @param feeder_id the mRID of the feeder conducting equipment (abgang)
+ * @param node      the associated topological node
+ * @param control   the mRID of the controlling Switch or Fuse
  */
-case class Feeder (node: VertexId, feeder_id: String)
+case class Feeder (
+    feeder_id: String,
+    node: String,
+    control: String
+)
+    extends Graphable
+{
+    lazy val vertex: VertexId = vertex_id (node)
+}

@@ -524,7 +524,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         reader_options.put ("path", options.files.mkString (","))
         reader_options.put ("ch.ninecode.cim.do_topo", "true")
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "true")
-        reader_options.put ("ch.ninecode.cim.force_retain_switches", "Unforced")
+        reader_options.put ("ch.ninecode.cim.force_retain_switches", "ForceTrue")
         reader_options.put ("ch.ninecode.cim.force_retain_fuses", "ForceTrue")
         reader_options.put ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")
         reader_options.put ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")
