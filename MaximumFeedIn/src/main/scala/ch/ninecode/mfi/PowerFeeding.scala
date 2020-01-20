@@ -203,7 +203,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 if (p_max_heuristic < trafo_ratedS)
                     (p_max_heuristic, "heuristic limit", "limitation of last cable(s)")
                 else
-                    (trafo_ratedS, node.problem, null)
+                    (trafo_ratedS, node.problem, "transformer limit")
             }
             else if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
                 (trafo_ratedS, "transformer limit", "assuming no EEA")
@@ -231,11 +231,11 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
     def trafo_mapping (island: TransformerIsland): Iterable[StartingTrafo] =
     {
         val pn = PreNode ("", 0.0, null)
+        val ratedS = island.power_rating
         island.transformers.flatMap (
             transformers =>
             {
                 val v0 = pn.vertex_id (transformers.node0)
-                val ratedS = transformers.power_rating
                 val impedance = transformers.total_impedance_per_unit._1
                 for (end <- transformers.transformers(0).ends
                      if end.TransformerEnd.endNumber > 1)
