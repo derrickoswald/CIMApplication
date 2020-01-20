@@ -7,5 +7,6 @@ class EinspeiseleistungTestSuite extends Suites (
     new GridLABDSuite,
     new EinspeiseleistungGLMGeneratorSuite,
     new SmaxSolverSuite,
-    new FeederSuite
+    new FeederSuite,
+    new PrecalculationSuite
 )

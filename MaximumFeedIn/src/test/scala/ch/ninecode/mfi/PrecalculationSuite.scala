@@ -26,7 +26,8 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
 {
     type FixtureParam = SparkSession
     val FILE_DEPOT = "data/"
-    val FILENAME = "multipleconductor"
+    val FILENAME1 = "multipleconductor"
+    val FILENAME2 = "multipletransformer"
 
     def using[T <: AutoCloseable, R] (resource: T)(block: T => R): R =
     {
@@ -121,13 +122,16 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
     before
     {
         // unpack the zip files
-        if (!new File (s"$FILE_DEPOT$FILENAME.rdf").exists)
-            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME1.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME1.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME2.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME2.zip", FILE_DEPOT)
     }
 
     after
     {
-        new File (s"$FILE_DEPOT$FILENAME.rdf").delete
+        new File (s"$FILE_DEPOT$FILENAME1.rdf").delete
+        new File (s"$FILE_DEPOT$FILENAME2.rdf").delete
     }
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
@@ -184,7 +188,7 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
 
             val begin = System.nanoTime ()
 
-            val filename = s"$FILE_DEPOT$FILENAME.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME1.rdf"
             readFile (session, filename)
 
             val read = System.nanoTime ()
@@ -219,8 +223,56 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
             val node = nodes(0)
             assert (node.reason == "heuristic limit")
             assert (node.details == "limitation of last cable(s)")
-            // ToDo: note that the 1.25V drop in the cable is derived from incorrect impedances due to incorrect legacy CIM export
-            // two cables GKN 3x10re/10 1/0.6 kV with ratedCurrent 67A, @ (400 + 1.25)V * √3 = 93128
-            assert (near (node.max_power_feeding, 93128, 1.0))
+            // ToDo: note that the 0.67V drop (including the cable) is derived from incorrect impedances due to incorrect legacy CIM export
+            // two cables GKN 3x10re/10 1/0.6 kV with ratedCurrent 67A, @ (400 + 0.67)V * √3 = 92993
+            assert (near (node.max_power_feeding, 92993, 1.0))
+    }
+
+    /**
+     * Test for correct calculation of heuristic limit for parallel cables.
+     */
+    test ("MultipleTransformers")
+    {
+        session: SparkSession ⇒
+
+            val begin = System.nanoTime ()
+
+            val filename = s"$FILE_DEPOT$FILENAME2.rdf"
+            readFile (session, filename)
+
+            val read = System.nanoTime ()
+            println ("read : " + (read - begin) / 1e9 + " seconds")
+
+            // set up for execution
+            val gridlabd = new GridLABD (session = session, topological_nodes = true, one_phase = true, workdir = ".")
+            val storage_level = StorageLevel.MEMORY_AND_DISK_SER
+
+            // do all low voltage power transformers
+            val _transformers = new Transformers (session, storage_level)
+            val transformer_data = _transformers.getTransformers ()
+            val transformers = transformer_data.groupBy (_.node1.TopologicalIsland).values.map (TransformerIsland.apply)
+            transformers.persist (storage_level).name = "Transformers"
+
+            // construct the initial graph from the real edges and nodes
+            val (xedges, xnodes) = gridlabd.prepare ()
+            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+
+            // get the existing photo-voltaic installations keyed by terminal
+            val solar = Solar (session, topologicalnodes = true, storage_level)
+            val sdata = solar.getSolarInstallations
+
+            val power_feeding = new PowerFeeding (session)
+            val results: PreCalculationResults = power_feeding.threshold_calculation (initial, sdata, transformers, EinspeiseleistungOptions ())
+            val houses = results.has
+            // println (houses.take (100).mkString ("\n"))
+            val has = houses.filter (_.mrid == "USR0001")
+            assert (!has.isEmpty)
+            val nodes = has.take (10)
+            assert (nodes.length == 1)
+            val node = nodes(0)
+            assert (node.reason == "non-radial network")
+            assert (node.details == "transformer limit")
+            // 2 x 100kVA = 200000
+            assert (near (node.max_power_feeding, 200000, 1.0))
     }
 }
