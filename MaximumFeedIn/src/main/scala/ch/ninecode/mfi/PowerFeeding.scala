@@ -33,11 +33,23 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    // return length, resistance and maximum current for an edge
+    /**
+     * Get details for an edge.
+     *
+     * <em>Note:
+     * This is completely broken because it incorrectly assumes the per kilometer impedance is directly
+     * contained by the ACLineSegment (to agree with legacy CIM export code) instead of using the
+     * PerLengthImpedance relationship to get the PerLengthSequenceImpedance.
+     * </em>
+     *
+     * @param edge the edge to get the details for
+     * @return length, impedance and rated current for cables, otherwise zero impedance and infinite rated current
+     */
     def line_details (edge: PreEdge): (Double, Complex, Double) =
     {
         edge.element match
         {
+            // ToDo: fix this (see note above)
             case line: ACLineSegment ⇒ (line.Conductor.len / 1000.0, Complex (line.r, line.x), edge.ratedCurrent)
             case _ ⇒ (0.0, 0.0, Double.PositiveInfinity)
         }
@@ -183,6 +195,10 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val (p_max, reason, details) =
             if (null != node.problem)
             {
+                // ToDo: this sum is not quite correct, and only works for identical edges
+                // Edges should be merged to get the parallel impedance before calculating the voltage drop
+                // but the problem also exists in sendMessage() where each edge is handled separately
+                // so the fix would be to merge edges before doing the trace.
                 val p_max_heuristic = node.conn_edge.map (get_heuristic_p_max).sum
                 if (p_max_heuristic < trafo_ratedS)
                     (p_max_heuristic, "heuristic limit", "limitation of last cable(s)")
