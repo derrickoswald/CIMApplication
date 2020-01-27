@@ -5,18 +5,14 @@ import java.util.Calendar
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.PreNode
-import ch.ninecode.gl.SwingNode
-import ch.ninecode.gl.TransformerSet
+import ch.ninecode.gl.TransformerIsland
 
 /**
  * A container for a simulation piece of work.
  *
  * Includes the information necessary to perform a simulation (of a transformer service area - a trafokreis).
  *
- * @param simulation  the primary key for the simulation as stored in the simulation table.
- * @param island      the name of the TopologicalIsland for the low voltage side of the transformer
- * @param transformer the transformer (or set of ganged transformers) servicing the area
+ * @param island      the transformer island for the low voltage side of the transformer
  * @param nodes       topological nodes for the simulation
  * @param edges       topological edges for the simulation
  * @param start_time  the simulation starting time
@@ -24,16 +20,13 @@ import ch.ninecode.gl.TransformerSet
  */
 case class SimulationTransformerServiceArea
 (
-    simulation: String,
-    island: String,
-    transformer: TransformerSet,
+    island: TransformerIsland,
     nodes: Iterable[GLMNode],
     edges: Iterable[GLMEdge],
     start_time: Calendar,
     directory: String) extends Serializable
 {
-    val name: String = transformer.transformer_name
-    val swing_nodes: Array[SwingNode] = Array (SwingNode (transformer.node0, transformer.v0, transformer.transformer_name))
+    val name: String = island.island_name
 
     // experiment only on houses and busbars
     def keep (node: GLMNode): Boolean =
@@ -45,10 +38,10 @@ case class SimulationTransformerServiceArea
     // generate experiments as 5 seconds short circuit (100Ω) at each node
     lazy val experiments: Array[ScExperiment] = nodes.filter (keep).zipWithIndex // (node, index)
         .map (
-        x ⇒
+        x =>
         {
             val node = x._1.asInstanceOf [SimulationNode]
-            ScExperiment (simulation, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (100.0, 0))
+            ScExperiment (name, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (100.0, 0))
         }
     ).toArray
 

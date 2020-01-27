@@ -1,7 +1,5 @@
 package ch.ninecode.sc
 
-import java.util.HashMap
-import java.util.Map
 import java.io.File
 
 import org.scalatest.BeforeAndAfter
@@ -49,9 +47,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
-            options.put ("path", filename)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+            val options = Map[String, String] (
+                "path" -> filename)
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
@@ -105,9 +102,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
-            options.put ("path", filename)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+            val options = Map[String, String] (
+                "path" -> filename)
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
@@ -118,7 +114,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             val ntp = CIMNetworkTopologyProcessor (session)
             val ele = ntp.process (
                 CIMTopologyOptions (
-                    identify_islands = false,
+                    identify_islands = true,
                     force_retain_switches = Unforced,
                     force_retain_fuses = ForceTrue,
                     default_switch_open_state = false,
@@ -137,7 +133,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 default_short_circuit_power_min = 600.0e6,
                 default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
                 base_temperature = 20.0,
-                low_temperature = 20.0)
+                low_temperature = 20.0,
+                workdir = "./results/")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -150,9 +147,9 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
 
             assert (results.filter (_.equipment == "USR0001").first ().errors.isEmpty, "USR0001 should be valid (TX0001)")
             assert (results.filter (_.equipment == "USR0002").first ().errors.isEmpty, "USR0002 should be valid (TX0001)")
-            assert (results.filter (_.equipment == "USR0003").first ().errors.forall (_.startsWith ("INVALID")), "USR0003 should be invalid (TX0002)")
-            assert (results.filter (_.equipment == "USR0004").first ().errors.exists (_.startsWith ("INVALID")), "USR0004 should be invalid")
-            assert (results.filter (_.equipment == "USR0005").first ().errors.exists (_.startsWith ("INVALID")), "USR0005 should be invalid")
+            assert (results.filter (_.equipment == "USR0003").first ().errors.forall (_.startsWith ("computed by load-flow")), "USR0003 should be valid")
+            assert (results.filter (_.equipment == "USR0004").first ().errors.exists (_.startsWith ("computed by load-flow")), "USR0004 should be valid")
+            assert (results.filter (_.equipment == "USR0005").first ().errors.exists (_.startsWith ("computed by load-flow")), "USR0005 should be valid")
     }
 
     test ("Subtransmission")
@@ -163,9 +160,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
-            options.put ("path", filename)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+            val options = Map[String, String] (
+                "path" -> filename)
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")

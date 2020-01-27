@@ -38,9 +38,11 @@ case class ScGLMGenerator
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
     }
 
-    override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (area.transformer.node0, area.transformer.node1, area.transformer))
+    override def transformers: Iterable[TransformerEdge] = area.island.transformers.map (set => TransformerEdge (set.node0, set.node1, set))
 
-    override def swing_nodes: Iterable[GLMNode] = area.swing_nodes
+    class ShortCircuitSwingNode (val set: TransformerSet) extends SwingNode (set.node0, set.v0, set.transformer_name)
+
+    override def swing_nodes: Iterable[GLMNode] = area.island.transformers.map (new ShortCircuitSwingNode (_))
 
     override def finish_time: Calendar = area.finish_time
 
@@ -57,12 +59,13 @@ case class ScGLMGenerator
      */
     override def emit_slack (node: GLMNode): String =
     {
+        val set: TransformerSet = node.asInstanceOf[ShortCircuitSwingNode].set
         val voltage = node.nominal_voltage
         val phase = if (one_phase) "AN" else "ABCN"
         val _z = if (isMax)
-            area.transformer.network_short_circuit_impedance_max
+            set.network_short_circuit_impedance_max
         else
-            area.transformer.network_short_circuit_impedance_min
+            set.network_short_circuit_impedance_min
         val z = _z / 1000.0 // per length impedance is per meter now
         val nodename = node.id
 
