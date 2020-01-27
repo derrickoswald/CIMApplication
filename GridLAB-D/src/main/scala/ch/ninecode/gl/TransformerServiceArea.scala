@@ -327,6 +327,6 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         val candidates = graph.vertices.filter (null != _._2.area_label)
         val pairs = candidates.map (v ⇒ (v._2.island_label, v._2.area_label)).distinct // (islandid, areaid)
         val areas = island_trafoset_rdd.join (pairs).values.map (_.swap) // (areaid, trafosetname)
-        pairs.map (_.swap).join (areas).values.persist (storage_level) // (islandid, trafosetname)
+        pairs.map (_.swap).join (areas).values.distinct.persist (storage_level) // (islandid, trafosetname)
     }
 }

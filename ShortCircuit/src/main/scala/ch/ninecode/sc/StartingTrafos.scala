@@ -1,6 +1,7 @@
 package ch.ninecode.sc
 
 import org.apache.spark.graphx.VertexId
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
@@ -34,6 +35,33 @@ case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: Transf
         val trafo_x0 = zt.im // use r0=r1 & x0=x1 for trafos
         val v1 = transformer.v0
         val v2 = transformer.v1
+        val ratio = v2 / v1
+        val ratio2 = ratio * ratio
+        val primary = primary_impedance
+        Impedanzen (
+            Complex (trafo_r1, trafo_x1) + (primary.impedanz_low * ratio2), Complex (trafo_r0, trafo_x0) + (primary.null_impedanz_low * ratio2),
+            Complex (trafo_r1, trafo_x1) + (primary.impedanz_high * ratio2), Complex (trafo_r0, trafo_x0) + (primary.null_impedanz_high * ratio2))
+    }
+
+    /**
+     * Get the network impedance referenced to the low voltage winding with the given voltage.
+     *
+     * This includes the source impedance and the transformer impedance, both referenced to the given winding.
+     *
+     * @param v the voltage of the winding that the impedance is to be calculated
+     * @return the impedance of the network and transformer at the give winding
+     */
+    def lv_impedance (v: Double): Impedanzen =
+    {
+        val zt = transformer.total_impedance._1
+        val trafo_r1 = zt.re
+        val trafo_r0 = zt.re // use r0=r1 & x0=x1 for trafos
+        val trafo_x1 = zt.im
+        val trafo_x0 = zt.im // use r0=r1 & x0=x1 for trafos
+        val v1 = transformer.v0
+        if (!transformer.transformers.forall (x => null != x.voltages.find (p => p._2 == v).orNull))
+            LoggerFactory.getLogger (getClass).error (s"voltage $v not found on transformer ${transformer.transformer_name}")
+        val v2 = v
         val ratio = v2 / v1
         val ratio2 = ratio * ratio
         val primary = primary_impedance

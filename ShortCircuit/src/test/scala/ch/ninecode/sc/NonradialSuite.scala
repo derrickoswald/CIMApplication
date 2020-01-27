@@ -1,8 +1,6 @@
 package ch.ninecode.sc
 
 import java.io.File
-import java.util.HashMap
-import java.util.Map
 
 import org.scalatest.BeforeAndAfter
 
@@ -49,9 +47,8 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
-            options.put ("path", filename)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+            val options = Map[String, String] (
+                "path" -> filename)
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
@@ -111,9 +108,8 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = new HashMap[String, String]().asInstanceOf [Map[String, String]]
-            options.put ("path", filename)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+            val options = Map[String, String] (
+                "path" -> filename)
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
@@ -158,7 +154,7 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (near (results.filter (_.equipment == "USR0001").first ().low_sk, 2090402.35156741))
+            assert (near (results.filter (_.equipment == "USR0001").first ().low_sk, 2626782.36619354))
             assert (near (results.filter (_.equipment == "USR0002").first ().low_sk, 6208872.30165506))
             assert (near (results.filter (_.equipment == "USR0003").first ().low_sk, 6185870.27299348))
     }
