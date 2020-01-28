@@ -59,9 +59,16 @@ case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: Transf
         val trafo_x1 = zt.im
         val trafo_x0 = zt.im // use r0=r1 & x0=x1 for trafos
         val v1 = transformer.v0
-        if (!transformer.transformers.forall (x => null != x.voltages.find (p => p._2 == v).orNull))
-            LoggerFactory.getLogger (getClass).error (s"voltage $v not found on transformer ${transformer.transformer_name}")
-        val v2 = v
+        val _v = transformer.transformers.map (
+            _.voltages.find ((x: (String, Double)) => (Math.abs (x._2 - v) / x._2) <= 0.03) match
+            {
+                case Some (voltage) => voltage._2
+                case None =>
+                    LoggerFactory.getLogger (getClass).error (s"voltage $v not found on transformer ${transformer.transformer_name}")
+                    v
+            }
+        )
+        val v2 = _v(0)
         val ratio = v2 / v1
         val ratio2 = ratio * ratio
         val primary = primary_impedance

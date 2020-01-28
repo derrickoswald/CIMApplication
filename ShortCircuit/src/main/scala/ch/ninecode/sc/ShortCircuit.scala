@@ -607,12 +607,30 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             }
         )
 
+        def connectedTo (branch: Branch, edges: Iterable[Branch]): Boolean =
+        {
+            edges.exists (edge ⇒ edge != branch && (branch.to == edge.to || branch.to == edge.from))
+        }
+
+        def connectedFrom (branch: Branch, edges: Iterable[Branch]): Boolean =
+        {
+            edges.exists (edge ⇒ edge != branch && (branch.from == edge.to || branch.from == edge.from))
+        }
+
         // eliminate branches in the tree than only have one end connected - except for the starting and ending node
         def no_stubs (edges: Iterable[Branch], start: Array[String], end: String) (branch: Branch): Boolean =
         {
-            start.contains (branch.from) || (end == branch.to) ||
-            (edges.exists (edge ⇒ edge != branch && (branch.to == edge.to || branch.to == edge.from))
-                && edges.exists (edge ⇒ edge != branch && (branch.from == edge.to || branch.from == edge.from)))
+            val to = connectedTo (branch, edges)
+            val from = connectedFrom (branch, edges)
+            val connected = to && from
+            val into = start.contains (branch.to)
+            val infrom = start.contains (branch.from)
+
+            connected ||
+            (end == branch.to && (infrom || from)) ||
+            (end == branch.from && (into || to)) ||
+            (infrom && to) ||
+            (into && from)
         }
 
         // reduce the tree to (hopefully) one branch spanning from start to end
@@ -626,14 +644,18 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         while (count != family.size)
         val branches = reduce (family, lvnodes, experiment.mrid)
         // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers - finding the first is not sufficient
-        val branch = branches.find (branch => (experiment.mrid == branch.to) && lvnodes.contains (branch.from)).orNull
+        val branch = branches.find (
+            branch =>
+                ((experiment.mrid == branch.to) && lvnodes.contains (branch.from)) ||
+                ((experiment.mrid == branch.from) && lvnodes.contains (branch.to))
+        ).orNull
 
         // compute the impedance from start to end
         // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers
         val tx = StartingTrafos (0L, 0L, trafokreis.island.transformers (0))
-        val path = if (null == branch)
+        val (path, impedance) = if (null == branch)
         {
-            if (lvnodes.contains (experiment.mrid))
+            val b = if (lvnodes.contains (experiment.mrid))
                 null
             else
             {
@@ -644,13 +666,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 val directs = branches.filter (experiment.mrid == _.to)
                 val sum = directs.map (_.current).sum
                 // generate a fake impedance
-                val complex = ComplexBranch (lvnodes.mkString (","), experiment.mrid, sum, branches.toArray)
-                complex
+                ComplexBranch (lvnodes.mkString (","), experiment.mrid, sum, branches.toArray)
             }
+            (b, tx.lv_impedance (experiment.voltage))
         }
         else
-            branch
-        (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, tx.lv_impedance (experiment.voltage), path)
+        {
+            val _branch = if (experiment.mrid == branch.to) branch else branch.reverse
+            val v = experiment.voltage / _branch.voltageRatio
+            (_branch, tx.lv_impedance (v))
+        }
+        (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, impedance, path)
     }
 
     /**
