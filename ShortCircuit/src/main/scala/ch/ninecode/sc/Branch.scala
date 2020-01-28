@@ -91,6 +91,9 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     // ratios of currents with the branch that the portion applies to
     def ratios: Iterable[(Double, Branch)]
 
+    // voltage ratio between from and to node = vto / vfrom
+    def voltageRatio: Double
+
     def z (in: Impedanzen): Impedanzen
 
     def contents: Iterable[Branch]
@@ -146,6 +149,8 @@ case class SimpleBranch (override val from: String, override val to: String, ove
     def reverse: Branch = SimpleBranch (to, from, current, mRID, name, rating, z)
 
     def ratios: Iterable[(Double, Branch)] = List((1.0, this))
+
+    def voltageRatio: Double = 1.0
 
     def z (in: Impedanzen): Impedanzen = in + z
 
@@ -208,6 +213,8 @@ case class TransformerBranch (override val from: String, override val to: String
     def reverse: Branch = TransformerBranch (to, from, current, mRID, name, s, vto, vfrom, pu)
 
     def ratios: Iterable[(Double, Branch)] = List((1.0, this))
+
+    def voltageRatio: Double = vto / vfrom
 
     def contents: Iterable[TransformerBranch] = Iterable (this)
 
@@ -276,6 +283,8 @@ case class SeriesBranch (override val from: String, override val to: String, ove
     def reverse: Branch = SeriesBranch (to, from, current, series.reverse.map (_.reverse))
 
     def ratios: Iterable[(Double, Branch)] = series.last.ratios
+
+    def voltageRatio: Double = seq.foldLeft (1.0) ((v, branch) ⇒ v * branch.voltageRatio)
 
     def z (in: Impedanzen): Impedanzen = seq.foldLeft (in) ((z, branch) ⇒ branch.z (z))
 
@@ -380,6 +389,9 @@ case class ParallelBranch (override val from: String, override val to: String, o
             parallel.map (x ⇒ (x.current / sum, x))
     }
 
+    // assume each branch has unity voltage ratio or the same voltage ratio
+    def voltageRatio: Double = parallel.head.iter.foldLeft (1.0) ((v, branch) ⇒ v * branch.voltageRatio)
+
     def z (in: Impedanzen): Impedanzen =
     {
         val pz = parallel.map (_.z (Impedanzen ()))
@@ -466,10 +478,9 @@ case class ComplexBranch (override val from: String, override val to: String, ov
 
     def reverse: Branch = ComplexBranch (to, from, current, basket.map (_.reverse))
 
-    def ratios: Iterable[(Double, Branch)] =
-    {
-        basket.map (x ⇒ (x.current / current, x))
-    }
+    def ratios: Iterable[(Double, Branch)] = basket.map (x ⇒ (x.current / current, x))
+
+    def voltageRatio: Double = basket.foldLeft (1.0) ((v, branch) ⇒ v * branch.voltageRatio)
 
     /**
      * NOTE: this is totally wrong. It just puts a upper and lower bound on the actual impedance.
