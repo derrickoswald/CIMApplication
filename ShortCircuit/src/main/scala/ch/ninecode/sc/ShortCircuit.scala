@@ -358,6 +358,27 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             (trafo, k._2)
         }
 
+        def ToD (string: String): Double =
+        {
+            try
+            {
+                string.toDouble
+            }
+            catch
+            {
+                case _: NumberFormatException =>
+                    string match
+                    {
+                        case "inf" => Double.PositiveInfinity
+                        case "-inf" => Double.NegativeInfinity
+                        case "nan" => Double.NaN
+                        case "-nan" => Double.NaN
+                        case _ => 0.0
+                    }
+                case _: Throwable => 0.0
+            }
+        }
+
         def read (f: String): TraversableOnce[ThreePhaseComplexDataElement] =
         {
             var experiment: String = ""
@@ -387,9 +408,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     val c_arr = c.split (",")
                     if (c_arr.length == 7)
                         if (one_phase)
-                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (0.0), Complex (0.0), units)
+                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (ToD (c_arr (1)), ToD (c_arr (2))), Complex (0.0), Complex (0.0), units)
                         else
-                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (c_arr (3).toDouble, c_arr (4).toDouble), Complex (c_arr (5).toDouble, c_arr (6).toDouble), units)
+                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (ToD (c_arr (1)), ToD (c_arr (2))), Complex (ToD (c_arr (3)), ToD (c_arr (4))), Complex (ToD (c_arr (5)), ToD (c_arr (6))), units)
                     else
                     {
                         log.error ("""%s voltage dump text "%s" cannot be interpreted as three phase complex %s""".format (experiment, c, units))
