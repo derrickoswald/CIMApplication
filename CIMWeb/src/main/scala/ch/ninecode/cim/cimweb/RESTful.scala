@@ -55,7 +55,6 @@ object RESTful
         name = "SparkConnectionFactory",
         description = "Connection factory for Spark connection using CIMConnector",
         authenticationType = Resource.AuthenticationType.APPLICATION,
-        mappedName="java:openejb/Resource/SparkConnectionFactory",
         `type`=classOf[CIMConnectionFactory])
     var _ConnectionFactory: CIMConnectionFactory = _
 

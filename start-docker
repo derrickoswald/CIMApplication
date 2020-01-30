@@ -2,12 +2,19 @@
 
 if [[ $1 == wildfly ]]; then
     Container="wildfly"
+    publishplus="--publish 9990:9990"
     shift
 elif [[ $1 == tomee ]]; then
     Container="tomee"
+    publishplus=""
+    shift
+elif [[ $1 == glassfish ]]; then
+    Container="glassfish"
+    publishplus="--publish 4848:4848"
     shift
 else
     Container="tomee"
+    publishplus=""
 fi
 if [[ $# -eq 0 ]] ; then
     master=localhost
@@ -28,7 +35,7 @@ else
 fi
 
 set -x
-docker run --name ${Container} --hostname ${Container} --rm $network --env HDFS_USER=${USER} --env HADOOP_USER_NAME=${USER} --publish 9080:9080 --publish 9990:9990 $publish derrickoswald/cimapplication:latest start-${Container} $master $cassandra &
+docker run --name ${Container} --hostname ${Container} --rm $network --env HDFS_USER=${USER} --env HADOOP_USER_NAME=${USER} --publish 9080:9080 $publish $publishplus derrickoswald/cimapplication:${Container} start-${Container} $master $cassandra &
 
 set +x
 echo `docker inspect -f {{.State.Running}} ${Container}  2>/dev/null`

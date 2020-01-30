@@ -6,6 +6,9 @@ if [[ $1 == wildfly ]]; then
 elif [[ $1 == tomee ]]; then
     Container="tomee"
     shift
+elif [[ $1 == glassfish ]]; then
+    Container="glassfish"
+    shift
 else
     Container="tomee"
 fi

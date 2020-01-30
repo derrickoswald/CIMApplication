@@ -206,15 +206,6 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
      *
      * @return The current setting for Spark master.
      */
-    @ConfigProperty
-    (
-        type = String.class,
-        description = "Spark stand-alone master URL.",
-        defaultValue = "local[*]",
-        ignore = false,
-        supportsDynamicUpdates = false,
-        confidential = false
-    )
     public String getConnectionURL () { return (_ConnectionURL); }
 
     /**
@@ -228,6 +219,15 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
      *
      * @param url The new Spark master URL.
      */
+    @ConfigProperty
+    (
+        type = String.class,
+        description = "Spark stand-alone master URL.",
+        defaultValue = "local[*]",
+        ignore = false,
+        supportsDynamicUpdates = false,
+        confidential = false
+    )
     public void setConnectionURL (String url)
     {
         String old = _ConnectionURL;
@@ -240,15 +240,6 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
      *
      * @return The current setting for Cassandra connection.host.
      */
-    @ConfigProperty
-        (
-            type = String.class,
-            description = "Cassandra connection.host.",
-            defaultValue = "localhost",
-            ignore = false,
-            supportsDynamicUpdates = false,
-            confidential = false
-        )
     public String getServerName () { return (_ServerName); }
 
     /**
@@ -256,6 +247,15 @@ public class CIMManagedConnectionFactory implements ManagedConnectionFactory, Re
      *
      * @param server The new Cassandra connection host.
      */
+    @ConfigProperty
+    (
+        type = String.class,
+        description = "Cassandra connection.host.",
+        defaultValue = "localhost",
+        ignore = false,
+        supportsDynamicUpdates = false,
+        confidential = false
+    )
     public void setServerName (String server)
     {
         String old = _ServerName;
