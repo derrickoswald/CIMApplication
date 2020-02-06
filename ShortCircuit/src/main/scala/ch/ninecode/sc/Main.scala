@@ -5,27 +5,20 @@ import java.net.URI
 import java.net.URLDecoder
 import java.util.Properties
 
-import scala.collection.mutable.HashMap
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 import scopt.OptionParser
 
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.DefaultSource
-import ch.ninecode.cim.ForceTrue
-import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.model.Element
 
 object Main
 {
@@ -281,54 +274,27 @@ object Main
      * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.4.4-2.7.0-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
      */
 
-    def read_cim (session: SparkSession, arguments: Arguments): RDD[Element] =
+    def read_cim (session: SparkSession, arguments: Arguments): Unit =
     {
         val log = LoggerFactory.getLogger (getClass)
         val start = System.nanoTime ()
         val storage = StorageLevel.fromString (arguments.storage)
-        val reader_options = new HashMap[String, String]()
-        reader_options.put ("StorageLevel", arguments.storage)
-        reader_options.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
-        reader_options.put ("path", arguments.files.mkString (","))
-        reader_options.put ("ch.ninecode.cim.make_edges", "false")
-        reader_options.put ("ch.ninecode.cim.do_join", "false")
-        reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
-        reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
-        reader_options.put ("ch.ninecode.cim.split_maxsize", arguments.splitsize.toString)
+
+        val reader_options = Map[String, String] (
+            "path" -> arguments.files.mkString (","),
+            "StorageLevel" -> arguments.storage,
+            "ch.ninecode.cim.do_topo" -> "true",
+            "ch.ninecode.cim.do_topo_islands" -> "true",
+            "ch.ninecode.cim.force_retain_switches" -> "Unforced",
+            "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+            "ch.ninecode.cim.do_deduplication" -> arguments.dedup.toString,
+            "ch.ninecode.cim.split_maxsize" -> arguments.splitsize.toString
+        )
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*).persist (storage)
         log.info (elements.count () + " elements")
 
         val read = System.nanoTime ()
         log.info ("read: " + (read - start) / 1e9 + " seconds")
-
-        // identify topological nodes if necessary
-        val tns = session.sparkContext.getPersistentRDDs.filter (_._2.name == "TopologicalNode")
-        val ele = if (tns.isEmpty || tns.head._2.isEmpty)
-        {
-            val ntp = CIMNetworkTopologyProcessor (session)
-            val elements = ntp.process (
-                CIMTopologyOptions (
-                    identify_islands = true,
-                    force_retain_switches = Unforced,
-                    force_retain_fuses = ForceTrue,
-                    default_switch_open_state = false,
-                    debug = false,
-                    storage = storage)
-            )
-            log.info (elements.count () + " elements")
-            val topo = System.nanoTime ()
-            log.info ("topology: " + (topo - read) / 1e9 + " seconds")
-            elements
-        }
-        else
-        {
-            val elements = session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf [RDD[Element]]
-            log.info (elements.count () + " elements")
-            elements
-        }
-        ele.name = "Elements"
-        ele.persist (storage)
-        ele
     }
 
     def main (args: Array[String])

@@ -7,10 +7,6 @@ import org.scalatest.BeforeAndAfter
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.cim.CIMTopologyOptions
-import ch.ninecode.cim.ForceTrue
-import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.Complex
 
 class TransformerSuite extends SparkSuite with BeforeAndAfter
@@ -48,28 +44,19 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             val start = System.nanoTime
             val files = filename.split (",")
             val options = Map[String, String] (
-                "path" -> filename)
+                "path" -> filename,
+                "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                "ch.ninecode.cim.do_topo" -> "true",
+                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
+                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                "ch.ninecode.cim.debug" -> "true",
+                "ch.ninecode.cim.do_deduplication" -> "true"
+            )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
-
-            // identify topological nodes
-            val ntp = CIMNetworkTopologyProcessor (session)
-            val ele = ntp.process (
-                CIMTopologyOptions (
-                    identify_islands = false,
-                    force_retain_switches = Unforced,
-                    force_retain_fuses = ForceTrue,
-                    default_switch_open_state = false,
-                    debug = true,
-                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
-            ).persist (StorageLevel.MEMORY_AND_DISK_SER)
-            println (ele.count () + " elements")
-
-            val topo = System.nanoTime ()
-            println ("topology: " + (topo - read) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -103,28 +90,20 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             val start = System.nanoTime
             val files = filename.split (",")
             val options = Map[String, String] (
-                "path" -> filename)
+                "path" -> filename,
+                "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                "ch.ninecode.cim.do_topo" -> "true",
+                "ch.ninecode.cim.do_topo_islands" -> "true",
+                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
+                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                "ch.ninecode.cim.debug" -> "true",
+                "ch.ninecode.cim.do_deduplication" -> "true"
+            )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
-
-            // identify topological nodes
-            val ntp = CIMNetworkTopologyProcessor (session)
-            val ele = ntp.process (
-                CIMTopologyOptions (
-                    identify_islands = true,
-                    force_retain_switches = Unforced,
-                    force_retain_fuses = ForceTrue,
-                    default_switch_open_state = false,
-                    debug = true,
-                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
-            ).persist (StorageLevel.MEMORY_AND_DISK_SER)
-            println (ele.count () + " elements")
-
-            val topo = System.nanoTime ()
-            println ("topology: " + (topo - read) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -161,28 +140,20 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             val start = System.nanoTime
             val files = filename.split (",")
             val options = Map[String, String] (
-                "path" -> filename)
+                "path" -> filename,
+                "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                "ch.ninecode.cim.do_topo" -> "true",
+                "ch.ninecode.cim.do_topo_islands" -> "true",
+                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
+                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                "ch.ninecode.cim.debug" -> "true",
+                "ch.ninecode.cim.do_deduplication" -> "true"
+            )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
-
-            // identify topological nodes
-            val ntp = CIMNetworkTopologyProcessor (session)
-            val ele = ntp.process (
-                CIMTopologyOptions (
-                    identify_islands = true,
-                    force_retain_switches = Unforced,
-                    force_retain_fuses = ForceTrue,
-                    default_switch_open_state = false,
-                    debug = true,
-                    storage = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
-            ).persist (StorageLevel.MEMORY_AND_DISK_SER)
-            println (ele.count () + " elements")
-
-            val topo = System.nanoTime ()
-            println ("topology: " + (topo - read) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
