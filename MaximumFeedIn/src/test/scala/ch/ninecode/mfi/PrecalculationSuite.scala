@@ -5,6 +5,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.sql.DriverManager
 import java.util.zip.ZipInputStream
 
 import org.scalatest._
@@ -294,8 +295,8 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
             val begin = System.nanoTime ()
 
             val filename = s"$FILE_DEPOT$FILENAME3.rdf"
-            readFile (session, filename)
 
+            readFile (session, filename)
             val read = System.nanoTime ()
             println ("read : " + (read - begin) / 1e9 + " seconds")
 
@@ -333,6 +334,41 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
             // GKN 3x16rm/16 1/0.6 kV with ratedCurrent 88A, @ (400 + 2.58)V * √3 = 61361
             //                                                                     108009
             assert (near (node.max_power_feeding, 108009, 1.0))
+
+            val options = EinspeiseleistungOptions (
+                precalculation = false,
+                verbose = true,
+                all = true,
+                workdir = "simulation",
+                files = List (filename)
+            )
+
+            val eins = Einspeiseleistung (session, options)
+            eins.run ()
+
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName ("org.sqlite.JDBC")
+            // create a database connection
+            val connection = DriverManager.getConnection (s"jdbc:sqlite:${options.outputfile}")
+
+            val statement = connection.createStatement ()
+            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results) and house like 'USR%'")
+            var records: Int = 0
+            while (resultset.next)
+            {
+                val max_loadflow = resultset.getDouble (3)
+                val reason = resultset.getString (4)
+                val details = resultset.getString (5)
+                assert (max_loadflow == 58000.0, "loadflow should be more than precalculation")
+                assert (reason == "current limit", "expected that it is current limited")
+                assert (details == "CAB0002 > 67.0 Amps", "GKN 3x10re/10 is still the limiting factor")
+                records = records + 1
+            }
+            resultset.close ()
+            statement.close ()
+            connection.close ()
+            assert (records == 1, "number of records")
+
     }
 
     /**

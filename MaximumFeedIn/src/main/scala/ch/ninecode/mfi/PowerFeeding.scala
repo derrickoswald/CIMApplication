@@ -107,7 +107,11 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     else if (!triplet.srcAttr.hasIssues && triplet.dstAttr.hasIssues)
                         Iterator ((triplet.srcId, triplet.srcAttr.copy (problem = triplet.dstAttr.problem)))
                     else
-                        Iterator.empty
+                        if (triplet.srcAttr.hasNonRadial || triplet.dstAttr.hasNonRadial)
+                            Iterator.empty
+                        else
+                            Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")),
+                                (triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
                 }
                 else if (triplet.srcAttr.id != triplet.dstAttr.prev_node && triplet.dstAttr.id != triplet.srcAttr.prev_node)
                 {
@@ -315,15 +319,10 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
             val source = triplet.srcAttr.source_obj
             val target = triplet.dstAttr.source_obj
 
-            var ret = (null.asInstanceOf [String], triplet.attr)
             if (source != null && target != null && source.trafo_id != null && target.trafo_id != null)
-            {
-                val source_trafo_id = source.trafo_id
-                val target_trafo_id = target.trafo_id
-                if (source_trafo_id == target_trafo_id)
-                    ret = (source_trafo_id, triplet.attr)
-            }
-            ret
+                (source.trafo_id, triplet.attr)
+            else
+                (null.asInstanceOf [String], triplet.attr)
         }
 
         val vertices = graph.vertices.values

@@ -605,9 +605,19 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val invalid = houses.filter (_.problem).keyBy (_.source_obj).groupByKey
 
         val trafo_island = transformers.flatMap (island => island.transformers.map (trafo => (trafo.transformer_name, island)))
-        val trafo_list = houses.keyBy (_.source_obj).groupByKey.subtractByKey (invalid).join (trafo_island).values.map (_._2)
+        val trafo_list = houses
+            .keyBy (_.source_obj)
+            .groupByKey
+            .subtractByKey (invalid)
+            .join (trafo_island)
+            .values
+            .map (_._2)
+            // doesn't work: .distinct
+            .groupBy (_.island_name)
+            .values
+            .map (_.head)
         var count = trafo_list.count
-        log.info (s"$count transformers to process")
+        log.info (s"$count transformer service areas to process")
         if (log.isDebugEnabled)
             trafo_list.foreach (trafo => log.debug (s"$trafo.island_name ${trafo.power_rating / 1000.0}kVA"))
 
@@ -647,10 +657,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 einspeiseleistung (gridlabd, trafokreise, feeder_map, storage_level)
                 log.info (s"finished $count transformer service areas")
             }
-        }
 
-        val calculate = System.nanoTime ()
-        log.info (s"calculate: ${(calculate - precalc) / 1e9} seconds")
+            val calculate = System.nanoTime ()
+            log.info (s"calculate: ${(calculate - precalc) / 1e9} seconds")
+        }
 
         count
     }
