@@ -1,126 +1,24 @@
 package ch.ninecode.mfi
 
-import java.io.BufferedOutputStream
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
-import java.sql.DriverManager
-import java.util.zip.ZipInputStream
 
-import org.scalatest._
-
-import org.apache.spark.SparkConf
-import org.apache.spark.graphx.Graph
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
-
-import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.Solar
 import ch.ninecode.gl.TransformerIsland
 import ch.ninecode.gl.Transformers
+import org.apache.spark.graphx.Graph
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
+import org.scalatest._
 
-class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
+class PrecalculationSuite extends MFITestBase with BeforeAndAfter
 {
-    type FixtureParam = SparkSession
-    val FILE_DEPOT = "data/"
     val FILENAME1 = "multipleconductor"
     val FILENAME2 = "multipletransformer"
     val FILENAME3 = "meshednetwork"
     val FILENAME4 = "multiplesupplies"
-
-    def using[T <: AutoCloseable, R] (resource: T)(block: T => R): R =
-    {
-        try
-        {
-            block (resource)
-        }
-        finally
-        {
-            resource.close ()
-        }
-    }
-
-    /**
-     * This utility extracts files and directories of a standard zip file to
-     * a destination directory.
-     *
-     * @author www.codejava.net
-     *
-     */
-    class Unzip
-    {
-        /**
-         * Extracts a zip file specified by the file to a directory.
-         *
-         * The directory will be created if does not exist.
-         *
-         * @param file      The Zip file.
-         * @param directory The directory to extract it to
-         * @throws IOException If there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        def unzip (file: String, directory: String): Unit =
-        {
-            val dir = new File (directory)
-            if (!dir.exists)
-                dir.mkdir
-            using (new ZipInputStream (new FileInputStream (file)))
-            {
-                zip =>
-                    var entry = zip.getNextEntry
-                    // iterates over entries in the zip file
-                    while (null != entry)
-                    {
-                        val path = directory + entry.getName
-                        if (!entry.isDirectory)
-                        // if the entry is a file, extract it
-                            extractFile (zip, path)
-                        else
-                        // if the entry is a directory, make the directory
-                            new File (path).mkdir
-                        zip.closeEntry ()
-                        entry = zip.getNextEntry
-                    }
-            }
-        }
-
-        /**
-         * Extracts a zip entry (file entry).
-         *
-         * @param zip  The Zip input stream for the file.
-         * @param path The path to extract he file to.
-         * @throws IOException If there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        private def extractFile (zip: ZipInputStream, path: String): Unit =
-        {
-            val bytesIn = new Array[Byte](4096)
-            using (new BufferedOutputStream (new FileOutputStream (path)))
-            {
-                bos =>
-                    var read = -1
-                    while (
-                    {
-                        read = zip.read (bytesIn)
-                        read != -1
-                    })
-                        bos.write (bytesIn, 0, read)
-            }
-        }
-    }
-
-    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3): Boolean =
-    {
-        val diff = number - reference
-        val ret = Math.abs (diff) < epsilon
-        if (!ret)
-            println (s"""$number vs. reference $reference differs by more than $epsilon ($diff)""")
-        ret
-    }
 
     before
     {
@@ -143,58 +41,13 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
         new File (s"$FILE_DEPOT$FILENAME4.rdf").delete
     }
 
-    def withFixture (test: OneArgTest): org.scalatest.Outcome =
-    {
-        // create the fixture
-        val start = System.nanoTime ()
-
-        // create the configuration
-        val configuration = new SparkConf (false)
-        configuration.setAppName ("GridLABDSuite")
-        configuration.setMaster ("local[2]")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "2g")
-        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
-        configuration.set ("spark.ui.showConsoleProgress", "false")
-
-        // register CIMReader classes
-        configuration.registerKryoClasses (CIMClasses.list)
-        // register GridLAB-D classes
-        configuration.registerKryoClasses (GridLABD.classes)
-        // register Einspeiseleistung classes
-        configuration.registerKryoClasses (Einspeiseleistung.classes)
-
-        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
-        session.sparkContext.setLogLevel ("WARN")
-
-        val end = System.nanoTime ()
-        println ("setup : " + (end - start) / 1e9 + " seconds")
-        try
-        {
-            withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
-        }
-        finally session.stop () // clean up the fixture
-    }
-
-    def readFile (session: SparkSession, filename: String): Unit =
-    {
-        val files = filename.split (",")
-        val options = Map[String,String](
-            "path" -> filename,
-            "ch.ninecode.cim.do_topo" -> "true",
-            "ch.ninecode.cim.do_topo_islands" -> "true"
-        )
-        val elements = session.read.format ("ch.ninecode.cim").options (options).load (files: _*)
-        println (elements.count () + " elements")
-    }
-
     /**
      * Test for correct calculation of heuristic limit for parallel cables.
      */
     test ("MultipleServiceCables")
     {
         session: SparkSession ⇒
-
+        {
             val begin = System.nanoTime ()
 
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
@@ -215,7 +68,7 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
 
             // construct the initial graph from the real edges and nodes
             val (xedges, xnodes) = gridlabd.prepare ()
-            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
 
             // get the existing photo-voltaic installations keyed by terminal
             val solar = Solar (session, topologicalnodes = true, storage_level)
@@ -229,12 +82,13 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
             assert (!has.isEmpty)
             val nodes = has.take (10)
             assert (nodes.length == 1)
-            val node = nodes(0)
+            val node = nodes (0)
             assert (node.reason == "heuristic limit")
             assert (node.details == "limitation of last cable(s)")
             // ToDo: note that the 0.67V drop (including the cable) is derived from incorrect impedances due to incorrect legacy CIM export
             // two cables GKN 3x10re/10 1/0.6 kV with ratedCurrent 67A, @ (400 + 0.67)V * √3 = 92993
             assert (near (node.max_power_feeding, 92993, 1.0))
+        }
     }
 
     /**
@@ -243,7 +97,7 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
     test ("MultipleTransformers")
     {
         session: SparkSession ⇒
-
+        {
             val begin = System.nanoTime ()
 
             val filename = s"$FILE_DEPOT$FILENAME2.rdf"
@@ -264,7 +118,7 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
 
             // construct the initial graph from the real edges and nodes
             val (xedges, xnodes) = gridlabd.prepare ()
-            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
 
             // get the existing photo-voltaic installations keyed by terminal
             val solar = Solar (session, topologicalnodes = true, storage_level)
@@ -278,11 +132,12 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
             assert (!has.isEmpty)
             val nodes = has.take (10)
             assert (nodes.length == 1)
-            val node = nodes(0)
+            val node = nodes (0)
             assert (node.reason == "non-radial network")
             assert (node.details == "transformer limit")
             // 2 x 100kVA = 200000
             assert (near (node.max_power_feeding, 200000, 1.0))
+        }
     }
 
     /**
@@ -291,7 +146,7 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
     test ("MeshedNetwork")
     {
         session: SparkSession ⇒
-
+        {
             val begin = System.nanoTime ()
 
             val filename = s"$FILE_DEPOT$FILENAME3.rdf"
@@ -312,7 +167,7 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
 
             // construct the initial graph from the real edges and nodes
             val (xedges, xnodes) = gridlabd.prepare ()
-            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
 
             // get the existing photo-voltaic installations keyed by terminal
             val solar = Solar (session, topologicalnodes = true, storage_level)
@@ -326,7 +181,7 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
             assert (!has.isEmpty)
             val nodes = has.take (10)
             assert (nodes.length == 1)
-            val node = nodes(0)
+            val node = nodes (0)
             assert (node.reason == "heuristic limit")
             assert (node.details == "limitation of last cable(s)")
             // two cables from two different transformers:
@@ -346,29 +201,15 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
             val eins = Einspeiseleistung (session, options)
             eins.run ()
 
-            // load the sqlite-JDBC driver using the current class loader
-            Class.forName ("org.sqlite.JDBC")
-            // create a database connection
-            val connection = DriverManager.getConnection (s"jdbc:sqlite:${options.outputfile}")
+            val query = s"select trafo, house, maximum, reason, details from results where simulation = ${getMaxSimulation (options.outputfile)} and house like 'USR%'"
+            val result = querySQLite (options.outputfile, query)
 
-            val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select trafo, house, maximum, reason, details from results where simulation = (select max(simulation) from results) and house like 'USR%'")
-            var records: Int = 0
-            while (resultset.next)
+            assert (result.size == 1, "number of records")
+            while (result.next)
             {
-                val max_loadflow = resultset.getDouble (3)
-                val reason = resultset.getString (4)
-                val details = resultset.getString (5)
-                assert (max_loadflow == 58000.0, "loadflow should be more than precalculation")
-                assert (reason == "current limit", "expected that it is current limited")
-                assert (details == "CAB0002 > 67.0 Amps", "GKN 3x10re/10 is still the limiting factor")
-                records = records + 1
+                checkResults (result, 58000, "current limit", "CAB0002 > 67.0 Amps")
             }
-            resultset.close ()
-            statement.close ()
-            connection.close ()
-            assert (records == 1, "number of records")
-
+        }
     }
 
     /**
@@ -398,7 +239,7 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
 
             // construct the initial graph from the real edges and nodes
             val (xedges, xnodes) = gridlabd.prepare ()
-            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
 
             // get the existing photo-voltaic installations keyed by terminal
             val solar = Solar (session, topologicalnodes = true, storage_level)
@@ -412,7 +253,7 @@ class PrecalculationSuite extends fixture.FunSuite with BeforeAndAfter
             assert (!has.isEmpty)
             val nodes = has.take (10)
             assert (nodes.length == 1)
-            val node = nodes(0)
+            val node = nodes (0)
             assert (node.reason == "heuristic limit")
             assert (node.details == "limitation of last cable(s)")
             // ToDo: this is not quite right, the voltage drop will depend on both supplies, but only one supply is found by the trace
