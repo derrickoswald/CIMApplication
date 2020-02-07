@@ -95,6 +95,7 @@
     </build>
 
     <modules>
+        <module>Util</module>
         <module>CIMConnector</module>
         <module>CIMWeb</module>
         <module>CIMEar</module>
