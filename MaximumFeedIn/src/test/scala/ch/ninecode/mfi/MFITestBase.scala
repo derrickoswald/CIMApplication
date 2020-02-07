@@ -47,6 +47,16 @@ class MFITestBase extends fixture.FunSuite with Sqlite with Unzip
         finally session.stop () // clean up the fixture
     }
 
+    def runMFI(session: SparkSession, options: EinspeiseleistungOptions): Unit = {
+        val begin = System.nanoTime ()
+
+        val eins = Einspeiseleistung (session, options)
+        val count = eins.run ()
+
+        val total = System.nanoTime ()
+        println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
+    }
+
     def readFile (session: SparkSession, filename: String): Unit =
     {
         val files = filename.split (",")
