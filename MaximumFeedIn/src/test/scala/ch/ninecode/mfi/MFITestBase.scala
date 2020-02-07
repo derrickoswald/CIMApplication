@@ -1,38 +1,18 @@
 package ch.ninecode.mfi
 
-import java.io.BufferedOutputStream
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
-import java.sql.DriverManager
-import java.util.zip.ZipInputStream
-
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.util.Sqlite
+import ch.ninecode.util.Unzip
 import com.sun.rowset.CachedRowSetImpl
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.scalatest.fixture
 
-class MFITestBase extends fixture.FunSuite
+class MFITestBase extends fixture.FunSuite with Sqlite with Unzip
 {
-
     type FixtureParam = SparkSession
     val FILE_DEPOT = "data/"
-    val PRIVATE_FILE_DEPOT = "private_data/"
-
-    def using[T <: AutoCloseable, R] (resource: T)(block: T => R): R =
-    {
-        try
-        {
-            block (resource)
-        }
-        finally
-        {
-            resource.close ()
-        }
-    }
 
     def withFixture (test: OneArgTest): org.scalatest.Outcome =
     {
@@ -89,23 +69,6 @@ class MFITestBase extends fixture.FunSuite
         result.getString (1)
     }
 
-    def querySQLite (databasePath: String, sqlStatement: String): CachedRowSetImpl =
-    {
-        // load the sqlite-JDBC driver using the current class loader
-        Class.forName ("org.sqlite.JDBC")
-        // create a database connection
-        val connection = DriverManager.getConnection (s"jdbc:sqlite:$databasePath")
-
-        val statement = connection.createStatement ()
-        val resultset = statement.executeQuery (sqlStatement)
-        val crs = new CachedRowSetImpl
-        crs.populate (resultset)
-        resultset.close ()
-        statement.close ()
-        connection.close ()
-        crs
-    }
-
     def near (number: Double, reference: Double, epsilon: Double = 1.0e-3): Boolean =
     {
         val diff = number - reference
@@ -123,74 +86,4 @@ class MFITestBase extends fixture.FunSuite
         assert (result.getString ("Reason") == reason, s"reason for $house")
         assert (result.getString ("Details") == details, s"details for $house")
     }
-
-    /**
-     * This utility extracts files and directories of a standard zip file to
-     * a destination directory.
-     *
-     * @author www.codejava.net
-     *
-     */
-    class Unzip
-    {
-        /**
-         * Extracts a zip file specified by the file to a directory.
-         *
-         * The directory will be created if does not exist.
-         *
-         * @param file      The Zip file.
-         * @param directory The directory to extract it to
-         * @throws IOException If there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        def unzip (file: String, directory: String): Unit =
-        {
-            val dir = new File (directory)
-            if (!dir.exists)
-                dir.mkdir
-            using (new ZipInputStream (new FileInputStream (file)))
-            {
-                zip =>
-                    var entry = zip.getNextEntry
-                    // iterates over entries in the zip file
-                    while (null != entry)
-                    {
-                        val path = directory + entry.getName
-                        if (!entry.isDirectory)
-                        // if the entry is a file, extract it
-                            extractFile (zip, path)
-                        else
-                        // if the entry is a directory, make the directory
-                            new File (path).mkdir
-                        zip.closeEntry ()
-                        entry = zip.getNextEntry
-                    }
-            }
-        }
-
-        /**
-         * Extracts a zip entry (file entry).
-         *
-         * @param zip  The Zip input stream for the file.
-         * @param path The path to extract he file to.
-         * @throws IOException If there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        private def extractFile (zip: ZipInputStream, path: String): Unit =
-        {
-            val bytesIn = new Array[Byte](4096)
-            using (new BufferedOutputStream (new FileOutputStream (path)))
-            {
-                bos =>
-                    var read = -1
-                    while (
-                    {
-                        read = zip.read (bytesIn)
-                        read != -1
-                    })
-                        bos.write (bytesIn, 0, read)
-            }
-        }
-    }
-
 }
