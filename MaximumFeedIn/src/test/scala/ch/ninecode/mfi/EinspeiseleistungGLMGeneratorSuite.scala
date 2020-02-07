@@ -112,7 +112,7 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
         assert (solargen.sup.normalPF == 0.8, "normalPf should be 0.8")
         assert (solargen.sup.ratedNetMaxP == 15.0, "ratedNetMaxP should be 15.0")
 
-        val power_list = getConstantPower (solargen, false)
+        val power_list = getConstantPower (solargen, one_phase = false)
         assert (power_list.length == 3, "3 phase")
         power_list.foreach (
             p =>
@@ -139,7 +139,7 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
         assert (solargen.sup.normalPF == -0.8, "normalPf should be -0.8")
         assert (solargen.sup.ratedNetMaxP == 15.0, "ratedNetMaxP should be 15.0")
 
-        val power_list = getConstantPower (solargen, false)
+        val power_list = getConstantPower (solargen, one_phase = false)
         assert (power_list.length == 3, "3 phase")
         power_list.foreach (
             p =>
