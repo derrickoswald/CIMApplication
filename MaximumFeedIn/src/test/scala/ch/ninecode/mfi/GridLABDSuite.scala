@@ -36,35 +36,15 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
     {
         session: SparkSession ⇒
         {
-            val begin = System.nanoTime ()
-
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                three = false,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
                 all = true,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                cosphi = 1.0,
-                voltage_threshold = 3.0,
-                voltage_threshold2 = 3.0,
-                ignore_other = false,
-                workdir = "simulation/",
                 outputfile = "simulation/results.db",
-                files = List (filename),
-                precalc_factor = 2.5
+                files = List (filename)
             )
-            val eins = Einspeiseleistung (session, options)
-            val count = eins.run ()
-
-            val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
+            runMFI(session, options)
 
             val maxSimulation = getMaxSimulation (options.outputfile)
             val query =
@@ -88,36 +68,16 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
     {
         session: SparkSession ⇒
         {
-            val begin = System.nanoTime ()
-
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                three = false,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
                 all = true,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                precalc_factor = 2.5,
-                cosphi = 1.0,
-                voltage_threshold = 3.0,
-                voltage_threshold2 = 3.0,
-                ignore_other = false,
                 workdir = "simulation/",
-                outputfile = "simulation/results.db",
                 files = List (filename),
                 cable_impedance_limit = 0.14
             )
-            val eins = Einspeiseleistung (session, options)
-            val count = eins.run ()
-
-            val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
+            runMFI(session, options)
 
             val maxSimulation = getMaxSimulation (options.outputfile)
             val query =
@@ -141,36 +101,14 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
     {
         session: SparkSession ⇒
         {
-
-            val begin = System.nanoTime ()
-
             val filename = s"$FILE_DEPOT$FILENAME2.rdf"
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                three = false,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
-                all = false,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                cosphi = 1.0,
-                voltage_threshold = 3.0,
-                voltage_threshold2 = 3.0,
-                ignore_other = false,
                 workdir = "simulation/",
-                outputfile = "simulation/results.db",
-                files = List (filename),
-                precalc_factor = 2.5
+                files = List (filename)
             )
-            val eins = Einspeiseleistung (session, options)
-            val count = eins.run ()
-
-            val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
+            runMFI(session, options)
 
             val query = "select trafo, house, maximum, reason, details from results where id = (select max(id) from results)"
             val result = querySQLite (options.outputfile, query)
@@ -192,35 +130,14 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
     {
         session: SparkSession ⇒
         {
-            val begin = System.nanoTime ()
-
             val filename = s"$FILE_DEPOT$FILENAME3.rdf"
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
-                three = false,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
-                all = false,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                cosphi = 1.0,
-                voltage_threshold = 3.0,
-                voltage_threshold2 = 3.0,
-                ignore_other = false,
                 workdir = "simulation/",
-                outputfile = "simulation/results.db",
-                files = List (filename),
-                precalc_factor = 2.5
+                files = List (filename)
             )
-            val eins = Einspeiseleistung (session, options)
-            val count = eins.run ()
-
-            val total = System.nanoTime ()
-            println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
+            runMFI(session, options)
 
             val query = s"select trafo, house, maximum, reason, details from results where simulation = ${getMaxSimulation (options.outputfile)}"
             val result = querySQLite (options.outputfile, query)
@@ -252,50 +169,21 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
 
             val options_one_phase = EinspeiseleistungOptions (
                 verbose = true,
-                three = false,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
                 all = true,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                cosphi = 1.0,
-                voltage_threshold = 3.0,
-                voltage_threshold2 = 3.0,
-                ignore_other = false,
-                outputfile = "simulation_three_phase/results.db",
                 workdir = "simulation_three_phase/",
-                files = List (filename),
-                precalc_factor = 2.5
+                files = List (filename)
             )
-            val eins = Einspeiseleistung (session, options_one_phase)
-            eins.run ()
+            runMFI(session, options_one_phase)
             val one_phase = getMaxSimulation (options_one_phase.outputfile)
 
             val options_three_phase = EinspeiseleistungOptions (
                 verbose = true,
                 three = true,
-                precalculation = false,
-                trafos = "",
-                export_only = false,
                 all = true,
-                erase = false,
-                simulation = -1,
-                reference = -1,
-                delta = 1e-6,
-                cosphi = 1.0,
-                voltage_threshold = 3.0,
-                voltage_threshold2 = 3.0,
-                ignore_other = false,
-                outputfile = "simulation_three_phase/results.db",
                 workdir = "simulation_three_phase/",
-                files = List (filename),
-                precalc_factor = 2.5
+                files = List (filename)
             )
-            val drei = Einspeiseleistung (session, options_three_phase)
-            drei.run ()
+            runMFI(session, options_one_phase)
             val three_phase = getMaxSimulation (options_three_phase.outputfile)
 
             val queryOnePhase = s"select trafo, house, maximum, reason, details from results where simulation='$one_phase'"

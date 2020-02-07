@@ -15,6 +15,11 @@
     <inceptionYear>2020</inceptionYear>
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/Util</url>
 
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.scala-lang</groupId>

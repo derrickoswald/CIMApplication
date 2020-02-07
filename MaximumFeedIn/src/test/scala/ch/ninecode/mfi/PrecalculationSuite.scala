@@ -191,15 +191,12 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             assert (near (node.max_power_feeding, 108009, 1.0))
 
             val options = EinspeiseleistungOptions (
-                precalculation = false,
                 verbose = true,
                 all = true,
                 workdir = "simulation",
                 files = List (filename)
             )
-
-            val eins = Einspeiseleistung (session, options)
-            eins.run ()
+            runMFI(session, options)
 
             val query = s"select trafo, house, maximum, reason, details from results where simulation = ${getMaxSimulation (options.outputfile)} and house like 'USR%'"
             val result = querySQLite (options.outputfile, query)
