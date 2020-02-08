@@ -1,7 +1,9 @@
 Ingest
 ======
 
-Import measurement data from Belvis dump files.
+Import measurement data from Belvis/LPEx dump files.
+
+![Ingest Overview](https://rawgit.com/derrickoswald/CIMApplication/master/Ingest/img/Ingest.svg "Overview diagram")
 
 # Overview
 
