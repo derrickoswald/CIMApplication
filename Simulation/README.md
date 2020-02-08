@@ -3,6 +3,8 @@ Simulation
 
 Uses measured meter data and GridLAB-D load-flow calculations to determine quality metrics for transformer service areas.
 
+![Simulation Overview](https://rawgit.com/derrickoswald/CIMApplication/master/Simulation/img/Simulation.svg "Overview diagram")
+
 # Overview
 
 Energy measurements (kWh) are read from Cassandra and applied as player files (house loads). Recorder files of
