@@ -3,6 +3,8 @@ ShortCircuit
 
 Spark based module to perform short-circuit and fuse specificity calculations.
 
+![ShortCircuit Overview](https://rawgit.com/derrickoswald/CIMApplication/master/ShortCircuit/img/ShortCircuit.svg "Overview diagram")
+
 # Overview
 
 There are two ways to use this module:
