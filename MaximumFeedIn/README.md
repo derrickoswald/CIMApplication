@@ -3,6 +3,8 @@ Maximum Feed In
 
 Calculate the maximum feed-in power (e.g. capacity of a photovoltaic installation) at every node of an electric distribution network.
 
+![MaximumFeedIn Overview](https://rawgit.com/derrickoswald/CIMApplication/master/MaximumFeedIn/img/MaximumFeedIn.svg "Overview diagram")
+
 # Overview
 This program reads in a [CIM file](https://cimug.ucaiug.org/) describing an electrical network
 and evaluates the maximum feed-in power at each house without requiring network reinforcement.
