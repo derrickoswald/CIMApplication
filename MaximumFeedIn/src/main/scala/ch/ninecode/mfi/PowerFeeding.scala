@@ -320,7 +320,10 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
             val target = triplet.dstAttr.source_obj
 
             if (source != null && target != null && source.trafo_id != null && target.trafo_id != null)
-                (source.trafo_id, triplet.attr)
+                if (triplet.attr.connected)
+                    (source.trafo_id, triplet.attr)
+                else
+                    (null.asInstanceOf [String], triplet.attr)
             else
                 (null.asInstanceOf [String], triplet.attr)
         }
