@@ -3,7 +3,7 @@ package ch.ninecode.util
 import java.sql.DriverManager
 import com.sun.rowset.CachedRowSetImpl
 
-trait Sqlite {
+trait SQLite {
     def querySQLite (databasePath: String, sqlStatement: String): CachedRowSetImpl =
     {
         // load the sqlite-JDBC driver using the current class loader
