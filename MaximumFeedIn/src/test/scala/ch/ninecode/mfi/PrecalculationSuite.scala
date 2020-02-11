@@ -87,7 +87,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             assert (node.details == "limitation of last cable(s)")
             // ToDo: note that the 0.67V drop (including the cable) is derived from incorrect impedances due to incorrect legacy CIM export
             // two cables GKN 3x10re/10 1/0.6 kV with ratedCurrent 67A, @ (400 + 0.67)V * √3 = 92993
-            assert (near (node.max_power_feeding, 92993, 1.0))
+            near (node.max_power_feeding, 92993, 1.0)
         }
     }
 
@@ -136,7 +136,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             assert (node.reason == "non-radial network")
             assert (node.details == "transformer limit")
             // 2 x 100kVA = 200000
-            assert (near (node.max_power_feeding, 200000, 1.0))
+            near (node.max_power_feeding, 200000, 1.0)
         }
     }
 
@@ -188,7 +188,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             // GKN 3x10re/10 1/0.6 kV with ratedCurrent 67A, @ (400 + 1.97)V * √3 = 46648
             // GKN 3x16rm/16 1/0.6 kV with ratedCurrent 88A, @ (400 + 2.58)V * √3 = 61361
             //                                                                     108009
-            assert (near (node.max_power_feeding, 108009, 1.0))
+            near (node.max_power_feeding, 108009, 1.0)
 
             val options = EinspeiseleistungOptions (
                 verbose = true,
@@ -256,6 +256,6 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             // ToDo: this is not quite right, the voltage drop will depend on both supplies, but only one supply is found by the trace
             // two cables from two different supplies:
             // GKN 3x16rm/16 1/0.6 kV with ratedCurrent 88A, @ (400 + 2.00)V * √3 = 122547
-            assert (near (node.max_power_feeding, 122547, 1.0))
+            near (node.max_power_feeding, 122547, 1.0)
     }
 }

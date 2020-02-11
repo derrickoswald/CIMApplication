@@ -1,15 +1,18 @@
 package ch.ninecode.mfi
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.gl.GridLABD
-import ch.ninecode.util.Sqlite
-import ch.ninecode.util.Unzip
 import com.sun.rowset.CachedRowSetImpl
-import org.apache.spark.SparkConf
-import org.apache.spark.sql.SparkSession
+
 import org.scalatest.fixture
 
-class MFITestBase extends fixture.FunSuite with Sqlite with Unzip
+import org.apache.spark.SparkConf
+import org.apache.spark.sql.SparkSession
+
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.util.SQLite
+import ch.ninecode.util.Unzip
+
+class MFITestBase extends fixture.FunSuite with SQLite with Unzip
 {
     type FixtureParam = SparkSession
     val FILE_DEPOT = "data/"
@@ -60,13 +63,13 @@ class MFITestBase extends fixture.FunSuite with Sqlite with Unzip
     def readFile (session: SparkSession, filename: String): Unit =
     {
         val files = filename.split (",")
-        val options = new java.util.HashMap[String, String]()
-        options.put ("path", filename)
-        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-        options.put ("ch.ninecode.cim.make_edges", "false")
-        options.put ("ch.ninecode.cim.do_join", "false")
-        options.put ("ch.ninecode.cim.do_topo", "true")
-        options.put ("ch.ninecode.cim.do_topo_islands", "true")
+        val options = Map[String, String](
+            "path" -> filename,
+            "StorageLevel" -> "MEMORY_AND_DISK_SER",
+            "ch.ninecode.cim.make_edges" -> "false",
+            "ch.ninecode.cim.do_join" -> "false",
+            "ch.ninecode.cim.do_topo" -> "true",
+            "ch.ninecode.cim.do_topo_islands" -> "true")
         val elements = session.read.format ("ch.ninecode.cim").options (options).load (files: _*)
         println (elements.count () + " elements")
     }
@@ -79,20 +82,21 @@ class MFITestBase extends fixture.FunSuite with Sqlite with Unzip
         result.getString (1)
     }
 
-    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3): Boolean =
+    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = null): Unit =
     {
         val diff = number - reference
-        val ret = Math.abs (diff) < epsilon
-        if (!ret)
-            println ("""%s vs. reference %s differs by more than %s (%s)""".format (number, reference, epsilon, diff))
-        ret
+        assert (Math.abs (diff) < epsilon,
+            if (null == message)
+                s"""$number vs. reference $reference differs by more than $epsilon ($diff)"""
+            else
+                message)
     }
 
     def checkResults (result: CachedRowSetImpl, max: Double, reason: String, details: String): Unit =
     {
         val house = result.getString ("House")
         val maximum = result.getDouble ("Maximum")
-        assert (Math.abs (maximum - max) <= 1000, s"maximum for $house is $maximum instead of $max")
+        near (maximum, max, 1000.0, s"maximum for $house is $maximum instead of $max")
         assert (result.getString ("Reason") == reason, s"reason for $house")
         assert (result.getString ("Details") == details, s"details for $house")
     }
