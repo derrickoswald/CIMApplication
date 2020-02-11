@@ -19,6 +19,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
     val FILENAME2 = "multipletransformer"
     val FILENAME3 = "meshednetwork"
     val FILENAME4 = "multiplesupplies"
+    val FILENAME5 = "rückspannung"
 
     before
     {
@@ -31,6 +32,8 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             new Unzip ().unzip (s"$FILE_DEPOT$FILENAME3.zip", FILE_DEPOT)
         if (!new File (s"$FILE_DEPOT$FILENAME4.rdf").exists)
             new Unzip ().unzip (s"$FILE_DEPOT$FILENAME4.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME5.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME5.zip", FILE_DEPOT)
     }
 
     after
@@ -39,6 +42,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
         new File (s"$FILE_DEPOT$FILENAME2.rdf").delete
         new File (s"$FILE_DEPOT$FILENAME3.rdf").delete
         new File (s"$FILE_DEPOT$FILENAME4.rdf").delete
+        new File (s"$FILE_DEPOT$FILENAME5.rdf").delete
     }
 
     /**
@@ -257,5 +261,53 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             // two cables from two different supplies:
             // GKN 3x16rm/16 1/0.6 kV with ratedCurrent 88A, @ (400 + 2.00)V * √3 = 122547
             near (node.max_power_feeding, 122547, 1.0)
+    }
+
+    /**
+     * Test for correct calculation of heuristic limit for Rückspannung scenarios.
+     */
+    test ("Rückspannung")
+    {
+        session: SparkSession ⇒
+
+            val begin = System.nanoTime ()
+
+            val filename = s"$FILE_DEPOT$FILENAME5.rdf"
+            readFile (session, filename)
+
+            val read = System.nanoTime ()
+            println ("read : " + (read - begin) / 1e9 + " seconds")
+
+            // set up for execution
+            val gridlabd = new GridLABD (session = session, topological_nodes = true, one_phase = true, workdir = ".")
+            val storage_level = StorageLevel.MEMORY_AND_DISK_SER
+
+            // do all low voltage power transformers
+            val _transformers = new Transformers (session, storage_level)
+            val transformer_data = _transformers.getTransformers ()
+            val transformers = transformer_data.groupBy (_.node1.TopologicalIsland).values.map (TransformerIsland.apply)
+            transformers.persist (storage_level).name = "Transformers"
+
+            // construct the initial graph from the real edges and nodes
+            val (xedges, xnodes) = gridlabd.prepare ()
+            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+
+            // get the existing photo-voltaic installations keyed by terminal
+            val solar = Solar (session, topologicalnodes = true, storage_level)
+            val sdata = solar.getSolarInstallations
+
+            val power_feeding = new PowerFeeding (session)
+            val results: PreCalculationResults = power_feeding.threshold_calculation (initial, sdata, transformers, EinspeiseleistungOptions ())
+            val houses = results.has
+            println (houses.take (100).mkString ("\n"))
+            val has = houses.filter (_.mrid == "USR0001")
+            assert (!has.isEmpty)
+            val nodes = has.take (10)
+            assert (nodes.length == 1)
+            val node = nodes (0)
+            assert (node.reason == "heuristic limit")
+            assert (node.details == "limitation of last cable(s)")
+            // GKN 3x10re/10 1/0.6 kV with ratedCurrent 67A, @ (400V + 13.45V) * √3 = 47980
+            near (node.max_power_feeding, 47980.0, 1.0)
     }
 }
