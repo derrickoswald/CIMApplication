@@ -85,7 +85,7 @@ class MFITestBase extends fixture.FunSuite with SQLite with Unzip
     def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = null): Unit =
     {
         val diff = number - reference
-        assert (Math.abs (diff) < epsilon,
+        assert (Math.abs (diff) <= epsilon,
             if (null == message)
                 s"""$number vs. reference $reference differs by more than $epsilon ($diff)"""
             else
