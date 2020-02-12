@@ -60,7 +60,7 @@ case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: Transf
         val trafo_x0 = zt.im // use r0=r1 & x0=x1 for trafos
         val v1 = transformer.v0
         val _v = transformer.transformers.map (
-            _.voltages.find ((x: (String, Double)) => (Math.abs (x._2 - v) / x._2) <= 0.03) match
+            _.voltages.find ((x: (String, Double)) => (Math.abs (x._2 - v) / x._2) <= 0.10) match
             {
                 case Some (voltage) => voltage._2
                 case None =>

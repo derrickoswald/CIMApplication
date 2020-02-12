@@ -1125,7 +1125,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // but not the ones that have another error
         def other_error (s: String): Boolean =
             !(s.startsWith ("FATAL: non-radial network detected") ||
-              s.startsWith ("INVALID: 3 transformer windings") ||
+              s.startsWith ("INVALID: 3 transformer windings") || // ToDo: Remove when 3W transformer test for SC is available
               s.startsWith ("INVALID: low voltage")) &&
               s.startsWith ("INVALID")
 
