@@ -6,25 +6,23 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import scala.collection.mutable.HashMap
-import scala.io.Source
-
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.gl._
+import ch.ninecode.mfi._
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.cim.CIMTopologyOptions
-import ch.ninecode.mfi._
-import ch.ninecode.gl._
-import ch.ninecode.model._
+import scala.collection.mutable
+import scala.io.Source
 
 //  <md:FullModel rdf:about="sias_current">
 //        <md:Model.created>2017-06-01T23:00:20</md:Model.created>
@@ -69,7 +67,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
     def getCIMheader (gridlabd: GridLABD): String =
     {
         val file = options.files.head.split (",")(0) // need to watch out for comma separated file list
-    val lead = "<md:FullModel"
+        val lead = "<md:FullModel"
         val trail = "</md:FullModel>"
 
         val raw = if ((gridlabd.workdir_scheme == "file") || (gridlabd.workdir_scheme == ""))
@@ -174,7 +172,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         }
 
         // read the file
-        val reader_options = new HashMap[String, String]()
+        val reader_options = new mutable.HashMap[String, String]()
         reader_options ++= options.cim_reader_options
         reader_options.put ("path", options.files.mkString (","))
         reader_options.put ("ch.ninecode.cim.make_edges", "false")
@@ -246,7 +244,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         val precalc_results =
         {
             // construct the initial graph from the real edges and nodes
-            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
             val pf = new PowerFeeding (session, storage_level)
             pf.threshold_calculation (initial, sdata, transformers, EinspeiseleistungOptions (cosphi = 1.0))
         }

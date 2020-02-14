@@ -552,7 +552,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     {
         val begin = System.nanoTime ()
 
-        val schema = Schema (session, options.keyspace, options.replication, true)
+        val schema = Schema (session, options.keyspace, options.replication, verbose = true)
         if (schema.make)
         {
 

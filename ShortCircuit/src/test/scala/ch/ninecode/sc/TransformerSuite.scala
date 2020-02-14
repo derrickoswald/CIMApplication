@@ -9,10 +9,8 @@ import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.gl.Complex
 
-class TransformerSuite extends SparkSuite with BeforeAndAfter
+class TransformerSuite extends SCTestBase with BeforeAndAfter
 {
-    val FILE_DEPOT = "data/"
-
     val FILENAME1 = "voltage_regulator.rdf"
     val FILENAME2 = "three_winding_transformer.rdf"
     val FILENAME3 = "subtransmission.rdf"
@@ -53,7 +51,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -63,8 +61,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 default_short_circuit_power_max = 600.0e6,
                 default_short_circuit_impedance_max = Complex (0.0, 20.166666666666667), // purely reactive
                 default_short_circuit_power_min = 600.0e6,
-                default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
-                base_temperature = 20.0,
+                default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667) // purely reactive
+                ,
                 low_temperature = 20.0)
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
@@ -76,9 +74,12 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (results.filter (_.equipment == "USR0002").first ().errors.exists (_.startsWith ("INVALID")), "USR0002 should be invalid")
-            assert (results.filter (_.equipment == "USR0003").first ().errors.exists (_.startsWith ("INVALID")), "USR0003 should be invalid")
-            assert (results.filter (_.equipment == "USR0004").first ().errors.exists (_.startsWith ("INVALID")), "USR0004 should be invalid")
+            assert (results.filter (_.equipment == "USR0002").first ().errors.exists (_.startsWith ("INVALID")),
+                "USR0002 should be invalid")
+            assert (results.filter (_.equipment == "USR0003").first ().errors.exists (_.startsWith ("INVALID")),
+                "USR0003 should be invalid")
+            assert (results.filter (_.equipment == "USR0004").first ().errors.exists (_.startsWith ("INVALID")),
+                "USR0004 should be invalid")
     }
 
     test ("Three Winding Transformer")
@@ -100,7 +101,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -110,8 +111,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 default_short_circuit_power_max = 600.0e6,
                 default_short_circuit_impedance_max = Complex (0.0, 20.166666666666667), // purely reactive
                 default_short_circuit_power_min = 600.0e6,
-                default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
-                base_temperature = 20.0,
+                default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667) // purely reactive
+                ,
                 low_temperature = 20.0,
                 workdir = "./results/")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
@@ -124,11 +125,16 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (results.filter (_.equipment == "USR0001").first ().errors.isEmpty, "USR0001 should be valid (TX0001)")
-            assert (results.filter (_.equipment == "USR0002").first ().errors.isEmpty, "USR0002 should be valid (TX0001)")
-            assert (results.filter (_.equipment == "USR0003").first ().errors.forall (_.startsWith ("computed by load-flow")), "USR0003 should be valid")
-            assert (results.filter (_.equipment == "USR0004").first ().errors.exists (_.startsWith ("computed by load-flow")), "USR0004 should be valid")
-            assert (results.filter (_.equipment == "USR0005").first ().errors.exists (_.startsWith ("computed by load-flow")), "USR0005 should be valid")
+            assert (results.filter (_.equipment == "USR0001")
+                .first ().errors.isEmpty, "USR0001 should be valid (TX0001)")
+            assert (results.filter (_.equipment == "USR0002")
+                .first ().errors.isEmpty, "USR0002 should be valid (TX0001)")
+            assert (results.filter (_.equipment == "USR0003")
+                .first ().errors.forall (_.startsWith ("computed by load-flow")), "USR0003 should be valid")
+            assert (results.filter (_.equipment == "USR0004")
+                .first ().errors.exists (_.startsWith ("computed by load-flow")), "USR0004 should be valid")
+            assert (results.filter (_.equipment == "USR0005")
+                .first ().errors.exists (_.startsWith ("computed by load-flow")), "USR0005 should be valid")
     }
 
     test ("Subtransmission")
@@ -150,7 +156,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -160,8 +166,8 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
                 default_short_circuit_power_max = 600.0e6,
                 default_short_circuit_impedance_max = Complex (0.0, 20.166666666666667), // purely reactive
                 default_short_circuit_power_min = 600.0e6,
-                default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
-                base_temperature = 20.0,
+                default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667) // purely reactive
+                ,
                 low_temperature = 20.0,
                 workdir = "./results/")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
@@ -174,7 +180,7 @@ class TransformerSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (near (results.filter (_.equipment == "USR0001").first ().high_ik, 200.528465600727))
-            assert (near (results.filter (_.equipment == "USR0002").first ().high_ik, 170.281577472793))
+            near (results.filter (_.equipment == "USR0001").first ().high_ik, 200.528465600727)
+            near (results.filter (_.equipment == "USR0002").first ().high_ik, 170.281577472793)
     }
 }

@@ -1,61 +1,21 @@
 package ch.ninecode.mfi
 
-import com.sun.rowset.CachedRowSetImpl
-
-import org.scalatest.fixture
-
-import org.apache.spark.SparkConf
-import org.apache.spark.sql.SparkSession
-
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.util.SQLite
-import ch.ninecode.util.Unzip
+import ch.ninecode.util.TestUtil
+import com.sun.rowset.CachedRowSetImpl
+import org.apache.spark.sql.SparkSession
 
-class MFITestBase extends fixture.FunSuite with SQLite with Unzip
+class MFITestBase extends TestUtil
 {
-    type FixtureParam = SparkSession
     val FILE_DEPOT = "data/"
+    override val classesToRegister = Array (CIMClasses.list, GridLABD.classes, Einspeiseleistung.classes)
 
-    def withFixture (test: OneArgTest): org.scalatest.Outcome =
+    def runMFI (session: SparkSession, options: EinspeiseleistungOptions): Unit =
     {
-        // create the fixture
-        val start = System.nanoTime ()
-
-        // create the configuration
-        val configuration = new SparkConf (false)
-        configuration.setAppName (this.getClass.getSimpleName)
-        configuration.setMaster ("local[2]")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "2g")
-        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
-        configuration.set ("spark.ui.showConsoleProgress", "false")
-
-        // register CIMReader classes
-        configuration.registerKryoClasses (CIMClasses.list)
-        // register GridLAB-D classes
-        configuration.registerKryoClasses (GridLABD.classes)
-        // register Einspeiseleistung classes
-        configuration.registerKryoClasses (Einspeiseleistung.classes)
-
-        val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
-        session.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-
-        val end = System.nanoTime ()
-        println ("setup : " + (end - start) / 1e9 + " seconds")
-        try
-        {
-            withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
-        }
-        finally session.stop () // clean up the fixture
-    }
-
-    def runMFI(session: SparkSession, options: EinspeiseleistungOptions): Unit = {
         val begin = System.nanoTime ()
-
         val eins = Einspeiseleistung (session, options)
         val count = eins.run ()
-
         val total = System.nanoTime ()
         println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
     }
@@ -63,7 +23,7 @@ class MFITestBase extends fixture.FunSuite with SQLite with Unzip
     def readFile (session: SparkSession, filename: String): Unit =
     {
         val files = filename.split (",")
-        val options = Map[String, String](
+        val options = Map [String, String](
             "path" -> filename,
             "StorageLevel" -> "MEMORY_AND_DISK_SER",
             "ch.ninecode.cim.make_edges" -> "false",
@@ -82,15 +42,6 @@ class MFITestBase extends fixture.FunSuite with SQLite with Unzip
         result.getString (1)
     }
 
-    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = null): Unit =
-    {
-        val diff = number - reference
-        assert (Math.abs (diff) <= epsilon,
-            if (null == message)
-                s"""$number vs. reference $reference differs by more than $epsilon ($diff)"""
-            else
-                message)
-    }
 
     def checkResults (result: CachedRowSetImpl, max: Double, reason: String, details: String): Unit =
     {

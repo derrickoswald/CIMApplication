@@ -5,20 +5,19 @@ import java.net.URI
 import java.net.URLDecoder
 import java.util.Properties
 
-import scala.collection.mutable.HashMap
-import scala.tools.nsc.io.Jar
-import scala.util.Random
-import scopt.OptionParser
-
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.DefaultSource
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.mfi.Einspeiseleistung
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
+import scopt.OptionParser
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.DefaultSource
-import ch.ninecode.mfi.Einspeiseleistung
-import ch.ninecode.gl.GridLABD
+import scala.collection.mutable
+import scala.tools.nsc.io.Jar
+import scala.util.Random
 
 object Main
 {
@@ -43,7 +42,7 @@ object Main
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
-        (s) =>
+        s =>
         {
             var ret = Map [String, String]()
             val ss = s.split (",")
@@ -223,7 +222,7 @@ object Main
 
                 val options = LowVoltageOptions (
                     verbose = !arguments.quiet,
-                    cim_reader_options = HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
+                    cim_reader_options = mutable.HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                     three = arguments.three,
                     trafos = arguments.trafos,
                     workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir,

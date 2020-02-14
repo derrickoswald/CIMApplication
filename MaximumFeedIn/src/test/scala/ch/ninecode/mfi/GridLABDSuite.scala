@@ -41,7 +41,6 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             val options = EinspeiseleistungOptions (
                 verbose = true,
                 all = true,
-                outputfile = "simulation/results.db",
                 files = List (filename)
             )
             runMFI(session, options)

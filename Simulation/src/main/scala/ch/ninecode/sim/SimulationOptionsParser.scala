@@ -7,7 +7,7 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 {
     head (APPLICATION_NAME, APPLICATION_VERSION)
 
-    val default = SimulationOptions ()
+    val default: SimulationOptions = SimulationOptions ()
     var unittest = false
     var helpout = false
     var versionout = false
@@ -20,7 +20,7 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
                 yield
                 {
                     val kv = p.split ("=")
-                    ((kv (0), kv (1)))
+                    (kv (0), kv (1))
                 }
             ret.toMap
         }

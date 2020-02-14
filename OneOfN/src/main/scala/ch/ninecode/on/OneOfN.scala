@@ -6,13 +6,11 @@ import java.text.SimpleDateFormat
 import java.util.TimeZone
 
 import scala.collection.mutable.HashMap
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CHIM
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
@@ -31,6 +29,8 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+
+import scala.collection.mutable
 
 case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 {
@@ -146,7 +146,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         val start = System.nanoTime ()
 
         // read the file
-        val reader_options = new HashMap[String, String]()
+        val reader_options = new mutable.HashMap[String, String]()
         reader_options ++= options.cim_reader_options
         reader_options.put ("path", options.files.mkString (","))
         reader_options.put ("ch.ninecode.cim.make_edges", "false")

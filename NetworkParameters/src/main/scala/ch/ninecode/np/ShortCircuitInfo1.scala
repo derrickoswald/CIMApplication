@@ -114,7 +114,7 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
             // decompose sk values into P & Q, use maxP and maxQ also as minP and minQ respectively
             val maxP = sk * Math.cos (wik)
             val maxQ = sk * Math.sin (wik)
-            val injection = EquivalentInjection (equivalent, maxP, maxQ, maxP, maxQ, 0.0, 0.0, netz_r1, netz_r0, netz_r1, false, true, 0.0, netz_x1, netz_x0, netz_x1, null)
+            val injection = EquivalentInjection (equivalent, maxP, maxQ, maxP, maxQ, 0.0, 0.0, netz_r1, netz_r0, netz_r1, regulationCapability = false, regulationStatus = true, 0.0, netz_x1, netz_x0, netz_x1, null)
             // note: exclude r2, x2 since we don't really know them and they aren't used
             // note: use RegulationStatus to indicate this is a real value and not a default
             injection.bitfields = Array (Integer.parseInt ("0001010001001111", 2))
@@ -280,7 +280,7 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
                     row.getString (4),
                     row.getString (5),
                     row.getDouble (6),
-                    row.getDouble (7))).coalesce (nexec, true).cache
+                    row.getDouble (7))).coalesce (nexec, shuffle = true).cache
 
         // read the csv
         val equivalents = read_csv (csv)

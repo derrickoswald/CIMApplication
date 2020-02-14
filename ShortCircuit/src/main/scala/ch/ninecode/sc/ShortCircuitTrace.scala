@@ -48,7 +48,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
     {
         if (a.previous_node != b.previous_node)
         {
-            val error = List (ScError (true, true, "non-radial network detected from %s to %s".format (a.previous_node, b.previous_node)))
+            val error = List (ScError (fatal = true, invalid = true, "non-radial network detected from %s to %s".format (a.previous_node, b.previous_node)))
             log.error (error.head.message)
             a.copy (errors = ScError.combine_errors (a.errors, ScError.combine_errors (b.errors, error, options.messagemax), options.messagemax))
         }
@@ -62,7 +62,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         a.edge
                     else
                         b.edge
-            val warning = ScError (false, false, "reinforcement detected from %s".format (a.previous_node))
+            val warning = ScError (fatal = false, invalid = false, "reinforcement detected from %s".format (a.previous_node))
             a.copy (edge = parallel, errors = ScError.combine_errors (a.errors, ScError.combine_errors (b.errors, List (warning), options.messagemax), options.messagemax))
         }
     }
@@ -86,7 +86,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         Iterator.empty
                     else
                     {
-                        val error = ScError (true, true, "non-radial network detected through %s".format (triplet.attr.id_equ))
+                        val error = ScError (fatal = true, invalid = true, "non-radial network detected through %s".format (triplet.attr.id_equ))
                         log.error (error.message)
                         // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                         Iterator (

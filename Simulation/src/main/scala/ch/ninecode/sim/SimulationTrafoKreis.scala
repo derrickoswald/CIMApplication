@@ -2,9 +2,6 @@ package ch.ninecode.sim
 
 import java.util.Calendar
 
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.LineEdge
@@ -12,6 +9,8 @@ import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.model._
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * A container for a simulation piece of work.
@@ -55,7 +54,7 @@ case class SimulationTrafoKreis
     // so to fix this we adjust recorders with property "measured_power" to measure power_in of a new switch edge
     // between the (only?) incoming edge and the node
 
-    var transformer_edge = TransformerEdge (transformer.node0, transformer.node1, transformer)
+    var transformer_edge: TransformerEdge = TransformerEdge (transformer.node0, transformer.node1, transformer)
 
     def swing_nodes: Array[GLMNode] = if ("lo" == swing)
         nodes.filter (_.id == transformer.node1).toArray

@@ -171,7 +171,7 @@ class Transformers (
         val minP = default_supply_network_short_circuit_power_min * Math.cos (impedance_min.angle)
         val minQ = default_supply_network_short_circuit_power_min * Math.sin (impedance_min.angle)
 
-        val injection = EquivalentInjection (equivalent, maxP, maxQ, minP, minQ, 0.0, 0.0, impedance_max.re, 0.0, 0.0, false, false, 0.0, impedance_max.im, 0.0, 0.0, null)
+        val injection = EquivalentInjection (equivalent, maxP, maxQ, minP, minQ, 0.0, 0.0, impedance_max.re, 0.0, 0.0, regulationCapability = false, regulationStatus = false, 0.0, impedance_max.im, 0.0, 0.0, null)
         // note: use RegulationStatus to indicate this is a default value, and not a real value
         injection.bitfields = Array (Integer.parseInt ("0001010001001111", 2))
         injection

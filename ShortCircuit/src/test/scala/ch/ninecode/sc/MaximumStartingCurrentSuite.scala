@@ -18,7 +18,7 @@ class MaximumStartingCurrentSuite extends FunSuite
             val cosphi = 0.5
             val iair = 8.0
             val Z = v * v / Sk
-            val z = Complex.fromPolar (Z, phi, true /* ° */)
+            val z = Complex.fromPolar (Z, phi, degrees = true /* ° */)
             val options = ShortCircuitOptions (worstcasepf = false, cosphi = cosphi)
             val imax = MaximumStartingCurrent.max_current_3_phase (Sk, z, v, options)
             val ratio = 0.013 / MaximumStartingCurrent.dmax_low_rep // example has dmax=1.3%

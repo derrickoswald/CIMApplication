@@ -45,13 +45,13 @@ class EventAndFactorSuiteIT
             HighTrigger ("power", 2, "ratedS", 630.0, 1.10,      15 * 60 * 1000)
         )
         val check = SimulationEvents (STANDARD_TRIGGERS) (_Spark, options)
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true, unittest = true)
         check.run (access)
     }
 
     @Test def coincidence_factor ()
     {
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true, unittest = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
         val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
         val coincidence = SimulationCoincidenceFactor (IGNORED_AGGREGATES) (_Spark, options)
@@ -60,7 +60,7 @@ class EventAndFactorSuiteIT
 
     @Test def load_factor ()
     {
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true, unittest = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
         val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
         val load = SimulationLoadFactor (IGNORED_AGGREGATES) (_Spark, options)
@@ -69,7 +69,7 @@ class EventAndFactorSuiteIT
 
     @Test def responsibility_factor ()
     {
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, true, true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true, unittest = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
         val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
         val responsibility = SimulationResponsibilityFactor (IGNORED_AGGREGATES) (_Spark, options)

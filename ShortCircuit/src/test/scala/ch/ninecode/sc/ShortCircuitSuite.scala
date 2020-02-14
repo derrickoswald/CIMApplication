@@ -2,17 +2,14 @@ package ch.ninecode.sc
 
 import java.io.File
 
-import org.scalatest.BeforeAndAfter
-
+import ch.ninecode.gl.Complex
 import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.scalatest.BeforeAndAfter
 
-import ch.ninecode.gl.Complex
-
-class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
+class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 {
-    val FILE_DEPOT = "data/"
 
     val FILENAME1 = "Beispiel zur Ermittlung der Kurzschlussleistung.rdf"
     val FILENAME2 = "Beispiel zur Ermittlung der Kurzschlussleistung mit EquivalentInjection.rdf"
@@ -76,7 +73,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -86,7 +83,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -97,7 +94,6 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 default_short_circuit_impedance_max = Complex (0.0, 20.166666666666667), // purely reactive
                 default_short_circuit_power_min = 600.0e6,
                 default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
-                base_temperature = 20.0,
                 low_temperature = 20.0,
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
@@ -135,7 +131,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -145,14 +141,13 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                base_temperature = 20.0,
                 low_temperature = 20.0,
                 trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
@@ -190,7 +185,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -200,15 +195,13 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                base_temperature = 20.0,
-                low_temperature = 60.0,
                 cmax = 0.95,
                 cmin = 0.95,
                 trafos = FILE_DEPOT + "sak_sample.transformers")
@@ -249,7 +242,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -259,14 +252,13 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                base_temperature = 20.0,
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95,
@@ -308,7 +300,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -318,14 +310,13 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                base_temperature = 20.0,
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95,
@@ -367,7 +358,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -377,7 +368,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -409,7 +400,9 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
             assert (null != consumer.errors)
-            assert (consumer.errors.contains (ScError (true, true, "non-radial network detected through Line2").toString))
+            assert (consumer.errors.contains (
+                ScError (fatal = true, invalid = true, "non-radial network detected through Line2").toString)
+            )
     }
 
     test ("Complex 2 Parallel")
@@ -419,18 +412,9 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             val filename = FILE_DEPOT + FILENAME7
 
             val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map[String, String] (
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -462,7 +446,11 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
             assert (null != consumer.errors)
-            assert (consumer.errors.contains (ScError (true, true, "non-radial network detected from Line1_node_2_topo to Line_A_node_2_topo").toString))
+            assert (consumer.errors.contains (ScError (
+                fatal = true,
+                invalid = true,
+                "non-radial network detected from Line1_node_2_topo to Line_A_node_2_topo").toString)
+            )
     }
 
     test ("IBW")
@@ -473,7 +461,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -483,7 +471,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -491,9 +479,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
                 description = "IBW",
-                base_temperature = 20.0,
                 low_temperature = 20.0,
-                cmax = 1.0,
                 cmin = 1.0,
                 worstcasepf = false,
                 cosphi = 1.0)
@@ -530,7 +516,8 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val data2 = results.filter (_.equipment == "HAS9753") first()
             assert (Math.abs (data2.imax_3ph_med - 288.6) < 0.5, "expected maxanlaufstrom=289A")
-            assert (Math.abs (data2.imax_2ph_med - 212.8) < 0.5, "expected maxanlaufstrom=213A") // not 250A like the spreadsheet says
+            // not 250A like the spreadsheet says:
+            assert (Math.abs (data2.imax_2ph_med - 212.8) < 0.5, "expected maxanlaufstrom=213A")
             assert (Math.abs (data2.imax_1ph_med - 144.3) < 0.5, "expected maxanlaufstrom=145A")
 
 
@@ -544,7 +531,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -554,14 +541,13 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                base_temperature = 20.0,
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95)
@@ -601,7 +587,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -611,14 +597,13 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
-                base_temperature = 20.0,
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95)
@@ -662,7 +647,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -672,7 +657,7 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -700,7 +685,9 @@ class ShortCircuitSuite extends SparkSuite with BeforeAndAfter
                 println (h)
             }
 
-            assert (0 == results.filter (_.errors.size > MESSAGELIMIT).count, "expected no more than %d errors".format (MESSAGELIMIT))
-            assert (0 != results.filter (_.errors.exists (_.startsWith ("FATAL"))).count, "expected a fatal message")
+            assert (0 == results.filter (_.errors.size > MESSAGELIMIT)
+                .count, "expected no more than %d errors".format (MESSAGELIMIT))
+            assert (0 != results.filter (_.errors.exists (_.startsWith ("FATAL")))
+                .count, "expected a fatal message")
     }
 }

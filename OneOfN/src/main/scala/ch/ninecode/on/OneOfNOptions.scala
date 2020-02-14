@@ -1,8 +1,8 @@
 package ch.ninecode.on
 
-import scala.collection.mutable.HashMap
-
 import org.apache.spark.storage.StorageLevel
+
+import scala.collection.mutable
 
 /**
  * Options for the One-Of-N program.
@@ -19,7 +19,7 @@ import org.apache.spark.storage.StorageLevel
 case class OneOfNOptions
 (
     verbose: Boolean = false,
-    cim_reader_options: Iterable[(String, String)] = new HashMap[String, String](),
+    cim_reader_options: Iterable[(String, String)] = new mutable.HashMap[String, String](),
     three: Boolean = false,
     base_temperature: Double = 20.0,
     temperature: Double = 60.0,
