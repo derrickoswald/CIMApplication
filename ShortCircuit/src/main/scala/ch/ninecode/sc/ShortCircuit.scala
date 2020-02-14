@@ -785,7 +785,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         def short (exp: ScExperiment): Array[Byte] =
         {
             val ret = new StringBuilder ()
-            val gigaohm = Complex (1e9, 0)
+            val gigaohm = Complex (1e9)
 
             def addrow (time: Calendar, impedance: Complex): Unit =
             {
@@ -928,7 +928,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
             val errors =
                 if (trafo.transformer.total_impedance._2)
-                    List (ScError (false, false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
+                    List (ScError (fatal = false, invalid = false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
                 else
                     null.asInstanceOf [List[ScError]]
             val problems = edges.foldLeft (errors)((errors, edge) => edge.hasIssues (errors, options))
@@ -1029,7 +1029,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     }
                 )
             // perform remedial simulations produces (trafoid, nodeid, equipment, voltage, trafo.Z, Branch)
-            val results = remedial (simulations, options.low_temperature, true).persist (storage_level)
+            val results = remedial (simulations, options.low_temperature, isMax = true).persist (storage_level)
             log.info ("""ran %s experiments""".format (results.count ()))
             // map to the type returned by the trace, use the existing value where possible
             val original_keyed = original_results.keyBy (x => x.tx + "_" + x.node)
@@ -1045,12 +1045,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     {
                         case Some (original) =>
                             (
-                                ScNode (original.node, v, original.tx, original.tx_impedance, original.prev, z, branches, List (ScError (false, false, "computed by load-flow"))), // replace the errors
+                                ScNode (original.node, v, original.tx, original.tx_impedance, original.prev, z, branches, List (ScError (fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
                                 original.terminal, original.equipment, original.container
                             )
                         case None =>
                             (
-                                ScNode (x._1._2, v, x._1._1, Complex(0), null, ztrafo, null, List (ScError (false, false, "computed by load-flow"))),
+                                ScNode (x._1._2, v, x._1._1, Complex(0), null, ztrafo, null, List (ScError (fatal = false, invalid = false, "computed by load-flow"))),
                                 1, x._1._3, ""
                             )
                     }

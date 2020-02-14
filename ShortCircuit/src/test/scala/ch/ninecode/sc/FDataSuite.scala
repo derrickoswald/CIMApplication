@@ -345,49 +345,57 @@ class FDataSuite extends FunSuite
     test ("Table 3 Fuse+ DIN")
     {
         FData.fuse_sizing_table (3)
-        assert (FData.fuse (650.001, SimpleBranch ("a", "b", 0.0, "TEI135", "DIN yadda", Some (100.0))) == 200.0, "expected 200A")
+        assert (FData.fuse (650.001,
+            SimpleBranch ("a", "b", 0.0, "TEI135", "DIN yadda", Some (100.0))) == 200.0, "expected 200A")
     }
 
     test ("Table 3 Fuse+ SEV")
     {
         FData.fuse_sizing_table (3)
-        assert (FData.fuse (600.001, SimpleBranch ("a", "b", 0.0, "TEI135", "SEV yadda", Some (100.0))) == 200.0, "expected 200A")
+        assert (FData.fuse (600.001,
+            SimpleBranch ("a", "b", 0.0, "TEI135", "SEV yadda", Some (100.0))) == 200.0, "expected 200A")
     }
 
     test ("Table 3 Fuse- DIN")
     {
         FData.fuse_sizing_table (3)
-        assert (FData.fuse (649.99, SimpleBranch ("a", "b", 0.0, "TEI135", "DIN yadda", Some (100.0))) == 160.0, "expected 160A")
+        assert (FData.fuse (649.99,
+            SimpleBranch ("a", "b", 0.0, "TEI135", "DIN yadda", Some (100.0))) == 160.0, "expected 160A")
     }
 
     test ("Table 3 Fuse- SEV")
     {
         FData.fuse_sizing_table (3)
-        assert (FData.fuse (599.99, SimpleBranch ("a", "b", 0.0, "TEI135", "SEV yadda", Some (100.0))) == 150.0, "expected 160A")
+        assert (FData.fuse (599.99,
+            SimpleBranch ("a", "b", 0.0, "TEI135", "SEV yadda", Some (100.0))) == 150.0, "expected 160A")
     }
 
     test ("Table 3 FuseSmall DIN")
     {
         FData.fuse_sizing_table (3)
-        assert (FData.fuse (25.0, SimpleBranch ("a", "b", 0.0, "TEI135", "DIN yadda", Some (100.0))) == 0.0, "expected 0A")
+        assert (FData.fuse (25.0,
+            SimpleBranch ("a", "b", 0.0, "TEI135", "DIN yadda", Some (100.0))) == 0.0, "expected 0A")
     }
 
     test ("Table 3 FuseSmall SEV")
     {
         FData.fuse_sizing_table (3)
-        assert (FData.fuse (125.0, SimpleBranch ("a", "b", 0.0, "TEI135", "SEV yadda", Some (100.0))) == 0.0, "expected 0A")
+        assert (FData.fuse (125.0,
+            SimpleBranch ("a", "b", 0.0, "TEI135", "SEV yadda", Some (100.0))) == 0.0, "expected 0A")
     }
 
     test ("Table 3 FuseZero DIN")
     {
         FData.fuse_sizing_table (3)
-        assert (FData.fuse (0.0, SimpleBranch ("a", "b", 0.0, "TEI135", "DIN yadda", Some (100.0))) == 0.0, "expected 0A")
+        assert (FData.fuse (0.0,
+            SimpleBranch ("a", "b", 0.0, "TEI135", "DIN yadda", Some (100.0))) == 0.0, "expected 0A")
     }
 
     test ("Table 3 FuseZero SEV")
     {
         FData.fuse_sizing_table (3)
-        assert (FData.fuse (0.0, SimpleBranch ("a", "b", 0.0, "TEI135", "SEV yadda", Some (100.0))) == 0.0, "expected 0A")
+        assert (FData.fuse (0.0,
+            SimpleBranch ("a", "b", 0.0, "TEI135", "SEV yadda", Some (100.0))) == 0.0, "expected 0A")
     }
 
     test ("Table 3 No Current FuseOK DIN")
@@ -590,8 +598,8 @@ class FDataSuite extends FunSuite
         val branch1 = SimpleBranch ("a", "b", 4.0, "TEI141", "", Some (-1.0))
         val branch2 = SimpleBranch ("c", "d", 4.0, "TEI141", "", Some (40.0))
 
-        assert (FData.lastFuseHasMissingValues (branch1), "has missing valus (-1.0)")
-        assert (!FData.lastFuseHasMissingValues (branch2), "has no missing valus (40.0)")
+        assert (FData.lastFuseHasMissingValues (branch1), "has missing values (-1.0)")
+        assert (!FData.lastFuseHasMissingValues (branch2), "has no missing values (40.0)")
     }
 
     test ("lastFuseHasMissingValues: series branch")
@@ -684,7 +692,12 @@ class FDataSuite extends FunSuite
         assert (branch.asFuse == "[50,(50,40)]", "asFuse")
         assert (FData.fuses (280, branch) == "50,40", "expected 60:40 split")
 
-        val z_total = Impedanzen (Complex (0.37183277,+0.00810154), Complex (1.48732429,0.04194802), Complex (0.38360881,0.00813756), Complex (1.53442772,0.04199405))
+        val z_total = Impedanzen (
+            Complex (0.37183277,+0.00810154),
+            Complex (1.48732429,0.04194802),
+            Complex (0.38360881,0.00813756),
+            Complex (1.53442772,0.04199405)
+        )
         val scr = ScResult (
             node = "test",
             equipment = "house",
@@ -739,7 +752,12 @@ class FDataSuite extends FunSuite
         assert (branch.asFuse == "([50,(50,40)])", "asFuse")
         assert (FData.fuses (280, branch) == "50,40", "expected 60:40 split")
 
-        val z_total = Impedanzen (Complex (0.37183277,+0.00810154), Complex (1.48732429,0.04194802), Complex (0.38360881,0.00813756), Complex (1.53442772,0.04199405))
+        val z_total = Impedanzen (
+            Complex (0.37183277,+0.00810154),
+            Complex (1.48732429,0.04194802),
+            Complex (0.38360881,0.00813756),
+            Complex (1.53442772,0.04199405)
+        )
         val scr = ScResult (
             node = "test",
             equipment = "house",
@@ -772,8 +790,18 @@ class FDataSuite extends FunSuite
 
     test ("Series wrapped parallel rating not OK")
     {
-        val z1 = Impedanzen (Complex (1.20,0.02), Complex (4.80, 0.13), Complex (1.30,0.02), Complex (5.20, 0.13))
-        val z2 = Impedanzen (Complex (0.44,0.01), Complex (1.76, 0.05), Complex (0.45,0.01), Complex (1.80, 0.05))
+        val z1 = Impedanzen (
+            Complex (1.20,0.02),
+            Complex (4.80, 0.13),
+            Complex (1.30,0.02),
+            Complex (5.20, 0.13)
+        )
+        val z2 = Impedanzen (
+            Complex (0.44,0.01),
+            Complex (1.76, 0.05),
+            Complex (0.45,0.01),
+            Complex (1.80, 0.05)
+        )
         FData.fuse_sizing_table (1)
         val branch =
             SeriesBranch ("wrap", "up", 10.0,
@@ -794,7 +822,12 @@ class FDataSuite extends FunSuite
         assert (branch.asFuse == "([50,(100,100)])", "asFuse")
         assert (FData.fuses (280, branch) == "50,50", "expected 50:50 split")
 
-        val z_total = Impedanzen (Complex (0.37183277,+0.00810154), Complex (1.48732429,0.04194802), Complex (0.38360881,0.00813756), Complex (1.53442772,0.04199405))
+        val z_total = Impedanzen (
+            Complex (0.37183277,+0.00810154),
+            Complex (1.48732429,0.04194802),
+            Complex (0.38360881,0.00813756),
+            Complex (1.53442772,0.04199405)
+        )
         val scr = ScResult (
             node = "test",
             equipment = "house",

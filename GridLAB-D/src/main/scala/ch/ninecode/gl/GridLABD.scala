@@ -8,11 +8,9 @@ import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermission
 import java.text.ParseException
 import java.text.SimpleDateFormat
-import java.util.HashSet
-import java.util.Set
+import java.util
 
-import scala.collection.Map
-
+import ch.ninecode.model._
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -27,7 +25,7 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.model._
+import scala.collection.Map
 
 /**
  * Compute the maximum feed-in power at house connections in a network.
@@ -240,7 +238,7 @@ class GridLABD
                                 "",
                                 volts (0),
                                 terminals (0).ConductingEquipment,
-                                true,
+                                connected = true,
                                 null,
                                 ratedCurrent,
                                 e)
@@ -609,10 +607,10 @@ class GridLABD
         files.map (extract_trafo).flatMapValues (read)
     }
 
-    def parsePermissions (s: String): Set[PosixFilePermission] =
+    def parsePermissions (s: String): util.Set[PosixFilePermission] =
     {
         // ToDo: parse file permissions val pattern = Pattern.compile ("\\G\\s*([ugoa]*)([+=-]+)([rwx]*)([,\\s]*)\\s*")
-        val ret = new HashSet[PosixFilePermission]()
+        val ret = new util.HashSet[PosixFilePermission]()
         ret.add (PosixFilePermission.OWNER_READ)
         ret.add (PosixFilePermission.OWNER_WRITE)
         ret.add (PosixFilePermission.OWNER_EXECUTE)

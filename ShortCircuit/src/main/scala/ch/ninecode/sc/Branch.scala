@@ -497,7 +497,7 @@ case class ComplexBranch (override val from: String, override val to: String, ov
         val end_branches = basket.filter (_.to == to)
         if (0 != end_branches.length) low_impedance = low_impedance + (if (1 < end_branches.length) ParallelBranch (from, to, 0.0, end_branches) else SeriesBranch (from, to, 0.0, end_branches)).z (in)
         // compute the highest impedance as series branches (this will be used for the high temperature values)
-        var high_impedance = SeriesBranch (from, to, 0.0, basket).z (in)
+        val high_impedance = SeriesBranch (from, to, 0.0, basket).z (in)
         // take the worst case from both
         Impedanzen (low_impedance.impedanz_low, low_impedance.null_impedanz_low, high_impedance.impedanz_high, high_impedance.null_impedanz_high)
     }

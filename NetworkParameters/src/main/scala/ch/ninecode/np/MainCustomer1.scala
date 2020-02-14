@@ -4,18 +4,6 @@ import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import java.util.Properties
 
-import scala.collection.mutable.HashMap
-import scala.tools.nsc.io.Jar
-import scala.util.Random
-import scopt.OptionParser
-
-import org.apache.spark.SparkConf
-import org.apache.spark.graphx.GraphXUtils
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
-import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
@@ -24,6 +12,17 @@ import ch.ninecode.cim.DefaultSource
 import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
 import ch.ninecode.model.Element
+import org.apache.spark.SparkConf
+import org.apache.spark.graphx.GraphXUtils
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
+import org.slf4j.LoggerFactory
+import scopt.OptionParser
+
+import scala.collection.mutable
+import scala.tools.nsc.io.Jar
+import scala.util.Random
 
 object MainCustomer1
 {
@@ -195,7 +194,7 @@ object MainCustomer1
         val log = LoggerFactory.getLogger (getClass)
         val start = System.nanoTime ()
         val storage = StorageLevel.fromString (arguments.storage)
-        val reader_options = new HashMap[String, String]()
+        val reader_options = new mutable.HashMap[String, String]()
         reader_options.put ("StorageLevel", arguments.storage)
         reader_options.put ("ch.ninecode.cim.do_deduplication", arguments.dedup.toString)
         reader_options.put ("path", arguments.files.mkString (","))

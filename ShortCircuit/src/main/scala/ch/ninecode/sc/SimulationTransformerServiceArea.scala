@@ -41,7 +41,7 @@ case class SimulationTransformerServiceArea
         x =>
         {
             val node = x._1.asInstanceOf [SimulationNode]
-            ScExperiment (name, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (100.0, 0))
+            ScExperiment (name, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (100.0))
         }
     ).toArray
 
@@ -54,8 +54,8 @@ case class SimulationTransformerServiceArea
 
     val finish_time: Calendar =
     {
-        val t = dup (start_time);
-        t.add (Calendar.SECOND, 5 * (experiments.length + 1));
+        val t = dup (start_time)
+        t.add (Calendar.SECOND, 5 * (experiments.length + 1))
         t
     }
 }

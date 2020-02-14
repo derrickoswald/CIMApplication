@@ -108,6 +108,13 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>ch.ninecode.util</groupId>
+            <artifactId>Util</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -196,6 +203,22 @@
                         <goals>
                             <goal>single</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                        <configuration>
+                            <includes>**/SCTestBase.*</includes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

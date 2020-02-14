@@ -138,7 +138,7 @@ class Transformers (
         obj.bitfields = Array (Integer.parseInt ("110", 2))
         val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null)
         psr.bitfields = Array (0)
-        val equipment = Equipment (psr, false, true, List (), List (), station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
+        val equipment = Equipment (psr, aggregate = false, normallyInService = true, List (), List (), station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
         equipment.bitfields = Array (Integer.parseInt ("10010", 2))
         val conducting = ConductingEquipment (equipment, voltage._1, null, null, List (), List (), null, List ())
         conducting.bitfields = Array (Integer.parseInt ("1", 2))
@@ -171,7 +171,7 @@ class Transformers (
         val minP = default_supply_network_short_circuit_power_min * Math.cos (impedance_min.angle)
         val minQ = default_supply_network_short_circuit_power_min * Math.sin (impedance_min.angle)
 
-        val injection = EquivalentInjection (equivalent, maxP, maxQ, minP, minQ, 0.0, 0.0, impedance_max.re, 0.0, 0.0, false, false, 0.0, impedance_max.im, 0.0, 0.0, null)
+        val injection = EquivalentInjection (equivalent, maxP, maxQ, minP, minQ, 0.0, 0.0, impedance_max.re, 0.0, 0.0, regulationCapability = false, regulationStatus = false, 0.0, impedance_max.im, 0.0, 0.0, null)
         // note: use RegulationStatus to indicate this is a default value, and not a real value
         injection.bitfields = Array (Integer.parseInt ("0001010001001111", 2))
         injection

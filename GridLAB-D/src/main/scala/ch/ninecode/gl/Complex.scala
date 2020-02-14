@@ -101,7 +101,7 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
         }
 
     def asString (digits: Int): String =
-        numberformat (re, digits) + numberformat (im, digits, true) + "j"
+        numberformat (re, digits) + numberformat (im, digits, leading_sign = true) + "j"
 
     def asPair: (Double, Double) = (re, im)
 
@@ -131,7 +131,7 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
 object Complex
 {
     // constants
-    lazy val j = Complex (0, 1)
+    lazy val j: Complex = Complex (0, 1)
 
 
     lazy val regex: Pattern = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-<])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)([ijd°])?""")
@@ -182,7 +182,7 @@ object Complex
             if (!polar)
                 Complex (real, part2)
             else
-                fromPolar (real, part2, true)
+                fromPolar (real, part2, degrees = true)
         }
         else
             Complex (0.0) // ToDo: warning

@@ -432,7 +432,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val experiment_adjusted = System.nanoTime ()
             log.info ("experiment2: " + (experiment_adjusted - b4_experiment) / 1e9 + " seconds")
 
-            trafokreise.map (t => gridlabd.cleanup (t.trafo, false, true, options.erase)).count
+            trafokreise.map (t => gridlabd.cleanup (t.trafo, includes_glm = false, includes_input = true, includes_output = options.erase)).count
             val d = experiments2.map (generate_player_file (gridlabd)).count
             log.info (d.toString + " experiments")
 

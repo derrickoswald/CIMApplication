@@ -41,7 +41,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
             {
                 val i = (vc - vn) / z
                 val power = vc * ~i
-                val d = Math.abs (Complex.toPolar (power, false)._2 - phi)
+                val d = Math.abs (Complex.toPolar (power, degrees = false)._2 - phi)
                 if (d < diff)
                 {
                     diff = d

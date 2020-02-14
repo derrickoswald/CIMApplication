@@ -121,7 +121,7 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
             obj.bitfields = Array (Integer.parseInt ("1111", 2))
             val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null)
             psr.bitfields = Array (0)
-            val equipment = Equipment (psr, false, true, List (), List (), station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
+            val equipment = Equipment (psr, aggregate = false, normallyInService = true, List (), List (), station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
             equipment.bitfields = Array (Integer.parseInt ("10010", 2))
             val conducting = ConductingEquipment (equipment, voltage, null, null, List (), List (), null, List ())
             conducting.bitfields = Array (Integer.parseInt ("1", 2))
@@ -130,7 +130,7 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
             // decompose sk values into P & Q, use maxP and maxQ also as minP and minQ respectively
             val maxP = sk * r
             val maxQ = sk * x
-            val injection = EquivalentInjection (equivalent, maxP, maxQ, maxP, maxQ, 0.0, 0.0, netz_r1, netz_r0, netz_r1, false, true, 0.0, netz_x1, netz_x0, netz_x1, null)
+            val injection = EquivalentInjection (equivalent, maxP, maxQ, maxP, maxQ, 0.0, 0.0, netz_r1, netz_r0, netz_r1, regulationCapability = false, regulationStatus = true, 0.0, netz_x1, netz_x0, netz_x1, null)
             // note: exclude r2, x2 since we don't really know them and they aren't used
             // note: use RegulationStatus to indicate this is a real value and not a default
             injection.bitfields = Array (Integer.parseInt ("0001010001001111", 2))
@@ -168,7 +168,7 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
             val obj = IdentifiedObject (BasicElement (null, mRID), eq_inj.id, old_obj.description, mRID, old_obj.name, old_obj.DiagramObjects, old_obj.Names)
             val psr = PowerSystemResource (obj, null, null, null, null, location.id, null, null, null, null, null, null)
             psr.bitfields = Array (Integer.parseInt ("10000", 2))
-            val equipment = Equipment (psr, false, true, List (), List (), details.station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
+            val equipment = Equipment (psr, aggregate = false, normallyInService = true, List (), List (), details.station, List (), List (), List (), List (), List (), List (), List (), List (), List ())
             equipment.bitfields = Array (Integer.parseInt ("10010", 2))
             val conducting = ConductingEquipment (equipment, eq_inj.EquivalentEquipment.ConductingEquipment.BaseVoltage, null, null, List (), List (), null, List ())
             conducting.bitfields = Array (Integer.parseInt ("1", 2))
@@ -188,7 +188,7 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
             term_element.bitfields = Array (Integer.parseInt ("1", 2))
             val term_id_obj = IdentifiedObject (term_element, null, null, mRID + "_terminal_1", null, null, null)
             term_id_obj.bitfields = Array (Integer.parseInt ("100", 2))
-            val acdc = ACDCTerminal (term_id_obj, true, 1, null, List (), List ())
+            val acdc = ACDCTerminal (term_id_obj, connected = true, 1, null, List (), List ())
             acdc.bitfields = Array (Integer.parseInt ("11", 2))
             val terminal = Terminal (acdc, details.phases, List (), List (), null, mRID, details.connectivity_node, List (), List (), List (), List (), List (), List (), List (), null, List (), details.topological_node, List ())
             terminal.bitfields = Array (Integer.parseInt ("01000000000110001", 2))
@@ -296,7 +296,7 @@ case class ShortCircuitInfo3 (session: SparkSession, storage_level: StorageLevel
                     row.getString (4),
                     row.getString (5),
                     row.getDouble (6),
-                    row.getDouble (7))).coalesce (nexec, true).cache
+                    row.getDouble (7))).coalesce (nexec, shuffle = true).cache
 
         // read the csv
         val equivalents = read_csv (csv)

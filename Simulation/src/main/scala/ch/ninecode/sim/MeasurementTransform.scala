@@ -1,7 +1,6 @@
 package ch.ninecode.sim
 
 import scala.collection.mutable
-import scala.reflect.runtime
 import scala.tools.reflect.ToolBox
 
 /**
@@ -10,7 +9,7 @@ import scala.tools.reflect.ToolBox
  */
 abstract class MeasurementTransform extends Serializable
 {
-    val MILLISECONDS_PER_HOUR: Double = (60.0 * 60.0 * 1000.0)
+    val MILLISECONDS_PER_HOUR: Double = 60.0 * 60.0 * 1000.0
 
     /**
      * Mapping function between meter data and value for simulation input.

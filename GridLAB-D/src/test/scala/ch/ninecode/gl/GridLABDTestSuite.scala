@@ -4,6 +4,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.TimeZone
 
+import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.Island.EdgeParts
 import ch.ninecode.gl.Island.NodeParts
 import ch.ninecode.gl.Island.identifier
@@ -13,19 +14,20 @@ import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
 import ch.ninecode.model.EnergyConsumer
 import ch.ninecode.model.Terminal
+import ch.ninecode.util.TestUtil
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
+import org.scalatest.BeforeAndAfter
 
 import scala.collection.mutable
-import org.scalatest.BeforeAndAfter
-import org.apache.spark.sql.SparkSession
 
 case class Generator (
-    override val name: String,
-    override val nodes: Iterable[GLMNode],
-    override val edges: Iterable[GLMEdge],
-    override val transformers: Iterable[TransformerEdge],
-    override val swing_nodes: Iterable[GLMNode])
-extends GLMGenerator (emit_voltage_dump = true)
+                         override val name: String,
+                         override val nodes: Iterable[GLMNode],
+                         override val edges: Iterable[GLMEdge],
+                         override val transformers: Iterable[TransformerEdge],
+                         override val swing_nodes: Iterable[GLMNode])
+    extends GLMGenerator (emit_voltage_dump = true)
 
 case class Node
 (
@@ -58,12 +60,13 @@ case class Node
 
 case class Maker (session: SparkSession)
 {
-    val equipment: RDD[(String, ConductingEquipment)] = session.sparkContext.getPersistentRDDs.filter(_._2.name == "ConductingEquipment").head._2.asInstanceOf[RDD[ConductingEquipment]].keyBy (_.id)
+    val equipment: RDD[(String, ConductingEquipment)] = session.sparkContext.getPersistentRDDs.filter (_._2.name == "ConductingEquipment").head._2.asInstanceOf[RDD[ConductingEquipment]].keyBy (_.id)
 
     def node_maker (rdd: RDD[NodeParts]): RDD[(identifier, GLMNode)] =
     {
         // ToDo: fix this 1kV multiplier on the voltages
         def voltage (base_voltage: BaseVoltage): Double = base_voltage.nominalVoltage * 1000.0
+
         val s: RDD[((node_id, Iterable[(identifier, (Terminal, Element, BaseVoltage))]), ConductingEquipment)] = rdd.keyBy (_._2.head._2._2.id).join (equipment).values
         s.map (args ⇒
         {
@@ -92,8 +95,9 @@ case class Maker (session: SparkSession)
     }
 }
 
-class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
+class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 {
+    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list)
     val FILE_DEPOT = "data/"
     val FILENAME1 = "DemoData.rdf"
     val filename1: String = FILE_DEPOT + FILENAME1
@@ -402,16 +406,16 @@ class GridLABDTestSuite extends SparkSuite with BeforeAndAfter
                     .collect
 
                 val glms = for
-                {
+                    {
                     trafo ← transformers
                     n = nodes.filter (_._1 == trafo.transformer.transformer_name).map (_._2).collect
                     e = edges.filter (_._1 == trafo.transformer.transformer_name).map (_._2).collect
                 }
-                yield
-                {
-                    gridlabd.export (Generator (trafo.transformer.transformer_name, n, e, List(trafo), List(Node (trafo.cn1, trafo.primary.toDouble, null))))
-                    trafo.transformer.transformer_name
-                }
+                    yield
+                        {
+                            gridlabd.export (Generator (trafo.transformer.transformer_name, n, e, List (trafo), List (Node (trafo.cn1, trafo.primary.toDouble, null))))
+                            trafo.transformer.transformer_name
+                        }
 
                 val generate = System.nanoTime ()
                 println ("generate: " + (generate - read) / 1e9 + " seconds")

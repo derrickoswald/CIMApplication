@@ -11,11 +11,9 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.gl.Complex
 
-class NonradialSuite extends SparkSuite with BeforeAndAfter
+class NonradialSuite extends SCTestBase with BeforeAndAfter
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
-
-    val FILE_DEPOT = "data/"
 
     val FILENAME1 = "DemoData.rdf"
     val FILENAME2 = "three_winding_non-radial.rdf"
@@ -54,7 +52,7 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -65,7 +63,6 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
                 default_short_circuit_impedance_max = Complex (0.0, 20.166666666666667), // purely reactive
                 default_short_circuit_power_min = 600.0e6,
                 default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
-                base_temperature = 20.0,
                 low_temperature = 20.0,
                 workdir = "./results/")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
@@ -101,7 +98,7 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*).persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = getElementsFromSession (session, filename)
             println (elements.count + " elements")
             val read = System.nanoTime
             println ("read: " + (read - start) / 1e9 + " seconds")
@@ -112,7 +109,6 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
                 default_short_circuit_impedance_max = Complex (0.0, 20.166666666666667), // purely reactive
                 default_short_circuit_power_min = 600.0e6,
                 default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
-                base_temperature = 20.0,
                 low_temperature = 20.0,
                 workdir = "./results/")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
@@ -128,8 +124,8 @@ class NonradialSuite extends SparkSuite with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            assert (near (results.filter (_.equipment == "USR0001").first ().low_sk, 2626782.36619354))
-            assert (near (results.filter (_.equipment == "USR0002").first ().low_sk, 6208872.30165506))
-            assert (near (results.filter (_.equipment == "USR0003").first ().low_sk, 6185870.27299348))
+            near (results.filter (_.equipment == "USR0001").first ().low_sk, 2626782.36619354)
+            near (results.filter (_.equipment == "USR0002").first ().low_sk, 6208872.30165506)
+            near (results.filter (_.equipment == "USR0003").first ().low_sk, 6185870.27299348)
     }
 }

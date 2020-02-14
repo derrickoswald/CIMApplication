@@ -68,7 +68,7 @@ case class LineEdge
     /**
      * Zero ohms.
      */
-    lazy val zero = Complex (0.0, 0.0)
+    lazy val zero: Complex = Complex (0.0, 0.0)
 
     /**
      * Get the cable/wire type.

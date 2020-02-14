@@ -41,7 +41,7 @@ case class Trace (initial: Graph[PreNode, PreEdge])
     def mergeMessage (a: Boolean, b: Boolean): Boolean = a || b
 
     // discard leaf edges that aren't transformers
-    def keep (arg: Tuple3[PreEdge, Option[PreNode], Option[PreNode]]): Boolean =
+    def keep (arg: (PreEdge, Option[PreNode], Option[PreNode])): Boolean =
     {
         arg match
         {
@@ -74,7 +74,7 @@ case class Trace (initial: Graph[PreNode, PreEdge])
 
         // get the list of traced vertices
         val touched = graph.vertices.filter (_._2)
-        val traced_nodes = touched.join (initial.vertices).map ((x) => (x._1, x._2._2))
+        val traced_nodes = touched.join (initial.vertices).map (x => (x._1, x._2._2))
 
         // get the list of edges
         val edges = initial.edges.map (_.attr)

@@ -94,7 +94,7 @@ object AbgangKreis
         element match
         {
             case _: Switch | _: Cut | _: Disconnector | _: Fuse | _: GroundDisconnector | _: Jumper | _: MktSwitch | _: ProtectedSwitch | _: Breaker | _: LoadBreakSwitch | _: Recloser | _: Sectionaliser ⇒
-                PlayerSwitchEdge (cn1, cn2, pickSwitch (elements), false)
+                PlayerSwitchEdge (cn1, cn2, pickSwitch (elements), fuse = false)
             case _: Conductor ⇒
                 LineEdge (cn1, cn2, elements.map (multiconductor), base_temperature)
             //                DEFAULT_R: Double = 0.225,

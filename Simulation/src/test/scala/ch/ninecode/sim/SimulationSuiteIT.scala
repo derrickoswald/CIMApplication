@@ -535,7 +535,7 @@ class SimulationSuiteIT
         {
             cassandraSession =>
                 val sql1 = s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time='2017-12-31 23:00:00.000+0000'"
-                val sql2 = s"select * from $KEYSPACE.simulated_value where simulation='$ID_SIMULATION' and mrid='USR0001' and type='power' and period=900000 and time='2017-12-31 23:00:00.000+0000'";
+                val sql2 = s"select * from $KEYSPACE.simulated_value where simulation='$ID_SIMULATION' and mrid='USR0001' and type='power' and period=900000 and time='2017-12-31 23:00:00.000+0000'"
                 assert (cassandraSession.execute (sql1).all.asScala.head.getDouble ("real_a") * 4 ==
                     cassandraSession.execute (sql2).all.asScala.head.getDouble ("real_a"))
         }
@@ -1251,7 +1251,7 @@ object SimulationSuiteIT
             "mode" → "DROPMALFORMED",
             "inferSchema" → "true"
         )
-        Schema (session, KEYSPACE, 1, true).make
+        Schema (session, KEYSPACE, 1, verbose = true).make
         println (s"reading $FILE_DEPOT$FILENAME0.csv")
         val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (s"$FILE_DEPOT$FILENAME0.csv")
         val ok = df.rdd.map (row ⇒ (row.getString (0), "energy", row.getTimestamp (1), 900000, row.getDouble (2), 0.0, "Wh"))
