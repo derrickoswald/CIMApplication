@@ -38,23 +38,8 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME1
+            readCIMElements (session, filename)
 
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map[String, String] (
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -88,9 +73,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
 
             val filename = FILE_DEPOT + FILENAME2
 
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map[String, String] (
+            val customOptions = Map[String, String] (
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -100,11 +83,8 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
                 "ch.ninecode.cim.debug" -> "true",
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
+            readCIMElements (session, filename, options = customOptions)
 
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -142,10 +122,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME3
-
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map[String, String] (
+            val customOptions = Map[String, String] (
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -155,11 +132,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
                 "ch.ninecode.cim.debug" -> "true",
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            readCIMElements (session, filename, options = customOptions)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
