@@ -8,8 +8,8 @@ import org.apache.spark.sql.SparkSession
 
 class MFITestBase extends TestUtil
 {
+    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Einspeiseleistung.classes)
     val FILE_DEPOT = "data/"
-    override val classesToRegister = Array (CIMClasses.list, GridLABD.classes, Einspeiseleistung.classes)
 
     def runMFI (session: SparkSession, options: EinspeiseleistungOptions): Unit =
     {
@@ -17,11 +17,13 @@ class MFITestBase extends TestUtil
         val eins = Einspeiseleistung (session, options)
         val count = eins.run ()
         val total = System.nanoTime ()
-        println ("total: " + (total - begin) / 1e9 + " seconds " + count + " trafokreise")
+        println ("einspeiseleistung: " + (total - begin) / 1e9 + " seconds für " + count + " trafokreise")
     }
 
     def readFile (session: SparkSession, filename: String): Unit =
     {
+        val begin = System.nanoTime ()
+
         val files = filename.split (",")
         val options = Map [String, String](
             "path" -> filename,
@@ -32,6 +34,9 @@ class MFITestBase extends TestUtil
             "ch.ninecode.cim.do_topo_islands" -> "true")
         val elements = session.read.format ("ch.ninecode.cim").options (options).load (files: _*)
         println (elements.count () + " elements")
+
+        val read = System.nanoTime ()
+        println ("read : " + (read - begin) / 1e9 + " seconds")
     }
 
     def getMaxSimulation (databasePath: String): String =
