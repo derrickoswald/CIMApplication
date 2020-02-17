@@ -5,21 +5,13 @@ import java.net.InetAddress
 import java.net.NetworkInterface
 import java.util
 
-import org.apache.spark.SparkConf
-import org.apache.spark.graphx.GraphXUtils
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
-import org.scalatest.Outcome
-import org.scalatest.fixture
-
 import scala.collection.JavaConverters._
 
 
 trait TestUtil extends fixture.FunSuite with SQLite with Unzip
 {
-    val classesToRegister: Array[Array[Class[_]]]
     type FixtureParam = SparkSession
+    val classesToRegister: Array[Array[Class[_]]]
 
     def withFixture (test: OneArgTest): Outcome =
     {
@@ -40,7 +32,7 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
         configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
 
         // register relevant classes
-        registerDependency(configuration)
+        registerDependency (configuration)
 
         // register GraphX classes
         GraphXUtils.registerKryoClasses (configuration)
@@ -55,16 +47,23 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
         {
             withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
         }
-        finally session.stop () // clean up the fixture
+        finally
+        {
+            session.stop () // clean up the fixture
+            val total = System.nanoTime ()
+            println ("total : " + (total - start) / 1e9 + " seconds")
+        }
     }
 
-    def registerDependency(configuration: SparkConf): Unit = {
-        classesToRegister.foreach((classToRegister) => {
-            configuration.registerKryoClasses(classToRegister)
+    def registerDependency (configuration: SparkConf): Unit =
+    {
+        classesToRegister.foreach ((classToRegister) =>
+        {
+            configuration.registerKryoClasses (classToRegister)
         })
     }
 
-    def getElementsFromSession (session: SparkSession, filename: String) : DataFrame =
+    def getElementsFromSession (session: SparkSession, filename: String): DataFrame =
     {
         val files = filename.split (",")
         val options = Map [String, String](
@@ -91,37 +90,6 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
             else
                 message)
     }
-
-    /**
-     * Add to the process environment.
-     *
-     * @see https://stackoverflow.com/questions/318239/how-do-i-set-environment-variables-from-java
-     * @param newenv The list of key value pairs to add.
-     */
-    protected def setEnv (newenv: java.util.HashMap[String, String]): Unit =
-    {
-        try
-        {
-            val env: util.Map[String, String] = System.getenv
-            for (cl <- Class.forName ("java.util.Collections").getDeclaredClasses)
-            {
-                if ("java.util.Collections$UnmodifiableMap" == cl.getName)
-                {
-                    val field = cl.getDeclaredField ("m")
-                    field.setAccessible (true)
-                    val obj = field.get (env)
-                    val map = obj.asInstanceOf [java.util.Map[String, String]]
-                    map.putAll (newenv)
-                }
-            }
-        }
-        catch
-        {
-            case e: Exception =>
-                e.printStackTrace ()
-        }
-    }
-
 
     /**
      * Set SPARK_LOCAL_IP to the IP address in dotted-quad format (e.g. 1.2.3.4) if it isn't set.
@@ -164,8 +132,35 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
         }
     }
 
-
-
+    /**
+     * Add to the process environment.
+     *
+     * @see https://stackoverflow.com/questions/318239/how-do-i-set-environment-variables-from-java
+     * @param newenv The list of key value pairs to add.
+     */
+    protected def setEnv (newenv: java.util.HashMap[String, String]): Unit =
+    {
+        try
+        {
+            val env: util.Map[String, String] = System.getenv
+            for (cl <- Class.forName ("java.util.Collections").getDeclaredClasses)
+            {
+                if ("java.util.Collections$UnmodifiableMap" == cl.getName)
+                {
+                    val field = cl.getDeclaredField ("m")
+                    field.setAccessible (true)
+                    val obj = field.get (env)
+                    val map = obj.asInstanceOf [java.util.Map[String, String]]
+                    map.putAll (newenv)
+                }
+            }
+        }
+        catch
+        {
+            case e: Exception =>
+                e.printStackTrace ()
+        }
+    }
 
 
 }

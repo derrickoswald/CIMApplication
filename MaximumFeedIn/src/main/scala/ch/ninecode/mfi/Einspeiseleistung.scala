@@ -46,6 +46,9 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     }
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    var storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK
+    val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
+    var gridlabd: GridLABD = new GridLABD (session, topological_nodes = true, !options.three, storage_level, workdir, options.cable_impedance_limit)
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -489,10 +492,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         the_map.values
     }
 
-    def run (): Long =
-    {
-        val start = System.nanoTime ()
-
+    def initializeTransformers(): (RDD[TransformerIsland], Array[TransformerData]) = {
         // determine transformer list if any
         val trafos = if ("" != options.trafos)
         {
@@ -518,6 +518,57 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             sys.exit (1)
         }
 
+        def island (td: TransformerData): String = td.node1.TopologicalIsland
+
+        // get the distribution transformers
+        val transformer_data: RDD[TransformerData] = new Transformers (session, storage_level).getTransformers ()
+        if (log.isDebugEnabled)
+            transformer_data.map (_.asString).collect.foreach (log.debug)
+
+        val subtransmission_trafos: Array[TransformerData] = transformer_data.filter (trafo => trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0))).collect // ToDo: don't hard code these voltage values
+
+        // determine the set of transformers to work on
+        val transformers: RDD[TransformerIsland] = if (null != trafos)
+        {
+            val selected = transformer_data.filter (x => trafos.contains (x.transformer.id)).distinct
+            selected.groupBy (island).values.map (TransformerIsland.apply)
+        }
+        else
+        {
+            // do all low voltage power transformers
+            val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
+            niederspannug.groupBy (island).values.map (TransformerIsland.apply)
+        }
+        transformers.persist (storage_level).name = "Transformers"
+        (transformers, subtransmission_trafos)
+    }
+
+    def preCalculation(transformers: RDD[TransformerIsland]): PreCalculationResults = {
+        // prepare the initial graph edges and nodes
+        val (xedges, xnodes) = gridlabd.prepare ()
+
+        // get the existing photo-voltaic installations keyed by terminal
+        val solar = Solar (session, topologicalnodes = true, storage_level)
+        val sdata = solar.getSolarInstallations
+
+        if (log.isDebugEnabled)
+            transformers.map (trafo => log.debug (s"$trafo.island_name ${trafo.power_rating / 1000.0}kVA"))
+
+        // do the pre-calculation
+        val precalc_results =
+        {
+            // construct the initial graph from the real edges and nodes
+            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val pf = new PowerFeeding (session, storage_level)
+            pf.threshold_calculation (initial, sdata, transformers, options)
+        }
+        precalc_results
+    }
+
+    def run (): Long =
+    {
+        val start = System.nanoTime ()
+
         // read the file
         val reader_options = new mutable.HashMap[String, String]()
         reader_options ++= options.cim_reader_options
@@ -530,7 +581,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         reader_options.put ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")
         reader_options.put ("ch.ninecode.cim.default_switch_open_state", "false")
 
-        val storage_level = options.cim_reader_options.find (_._1 == "StorageLevel") match
+        storage_level = options.cim_reader_options.find (_._1 == "StorageLevel") match
         {
             case Some ((_, storage)) => StorageLevel.fromString (storage)
             case _ => StorageLevel.fromString ("MEMORY_AND_DISK_SER")
@@ -542,55 +593,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val read = System.nanoTime ()
         log.info (s"read: ${(read - start) / 1e9} seconds")
 
-        // prepare for precalculation
-        val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
-        val gridlabd = new GridLABD (session, topological_nodes = true, !options.three, storage_level, workdir, options.cable_impedance_limit)
-
-        // get the distribution transformers
-        val transformer_data = new Transformers (session, storage_level).getTransformers ()
-        if (log.isDebugEnabled)
-            transformer_data.map (_.asString).collect.foreach (log.debug)
-
-        // prepare the initial graph edges and nodes
-        val (xedges, xnodes) = gridlabd.prepare ()
-
-        // get the existing photo-voltaic installations keyed by terminal
-        val solar = Solar (session, topologicalnodes = true, storage_level)
-        val sdata = solar.getSolarInstallations
-
-        def island (td: TransformerData): String = td.node1.TopologicalIsland
-
-        // determine the set of transformers to work on
-        val transformers = if (null != trafos)
-        {
-            val selected = transformer_data.filter (x => trafos.contains (x.transformer.id)).distinct
-            selected.groupBy (island).values.map (TransformerIsland.apply)
-        }
-        else
-        {
-            // do all low voltage power transformers
-            val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
-            niederspannug.groupBy (island).values.map (TransformerIsland.apply)
-        }
-        transformers.persist (storage_level).name = "Transformers"
-
-        val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
-        val subtransmission_trafos = transformer_data.filter (trafo => trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0))).collect // ToDo: don't hard code these voltage values
-
-        val prepare = System.nanoTime ()
-        log.info (s"prepare: ${(prepare - read) / 1e9} seconds")
-        if (log.isDebugEnabled)
-            transformers.map (trafo => log.debug (s"$trafo.island_name ${trafo.power_rating / 1000.0}kVA"))
-
-        // do the pre-calculation
-        val precalc_results =
-        {
-            // construct the initial graph from the real edges and nodes
-            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
-            val pf = new PowerFeeding (session, storage_level)
-            pf.threshold_calculation (initial, sdata, transformers, options)
-        }
-
+        val (transformers, subtransmission_trafos) = initializeTransformers()
+        val precalc_results = preCalculation(transformers)
         val houses = if (options.all)
             precalc_results.has
         else if (-1 != options.reference)
@@ -622,7 +626,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             trafo_list.foreach (trafo => log.debug (s"$trafo.island_name ${trafo.power_rating / 1000.0}kVA"))
 
         val precalc = System.nanoTime ()
-        log.info (s"precalculation: ${(precalc - prepare) / 1e9} seconds")
+        log.info (s"precalculation: ${(precalc - read) / 1e9} seconds")
 
         // do gridlab simulation if not just pre-calculation
         if (!options.precalculation)
@@ -631,6 +635,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val edges = precalc_results.edges.filter (_._1 != null)
             val has = precalc_results.has.keyBy (_.source_obj)
             val grouped_precalc_results = vertices.keyBy (_.source_obj.trafo_id).groupWith (edges, has)
+
+            val t0 = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-04 12:00:00".replace (" ", "T"))
 
             val trafokreise = trafo_list
                 .flatMap (x => x.transformers.map (y => (y.transformer_name, x)))
