@@ -7,7 +7,6 @@ import java.util
 
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.scalatest.Outcome
@@ -65,28 +64,43 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
 
     def registerDependency (configuration: SparkConf): Unit =
     {
-        classesToRegister.foreach ((classToRegister) =>
+        classesToRegister.foreach (classToRegister =>
         {
             configuration.registerKryoClasses (classToRegister)
         })
     }
 
-    def getElementsFromSession (session: SparkSession, filename: String): DataFrame =
+    def readCIMElements (session: SparkSession,
+                         filename: String,
+                         options: Map[String, String] = null,
+                         files: Array[String] = null)
     {
-        val files = filename.split (",")
-        val options = Map [String, String](
-            "path" -> filename,
-            "StorageLevel" -> "MEMORY_AND_DISK_SER",
-            "ch.ninecode.cim.do_topo" -> "true",
-            "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-            "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-            "ch.ninecode.cim.debug" -> "true",
-            "ch.ninecode.cim.do_deduplication" -> "true"
-        )
-        session.sqlContext.read.format ("ch.ninecode.cim")
-            .options (options)
-            .load (files: _*)
+        val start = System.nanoTime
+        var thisFiles = files
+        var thisOptions = options
+        if (thisFiles == null)
+        {
+            thisFiles = filename.split (",")
+        }
+        if (thisOptions == null)
+        {
+            thisOptions = Map [String, String](
+                "path" -> filename,
+                "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                "ch.ninecode.cim.do_topo" -> "true",
+                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
+                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                "ch.ninecode.cim.debug" -> "true",
+                "ch.ninecode.cim.do_deduplication" -> "true"
+            )
+        }
+        val elements = session.sqlContext.read.format ("ch.ninecode.cim")
+            .options (thisOptions)
+            .load (thisFiles: _*)
             .persist (StorageLevel.MEMORY_AND_DISK_SER)
+        println (elements.count + " elements")
+        val read = System.nanoTime
+        println ("read: " + (read - start) / 1e9 + " seconds")
     }
 
     def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = null): Unit =

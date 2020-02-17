@@ -39,9 +39,8 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
 
             val filename = FILE_DEPOT + FILENAME1
 
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map[String, String] (
+
+            val customOptions = Map[String, String] (
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -51,11 +50,7 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
                 "ch.ninecode.cim.debug" -> "true",
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            readCIMElements (session, filename, options = customOptions)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -84,10 +79,7 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME2
-
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map[String, String] (
+            val customOptions = Map[String, String] (
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -98,10 +90,8 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
 
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            readCIMElements (session, filename, options = customOptions)
+
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (

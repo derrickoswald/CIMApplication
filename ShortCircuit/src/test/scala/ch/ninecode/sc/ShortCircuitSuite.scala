@@ -70,24 +70,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME1
-
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
-
+            readCIMElements (session, filename)
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
                 default_short_circuit_power_max = 600.0e6,
@@ -128,23 +111,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME2
-
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            readCIMElements (session, filename)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -183,22 +150,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             val filename = FILE_DEPOT + FILENAME3
 
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            readCIMElements (session, filename)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -240,22 +192,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             val filename = FILE_DEPOT + FILENAME4
 
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            readCIMElements (session, filename)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -297,23 +234,8 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME5
+            readCIMElements (session, filename)
 
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -355,23 +277,8 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME6
+            readCIMElements (session, filename)
 
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -411,13 +318,8 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             val filename = FILE_DEPOT + FILENAME7
 
-            val start = System.nanoTime
+            readCIMElements (session, filename)
 
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -458,23 +360,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME8
-
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            readCIMElements (session, filename)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -528,23 +414,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME9
-
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            readCIMElements (session, filename)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -584,23 +454,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME10
-
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            readCIMElements (session, filename)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -644,23 +498,8 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             val filename = FILE_DEPOT + FILENAME11
             val MESSAGELIMIT = 2
+            readCIMElements (session, filename)
 
-            val start = System.nanoTime
-            val files = filename.split (",")
-            val options = Map [String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
-                "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                "ch.ninecode.cim.debug" -> "true",
-                "ch.ninecode.cim.do_deduplication" -> "true"
-            )
-
-            val elements = getElementsFromSession (session, filename)
-            println (elements.count + " elements")
-            val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
