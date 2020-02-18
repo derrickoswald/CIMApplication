@@ -281,7 +281,7 @@ object Database
                 datainsert.setInt (7, if (records (i).eea != null) records (i).eea.size else 0)
                 records (i).reason match
                 {
-                    case "voltage limit" | "current limit" | "transformer limit" | "heuristic limit" ⇒
+                    case "voltage limit" | "current limit" | "transformer limit" ⇒
                         datainsert.setDouble (6, records (i).max_power_feeding)
                         datainsert.setString (8, records (i).reason)
                         datainsert.setString (9, records (i).details)

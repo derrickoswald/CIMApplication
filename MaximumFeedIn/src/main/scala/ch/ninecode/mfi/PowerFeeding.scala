@@ -286,7 +286,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val traced_house_nodes_EEA = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values
 
         // update each element in the transformer service area with bad value (just choose the first)
-        val problem_trafos = graph.vertices.values.filter (x ⇒ x.source_obj != null && x.hasIssues).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1.trafo_id, x._2.head.problem))
+        val problem_trafos = graph.vertices.values.filter (x ⇒ x.source_obj != null && (x.hasIssues || x.hasNonRadial)).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1.trafo_id, x._2.head.problem))
         val has = traced_house_nodes_EEA.map (
             node =>
             {
@@ -304,14 +304,14 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
             {
                 arg._2 match
                 {
-                    case Some (problem) ⇒ arg._1.copy (max_power_feeding = 0.0, reason = problem, details = null)
+                    case Some (problem) ⇒ arg._1.copy (reason = problem, details = null)
                     case None ⇒ arg._1
                 }
             }
         )
             .persist (storage_level)
 
-        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), options.outputfile)(has)
+        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), options.outputfile)(has.filter (_.mrid != null))
         log.info ("the simulation number is " + simulation)
 
         def mapGraphEdges (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =

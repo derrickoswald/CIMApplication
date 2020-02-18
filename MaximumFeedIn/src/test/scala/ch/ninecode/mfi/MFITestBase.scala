@@ -28,10 +28,14 @@ class MFITestBase extends TestUtil
         val options = Map [String, String](
             "path" -> filename,
             "StorageLevel" -> "MEMORY_AND_DISK_SER",
-            "ch.ninecode.cim.make_edges" -> "false",
-            "ch.ninecode.cim.do_join" -> "false",
             "ch.ninecode.cim.do_topo" -> "true",
-            "ch.ninecode.cim.do_topo_islands" -> "true")
+            "ch.ninecode.cim.do_topo_islands" -> "true",
+            "ch.ninecode.cim.force_retain_switches" -> "ForceTrue",
+            "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+            "ch.ninecode.cim.force_switch_separate_islands" -> "Unforced",
+            "ch.ninecode.cim.force_fuse_separate_islands" -> "Unforced",
+            "ch.ninecode.cim.default_switch_open_state" -> "false")
+
         val elements = session.read.format ("ch.ninecode.cim").options (options).load (files: _*)
         println (elements.count () + " elements")
 

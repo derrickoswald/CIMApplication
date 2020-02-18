@@ -67,8 +67,8 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val nodes = has.take (10)
             assert (nodes.length == 1)
             val node = nodes (0)
-            assert (node.reason == "heuristic limit")
-            assert (node.details == "limitation of last cable(s)")
+            assert (node.reason == "non-radial network")
+            assert (node.details == null)
             // ToDo: note that the 0.67V drop (including the cable) is derived from incorrect impedances due to incorrect legacy CIM export
             // two cables GKN 3x10re/10 1/0.6 kV with ratedCurrent 67A, @ (400 + 0.67)V * √3 = 92993
             near (node.max_power_feeding, 92993, 1.0)
@@ -78,7 +78,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val result = querySQLite (options.outputfile, query)
             assert (result.size == 2, "number of records")
             result.next
-            checkResults (result, 92000, "current limit", "CAB0002 > 134.0 Amps")
+            checkResults (result, 93000, "current limit", "CAB0002 > 134.0 Amps")
             result.next
             checkResults (result, 0, "no results", "non-radial network")
         }
@@ -110,7 +110,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             assert (nodes.length == 1)
             val node = nodes (0)
             assert (node.reason == "non-radial network")
-            assert (node.details == "transformer limit")
+            assert (node.details == null)
             // 2 x 100kVA = 200000
             near (node.max_power_feeding, 200000, 1.0)
 
@@ -150,13 +150,13 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val nodes = has.take (10)
             assert (nodes.length == 1)
             val node = nodes (0)
-            assert (node.reason == "heuristic limit")
-            assert (node.details == "limitation of last cable(s)")
+            assert (node.reason == "non-radial network")
+            assert (node.details == null)
             // two cables from two different transformers:
             // GKN 3x10re/10 1/0.6 kV with ratedCurrent 67A, @ (400 + 1.97)V * √3 = 46648
             // GKN 3x16rm/16 1/0.6 kV with ratedCurrent 88A, @ (400 + 2.58)V * √3 = 61361
             //                                                                     108009
-            near (node.max_power_feeding, 108009, 1.0)
+            near (node.max_power_feeding, 107599, 1.0)
 
             runMFI (session, options)
 
@@ -196,8 +196,8 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val nodes = has.take (10)
             assert (nodes.length == 1)
             val node = nodes (0)
-            assert (node.reason == "heuristic limit")
-            assert (node.details == "limitation of last cable(s)")
+            assert (node.reason == "non-radial network")
+            assert (node.details == null)
             // ToDo: this is not quite right, the voltage drop will depend on both supplies, but only one supply is found by the trace
             // two cables from two different supplies:
             // GKN 3x16rm/16 1/0.6 kV with ratedCurrent 88A, @ (400 + 2.00)V * √3 = 122547
@@ -241,8 +241,8 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val nodes = has.take (10)
             assert (nodes.length == 1)
             val node = nodes (0)
-            assert (node.reason == "heuristic limit")
-            assert (node.details == "limitation of last cable(s)")
+            assert (node.reason == "non-radial network")
+            assert (node.details == null)
             // GKN 3x10re/10 1/0.6 kV with ratedCurrent 67A, @ (400V + 13.45V) * √3 = 47980
             near (node.max_power_feeding, 47980.0, 1.0)
 
@@ -253,7 +253,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             result.next
             checkResults (result, 28000, "voltage limit", "CAB0002 > 412.0 Volts")
             result.next
-            checkResults (result, 47980, "heuristic limit", "limitation of last cable(s)")
+            checkResults (result, 0, "no results", "non-radial network")
         }
     }
 
