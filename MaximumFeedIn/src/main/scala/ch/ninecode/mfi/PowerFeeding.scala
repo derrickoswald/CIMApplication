@@ -285,8 +285,17 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val house_nodes = get_threshold_per_has (new_nodes, options)
         val traced_house_nodes_EEA = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values
 
-        // update each element in the transformer service area with bad value (just choose the first)
-        val problem_trafos = graph.vertices.values.filter (x ⇒ x.source_obj != null && (x.hasIssues || x.hasNonRadial)).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1.trafo_id, x._2.head.problem))
+        // prioritize unhandled issues over a non-radial network problem
+        def pickWorst (pfn: Iterable[PowerFeedingNode]): String =
+        {
+            val issues = pfn.filter (_.hasIssues)
+            if (issues.nonEmpty)
+                issues.head.problem
+            else
+                pfn.head.problem
+        }
+        // update each element in the transformer service area with bad value
+        val problem_trafos = graph.vertices.values.filter (x ⇒ x.source_obj != null && (x.hasIssues || x.hasNonRadial)).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1.trafo_id, pickWorst (x._2)))
         val has = traced_house_nodes_EEA.map (
             node =>
             {
