@@ -156,7 +156,7 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         """
 Ingests smart meter data into Cassandra.
 
-Reads smart meter files in LPEx or BelVis format and matches the meter ID with a CIM mRID
+Reads smart meter files in LPEx, BelVis or MSCONS format and matches the meter ID with a CIM mRID
 based on a mapping CSV file, and inserts 'raw meter data' into the Cassandra measured_values table.
 The program normally copies and unzips (based on file extension) files to HDFS (unless --nocopy is specified) and
 reads the mapping file and meter data files (demultiplexed to individual readings) into Spark RDD.
@@ -165,6 +165,7 @@ Operation are performed with complex numbers per the measured_value schema,
 but so far deal only with one phase (phase A in North America or phase R in the rest of the world).
 Where multiple meter IDs map to one CIM mRID, the values are added together, providing the capability to
 have an apartment block merged or active and reactive measurements from the same meter merged.
+This merging is done per file for LPEx and BelVis, but per command line for MSCONS.
 """
     )
 }

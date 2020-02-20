@@ -115,5 +115,36 @@ class IngestSuiteIT
 
         session.close ()
     }
+
+    @Test def MSCONS ()
+    {
+        val FILE_DEPOT = "../MSCONSReader/data/"
+        val MAPPING_FILE = s"${FILE_DEPOT}mapping.csv"
+        val FILES = Array (
+            s"${FILE_DEPOT}20191215_045127_12X-SAK-N------6_E66_12X-SAK-N------6_ESLEVU14572840_-566879393.txt",
+            s"${FILE_DEPOT}20191215_045127_12X-SAK-N------6_E66_12X-SAK-N------6_ESLEVU14572841_-1811850990.txt",
+            s"${FILE_DEPOT}20191215_045128_12X-SAK-N------6_E66_12X-SAK-N------6_ESLEVU14572842_-1470816376.txt",
+            s"${FILE_DEPOT}20191215_045128_12X-SAK-N------6_E66_12X-SAK-N------6_ESLEVU14572843_-1813073308.txt",
+            s"${FILE_DEPOT}20191215_045129_12X-SAK-N------6_E66_12X-SAK-N------6_ESLEVU14572844_-1411967842.txt",
+            s"${FILE_DEPOT}20191215_045129_12X-SAK-N------6_E66_12X-SAK-N------6_ESLEVU14572845_1003992095.txt"
+        )
+
+        main (Array.concat (Array ("--unittest", "--verbose",
+            "--master", "local[2]",
+            "--host", "localhost",
+            "--port", cassandra_port.toString,
+            "--keyspace", KEYSPACE,
+            "--nocopy",
+            "--mapping", MAPPING_FILE,
+            "--format", "MSCONS"), FILES))
+
+        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+
+        checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='USR0001' and type='energy'", 96L, "merged records")
+
+        session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
+
+        session.close ()
+    }
 }
 

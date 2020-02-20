@@ -9,7 +9,7 @@ object LogLevels extends Enumeration
 object Formats extends Enumeration
 {
     type Formats = Value
-    val Belvis, LPEx, Custom = Value
+    val Belvis, LPEx, MSCONS, Custom = Value
 }
 
 case class IngestOptions
@@ -32,7 +32,7 @@ case class IngestOptions
     /**
      * Spark master.
      */
-    master: String = "",
+    master: String = "local[*]",
 
     /**
      * Spark options.

@@ -103,6 +103,7 @@
         <module>ShortCircuit</module>
         <module>Spatial</module>
         <module>SmartMeter</module>
+        <module>MSCONSReader</module>
         <module>Ingest</module>
         <module>Simulation</module>
         <module>NetworkParameters</module>
