@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 
+import ch.ninecode.mscons._
+
 /**
  * Import measured data into Cassandra.
  *
@@ -451,6 +453,43 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         }
     }
 
+    def process_mscons (join_table: Map[String, String])(files: Seq[String]): Unit =
+    {
+        val start = System.nanoTime ()
+
+        val records = files.flatMap (
+            filename =>
+            {
+                val mscons = MSCONSParser (MSCONSOptions ())
+                val records = mscons.parse (filename) // type = List[(mscons.ID, mscons.Quantity, mscons.Time, mscons.Period, mscons.Real, mscons.Imaginary, mscons.Units)]
+                records
+            }
+        )
+
+        /**
+         * Make tuples suitable for Cassandra:
+         * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+         *
+         * @param record a reading from the MSCONS parser
+         */
+        def to_tuples (join_table: Map[String, String])(record: (String, String, Calendar, Int, Double, Double, String)): Option[MeasuredValue] =
+        {
+            val mrid = join_table.getOrElse (record._1, null)
+            if (null != mrid)
+                Some ((mrid, record._2, record._3.getTimeInMillis, record._4, record._5, record._6, record._7))
+            else
+                None
+        }
+
+        val raw = session.sparkContext.parallelize (records)
+        val rdd = raw.flatMap (to_tuples (join_table))
+        // combine real and imaginary parts
+        val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+        grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        val end = System.nanoTime ()
+        log.info (s"processed files [${files.mkString ("")}]: ${(end - start) / 1e9} seconds")
+    }
+
     def isNumber (s: String): Boolean = s forall Character.isDigit
 
     def asDouble (s: String): Double =
@@ -552,10 +591,11 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     {
         val begin = System.nanoTime ()
 
-        val schema = Schema (session, options.keyspace, options.replication, verbose = true)
+        val schema = Schema (session, options.keyspace, options.replication, verbose = options.verbose)
         if (schema.make)
         {
-
+            val db = System.nanoTime ()
+            log.info (s"schema: ${(db - begin) / 1e9} seconds")
             val mapping_files =
                 if (options.nocopy)
                     Seq (options.mapping)
@@ -567,7 +607,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
                 val read = System.nanoTime ()
-                log.info (s"read $filename: ${(read - begin) / 1e9} seconds")
+                log.info (s"read $filename: ${(read - db) / 1e9} seconds")
 
                 val ch_number = dataframe.schema.fieldIndex (options.metercol)
                 val nis_number = dataframe.schema.fieldIndex (options.mridcol)
@@ -581,6 +621,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 {
                     case "Belvis" => options.datafiles.foreach (process_belvis (join_table))
                     case "LPEx" => options.datafiles.foreach (process_lpex (join_table))
+                    case "MSCONS" => process_mscons (join_table)(options.datafiles)
                     case "Custom" => options.datafiles.foreach (process_custom (join_table))
                 }
 

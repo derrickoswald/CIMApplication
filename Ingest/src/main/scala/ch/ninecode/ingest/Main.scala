@@ -73,8 +73,7 @@ object Main
                         // create the configuration
                         val configuration = new SparkConf (false)
                         configuration.setAppName (APPLICATION_NAME)
-                        if ("" != options.master)
-                            configuration.setMaster (options.master)
+                        configuration.setMaster (options.master)
                         if (options.options.nonEmpty)
                             options.options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
                         configuration.set ("spark.cassandra.connection.host", options.host)
