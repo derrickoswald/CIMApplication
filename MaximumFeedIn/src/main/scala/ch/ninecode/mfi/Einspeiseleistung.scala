@@ -15,11 +15,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.GridlabFailure
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.Solar
@@ -243,7 +243,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         overI.flatMap (assign (experiments))
     }
 
-    def analyse (options: EinspeiseleistungOptions, errors: List[String])(trafo: (String, ((Double, Iterable[(String, Double)], Iterable[(String, String)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
+    def analyse (options: EinspeiseleistungOptions, errors: Array[GridlabFailure])(trafo: (String, ((Double, Iterable[(String, Double)], Iterable[(String, String)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
     {
         // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
         val trafo_power = trafo._2._1._1
@@ -254,7 +254,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val trafo_name = trafo._1
 
         val complexDataElements = trafo._2._2._1
-        if (complexDataElements.nonEmpty)
+        val error: GridlabFailure = errors.find (_.trafoID == trafo_name).getOrElse (null)
+        if (complexDataElements.nonEmpty && error == null)
         {
             val experiments = trafo._2._2._2
 
@@ -283,28 +284,31 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
         else
         {
-            val error = errors.find (_.startsWith (trafo_name)).getOrElse ("")
-            trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.feeder, e.node, e.house, None, "gridlab failed %s".format (error), "no results")).toList
+            val errorMessage = error.errorMessages.mkString("\n")
+            trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.feeder, e.node, e.house, None, s"gridlabd failed \n $errorMessage", "no results")).toList
         }
     }
 
     def solve_and_analyse (gridlabd: GridLABD, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)], Iterable[(String, String)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
     {
         val b4_solve = System.nanoTime ()
-        val success = gridlabd.solve (reduced_trafos.map (_._1))
+        val gridlabFailures = gridlabd.solve (reduced_trafos.map (_._1))
         val solved = System.nanoTime ()
-        if (success._1)
+        if (gridlabFailures.nonEmpty)
             log.info ("solve: %s seconds successful".format ((solved - b4_solve) / 1e9))
         else
         {
             log.error ("solve: %s seconds failed".format ((solved - b4_solve) / 1e9))
-            success._2.foreach (log.error)
+            gridlabFailures.foreach(failure => {
+                log.error(s"${failure.trafoID} has failures: ")
+                failure.errorMessages.foreach(log.error)
+            })
         }
         val output = gridlabd.read_output_files (!options.three)
         val read = System.nanoTime ()
         log.info ("read: " + (read - solved) / 1e9 + " seconds")
         val prepared_results = reduced_trafos.join (output.cogroup (experiments.keyBy (_.trafo)))
-        val ret = prepared_results.flatMap (analyse (options, success._2))
+        val ret = prepared_results.flatMap (analyse (options, gridlabFailures))
         val anal = System.nanoTime ()
         log.info ("analyse: " + (anal - read) / 1e9 + " seconds")
         ret

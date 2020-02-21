@@ -726,14 +726,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     {
         val b4_solve = System.nanoTime ()
         val trafos = simulations.map (_.island.island_name)
-        val success = gridlabd.solve (trafos)
+        val gridlabFailures = gridlabd.solve (trafos)
         val solved = System.nanoTime ()
-        if (success._1)
+        if (gridlabFailures.isEmpty)
             log.info ("solve: %s seconds successful".format ((solved - b4_solve) / 1e9))
         else
         {
             log.error ("solve: %s seconds failed".format ((solved - b4_solve) / 1e9))
-            success._2.foreach (log.error)
+            gridlabFailures.foreach(failure => {
+                log.error(s"${failure.trafoID} has failures: ")
+                failure.errorMessages.foreach(log.error)
+            })
         }
         val output = read_output_files (one_phase, gridlabd.workdir_slash)
         val read = System.nanoTime ()

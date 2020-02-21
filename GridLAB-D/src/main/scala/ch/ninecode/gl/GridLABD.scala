@@ -46,6 +46,9 @@ import scala.collection.Map
  * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with GridLAB-D, the reason is bad performance in GridLAB-D with too high
  *                              impedance values
  */
+
+case class GridlabFailure (trafoID: String, errorMessages: List[String])
+
 class GridLABD
 (
     session: SparkSession,
@@ -419,18 +422,31 @@ class GridLABD
         writeInputFile (generator.directory, "output_data/dummy", null) // mkdir
     }
 
-    def check (input: String): (Boolean, List[String]) =
+    def check (input: String): (GridlabFailure) =
     {
-        if (input.contains ("FATAL") || input.contains ("ERROR") || input.contains ("FAIL") || input.contains ("command not found") || input.contains ("Cannot fork") || input.contains ("pthread_create"))
+        val criticalErrors = List("FATAL", "ERROR", "FAIL", "command not found", "Cannot fork", "pthread_create")
+        val allLines: List[String] = input.split('|').toList
+        val trafoID = allLines.head
+        val criticalLines = allLines.filter(line => {
+            var hasError = false
+            for (error <- criticalErrors) {
+                if (line.contains(error)) {
+                    hasError = true
+                }
+            }
+            hasError
+        })
+
+        if (criticalLines.nonEmpty)
         {
-            log.error ("gridlabd failed, message is: " + input)
-            (false, input.split ("\n").toList)
+            log.error ("gridlabd failed, message is: \n" + criticalLines.mkString("\n"))
+            GridlabFailure(trafoID, criticalLines)
         }
         else
-            (true, null)
+            GridlabFailure(trafoID, List[String]())
     }
 
-    def solve (files: RDD[String]): (Boolean, List[String]) =
+    def solve (files: RDD[String]): Array[GridlabFailure] =
     {
         // assumes gridlabd is installed on every node:
         // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-3.2.0-1.x86_64.rpm/download)
@@ -461,9 +477,10 @@ class GridLABD
                             "export FILE=$line; " +
                             "ulimit -Sn `ulimit -Hn`; " +
                             "pushd " + workdir_path + "$FILE; " +
-                            "gridlabd --quiet $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                            "gridlabd --quiet $FILE.glm 2> $FILE.out;" +
                             "cat output_data/* > output.txt; " +
-                            "cat $FILE.out; " +
+                            "echo -n $FILE|;" +
+                            "cat $FILE.out | tr '\r\n' '|';" +
                             "popd; " +
                             "done < /dev/stdin")
                 }
@@ -480,20 +497,20 @@ class GridLABD
                         "ulimit -Sn `ulimit -Hn`; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +
                         "pushd $FILE; " +
-                        "gridlabd --quiet $FILE.glm 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                        "gridlabd --quiet $FILE.glm 2> $FILE.out;" +
                         "cat output_data/* > output.txt; " +
                         "popd; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/output.txt " + workdir_path + "$FILE; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
-                        "cat $FILE/$FILE.out; " +
+                        "echo -n $FILE|;" +
+                        "cat $FILE.out | tr '\r\n' '|';" +
                         "rm -rf $FILE; " +
                         "done < /dev/stdin")
             }
 
-
-        val out = files.pipe (gridlabd)
-        // take only the first error message
-        out.map (check).fold ((true, List [String]()))((x, y) ⇒ (x._1 && y._1, if (!y._1) x._2 :+ y._2.head else x._2))
+        val out = files.pipe (gridlabd).filter(_.trim() != "") // we somehow get some empty strings back, trim them
+        val checked = out.map (check)
+        checked.filter(_.errorMessages.nonEmpty).collect
     }
 
     def default_filenameparser (filename: String): (String, String) =
