@@ -311,9 +311,10 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             println ("generate: " + (solve - generate) / 1e9 + " seconds")
 
             assert (results.nonEmpty, "should have errors")
-            assert (results.length == 2, "should have 2 results")
-            assert (results(0).errorMessages.toString.contains ("ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method"), "foo")
-            assert (results(1).errorMessages.toString.contains ("ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method"), "bar")
+            assert (results.length == 6, "should have 6 results")
+            val errors = results.map (_.errorMessages.mkString ("\n")).mkString ("\n")
+            assert (errors.contains ("ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method"), "foo")
+            assert (errors.contains ("ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method"), "bar")
 
             println ("total: " + (solve - start) / 1e9 + " seconds")
     }
