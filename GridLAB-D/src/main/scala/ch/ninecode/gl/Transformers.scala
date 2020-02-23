@@ -24,7 +24,7 @@ import ch.ninecode.model._
  * @param default_supply_network_short_circuit_angle_min power factor angle for minimum primary side network equivalent power under short circuit conditions, overrides impedance value if specified, (°)
  *
  */
-class Transformers (
+final case class Transformers (
     session: SparkSession,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
     default_supply_network_short_circuit_power_max: Double = 200.0e6,

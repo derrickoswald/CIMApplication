@@ -11,65 +11,72 @@ import org.scalatest.BeforeAndAfter
 class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 {
 
-    val FILENAME1 = "Beispiel zur Ermittlung der Kurzschlussleistung.rdf"
-    val FILENAME2 = "Beispiel zur Ermittlung der Kurzschlussleistung mit EquivalentInjection.rdf"
-    val FILENAME3 = "sak_sample.rdf"
-    val FILENAME4 = "sak_sample_ganged.rdf"
-    val FILENAME5 = "sak_sample_parallel.rdf"
-    val FILENAME6 = "sak_sample_complex_parallel.rdf"
-    val FILENAME7 = "sak_sample_complex2_parallel.rdf"
-    val FILENAME8 = "ibw_cim_export.rdf"
-    val FILENAME9 = "fuse_no_sample.rdf"
-    val FILENAME10 = "fuse_nc_sample.rdf"
-    val FILENAME11 = "messagetest.rdf"
+    val FILENAME1 = "Beispiel zur Ermittlung der Kurzschlussleistung"
+    val FILENAME2 = "Beispiel zur Ermittlung der Kurzschlussleistung mit EquivalentInjection"
+    val FILENAME3 = "sak_sample"
+    val FILENAME4 = "sak_sample_ganged"
+    val FILENAME5 = "sak_sample_parallel"
+    val FILENAME6 = "sak_sample_complex_parallel"
+    val FILENAME7 = "sak_sample_complex2_parallel"
+    val FILENAME8 = "ibw_cim_export"
+    val FILENAME9 = "fuse_no_sample"
+    val FILENAME10 = "fuse_nc_sample"
+    val FILENAME11 = "messagetest"
 
     before
     {
         // unpack the zip files
-        if (!new File (FILE_DEPOT + FILENAME1).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME1.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME2).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME2.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME3).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME3.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME4).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME4.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME5).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME5.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME6).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME6.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME7).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME7.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME8).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME8.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME9).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME9.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME10).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME10.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME11).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME11.replace (".rdf", ".zip"), FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME1}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME1}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME2}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME2}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME3}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME3}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME4}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME4}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME5}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME5}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME6}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME6}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME7}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME7}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME8}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME8}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME9}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME9}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME10}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME10}.zip", FILE_DEPOT)
+        if (!new File (s"${FILE_DEPOT}${FILENAME11}.rdf").exists)
+            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME11}.zip", FILE_DEPOT)
     }
 
     after
     {
-        new File (FILE_DEPOT + FILENAME1).delete
-        new File (FILE_DEPOT + FILENAME2).delete
-        new File (FILE_DEPOT + FILENAME3).delete
-        new File (FILE_DEPOT + FILENAME4).delete
-        new File (FILE_DEPOT + FILENAME5).delete
-        new File (FILE_DEPOT + FILENAME6).delete
-        new File (FILE_DEPOT + FILENAME7).delete
-        new File (FILE_DEPOT + FILENAME8).delete
-        new File (FILE_DEPOT + FILENAME9).delete
-        new File (FILE_DEPOT + FILENAME10).delete
-        new File (FILE_DEPOT + FILENAME11).delete
+        new File (s"${FILE_DEPOT}${FILENAME1}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME1}.transformers").delete
+        new File (s"${FILE_DEPOT}${FILENAME2}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME2}.transformers").delete
+        new File (s"${FILE_DEPOT}${FILENAME3}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME3}.transformers").delete
+        new File (s"${FILE_DEPOT}${FILENAME4}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME4}.transformers").delete
+        new File (s"${FILE_DEPOT}${FILENAME5}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME5}.transformers").delete
+        new File (s"${FILE_DEPOT}${FILENAME6}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME6}.transformers").delete
+        new File (s"${FILE_DEPOT}${FILENAME7}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME7}.transformers").delete
+        new File (s"${FILE_DEPOT}${FILENAME8}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME9}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME10}.rdf").delete
+        new File (s"${FILE_DEPOT}${FILENAME11}.rdf").delete
     }
 
     test ("DACHCZ")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME1
+            val filename = s"${FILE_DEPOT}${FILENAME1}.rdf"
             readCIMElements (session, filename)
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -78,7 +85,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 default_short_circuit_power_min = 600.0e6,
                 default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
                 low_temperature = 20.0,
-                trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
+                trafos = s"${FILE_DEPOT}${FILENAME1}.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -108,15 +115,15 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("DACHCZ with EquivalentInjection")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME2
+            val filename = s"${FILE_DEPOT}${FILENAME2}.rdf"
             readCIMElements (session, filename)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
                 low_temperature = 20.0,
-                trafos = FILE_DEPOT + "Beispiel zur Ermittlung der Kurzschlussleistung.transformers")
+                trafos = s"${FILE_DEPOT}${FILENAME2}.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -146,9 +153,9 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("SAK Spreadsheet")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME3
+            val filename = s"${FILE_DEPOT}${FILENAME3}.rdf"
 
             readCIMElements (session, filename)
 
@@ -156,7 +163,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val sc_options = ShortCircuitOptions (
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = FILE_DEPOT + "sak_sample.transformers")
+                trafos = s"${FILE_DEPOT}${FILENAME3}.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -188,9 +195,9 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("SAK Spreadsheet Ganged")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME4
+            val filename = s"${FILE_DEPOT}${FILENAME4}.rdf"
 
             readCIMElements (session, filename)
 
@@ -199,7 +206,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = FILE_DEPOT + "sak_sample_ganged.transformers")
+                trafos = s"${FILE_DEPOT}${FILENAME4}.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -231,9 +238,9 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("SAK Spreadsheet Parallel")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME5
+            val filename = s"${FILE_DEPOT}${FILENAME5}.rdf"
             readCIMElements (session, filename)
 
 
@@ -242,7 +249,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = FILE_DEPOT + "sak_sample.transformers")
+                trafos = s"${FILE_DEPOT}${FILENAME5}.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -274,9 +281,9 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("Complex Parallel")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME6
+            val filename = s"${FILE_DEPOT}${FILENAME6}.rdf"
             readCIMElements (session, filename)
 
 
@@ -284,7 +291,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val sc_options = ShortCircuitOptions (
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = FILE_DEPOT + "sak_sample.transformers")
+                trafos = s"${FILE_DEPOT}${FILENAME6}.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -314,9 +321,9 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("Complex 2 Parallel")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME7
+            val filename = s"${FILE_DEPOT}${FILENAME7}.rdf"
 
             readCIMElements (session, filename)
 
@@ -325,7 +332,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val sc_options = ShortCircuitOptions (
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = FILE_DEPOT + "sak_sample.transformers")
+                trafos = s"${FILE_DEPOT}${FILENAME7}.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -357,9 +364,9 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("IBW")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME8
+            val filename = s"${FILE_DEPOT}${FILENAME8}.rdf"
             readCIMElements (session, filename)
 
             // short circuit calculations
@@ -411,9 +418,9 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("normalOpen=true Fuse")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME9
+            val filename = s"${FILE_DEPOT}${FILENAME9}.rdf"
             readCIMElements (session, filename)
 
             // short circuit calculations
@@ -451,9 +458,9 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("normalOpen=false open=true Fuse")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME10
+            val filename = s"${FILE_DEPOT}${FILENAME10}.rdf"
             readCIMElements (session, filename)
 
             // short circuit calculations
@@ -494,9 +501,9 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
     test ("message test")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME11
+            val filename = s"${FILE_DEPOT}${FILENAME11}.rdf"
             val MESSAGELIMIT = 2
             readCIMElements (session, filename)
 

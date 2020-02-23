@@ -54,7 +54,7 @@ final case class Lines (
         getOrElse[TapeShieldCableInfo].asInstanceOf[RDD[Element]]
     )
 
-    def refPreLengthImpedance (line: ACLineSegment): String = line.PerLengthImpedance
+    def refPerLengthImpedance (line: ACLineSegment): String = line.PerLengthImpedance
 
     def refAssetDataSheet (line: ACLineSegment): String = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
 
@@ -70,7 +70,7 @@ final case class Lines (
      * @param line_filter filter to remove bad lines, default is lines > default_cable_impedance_limit Ω
      * @return the RDD of cable data
      */
-    def getLines (line_filter: LineData ⇒ Boolean = impedance_limit): RDD[LineData] =
+    def getLines (line_filter: LineData => Boolean = impedance_limit): RDD[LineData] =
     {
         // get ac lines with two terminals
         val lines_terminals: RDD[(ACLineSegment, Terminal, Terminal)] =
@@ -82,7 +82,7 @@ final case class Lines (
 
         // append parameters if any
         val lines_terminals_parameters: RDD[(ACLineSegment, Terminal, Terminal, Option[Element])] =
-            lines_terminals.keyBy (x => refPreLengthImpedance (x._1)).leftOuterJoin (per_length_impedance.keyBy (_.id))
+            lines_terminals.keyBy (x => refPerLengthImpedance (x._1)).leftOuterJoin (per_length_impedance.keyBy (_.id))
             .values
             .map (x => (x._1._1, x._1._2, x._1._3, x._2))
 
@@ -105,11 +105,14 @@ final case class Lines (
 
 object Lines
 {
+    /**
+     * Maximum per length impedance for a cable (Ω/km).
+     */
     var DEFAULT_CABLE_IMPEDANCE_LIMIT: Double = 5.0
 
-    def impedance_limit (line: LineData): Boolean =
+    def impedance_limit (data: LineData): Boolean =
     {
         // all cable impedances are less than the limit
-        line.lines.forall (x => x.impedance.c1.modulus < DEFAULT_CABLE_IMPEDANCE_LIMIT)
+        data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.modulus < DEFAULT_CABLE_IMPEDANCE_LIMIT)
     }
 }

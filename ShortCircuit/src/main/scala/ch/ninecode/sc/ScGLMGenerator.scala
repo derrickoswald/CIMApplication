@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import ch.ninecode.gl._
+import ch.ninecode.model._
 
 /**
  *
@@ -38,7 +39,7 @@ case class ScGLMGenerator
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
     }
 
-    override def transformers: Iterable[TransformerEdge] = area.island.transformers.map (set => TransformerEdge (set.node0, set.node1, set))
+    override def transformers: Iterable[TransformerEdge] = area.island.transformers.map (TransformerEdge)
 
     class ShortCircuitSwingNode (val set: TransformerSet) extends SwingNode (set.node0, set.v0, set.transformer_name)
 
@@ -52,7 +53,7 @@ case class ScGLMGenerator
 
     /**
      * Emit the swing node(s).
-     * Override to emit EuivalentInjection as a line with appropriate impedance.
+     * Override to emit EquivalentInjection as a line with appropriate impedance.
      *
      * @param node The swing node to emit.
      * @return The .glm file text for the swing bus.
@@ -83,8 +84,12 @@ case class ScGLMGenerator
                   |            voltage_A %s;
                   |        };
                   |""".stripMargin.format (phase, voltage, voltage)
-
-            val line = LineEdge ("N5", node.id)
+            val mrid = s"_generated_N5_${node.id}"
+            val id = IdentifiedObject (BasicElement (null, mrid), mRID = mrid)
+            val l = ACLineSegment (Conductor (ConductingEquipment (Equipment (PowerSystemResource (id)))))
+            val t1 = Terminal (TopologicalNode = "N5")
+            val t2 = Terminal (TopologicalNode = node.id)
+            val line = LineEdge (LineData (Iterable (LineDetails (l, t1, t2, None, None))))
             val config = line.make_line_configuration ("N5_configuration", Sequences (Complex (z.re, z.im), Complex (0.0)), false, this)
             val cable =
                 """
@@ -142,7 +147,7 @@ case class ScGLMGenerator
         val id = node.id
         val player = experiments.find (_.mrid == id) match
         {
-            case Some (_) ⇒
+            case Some (_) =>
                 val phase = if (one_phase) "AN" else "ABCN"
                 val load =
                     """
@@ -161,7 +166,7 @@ case class ScGLMGenerator
                       |""".stripMargin.format (id, id, phase, node.nominal_voltage, id)
                 load
 
-            case None ⇒ ""
+            case None => ""
         }
         meter + player
     }
@@ -169,7 +174,7 @@ case class ScGLMGenerator
     override def extra: Iterable[String] =
     {
         experiments.map (
-            experiment ⇒
+            experiment =>
                 """
                   |        object voltdump
                   |        {

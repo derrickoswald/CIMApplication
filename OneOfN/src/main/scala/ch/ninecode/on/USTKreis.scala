@@ -40,5 +40,5 @@ case class USTKreis
 
     def toTransformerEdge (elements: Iterable[Element], cn1: String, cn2: String): TransformerEdge =
         // find the transformer in the list
-        TransformerEdge (cn1, cn2, transformers.find (_.transformers.map (_.transformer.id).contains (elements.head.id)).orNull)
+        TransformerEdge (transformers.find (_.transformers.map (_.transformer.id).contains (elements.head.id)).orNull)
 }

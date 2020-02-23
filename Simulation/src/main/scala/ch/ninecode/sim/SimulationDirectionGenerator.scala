@@ -22,7 +22,7 @@ case class SimulationDirectionGenerator
 
     override def edges: Iterable[SimulationEdge] = kreis.edges
 
-    override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (kreis.transformer.node0, kreis.transformer.node1, kreis.transformer))
+    override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (kreis.transformer))
 
     override def swing_nodes: Iterable[GLMNode] = kreis.swing_nodes
 

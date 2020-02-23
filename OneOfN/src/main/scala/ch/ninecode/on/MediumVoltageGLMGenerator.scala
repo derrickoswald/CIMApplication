@@ -26,7 +26,7 @@ case class MediumVoltageGLMGenerator
 
     override def edges: Iterable[GLMEdge] = ust.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2, ust.toTransformerEdge))
 
-    override def transformers: Iterable[TransformerEdge] = ust.transformers.map (x ⇒ TransformerEdge (x.node0, x.node1, x))
+    override def transformers: Iterable[TransformerEdge] = ust.transformers.map (TransformerEdge)
 
     override def swing_nodes: Iterable[GLMNode] = ust.swing_nodes
 

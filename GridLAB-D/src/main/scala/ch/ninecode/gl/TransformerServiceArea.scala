@@ -29,18 +29,10 @@ import ch.ninecode.model._
  */
 case class TransformerServiceArea (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), debug: Boolean = false) extends CIMRDD
 {
+    import TransformerServiceArea._
+
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
-
-    /**
-     * Index of normalOpen field in Switch bitmask.
-     */
-    val normalOpenMask: Int = Switch.fields.indexOf ("normalOpen")
-
-    /**
-     * Index of open field in Switch bitmask.
-     */
-    val openMask: Int = Switch.fields.indexOf ("open")
 
     val voltage_rdd: RDD[BaseVoltage] = getOrElse [BaseVoltage]
     val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse [ConductingEquipment]
@@ -66,6 +58,15 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
     }
 
     /**
+     * Determine if the bitfield is set for the given mask.
+     *
+     * @param mask single bit mask to check
+     * @param switch element with bitfields to check
+     * @return <code>true</code> if the bit is set, <code>false</code> otherwise.
+     */
+    def isSet (mask: Int, switch: Switch): Boolean = 0 != (switch.bitfields (mask / 32) & (1 << (mask % 32)))
+
+    /**
      * Method to determine if a switch is closed (both terminals are the same topological node).
      *
      * If the switch has the <code>open</code> attribute set, use that.
@@ -77,11 +78,11 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      */
     def switchClosed (switch: Switch): Boolean =
     {
-        if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
+        if (isSet (openMask, switch))
             !switch.open // open valid
         else
-            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
-                !switch.normalOpen
+            if (isSet (normalOpenMask, switch))
+                !switch.normalOpen // normalOpen valid
             else
                 true
     }
@@ -96,20 +97,20 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
     {
         element match
         {
-            case switch: Switch ⇒ switchClosed (switch)
-            case cut: Cut ⇒ switchClosed (cut.Switch)
-            case disconnector: Disconnector ⇒ switchClosed (disconnector.Switch)
-            case fuse: Fuse ⇒ switchClosed (fuse.Switch)
-            case gd: GroundDisconnector ⇒ switchClosed (gd.Switch)
-            case jumper: Jumper ⇒ switchClosed (jumper.Switch)
-            case ps: ProtectedSwitch ⇒ switchClosed (ps.Switch)
-            case sectionaliser: Sectionaliser ⇒ switchClosed (sectionaliser.Switch)
-            case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch)
-            case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch)
-            case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
-            case _: PowerTransformer ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
-            case _ ⇒
-                log.warn ("transformer service area processor encountered edge with unhandled class '" + element.getClass.getName + "', assumed same transformer service area")
+            case s: Switch             => switchClosed (s)
+            case c: Cut                => switchClosed (c.Switch)
+            case d: Disconnector       => switchClosed (d.Switch)
+            case f: Fuse               => switchClosed (f.Switch)
+            case g: GroundDisconnector => switchClosed (g.Switch)
+            case j: Jumper             => switchClosed (j.Switch)
+            case p: ProtectedSwitch    => switchClosed (p.Switch)
+            case s: Sectionaliser      => switchClosed (s.Switch)
+            case b: Breaker            => switchClosed (b.ProtectedSwitch.Switch)
+            case l: LoadBreakSwitch    => switchClosed (l.ProtectedSwitch.Switch)
+            case r: Recloser           => switchClosed (r.ProtectedSwitch.Switch)
+            case _: PowerTransformer   => v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
+            case _ =>
+                log.warn (s"transformer service area processor encountered edge with unhandled class '${element.getClass.getName}', assumed same transformer service area")
                 true
         }
     }
@@ -164,11 +165,11 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
                 terminal_rdd
                     .filter (_.ACDCTerminal.sequenceNumber > 1)
                     .keyBy (_.ConductingEquipment))
-            .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
+            .map (x => (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
                 topological_node_rdd
                 .keyBy (_.id))
-            .map (x ⇒ (x._1, (x._2._2.TopologicalIsland, x._2._1))) // (nodeid, (islandid, trafoid))
+            .map (x => (x._1, (x._2._2.TopologicalIsland, x._2._1))) // (nodeid, (islandid, trafoid))
             .groupByKey.values // (islandid, trafoid)
             .flatMap (
                 it =>
@@ -188,7 +189,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
     def nodes: RDD[(VertexId, VertexData)] =
     {
         topological_island_rdd.keyBy (_.id).leftOuterJoin (island_trafoset_rdd).values // (island, trafosetname)
-            .map (x ⇒ (vertex_id (x._1.id), VertexData (x._2.orNull, x._1.id)))
+            .map (x => (vertex_id (x._1.id), VertexData (x._2.orNull, x._1.id)))
     }
 
     /**
@@ -201,15 +202,15 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         // get voltages
         val voltages = voltage_rdd.map (v => (v.id, v.nominalVoltage * 1000.0)).collect.toMap // ToDo: fix this 1000V multiplier
         // get nodes by TopologicalIsland
-        val members = topological_node_rdd.map (node ⇒ (node.id, (node.TopologicalIsland, voltages(node.BaseVoltage)))) // (nodeid, (islandid, volts))
+        val members = topological_node_rdd.map (node => (node.id, (node.TopologicalIsland, voltages(node.BaseVoltage)))) // (nodeid, (islandid, volts))
         // get terminals by TopologicalIsland
-        val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // ((islandid, volts), terminal)
+        val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x => (x._2._2, x._2._1)) // ((islandid, volts), terminal)
         // get equipment with terminals in different islands as GraphX Edge objects
-        conducting_equipment_rdd.keyBy (_.id).join (element_rdd.keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
+        conducting_equipment_rdd.keyBy (_.id).join (element_rdd.keyBy (_.id)).map (x => (x._1, x._2._2)) // (equipmentid, element)
             .join (terminals.keyBy (_._2.ConductingEquipment)) // (equipmentid, (equipment, ((islandid, volts), terminal)))
-            .groupByKey.values.filter (x ⇒ (x.size > 1) && !x.forall (y ⇒ y._2._1._1 == x.head._2._1._1)) // Iterable[(equipment, (islandid, terminal))]
+            .groupByKey.values.filter (x => (x.size > 1) && !x.forall (y => y._2._1 == x.head._2._1)) // Iterable[(equipment, (islandid, terminal))]
             .map (
-                x ⇒
+                x =>
                 {
                     val equipment = x.head._1
                     val v1 = x.head._2._1._2
@@ -325,8 +326,21 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         val graph = identifyTransformerServiceAreas
         log.info ("mapping islands to transformer service areas")
         val candidates = graph.vertices.filter (null != _._2.area_label)
-        val pairs = candidates.map (v ⇒ (v._2.island_label, v._2.area_label)).distinct // (islandid, areaid)
+        val pairs = candidates.map (v => (v._2.island_label, v._2.area_label)).distinct // (islandid, areaid)
         val areas = island_trafoset_rdd.join (pairs).values.map (_.swap) // (areaid, trafosetname)
         pairs.map (_.swap).join (areas).values.distinct.persist (storage_level) // (islandid, trafosetname)
     }
+}
+
+object TransformerServiceArea
+{
+    /**
+     * Index of normalOpen field in Switch bitmask.
+     */
+    val normalOpenMask: Int = Switch.fields.indexOf ("normalOpen")
+
+    /**
+     * Index of open field in Switch bitmask.
+     */
+    val openMask: Int = Switch.fields.indexOf ("open")
 }

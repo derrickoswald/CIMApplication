@@ -4,13 +4,15 @@ import ch.ninecode.model.PowerTransformerEnd
 
 case class TransformerEdge
 (
-    cn1: String,
-    cn2: String,
     transformer: TransformerSet
 )
     extends GLMEdge
 {
     def id: String = transformer.transformer_name
+
+    def cn1: String = transformer.node0
+
+    def cn2: String = transformer.node1
 
     // check if this is a multi-winding transformer
     lazy val lv_windings: Array[PowerTransformerEnd] =

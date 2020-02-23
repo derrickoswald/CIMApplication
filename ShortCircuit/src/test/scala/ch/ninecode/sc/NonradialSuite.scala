@@ -35,7 +35,7 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
 
     test ("Basic")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val filename = FILE_DEPOT + FILENAME1
 
@@ -76,7 +76,7 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
 
     test ("Three Winding Transformer with non-radial network")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val filename = FILE_DEPOT + FILENAME2
             val customOptions = Map[String, String] (
@@ -114,8 +114,8 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            near (results.filter (_.equipment == "USR0001").first ().low_sk, 2626782.36619354)
-            near (results.filter (_.equipment == "USR0002").first ().low_sk, 6208872.30165506)
-            near (results.filter (_.equipment == "USR0003").first ().low_sk, 6185870.27299348)
+            near (results.filter (_.equipment == "USR0001").first ().low_sk, 2624837.249756107)
+            near (results.filter (_.equipment == "USR0002").first ().low_sk, 6196605.977290054)
+            near (results.filter (_.equipment == "USR0003").first ().low_sk, 6169913.155864568)
     }
 }

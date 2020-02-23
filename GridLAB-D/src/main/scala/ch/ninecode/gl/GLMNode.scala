@@ -1,7 +1,5 @@
 package ch.ninecode.gl
 
-import ch.ninecode.model.Element
-
 /**
  * Basic properties of a node.
  */
@@ -38,20 +36,3 @@ trait GLMNode extends Graphable with Serializable
           |""".stripMargin.format (id, if (generator.isSinglePhase) "AN" else "ABCN", nominal_voltage)
 }
 
-object GLMNode
-{
-    /**
-     * Temporary measure until we figure out how to create subclasses of GMLNode from:
-     *   - PreNode/PreEdge trace results
-     *   - Island trace results
-     *   - multi-island trace results
-     *
-     * @param elements The CIM elements that are associated with this node.
-     * @param id The unique id of the node.
-     * @return a type of node
-     */
-    def toGLMNode (elements: Iterable[Element], id: String, nominal_voltage: Double): GLMNode =
-    {
-        PreNode (id, nominal_voltage, null)
-    }
-}

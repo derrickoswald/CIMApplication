@@ -48,7 +48,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
     var storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK
     val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
-    var gridlabd: GridLABD = new GridLABD (session, topological_nodes = true, !options.three, storage_level, workdir, options.cable_impedance_limit)
+    var gridlabd: GridLABD = new GridLABD (session, storage_level, workdir, options.cable_impedance_limit)
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z

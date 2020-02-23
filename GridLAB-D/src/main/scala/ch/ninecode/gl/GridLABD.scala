@@ -8,9 +8,10 @@ import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermission
 import java.text.ParseException
 import java.text.SimpleDateFormat
-import java.util
 
-import ch.ninecode.model._
+import scala.collection._
+import scala.collection.JavaConverters._
+
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -25,45 +26,45 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.Map
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.model._
+
+case class GridlabFailure (trafoID: String, errorMessages: List[String])
 
 /**
- * Compute the maximum feed-in power at house connections in a network.
+ * Interface to GridLAB-D load-flow analysis software.
+ *
+ * Given a network of CIM elements where a topology exists (TopologyNode elements are references by Terminal elements),
+ * this class provides functionality to turn the network into a GridLAB-D .glm file, solve it and return the results.
+ * That is, it assumes that the CIMReader has been instructed to run the NetworkTopologicalProcessor to update
+ * the terminals, or the terminals already have a valid TopologicalNode when they are read in.
  *
  * @param session               The Spark session.
- * @param topological_nodes     If <code>true</code>, use the TopologyNode attribute of Terminal objects, otherwise use the ConnectivityNode attribute.
- *                              If true, it assumes that the CIMReader has been instructed to run the NetworkTopologicalProcessor to update the terminals,
- *                              or the terminals already have a valid TopologicalNode when they are read in.
- * @param one_phase             If <code>true</code>, generate and analyze load flow with a single phase model.
  * @param storage_level         Specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level
  *                              </a> used to persist and serialize the objects.
  * @param workdir               The working directory for .glm and input_file generation. If the scheme is file:// or none,
  *                              the gridlabd processes will assume that this is local and will try to execute in that directory.
- *                              If the scheme is hdfs:// or wasb:// (or something else) the gridlab processes will copy the files locally
+ *                              If the scheme is hdfs:// or wasb:// (or something else) the processing will copy the files locally
  *                              (either to \$SPARK_HOME/work/app-<date-time>-<app#> when running standalone,
  *                              or to \$HADOOP_HOME/logs/userlogs/application_<timestamp>_<appId> when running under Yarn)
  *                              to execute and then copy the output files back to this location (workdir) when complete.
  * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with GridLAB-D, the reason is bad performance in GridLAB-D with too high
  *                              impedance values
  */
-
-case class GridlabFailure (trafoID: String, errorMessages: List[String])
-
 class GridLABD
 (
     session: SparkSession,
-    topological_nodes: Boolean = true,
-    one_phase: Boolean = false,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
     workdir: String = "hdfs://" + java.net.InetAddress.getLocalHost.getHostName + "/simulation/",
-    cable_impedance_limit: Double = 5.0) extends Serializable
+    cable_impedance_limit: Double = 5.0) extends CIMRDD with Serializable
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val spark: SparkSession = session
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     /**
      * Get the working directory ensuring a slash terminator.
      */
-    val workdir_slash: String = if (workdir.endsWith ("/")) workdir else workdir + "/"
+    val workdir_slash: String = if (workdir.endsWith ("/")) workdir else s"$workdir/"
 
     /**
      * Get the scheme for the working directory.
@@ -102,61 +103,37 @@ class GridLABD
     }
 
     /**
-     * Lookup CIM RDD by name.
-     *
-     * @param name The unqualified name of the RDD (name of the class)
-     * @return The RDD found or null if nothing was found.
-     */
-    def get (name: String): RDD[Element] =
-    {
-        val rdds = session.sparkContext.getPersistentRDDs
-        for (key <- rdds.keys)
-        {
-            val rdd = rdds (key)
-            if (rdd.name == name)
-                return rdd.asInstanceOf [RDD[Element]]
-        }
-
-        null
-    }
-
-    /**
      * The name of the node associated with a terminal.
      *
      * @param t The terminal object to get the node for.
-     * @return The name of the TopologicalNode or ConnectivityNode.
+     * @return The name of the TopologicalNode.
      */
-    def node_name (t: Terminal): String =
-    {
-        if (topological_nodes) t.TopologicalNode else t.ConnectivityNode
-    }
+    def node_name (t: Terminal): String = t.TopologicalNode
 
     /**
      * Return <code>true</code> if there is connectivity through the edge (if the Pregel algorithm should continue tracing) or not.
      */
     def connected (element: Element, v1: Double, v2: Double): Boolean =
     {
-        val clazz = element.getClass.getName
-        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        cls match
+        element match
         {
-            case "Switch" ⇒ !element.asInstanceOf [Switch].normalOpen
-            case "Cut" ⇒ !element.asInstanceOf [Cut].Switch.normalOpen
-            case "Disconnector" ⇒ !element.asInstanceOf [Disconnector].Switch.normalOpen
-            case "Fuse" ⇒ !element.asInstanceOf [Fuse].Switch.normalOpen
-            case "GroundDisconnector" ⇒ !element.asInstanceOf [GroundDisconnector].Switch.normalOpen
-            case "Jumper" ⇒ !element.asInstanceOf [Jumper].Switch.normalOpen
-            case "MktSwitch" ⇒ !element.asInstanceOf [MktSwitch].Switch.normalOpen
-            case "ProtectedSwitch" ⇒ !element.asInstanceOf [ProtectedSwitch].Switch.normalOpen
-            case "Breaker" ⇒ !element.asInstanceOf [Breaker].ProtectedSwitch.Switch.normalOpen
-            case "LoadBreakSwitch" ⇒ !element.asInstanceOf [LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-            case "Recloser" ⇒ !element.asInstanceOf [Recloser].ProtectedSwitch.Switch.normalOpen
-            case "Sectionaliser" ⇒ !element.asInstanceOf [Sectionaliser].Switch.normalOpen
-            case "Conductor" ⇒ true
-            case "ACLineSegment" ⇒ true
-            case "PowerTransformer" ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
-            case _ ⇒
-                log.error ("trace setup encountered edge " + element.id + " with unhandled class '" + cls + "', assumed conducting")
+            case s: Switch             => !s.normalOpen
+            case c: Cut                => !c.Switch.normalOpen
+            case d: Disconnector       => !d.Switch.normalOpen
+            case f: Fuse               => !f.Switch.normalOpen
+            case g: GroundDisconnector => !g.Switch.normalOpen
+            case j: Jumper             => !j.Switch.normalOpen
+            case m: MktSwitch          => !m.Switch.normalOpen
+            case p: ProtectedSwitch    => !p.Switch.normalOpen
+            case b: Breaker            => !b.ProtectedSwitch.Switch.normalOpen
+            case l: LoadBreakSwitch    => !l.ProtectedSwitch.Switch.normalOpen
+            case r: Recloser           => !r.ProtectedSwitch.Switch.normalOpen
+            case s: Sectionaliser      => !s.Switch.normalOpen
+            case _: Conductor          => true
+            case _: ACLineSegment      => true
+            case _: PowerTransformer   => v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
+            case _ =>
+                log.error (s"trace setup encountered edge ${element.id} with unhandled class '${element.getClass.getName}', assumed conducting")
                 true
         }
     }
@@ -168,18 +145,18 @@ class GridLABD
      * @param num_terminals total number of terminals on the ConductingEquipment
      * @param v1            primary voltage
      * @param v2            secondary voltage
-     * @return an error string with additional information about validity
+     * @return an error string with additional information about validity, or <code>null</code> if none
      */
     def hasIssues (element: Element, num_terminals: Int, v1: Double, v2: Double): String =
     {
         element match
         {
-            case cable: ACLineSegment ⇒
+            case cable: ACLineSegment =>
                 if (cable.r >= cable_impedance_limit) // ToDo: use PSRType_Bogus
-                    "invalid element (%s r=%s)".format (cable.id, cable.r)
+                    "invalid element (%s r=%s > limit=%s)".format (cable.id, cable.r, cable_impedance_limit)
                 else
                     null
-            case _: PowerTransformer ⇒
+            case _: PowerTransformer =>
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
                 if (num_terminals > 2)
                     "%s transformer windings for edge %s".format (num_terminals, element.id)
@@ -189,7 +166,7 @@ class GridLABD
                         "voltage (%sV) regulator edge %s".format (v1, element.id)
                     else
                         null
-            case _ ⇒
+            case _ =>
                 null
         }
     }
@@ -208,30 +185,30 @@ class GridLABD
             c = c.sup
         if (null != c)
         {
-            // sort terminals by sequence number (and hence the primary is index 0)
-            val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
             // get the equipment
             val equipment = c.asInstanceOf [ConductingEquipment]
+            // sort terminals by sequence number (and hence the primary is index 0)
+            val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
             // make a list of voltages
             val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
             val volts =
                 pte_op match
                 {
-                    case Some (x: Iterable[PowerTransformerEnd]) ⇒
+                    case Some (x: Iterable[PowerTransformerEnd]) =>
                         // sort ends by end number
                         // ToDo: handle the case where terminal sequence and end sequence aren't the same
                         val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
-                        tends.map (e ⇒ 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
-                    case None ⇒
+                        tends.map (e => 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
+                    case None =>
                         Array [Double](volt, volt)
                 }
             // Note: we eliminate 230V edges because transformer information doesn't exist and
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
             if (!volts.contains (230.0))
-            // make a pre-edge for each pair of terminals
+                // make a pre-edge for each pair of terminals
                 ret = terminals.length match
                 {
-                    case 1 ⇒
+                    case 1 =>
                         ret :+
                             PreEdge (
                                 terminals (0).id,
@@ -245,7 +222,7 @@ class GridLABD
                                 null,
                                 ratedCurrent,
                                 e)
-                    case _ ⇒
+                    case _ =>
                         for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                         {
                             ret = ret :+ PreEdge (
@@ -277,19 +254,7 @@ class GridLABD
         PreNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2, edge.problem)
     }
 
-    def connectivity_node_operator (arg: ((ConnectivityNode, Terminal), PreEdge)): PreNode =
-    {
-        val node = arg._1._1
-        val term = arg._1._2
-        val edge = arg._2
-        PreNode (node.id, if (term.ACDCTerminal.sequenceNumber == 1) edge.v1 else edge.v2, edge.problem)
-    }
-
-    def exists (filename: String): Boolean =
-    {
-        val f = new File (filename)
-        f.exists
-    }
+    def exists (filename: String): Boolean = new File (filename).exists
 
     def make_graph_vertices (v: PreNode): (VertexId, PreNode) =
     {
@@ -306,10 +271,8 @@ class GridLABD
      */
     def getCableMaxCurrent: RDD[(String, Double)] =
     {
-        val wireinfos = session.sparkContext.getPersistentRDDs.filter (_._2.name == "WireInfo").head._2.asInstanceOf [RDD[WireInfo]]
-        val lines = session.sparkContext.getPersistentRDDs.filter (_._2.name == "ACLineSegment").head._2.asInstanceOf [RDD[ACLineSegment]]
-        val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
-        val cables = keyed.join (wireinfos.keyBy (_.id)).values.map (x ⇒ (x._1.id, x._2.ratedCurrent))
+        val keyed = getOrElse[ACLineSegment].keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
+        val cables = keyed.join (getOrElse[WireInfo].keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent))
 
         cables.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined) cables.checkpoint ()
@@ -320,33 +283,34 @@ class GridLABD
     def prepare (): (RDD[Edge[PreEdge]], RDD[(VertexId, PreNode)]) =
     {
         // get a map of voltages
-        val voltages = get ("BaseVoltage").asInstanceOf [RDD[BaseVoltage]].map (v ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals
-        val terminals = get ("Terminal").asInstanceOf [RDD[Terminal]].filter (null != _.ConnectivityNode)
+        val terminals = getOrElse[Terminal].filter (null != _.TopologicalNode)
 
         // get the terminals keyed by equipment
         val terms = terminals.groupBy (_.ConductingEquipment)
 
         // get all elements
-        val elements = get ("Elements")
+        val elements = get[Element]("Elements")
 
         // join with WireInfo to get ratedCurrent (only for ACLineSegments)
         val cableMaxCurrent = getCableMaxCurrent
-        val joined_elements = elements.keyBy (_.id).leftOuterJoin (cableMaxCurrent).map (e ⇒
-        {
-            val ele = e._2._1
-            val wire = e._2._2
-            val wireinfo = wire match
+        val joined_elements: RDD[(String, (Element, Double))] = elements.keyBy (_.id).leftOuterJoin (cableMaxCurrent).values.map (
+            arg =>
             {
-                case Some (maxCurrent) ⇒ maxCurrent
-                case None ⇒ Double.PositiveInfinity
+                val (element, wire) = arg
+                val wireinfo = wire match
+                {
+                    case Some (maxCurrent) => maxCurrent
+                    case None => Double.PositiveInfinity
+                }
+                (element.id, (element, wireinfo))
             }
-            (ele.id, (ele, wireinfo))
-        })
+        )
 
         // get the transformer ends keyed by transformer
-        val ends = get ("PowerTransformerEnd").asInstanceOf [RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+        val ends = getOrElse[PowerTransformerEnd].groupBy (_.PowerTransformer)
 
         // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
         val elementsplus = joined_elements.leftOuterJoin (ends)
@@ -354,29 +318,21 @@ class GridLABD
         // map the terminal 'pairs' to edges
         val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages)).values
 
-        // eliminate edges with only one connectivity node, or the same connectivity node
-        val real_edges = edges.filter (x ⇒ null != x.cn1 && null != x.cn2 && "" != x.cn1 && "" != x.cn2 && x.cn1 != x.cn2)
+        // eliminate edges with only one topological node, or the same topological node
+        val real_edges = edges.filter (x => null != x.cn1 && null != x.cn2 && "" != x.cn1 && "" != x.cn2 && x.cn1 != x.cn2)
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
 
-        // get the nodes RDD
-        val nodes = if (topological_nodes)
-        {
-            // get the topological nodes RDD
-            val tnodes = get ("TopologicalNode").asInstanceOf [RDD[TopologicalNode]]
-
-            // map the topological nodes to prenodes with voltages
-            tnodes.keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
-        }
-        else
-        {
-            // get the connectivity nodes RDD
-            val connectivitynodes = get ("ConnectivityNode").asInstanceOf [RDD[ConnectivityNode]]
-
-            // map the connectivity nodes to prenodes with voltages
-            connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (connectivity_node_operator).distinct
-        }
+        // get the nodes RDD (map the topological nodes to PreNode with voltages)
+        val nodes = getOrElse[TopologicalNode]
+            .keyBy (_.id)
+            .join (terminals.keyBy (_.TopologicalNode))
+            .values
+            .keyBy (_._2.id).join (tv)
+            .values
+            .map (topological_node_operator)
+            .distinct
 
         def worst (x: (VertexId, Iterable[PreNode])): (VertexId, PreNode) =
         {
@@ -449,11 +405,11 @@ class GridLABD
     def solve (files: RDD[String]): Array[GridlabFailure] =
     {
         // assumes gridlabd is installed on every node:
-        // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-3.2.0-1.x86_64.rpm/download)
-        // convert the rpm to a deb usig alien:
-        //   sudo alien gridlabd_3.2.0-2_amd64.rpm
+        // download gridlabd (e.g. latest stable release https://sourceforge.net/projects/gridlab-d/files/gridlab-d/Last%20stable%20release/gridlabd-4.1.0-1.el7.x86_64.rpm/download)
+        // convert the rpm to a deb using alien:
+        //   sudo alien gridlabd_4.1.0-1_amd64.rpm
         // install on every node:
-        //   sudo dpkg -i gridlabd_3.2.0-2_amd64.deb
+        //   sudo dpkg -i gridlabd_4.1.0-1_amd64.deb
 
         val gridlabd =
             if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
@@ -529,7 +485,7 @@ class GridLABD
     def read_output_files
     (
         one_phase: Boolean,
-        filenameparser: String ⇒ (String, String) = default_filenameparser): RDD[(String, ThreePhaseComplexDataElement)] =
+        filenameparser: String => (String, String) = default_filenameparser): RDD[(String, ThreePhaseComplexDataElement)] =
     {
         val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
 
@@ -548,13 +504,13 @@ class GridLABD
                 //    2018-07-19 10:15:35 UTC,+398.857,-1.06614
                 //    2018-07-19 10:15:40 UTC,+396.66,-3.06917
                 // sometimes GridLAB-D emits a bogus date
-                case pe: ParseException ⇒
+                case pe: ParseException =>
                     log.warn (pe.getMessage)
                     0L
             }
         }
 
-        val path = workdir_slash + "*/output.txt"
+        val path = s"${workdir_slash}*/output.txt"
         val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
         val files = session.sparkContext.wholeTextFiles (path, executors)
 
@@ -571,7 +527,7 @@ class GridLABD
         {
             var units = ""
             var element = ""
-            val content = f.split ("\n").filter (s ⇒ s.startsWith ("# file") || ((s.length > 0) && s.charAt (0).isDigit))
+            val content = f.split ("\n").filter (s => s.startsWith ("# file") || ((s.length > 0) && s.charAt (0).isDigit))
 
             def makeResult (c: String): ThreePhaseComplexDataElement =
             {
@@ -624,20 +580,20 @@ class GridLABD
         files.map (extract_trafo).flatMapValues (read)
     }
 
-    def parsePermissions (s: String): util.Set[PosixFilePermission] =
+    def parsePermissions (s: String): Set[PosixFilePermission] =
     {
         // ToDo: parse file permissions val pattern = Pattern.compile ("\\G\\s*([ugoa]*)([+=-]+)([rwx]*)([,\\s]*)\\s*")
-        val ret = new util.HashSet[PosixFilePermission]()
-        ret.add (PosixFilePermission.OWNER_READ)
-        ret.add (PosixFilePermission.OWNER_WRITE)
-        ret.add (PosixFilePermission.OWNER_EXECUTE)
-        ret.add (PosixFilePermission.GROUP_READ)
-        ret.add (PosixFilePermission.GROUP_WRITE)
-        ret.add (PosixFilePermission.GROUP_EXECUTE)
-        ret.add (PosixFilePermission.OTHERS_READ)
-        ret.add (PosixFilePermission.OTHERS_WRITE)
-        ret.add (PosixFilePermission.OTHERS_EXECUTE)
-        ret
+       Set[PosixFilePermission] (
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE,
+            PosixFilePermission.GROUP_READ,
+            PosixFilePermission.GROUP_WRITE,
+            PosixFilePermission.GROUP_EXECUTE,
+            PosixFilePermission.OTHERS_READ,
+            PosixFilePermission.OTHERS_WRITE,
+            PosixFilePermission.OTHERS_EXECUTE
+        )
     }
 
     def writeInputFile (directory: String, path: String, bytes: Array[Byte], permissions: String = null): Any =
@@ -651,7 +607,7 @@ class GridLABD
             {
                 Files.write (file, bytes)
                 if (null != permissions)
-                    Files.setPosixFilePermissions (file, parsePermissions (permissions))
+                    Files.setPosixFilePermissions (file, parsePermissions (permissions).asJava)
             }
         }
         else
@@ -722,8 +678,11 @@ object GridLABD
     {
         Array (
             classOf [ch.ninecode.gl.Complex],
+            classOf [ch.ninecode.gl.EdgeData],
             classOf [ch.ninecode.gl.FlowDirection],
+            classOf [ch.ninecode.gl.GLMEdge],
             classOf [ch.ninecode.gl.GLMGenerator],
+            classOf [ch.ninecode.gl.GLMNode],
             classOf [ch.ninecode.gl.GridLABD],
             classOf [ch.ninecode.gl.Island],
             classOf [ch.ninecode.gl.LineEdge],

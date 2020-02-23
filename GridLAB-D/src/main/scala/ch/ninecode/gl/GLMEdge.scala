@@ -104,10 +104,10 @@ object GLMEdge
     {
         element match
         {
-            case acline: ACLineSegment ⇒ acline
-            case conductor: Conductor ⇒
+            case acline: ACLineSegment => acline
+            case conductor: Conductor =>
                 new ACLineSegment (conductor, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, List (), List (), List (), List (), null, null, null)
-            case _ ⇒
+            case _ =>
                 println ("unexpected class in edge elements (%s)".format (element.getClass))
                 null
         }
@@ -116,7 +116,7 @@ object GLMEdge
     def transformermaker (elements: Iterable[Element], cn1: String, cn2: String): TransformerEdge =
     {
         log.error (s"edge from $cn1 to $cn2 has PowerTransformer class: ${elements.head.id}")
-        TransformerEdge (cn1, cn2, null)
+        TransformerEdge (null)
     }
 
     /**
@@ -131,30 +131,32 @@ object GLMEdge
      * @return a type of edge
      */
     def toGLMEdge (elements: Iterable[Element], cn1: String, cn2: String,
-       makeTransformerEdge: (Iterable[Element], String, String) ⇒ TransformerEdge = transformermaker): GLMEdge =
+       makeTransformerEdge: (Iterable[Element], String, String) => TransformerEdge = transformermaker): GLMEdge =
     {
         // for now, we handle Conductor, Switch and eventually PowerTransformer
-        var tagged = elements.map (x ⇒ (baseClass (x), x))
+        var tagged = elements.map (x => (baseClass (x), x))
 
         // check that all elements are the same base class
-        if (!tagged.tail.forall (x ⇒ x._1 == tagged.head._1))
+        if (!tagged.tail.forall (x => x._1 == tagged.head._1))
         {
-            log.error ("edge from %s to %s has conflicting element types: %s".format (cn1, cn2, tagged.map (x ⇒ "%s(%s:%s)".format (x._1, classname (x._2), x._2.id))).mkString (","))
+            log.error ("edge from %s to %s has conflicting element types: %s".format (cn1, cn2, tagged.map (x => "%s(%s:%s)".format (x._1, classname (x._2), x._2.id))).mkString (","))
             tagged = tagged.take (1)
         }
 
         tagged.head._1 match
         {
-            case "Switch" ⇒
+            case "Switch" =>
                 SwitchEdge (cn1, cn2, elements)
-            case "Conductor" ⇒
-                LineEdge (cn1, cn2, elements.map (multiconductor))
+            case "Conductor" =>
+                val t1 = Terminal (TopologicalNode = cn1)
+                val t2 = Terminal (TopologicalNode = cn2)
+                LineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
                 // base_temperature: Double = 20.0,
                 // DEFAULT_R: Double = 0.225,
                 // DEFAULT_X: Double = 0.068
-            case "PowerTransformer" ⇒
+            case "PowerTransformer" =>
                 makeTransformerEdge (elements, cn1, cn2)
-            case _ ⇒
+            case _ =>
                 log.error ("edge from %s to %s has unhandled class type '%s'".format (cn1, cn2, tagged.head._1))
                 case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
                 fakeEdge (tagged.head._2.id, cn1, cn2)

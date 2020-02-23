@@ -19,6 +19,7 @@ import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.LineDetails
 import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
@@ -239,12 +240,13 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // ToDo: fix this collect
         val transformers = transformer_data.groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_)).collect
 
+        LineDetails.CIM_BASE_TEMPERATURE = options.base_temperature
         def make_edge (transformers: Array[TransformerSet])(args: Iterable[(Iterable[(String, Terminal)], Element)]): GLMEdge =
         {
             // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
             val id_cn_1 = args.head._1.head._2.TopologicalNode
             val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
-            AbgangKreis.toGLMEdge (transformers, options.base_temperature)(args.map (_._2), id_cn_1, id_cn_2)
+            AbgangKreis.toGLMEdge (transformers)(args.map (_._2), id_cn_1, id_cn_2)
         }
 
         // make one edge for each unique feeder it's in
@@ -329,7 +331,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
             1
         }
 
-        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = !options.three, storage_level = options.storage, workdir = options.workdir)
+        val gridlabd = new GridLABD (session, storage_level = options.storage, workdir = options.workdir)
         log.info ("exporting models")
         val count = feeders.map (generate (gridlabd, _)).sum.longValue
 

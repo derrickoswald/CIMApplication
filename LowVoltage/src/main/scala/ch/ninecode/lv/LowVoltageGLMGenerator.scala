@@ -40,10 +40,7 @@ class LowVoltageGLMGenerator
     override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
 
     override def transformers: Iterable[TransformerEdge] =
-        trafokreis.transformers.transformers.map (
-            transformers =>
-                TransformerEdge (transformers.node0, transformers.node1, transformers)
-        )
+        trafokreis.transformers.transformers.map (TransformerEdge)
 
     // the swing node is the low voltage pin
     override def swing_nodes: Iterable[GLMNode] =

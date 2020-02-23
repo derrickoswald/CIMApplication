@@ -35,7 +35,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
 
     test ("Voltage Regulator")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val filename = FILE_DEPOT + FILENAME1
             readCIMElements (session, filename)
@@ -69,7 +69,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
 
     test ("Three Winding Transformer")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val filename = FILE_DEPOT + FILENAME2
 
@@ -119,7 +119,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
 
     test ("Subtransmission")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val filename = FILE_DEPOT + FILENAME3
             val customOptions = Map[String, String] (
@@ -153,7 +153,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
             for (i <- csv.indices)
                 println (csv (i))
 
-            near (results.filter (_.equipment == "USR0001").first ().high_ik, 200.528465600727)
-            near (results.filter (_.equipment == "USR0002").first ().high_ik, 170.281577472793)
+            near (results.filter (_.equipment == "USR0001").first ().high_ik, 213.83700143897838)
+            near (results.filter (_.equipment == "USR0002").first ().high_ik, 181.53370928588038)
     }
 }

@@ -4,8 +4,6 @@ import ch.ninecode.model.ACLineSegment
 
 final case class LineEdge
 (
-    cn1: String,
-    cn2: String,
     data: LineData
 )
     extends GLMEdge
@@ -20,6 +18,10 @@ final case class LineEdge
     def id: String = lines.map (_.id).toArray.sortWith (_ < _).mkString ("_")
 
     def lines: Iterable[ACLineSegment] = data.lines.map (_.line)
+
+    def cn1: String = data.node0
+
+    def cn2: String = data.node1
 
     /**
      * Emit a overhead or underground line.
@@ -120,12 +122,12 @@ final case class LineEdge
         val warning = if (default) s"#warning WARNING: using default line_configuration for $config\n" else ""
         val (diag, offd) =
             if (generator.isSinglePhase)
-                (pli.c1, zero)
+                (pli.z1, zero)
             else
-                sequence2z (pli.c0, pli.c1)
+                sequence2z (pli.z0, pli.z1)
         val dia = diag.asString (8) + " Ohm/m"
         val off = offd.asString (8) + " Ohm/m"
-        val comment =  lines.map (line ⇒
+        val comment =  lines.map (line =>
             "            // %s".format (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)).mkString ("\n", "\n", "")
         """
           |%s        object line_configuration
@@ -155,31 +157,4 @@ final case class LineEdge
         val pli = data.perLengthImpedanceAt (generator.targetTemperature)
         make_line_configuration (configurationName, pli, data.perLengthImpedanceIsDefault, generator)
     }
-}
-
-object LineEdge
-{/**
-     * @deprecated Use the LineData constructor
-     * @param n1 one node
-     * @param n2 the other node
-     * @param lines the ACLineSegment in this edge
-     * @param base_temperature the temperature of resistance properties in the CIM file
-     * @return an edge for GridLAB-D
-     */
-    def apply (
-        n1: String,
-        n2: String,
-        lines: Iterable[ACLineSegment],
-        base_temperature: Double = LineDetails.CIM_BASE_TEMPERATURE
-    ): LineEdge =
-    {
-        LineDetails.CIM_BASE_TEMPERATURE = base_temperature
-        LineEdge (n1, n2, LineData (lines.toArray.map (line => LineDetails (line, null, null, None, None))))
-    }
-
-    def apply (
-        cn1: String,
-        cn2: String
-    ): LineEdge = LineEdge (cn1, cn2, Iterable[ACLineSegment]())
-
 }

@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.Graphable
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.Island
@@ -33,7 +32,6 @@ import ch.ninecode.gl.TransformerData
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.gl.TransformerIsland
 import ch.ninecode.gl.TransformerServiceArea
-import ch.ninecode.gl.TransformerSet
 import ch.ninecode.gl.Transformers
 import ch.ninecode.sc.ScEdge.resistanceAt
 import ch.ninecode.model._
@@ -438,7 +436,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val series = for
             {
                 branch <- network
-                buddies = network.filter (x ⇒ (branch.from == x.to) || (branch.from == x.from && branch != x && !trafo_nodes.contains (branch.from)))
+                buddies = network.filter (x => (branch.from == x.to) || (branch.from == x.from && branch != x && !trafo_nodes.contains (branch.from)))
                 if buddies.size == 1
                 buddy = buddies.head
             }
@@ -575,7 +573,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                         else
                                         {
                                             val rating = if (switch.fuse) Some (switch.ratedCurrent) else None
-                                            val name = switch.toSwitch (switch.switches.head).ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
+                                            val name = switch.data.switches.head.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
                                             if (lvnodes.contains (x.cn1))
                                                 List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, name, rating))
                                             else if (lvnodes.contains (x.cn2))
@@ -643,12 +641,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         def connectedTo (branch: Branch, edges: Iterable[Branch]): Boolean =
         {
-            edges.exists (edge ⇒ edge != branch && (branch.to == edge.to || branch.to == edge.from))
+            edges.exists (edge => edge != branch && (branch.to == edge.to || branch.to == edge.from))
         }
 
         def connectedFrom (branch: Branch, edges: Iterable[Branch]): Boolean =
         {
-            edges.exists (edge ⇒ edge != branch && (branch.from == edge.to || branch.from == edge.from))
+            edges.exists (edge => edge != branch && (branch.from == edge.to || branch.from == edge.from))
         }
 
         // eliminate branches in the tree than only have one end connected - except for the starting and ending node
@@ -789,7 +787,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             gridlabd.export (generator)
         }
 
-        val gridlabd = new GridLABD (session, topological_nodes = true, one_phase = true, storage_level = storage_level, workdir = options.workdir, cable_impedance_limit = options.cable_impedance_limit)
+        val gridlabd = new GridLABD (session, storage_level = storage_level, workdir = options.workdir, cable_impedance_limit = options.cable_impedance_limit)
         val experiments = simulations.flatMap (
             x =>
             {
@@ -839,11 +837,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         solve_and_analyse (gridlabd = gridlabd, one_phase = true, isMax, simulations)
     }
 
-    def node_maker (rdd: RDD[NodeParts]): RDD[(identifier, GLMNode)] =
+    def node_maker (rdd: RDD[NodeParts]): RDD[Node] =
     {
-        // ToDo: fix this 1kV multiplier on the voltages
-        def voltage (base_voltage: BaseVoltage): Double = base_voltage.nominalVoltage * 1000.0
-
         def house (element: Element): Boolean = element match
         {
             case _: EnergyConsumer => true
@@ -856,42 +851,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             case _ => false
         }
 
-        val s: RDD[((node_id, Iterable[(identifier, (Terminal, Element, BaseVoltage))]), ConductingEquipment)] = rdd.keyBy (_._2.head._2._2.id).join (get [ConductingEquipment].keyBy (_.id)).values
-        s.map (args =>
-        {
-            val iter = args._1._2
-            val has = iter.find (h => house (h._2._2))
-            val bus = iter.find (b => busbar (b._2._2))
-            val ele: Element = has.getOrElse (bus.getOrElse (iter.head))._2._2
-            (
-                iter.head._1,
-                SimulationNode (
-                    args._1._1,
-                    voltage (iter.head._2._3),
-                    ele.id,
-                    house (ele),
-                    busbar (ele))
-            )
-        })
-    }
-
-    def makeTransformerEdge (subtransmission_trafos: Array[TransformerData])(elements: Iterable[Element], cn1: String, cn2: String): TransformerEdge =
-    {
-        val element = elements.head
-        val trafo = subtransmission_trafos.filter (data => data.transformer.id == element.id)
-        TransformerEdge (cn1, cn2, TransformerSet (trafo))
-    }
-
-    def edge_maker (subtransmission_trafos: Array[TransformerData]) (rdd: RDD[EdgeParts]): RDD[(identifier, GLMEdge)] =
-    {
-        val tedger = makeTransformerEdge (subtransmission_trafos)_
         rdd.map (
-            args =>
+            parts =>
             {
-                // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
-                val id_cn_1 = args.head._1.head._2.TopologicalNode
-                val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
-                (args.head._1.head._1, GLMEdge.toGLMEdge (args.map (_._2), id_cn_1, id_cn_2, tedger))
+                val has = parts.find (h => house (h._5))
+                val bus = parts.find (b => busbar (b._5))
+                val ele: Element = has.getOrElse (bus.getOrElse (parts.head))._5
+                (parts.head._2, SimulationNode (parts.head._3.id, parts.head._4, ele.id, house (ele), busbar (ele)))
             }
         )
     }
@@ -1014,7 +980,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         if (!trafo_island_mapping.filter (_._2 != "").isEmpty)
         {
             val island_helper = new Island (session, storage_level, options.cable_impedance_limit)
-            val graph_stuff = island_helper.queryNetwork (trafo_island_mapping, node_maker, edge_maker (subtransmission_trafos)) // ([nodes], [edges])
+            val graph_stuff = island_helper.queryNetwork (trafo_island_mapping, node_maker) // ([nodes], [edges])
             val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
 
             // set up simulations

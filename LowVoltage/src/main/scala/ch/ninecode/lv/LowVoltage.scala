@@ -208,7 +208,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         }
 
         // prepare for precalculation
-        val gridlabd = new GridLABD (session, topological_nodes = true, !options.three, storage_level, options.workdir)
+        val gridlabd = new GridLABD (session, storage_level, options.workdir)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()

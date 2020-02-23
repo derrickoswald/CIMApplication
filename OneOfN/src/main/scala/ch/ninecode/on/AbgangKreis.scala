@@ -3,6 +3,8 @@ package ch.ninecode.on
 import java.util.Calendar
 
 import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.LineData
+import ch.ninecode.gl.LineDetails
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
@@ -85,7 +87,7 @@ object AbgangKreis
      * @param cn2      the mRID of the node connected to the other end
      * @return a type of edge
      */
-    def toGLMEdge (transformers: Array[TransformerSet], base_temperature: Double)(elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
+    def toGLMEdge (transformers: Array[TransformerSet])(elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
     {
         case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
 
@@ -95,12 +97,10 @@ object AbgangKreis
         {
             case _: Switch | _: Cut | _: Disconnector | _: Fuse | _: GroundDisconnector | _: Jumper | _: MktSwitch | _: ProtectedSwitch | _: Breaker | _: LoadBreakSwitch | _: Recloser | _: Sectionaliser ⇒
                 PlayerSwitchEdge (cn1, cn2, pickSwitch (elements), fuse = false)
-            case _: Conductor ⇒
-                LineEdge (cn1, cn2, elements.map (multiconductor), base_temperature)
-            //                DEFAULT_R: Double = 0.225,
-            //                DEFAULT_X: Double = 0.068
-            case _: ACLineSegment ⇒
-                LineEdge (cn1, cn2, elements.map (multiconductor), base_temperature)
+            case _: Conductor | _: ACLineSegment ⇒
+                val t1 = Terminal (TopologicalNode = cn1)
+                val t2 = Terminal (TopologicalNode = cn2)
+                LineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
             //                DEFAULT_R: Double = 0.225,
             //                DEFAULT_X: Double = 0.068
             case _: PowerTransformer ⇒
@@ -112,20 +112,7 @@ object AbgangKreis
                     fakeEdge (element.id, cn1, cn2)
                 }
                 else
-                {
-                    // we need to swap these
-                    val (n1, n2) = if ((cn1 == t.node0) || (cn2 == t.node1))
-                        (cn1, cn2)
-                    else
-                        if ((cn1 == t.node1) || (cn2 == t.node0))
-                            (cn2, cn1)
-                        else
-                        {
-                            println ("""node correspondence not found for %s""".format (element.id)) // ToDo: log somehow
-                            (cn1, cn2)
-                        }
-                    TransformerEdge (n1, n2, t)
-                }
+                    TransformerEdge (t)
             case _ ⇒
                 println ("""edge %s has unhandled class '%s'""".format (element.id, element.getClass.getName)) // ToDo: log somehow
                 fakeEdge (element.id, cn1, cn2)

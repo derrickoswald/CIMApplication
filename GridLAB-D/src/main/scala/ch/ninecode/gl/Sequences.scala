@@ -2,18 +2,19 @@ package ch.ninecode.gl
 
 /**
  * Positive and zero sequence values.
- * @param c1 Positive sequence.
- * @param c0 Zero sequence.
+ *
+ * @param z1 Positive sequence impedance (Ω).
+ * @param z0 Zero sequence impedance (Ω).
  */
-final case class Sequences (c1: Complex, c0: Complex)
+final case class Sequences (z1: Complex, z0: Complex)
 {
-    def + (s: Sequences): Sequences = Sequences (c1 + s.c1, c0 + s.c0)
+    def + (s: Sequences): Sequences = Sequences (z1 + s.z1, z0 + s.z0)
 
-    def * (d: Double): Sequences = Sequences (c1 * d, c0 * d)
+    def * (d: Double): Sequences = Sequences (z1 * d, z0 * d)
 
-    def reciprocal: Sequences = Sequences (c1.reciprocal, c0.reciprocal)
+    def reciprocal: Sequences = Sequences (z1.reciprocal, z0.reciprocal)
 
-    override def toString: String = s"(z1=${c1.toString (6)},z0=${c0.toString (6)})"
+    override def toString: String = s"(z1=${z1.toString (6)},z0=${z0.toString (6)})"
 }
 
 object Sequences

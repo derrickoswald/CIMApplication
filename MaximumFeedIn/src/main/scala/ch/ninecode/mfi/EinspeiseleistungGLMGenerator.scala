@@ -24,16 +24,13 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
     {
         val element = elements.head
         val trafo = trafokreis.subtransmission_trafos.filter (data => data.transformer.id == element.id)
-        TransformerEdge (cn1, cn2, TransformerSet (Array (trafo.headOption.orNull)))
+        TransformerEdge (TransformerSet (Array (trafo.headOption.orNull)))
     }
 
-    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2, makeTransformerEdge))
+    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges => GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2, makeTransformerEdge))
 
     override def transformers: Iterable[TransformerEdge] =
-        trafokreis.transformers.transformers.map (
-            transformers =>
-                TransformerEdge (transformers.node0, transformers.node1, transformers)
-        )
+        trafokreis.transformers.transformers.map (TransformerEdge)
 
     override def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
     {
@@ -121,9 +118,9 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
         edge match
         {
-            case cable: LineEdge ⇒ super.emit_edge (cable) + current_recorder
-            case swtch: SwitchEdge ⇒ emit_switch (swtch, this)
-            case _ ⇒ super.emit_edge (edge)
+            case cable: LineEdge => super.emit_edge (cable) + current_recorder
+            case swtch: SwitchEdge => emit_switch (swtch, this)
+            case _ => super.emit_edge (edge)
         }
     }
 

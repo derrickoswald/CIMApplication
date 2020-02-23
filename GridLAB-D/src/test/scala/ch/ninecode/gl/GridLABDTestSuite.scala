@@ -4,32 +4,26 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.TimeZone
 
+import org.apache.spark.sql.SparkSession
+
 import ch.ninecode.cim.CIMClasses
-import ch.ninecode.gl.Island.EdgeParts
-import ch.ninecode.gl.Island.NodeParts
 import ch.ninecode.gl.Island.identifier
-import ch.ninecode.gl.Island.node_id
-import ch.ninecode.model.BaseVoltage
-import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
 import ch.ninecode.model.EnergyConsumer
-import ch.ninecode.model.Terminal
 import ch.ninecode.util.TestUtil
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
+
 import org.scalatest.BeforeAndAfter
 
-import scala.collection.mutable
-
 case class Generator (
-                         override val name: String,
-                         override val nodes: Iterable[GLMNode],
-                         override val edges: Iterable[GLMEdge],
-                         override val transformers: Iterable[TransformerEdge],
-                         override val swing_nodes: Iterable[GLMNode])
+    override val name: String,
+    override val nodes: Iterable[GLMNode],
+    override val edges: Iterable[GLMEdge],
+    override val transformers: Iterable[TransformerEdge],
+    override val swing_nodes: Iterable[GLMNode]
+)
     extends GLMGenerator (emit_voltage_dump = true)
 
-case class Node
+case class TestNode
 (
     id: String,
     nominal_voltage: Double,
@@ -41,7 +35,7 @@ case class Node
     {
         val load = equipment.head match
         {
-            case consumer: EnergyConsumer ⇒
+            case _: EnergyConsumer =>
                 """
                   |        object load
                   |        {
@@ -52,46 +46,9 @@ case class Node
                   |            %s 1000+0j;
                   |        };
                 """.stripMargin.format (id, id, if (generator.isSinglePhase) "AN" else "ABCN", nominal_voltage, if (generator.isSinglePhase) "constant_power_A" else "constant_power_ABCN")
-            case _ ⇒ ""
+            case _ => ""
         }
         super.emit (generator) + load
-    }
-}
-
-case class Maker (session: SparkSession)
-{
-    val equipment: RDD[(String, ConductingEquipment)] = session.sparkContext.getPersistentRDDs.filter (_._2.name == "ConductingEquipment").head._2.asInstanceOf[RDD[ConductingEquipment]].keyBy (_.id)
-
-    def node_maker (rdd: RDD[NodeParts]): RDD[(identifier, GLMNode)] =
-    {
-        // ToDo: fix this 1kV multiplier on the voltages
-        def voltage (base_voltage: BaseVoltage): Double = base_voltage.nominalVoltage * 1000.0
-
-        val s: RDD[((node_id, Iterable[(identifier, (Terminal, Element, BaseVoltage))]), ConductingEquipment)] = rdd.keyBy (_._2.head._2._2.id).join (equipment).values
-        s.map (args ⇒
-        {
-            val iter = args._1._2
-            (
-                iter.head._1,
-                Node (
-                    args._1._1,
-                    voltage (iter.head._2._3),
-                    iter.map (_._2._2))
-            )
-        })
-    }
-
-    def edge_maker (rdd: RDD[EdgeParts]): RDD[(identifier, GLMEdge)] =
-    {
-        rdd.map (
-            args ⇒
-            {
-                // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
-                val id_cn_1 = args.head._1.head._2.TopologicalNode
-                val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
-                (args.head._1.head._1, GLMEdge.toGLMEdge (args.map (_._2), id_cn_1, id_cn_2))
-            }
-        )
     }
 }
 
@@ -121,21 +78,22 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
     test ("Basic")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val start = System.nanoTime
             val files = filename1.split (",")
-            val options = new mutable.HashMap[String, String]()
-            options.put ("path", filename1)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-            options.put ("ch.ninecode.cim.do_topo", "true")
-            options.put ("ch.ninecode.cim.do_topo_islands", "true")
-            options.put ("ch.ninecode.cim.force_retain_switches", "ForceTrue")
-            options.put ("ch.ninecode.cim.force_retain_fuses", "ForceTrue")
-            options.put ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")
-            options.put ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")
-            options.put ("ch.ninecode.cim.default_switch_open_state", "false")
-            options.put ("ch.ninecode.cim.debug", "true")
+            val options = Map[String, String] (
+                "path" -> filename1,
+                "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                "ch.ninecode.cim.do_topo" -> "true",
+                "ch.ninecode.cim.do_topo_islands" -> "true",
+                "ch.ninecode.cim.force_retain_switches" -> "ForceTrue",
+                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                "ch.ninecode.cim.force_switch_separate_islands" -> "Unforced",
+                "ch.ninecode.cim.force_fuse_separate_islands" -> "Unforced",
+                "ch.ninecode.cim.default_switch_open_state" -> "false",
+                "ch.ninecode.cim.debug" -> "true"
+            )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
             println (elements.count + " elements")
@@ -181,21 +139,22 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
     test ("Solve")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val start = System.nanoTime
             val files = filename1.split (",")
-            val options = new mutable.HashMap[String, String]()
-            options.put ("path", filename1)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-            options.put ("ch.ninecode.cim.do_topo", "true")
-            options.put ("ch.ninecode.cim.do_topo_islands", "true")
-            options.put ("ch.ninecode.cim.force_retain_switches", "ForceTrue")
-            options.put ("ch.ninecode.cim.force_retain_fuses", "ForceTrue")
-            options.put ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")
-            options.put ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")
-            options.put ("ch.ninecode.cim.default_switch_open_state", "false")
-            options.put ("ch.ninecode.cim.debug", "true")
+            val options = Map[String, String] (
+                "path" -> filename1,
+                "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                "ch.ninecode.cim.do_topo" -> "true",
+                "ch.ninecode.cim.do_topo_islands" -> "true",
+                "ch.ninecode.cim.force_retain_switches" -> "ForceTrue",
+                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                "ch.ninecode.cim.force_switch_separate_islands" -> "Unforced",
+                "ch.ninecode.cim.force_fuse_separate_islands" -> "Unforced",
+                "ch.ninecode.cim.default_switch_open_state" -> "false",
+                "ch.ninecode.cim.debug" -> "true"
+            )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
             println (elements.count + " elements")
@@ -314,21 +273,22 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
                 preamble
             }
         }
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val start = System.nanoTime
             val files = filename1.split (",")
-            val options = new mutable.HashMap[String, String]()
-            options.put ("path", filename1)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-            options.put ("ch.ninecode.cim.do_topo", "true")
-            options.put ("ch.ninecode.cim.do_topo_islands", "true")
-            options.put ("ch.ninecode.cim.force_retain_switches", "ForceTrue")
-            options.put ("ch.ninecode.cim.force_retain_fuses", "ForceTrue")
-            options.put ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")
-            options.put ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")
-            options.put ("ch.ninecode.cim.default_switch_open_state", "false")
-            options.put ("ch.ninecode.cim.debug", "true")
+            val options = Map[String, String] (
+                "path" -> filename1,
+                "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                "ch.ninecode.cim.do_topo" -> "true",
+                "ch.ninecode.cim.do_topo_islands" -> "true",
+                "ch.ninecode.cim.force_retain_switches" -> "ForceTrue",
+                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                "ch.ninecode.cim.force_switch_separate_islands" -> "Unforced",
+                "ch.ninecode.cim.force_fuse_separate_islands" -> "Unforced",
+                "ch.ninecode.cim.default_switch_open_state" -> "false",
+                "ch.ninecode.cim.debug" -> "true"
+            )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
             println (elements.count + " elements")
@@ -360,21 +320,22 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
     test ("Parallel")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val start = System.nanoTime
             val files = filename2.split (",")
-            val options = new mutable.HashMap[String, String]()
-            options.put ("path", filename2)
-            options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-            options.put ("ch.ninecode.cim.do_topo", "true")
-            options.put ("ch.ninecode.cim.do_topo_islands", "true")
-            options.put ("ch.ninecode.cim.force_retain_switches", "ForceTrue")
-            options.put ("ch.ninecode.cim.force_retain_fuses", "ForceTrue")
-            options.put ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")
-            options.put ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")
-            options.put ("ch.ninecode.cim.default_switch_open_state", "false")
-            options.put ("ch.ninecode.cim.debug", "true")
+            val options = Map[String, String] (
+                "path" -> filename2,
+                "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                "ch.ninecode.cim.do_topo" -> "true",
+                "ch.ninecode.cim.do_topo_islands" -> "true",
+                "ch.ninecode.cim.force_retain_switches" -> "ForceTrue",
+                "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                "ch.ninecode.cim.force_switch_separate_islands" -> "Unforced",
+                "ch.ninecode.cim.force_fuse_separate_islands" -> "Unforced",
+                "ch.ninecode.cim.default_switch_open_state" -> "false",
+                "ch.ninecode.cim.debug" -> "true"
+            )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
             println (elements.count + " elements")
@@ -382,51 +343,56 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             println ("read: " + (read - start) / 1e9 + " seconds")
 
             val gridlabd = new GridLABD (session, workdir = "simulation/")
-            val tsa = TransformerServiceArea (session)
-            // only proceed if topological processing was done (there are TopologicalIslands)
-            if (tsa.hasIslands)
-            {
-                val trafos_islands = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
-                val island = new Island (session)
-                val maker = Maker (session)
-                val (nodes, edges) = island.queryNetwork (
-                    trafos_islands,
-                    maker.node_maker,
-                    maker.edge_maker)
+            val trafos_islands = TransformerServiceArea (session).getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
+            val island = new Island (session)
+            val (nodes, edges) = island.queryNetwork (
+                trafos_islands,
+                rdd => rdd.map (parts => (parts.head._2, TestNode (parts.head._3.id, parts.head._4, parts.map (_._5)))))
 
-                val _transformers = new Transformers (session)
-                val transformer_data = _transformers.getTransformers ()
-
-                // determine the set of transformers to work on
-                val transformers = transformer_data
-                    .filter (td => (td.v0 != 400.0) && (td.v1 == 400.0)) // ToDo: don't hard code this low voltage value
-                    .groupBy (_.terminal1.TopologicalNode).values.map (_.toArray).map (TransformerSet (_))
-                    .map (x ⇒ TransformerEdge (x.node0, x.node1, x))
-                    .collect
-
-                val glms = for
+            // determine the set of transformers to work on
+            def heavy (transformer: TransformerEdge): Boolean =
+                (transformer.transformer.v0 > 1000.0) && (transformer.transformer.v1 == 400.0)
+            val transformers: Array[(identifier, TransformerEdge)] =
+                edges
+                    .flatMap
                     {
-                    trafo ← transformers
-                    n = nodes.filter (_._1 == trafo.transformer.transformer_name).map (_._2).collect
-                    e = edges.filter (_._1 == trafo.transformer.transformer_name).map (_._2).collect
+                        case (id: identifier, transformer: TransformerEdge) =>
+                            if (heavy (transformer))
+                                Some ((id, transformer))
+                            else
+                                None
+                        case _ => None
+                    }
+                .collect
+
+            def notTheTransformer (transformer: TransformerEdge) (edge: GLMEdge): Boolean =
+                edge match
+                {
+                    case tx: TransformerEdge => if (heavy (tx)) false else true
+                    case _ => true
                 }
-                    yield
-                        {
-                            gridlabd.export (Generator (trafo.transformer.transformer_name, n, e, List (trafo), List (Node (trafo.cn1, trafo.primary.toDouble, null))))
-                            trafo.transformer.transformer_name
-                        }
-
-                val generate = System.nanoTime ()
-                println ("generate: " + (generate - read) / 1e9 + " seconds")
-
-                val results = gridlabd.solve (session.sparkContext.parallelize (glms))
-
-                val solve = System.nanoTime ()
-                println ("solve: " + (solve - generate) / 1e9 + " seconds")
-
-                assert (results.isEmpty, "should have no errors")
-
-                println ("total: " + (solve - start) / 1e9 + " seconds")
+            val glms = for
+            {
+                (id, trafo) ← transformers
+                n = nodes.filter (_._1 == id).map (_._2).collect
+                e = edges.filter (_._1 == id).map (_._2).filter (notTheTransformer (trafo)).collect
             }
+            yield
+            {
+                gridlabd.export (Generator (id, n, e, List(trafo), List(TestNode (trafo.cn1, trafo.primary.toDouble, null))))
+                trafo.transformer.transformer_name
+            }
+
+            val generate = System.nanoTime ()
+            println ("generate: " + (generate - read) / 1e9 + " seconds")
+
+            val results = gridlabd.solve (session.sparkContext.parallelize (glms))
+
+            val solve = System.nanoTime ()
+            println ("solve: " + (solve - generate) / 1e9 + " seconds")
+
+            assert (results.isEmpty, "should have no errors")
+
+            println ("total: " + (solve - start) / 1e9 + " seconds")
     }
 }

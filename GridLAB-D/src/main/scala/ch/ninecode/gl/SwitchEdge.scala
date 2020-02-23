@@ -4,44 +4,24 @@ import ch.ninecode.model._
 
 case class SwitchEdge
 (
-    cn1: String,
-    cn2: String,
-    switches: Iterable[Element]
+    data: SwitchData
 )
     extends GLMEdge
 {
-    def id: String = switches.map (_.id).toArray.sortWith (_ < _).mkString ("_")
+    def id: String = data.switches.map (_.element.id).toArray.sortWith (_ < _).mkString ("_")
 
-    def toSwitch (element: Element): Switch =
-    {
-        element match
-        {
-            case s: Switch ⇒ s.asInstanceOf [Switch]
-            case c: Cut ⇒ c.asInstanceOf [Cut].Switch
-            case d: Disconnector ⇒ d.asInstanceOf [Disconnector].Switch
-            case f: Fuse ⇒ f.asInstanceOf [Fuse].Switch
-            case g: GroundDisconnector ⇒ g.asInstanceOf [GroundDisconnector].Switch
-            case j: Jumper ⇒ j.asInstanceOf [Jumper].Switch
-            case m: MktSwitch ⇒ m.asInstanceOf [MktSwitch].Switch
-            case p: ProtectedSwitch ⇒ p.asInstanceOf [ProtectedSwitch].Switch
-            case b: Breaker ⇒ b.asInstanceOf [Breaker].ProtectedSwitch.Switch
-            case l: LoadBreakSwitch ⇒ l.asInstanceOf [LoadBreakSwitch].ProtectedSwitch.Switch
-            case r: Recloser ⇒ r.asInstanceOf [Recloser].ProtectedSwitch.Switch
-            case s: Sectionaliser ⇒ s.asInstanceOf [Sectionaliser].Switch
-            case _ ⇒
-                println ("non-switch (%s:%s) in SwitchEdge".format (element.getClass, element.id))
-                null.asInstanceOf [Switch]
-        }
-    }
+    def cn1: String = data.node0
+
+    def cn2: String = data.node1
 
     def normalOpen: Boolean =
-        switches.forall (x ⇒ toSwitch (x).normalOpen)
+        data.switches.forall (x => x.asSwitch.normalOpen)
 
     def ratedCurrent: Double =
-        switches.map (x ⇒ toSwitch (x).ratedCurrent).min
+        data.switches.map (x => x.asSwitch.ratedCurrent).min
 
     def fuse: Boolean =
-        switches.forall ( { case f: Fuse ⇒ true case _ ⇒ false })
+        data.switches.forall (_.fuse)
 
     /**
      * Emit a switch or fuse.
@@ -73,5 +53,20 @@ case class SwitchEdge
           |            status "%s";%s
           |        };
           |""".stripMargin.format (if (fuse) "fuse" else "switch", id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, status, fuse_details)
+    }
+}
+
+object SwitchEdge
+{
+    // ToDo: remove me
+    def apply (
+        cn1: String,
+        cn2: String,
+        switches: Iterable[Element]
+    ): SwitchEdge =
+    {
+        val t1 = Terminal (TopologicalNode = cn1)
+        val t2 = Terminal (TopologicalNode = cn2)
+        SwitchEdge (SwitchData (switches.map (x => SwitchDetails (x, t1, t2, None))))
     }
 }

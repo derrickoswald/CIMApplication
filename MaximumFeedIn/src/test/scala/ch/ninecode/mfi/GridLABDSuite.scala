@@ -34,7 +34,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
      */
     test ("Basic")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
@@ -65,7 +65,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
 
     test ("Test cable_impedance_limit parameter")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
@@ -88,7 +88,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             assert (result.size == 28, "number of records")
             while (result.next)
             {
-                checkResults (result, null.asInstanceOf [Double], "no results", "invalid element (CAB0014 r=0.14600148356433446)")
+                checkResults (result, null.asInstanceOf [Double], "no results", "invalid element (CAB0014 r=0.14600148356433446 > limit=0.14)")
             }
         }
     }
@@ -98,7 +98,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
      */
     test ("Parallel")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME2.rdf"
 
@@ -127,7 +127,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
      */
     test ("Special transformer")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME3.rdf"
 
@@ -164,7 +164,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
      */
     test ("Three phase")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
