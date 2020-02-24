@@ -422,28 +422,19 @@ class GridLABD
         writeInputFile (generator.directory, "output_data/dummy", null) // mkdir
     }
 
-    def check (input: String): (GridlabFailure) =
+    def check (input: String): Option [GridlabFailure] =
     {
-        val criticalErrors = List("FATAL", "ERROR", "FAIL", "command not found", "Cannot fork", "pthread_create")
-        val allLines: List[String] = input.split('|').toList
-        val trafoID = allLines.head
-        val criticalLines = allLines.filter(line => {
-            var hasError = false
-            for (error <- criticalErrors) {
-                if (line.contains(error)) {
-                    hasError = true
-                }
-            }
-            hasError
-        })
-
+        val criticalErrors = List ("FATAL", "ERROR", "FAIL", "command not found", "Cannot fork", "pthread_create")
+        val allLines = input.split ('|').toList
+        val trafoID = allLines.headOption.orNull (null)
+        val criticalLines = allLines.filter (line => criticalErrors.exists (line.contains (_)))
         if (criticalLines.nonEmpty)
         {
-            log.error ("gridlabd failed, message is: \n" + criticalLines.mkString("\n"))
-            GridlabFailure(trafoID, criticalLines)
+            log.error (s"gridlabd failed for $trafoID, message is: ${criticalLines.mkString ("\n")}\n")
+            Some (GridlabFailure (trafoID, criticalLines))
         }
         else
-            GridlabFailure(trafoID, List[String]())
+            None
     }
 
     def solve (files: RDD[String]): Array[GridlabFailure] =
@@ -480,7 +471,7 @@ class GridLABD
                             "gridlabd --quiet $FILE.glm 2> $FILE.out;" +
                             "cat output_data/* > output.txt; " +
                             "echo -n $FILE'|';" +
-                            "cat $FILE.out | tr '\r\n' '|';" +
+                            "cat $FILE.out | tr '\\r\\n' '|';" +
                             "popd; " +
                             "done < /dev/stdin")
                 }
@@ -503,14 +494,13 @@ class GridLABD
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/output.txt " + workdir_path + "$FILE; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
                         "echo -n $FILE'|';" +
-                        "cat $FILE.out | tr '\r\n' '|';" +
+                        "cat $FILE.out | tr '\\r\\n' '|';" +
                         "rm -rf $FILE; " +
                         "done < /dev/stdin")
             }
 
         val out = files.pipe (gridlabd).filter(_.trim() != "") // we somehow get some empty strings back, trim them
-        val checked = out.map (check)
-        checked.filter(_.errorMessages.nonEmpty).collect
+        out.flatMap (check).collect
     }
 
     def default_filenameparser (filename: String): (String, String) =
