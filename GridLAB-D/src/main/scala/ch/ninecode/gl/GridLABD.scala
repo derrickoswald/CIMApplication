@@ -479,7 +479,7 @@ class GridLABD
                             "pushd " + workdir_path + "$FILE; " +
                             "gridlabd --quiet $FILE.glm 2> $FILE.out;" +
                             "cat output_data/* > output.txt; " +
-                            "echo -n $FILE|;" +
+                            "echo -n $FILE'|';" +
                             "cat $FILE.out | tr '\r\n' '|';" +
                             "popd; " +
                             "done < /dev/stdin")
@@ -502,7 +502,7 @@ class GridLABD
                         "popd; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/output.txt " + workdir_path + "$FILE; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
-                        "echo -n $FILE|;" +
+                        "echo -n $FILE'|';" +
                         "cat $FILE.out | tr '\r\n' '|';" +
                         "rm -rf $FILE; " +
                         "done < /dev/stdin")
