@@ -1105,7 +1105,7 @@ class SimulationSuiteIT
                     val i = row.getDouble ("imag_a")
                     Math.sqrt (r * r + i * i)
                 }
-                assert (cassandraSession.execute (sql).all.asScala.forall (row => mag (row) > 409.5)) // min is 409.92237
+                assert (cassandraSession.execute (sql).all.asScala.forall (row => mag (row) > 403.0)) // min is 403.97855
         }
         new File (json).delete
     }
