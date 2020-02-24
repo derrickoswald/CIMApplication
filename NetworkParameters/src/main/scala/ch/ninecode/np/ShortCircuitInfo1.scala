@@ -1,6 +1,7 @@
 package ch.ninecode.np
 
 import scala.collection.Map
+import scala.reflect.runtime.universe
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
@@ -14,6 +15,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CHIM
+import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMSubsetter
 import ch.ninecode.cim.ClassInfo
 import ch.ninecode.model.ACDCTerminal
@@ -36,12 +38,18 @@ import ch.ninecode.model.Terminal
  * @param session       the Spark session
  * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
  */
-case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")) extends Serializable
+case class ShortCircuitInfo1 (
+    session: SparkSession,
+    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
+)
+    extends CIMRDD with Serializable
 {
 
     import session.sqlContext.implicits._
 
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val spark: SparkSession = session
+    implicit val storage: StorageLevel = storage_level
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     // get a map of voltages
     val voltage_map: Map[Double, String] =
@@ -130,8 +138,7 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
 
     def toTerminalsAndLocations (pair: (EquivalentInjection, TransformerDetails)): List[Element] =
     {
-        val eq_inj = pair._1
-        val details = pair._2
+        val (eq_inj, details) = pair
 
         // only keep transformers with matching primary voltage
         if (eq_inj.EquivalentEquipment.ConductingEquipment.BaseVoltage == details.voltage)
@@ -322,19 +329,13 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
         val list = classes.filter (x ⇒ array_to_be_merged.contains (x.name)).toArray
 
         // merge each class
-        def add (subsetter: CIMSubsetter[_]): Unit =
+        def add[T <: Product] (subsetter: CIMSubsetter[T]): Unit =
         {
-            val subrdd: RDD[Element] = elements.collect (subsetter.pf).asInstanceOf [RDD[Element]]
-            val existing = session.sparkContext.getPersistentRDDs.filter (_._2.name == subsetter.cls)
-            val rdd = if (existing.nonEmpty)
-            {
-                val old_rdd = existing.head._2.asInstanceOf [RDD[Element]]
-                old_rdd.name = "pre_shortcircuit_info_" + subsetter.cls
-                subrdd.union (old_rdd)
-            }
-            else
-                subrdd
-            subsetter.make (session.sqlContext, rdd, storage_level)
+            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T] (subsetter.runtime_class)
+            implicit val tag: universe.TypeTag[T] = subsetter.tag
+            val subrdd: RDD[T] = elements.collect[T] (subsetter.pf)
+            val existing: RDD[T] = getOrElse[subsetter.basetype] (subsetter.cls)
+            put[T] (subrdd.union (existing))
         }
 
         for (info <- list)
@@ -342,11 +343,6 @@ case class ShortCircuitInfo1 (session: SparkSession, storage_level: StorageLevel
 
         // replace elements in Elements
         val new_elements: RDD[Element] = old_elements.union (elements)
-
-        // swap the old Elements RDD for the new one
-        old_elements.name = "pre_shortcircuit_info_Elements"
-        new_elements.name = "Elements"
-        new_elements.persist (storage_level)
-        if (session.sparkContext.getCheckpointDir.isDefined) new_elements.checkpoint ()
+        put (new_elements, "Elements")
     }
 }
