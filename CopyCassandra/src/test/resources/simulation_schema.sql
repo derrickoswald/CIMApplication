@@ -52,7 +52,7 @@ create table if not exists cimapplication.measured_value (
     imag_b double,
     real_c double,
     imag_c double,
-    units text,
+    units text static,
     primary key ((mrid, type), time)
 ) with clustering order by (time asc) and comment = '
 Measurement values.
