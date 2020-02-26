@@ -408,7 +408,9 @@ class GridLABD
                 val os = System.getProperty ("os.name")
                 if (os.startsWith ("Windows"))
                 {
-                    val scriptPath = "./src/test/resources/pipe.sh"
+                    val resource = "/pipe.sh"
+                    val file = new File(this.getClass.getResource(resource).getFile)
+                    val scriptPath = file.getAbsolutePath
                     Array [String](
                         "bash",
                         scriptPath,
