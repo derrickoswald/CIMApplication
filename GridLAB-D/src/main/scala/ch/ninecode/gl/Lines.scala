@@ -18,6 +18,7 @@ final case class Lines (
 
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
 
     def unpack (pair: (ACLineSegment, Option[Iterable[Terminal]])): Option[(ACLineSegment, Terminal, Terminal)] =
     {
@@ -29,7 +30,7 @@ final case class Lines (
                 {
                     val t1 = terminals.head
                     val t2 = terminals.tail.head
-                    if (t1.id != t2.id && t1.TopologicalNode != t2.TopologicalNode)
+                    if (t1.id != t2.id)
                         if (t1.ACDCTerminal.sequenceNumber < t2.ACDCTerminal.sequenceNumber)
                             Some ((line, t1, t2))
                         else
@@ -43,12 +44,12 @@ final case class Lines (
         }
     }
 
-    def per_length_impedance: RDD[Element] = session.sparkContext.union (
+    lazy val per_length_impedance: RDD[Element] = session.sparkContext.union (
         getOrElse[PerLengthSequenceImpedance].asInstanceOf[RDD[Element]],
         getOrElse[PerLengthPhaseImpedance].asInstanceOf[RDD[Element]] // ToDo: pick up PhaseImpedanceData
     )
 
-    def wire_info: RDD[Element] = session.sparkContext.union (
+    lazy val wire_info: RDD[Element] = session.sparkContext.union (
         getOrElse[OverheadWireInfo].asInstanceOf[RDD[Element]],
         getOrElse[ConcentricNeutralCableInfo].asInstanceOf[RDD[Element]],
         getOrElse[TapeShieldCableInfo].asInstanceOf[RDD[Element]]
@@ -59,10 +60,16 @@ final case class Lines (
     def refAssetDataSheet (line: ACLineSegment): String = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
 
     def topological_order (t1: Terminal, t2: Terminal): String =
-        if (t1.TopologicalNode < t2.TopologicalNode)
-            s"${t1.TopologicalNode}_${t2.TopologicalNode}"
+        if (null == t1.TopologicalNode || null == t2.TopologicalNode)
+            if (t1.id < t2.id)
+                s"${t1.id}_${t2.id}"
+            else
+                s"${t2.id}_${t1.id}"
         else
-            s"${t2.TopologicalNode}_${t1.TopologicalNode}"
+            if (t1.TopologicalNode < t2.TopologicalNode)
+                s"${t1.TopologicalNode}_${t2.TopologicalNode}"
+            else
+                s"${t2.TopologicalNode}_${t1.TopologicalNode}"
 
     /**
      * Create an RDD of composite ACLineSegment objects.
@@ -73,11 +80,16 @@ final case class Lines (
     def getLines (line_filter: LineData => Boolean = impedance_limit): RDD[LineData] =
     {
         // get ac lines with two terminals
-        val lines_terminals: RDD[(ACLineSegment, Terminal, Terminal)] =
+        val tt = getOrElse[Terminal].keyBy (_.ConductingEquipment).groupByKey
+        val a =
             getOrElse[ACLineSegment]
+        val b = a
             .keyBy (_.id)
-            .leftOuterJoin (getOrElse[Terminal].keyBy (_.ConductingEquipment).groupByKey)
+        val c = b
+            .leftOuterJoin (tt)
+        val d = c
             .values
+        val lines_terminals: RDD[(ACLineSegment, Terminal, Terminal)] = d
             .flatMap (unpack)
 
         // append parameters if any

@@ -89,6 +89,7 @@ case class ScGLMGenerator
             val l = ACLineSegment (Conductor (ConductingEquipment (Equipment (PowerSystemResource (id)))))
             val t1 = Terminal (TopologicalNode = "N5")
             val t2 = Terminal (TopologicalNode = node.id)
+            implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
             val line = LineEdge (LineData (Iterable (LineDetails (l, t1, t2, None, None))))
             val config = line.make_line_configuration ("N5_configuration", Sequences (Complex (z.re, z.im), Complex (0.0)), false, this)
             val cable =

@@ -356,13 +356,10 @@ object OneOfN
             classOf [ch.ninecode.on.FeederArea],
             classOf [ch.ninecode.on.FeederMetadata],
             classOf [ch.ninecode.on.FeederNode],
-            classOf [ch.ninecode.on.MediumVoltageGLMGenerator],
             classOf [ch.ninecode.on.OneOfN],
             classOf [ch.ninecode.on.OneOfNGLMGenerator],
             classOf [ch.ninecode.on.OneOfNOptions],
             classOf [ch.ninecode.on.PlayerSwitchEdge],
-            classOf [ch.ninecode.on.USTKreis],
-            classOf [ch.ninecode.on.USTNode],
             classOf [ch.ninecode.on.VertexData]
         )
     }
