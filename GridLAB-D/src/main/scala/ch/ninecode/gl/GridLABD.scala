@@ -1,6 +1,7 @@
 package ch.ninecode.gl
 
 import java.io.File
+import java.io.PrintWriter
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -408,12 +409,25 @@ class GridLABD
                 val os = System.getProperty ("os.name")
                 if (os.startsWith ("Windows"))
                 {
-                    val resource = "/pipe.sh"
-                    val file = new File(this.getClass.getResource(resource).getFile)
-                    val scriptPath = file.getAbsolutePath
+                    val pipeFileName = "./src/test/resources/pipe.sh"
+                    val pipeContent = """#!/bin/bash
+                                     |while read line; do
+                                     |    export FILE=${line/$'\r'/};
+                                     |    ulimit -Sn `ulimit -Hn`;
+                                     |    pushd $1/$FILE > /dev/null;
+                                     |    gridlabd.exe $FILE.glm 2> $FILE.out;
+                                     |    cat output_data/* > output.txt;
+                                     |    echo -n $FILE'|';
+                                     |    cat $FILE.out | tr '\r\n' '|';
+                                     |    popd > /dev/null;
+                                     |done""".stripMargin
+                    new PrintWriter(pipeFileName) {
+                        write(pipeContent)
+                        close
+                    }
                     Array [String](
                         "bash",
-                        scriptPath,
+                        pipeFileName,
                         workdir_path
                     )
                 }
