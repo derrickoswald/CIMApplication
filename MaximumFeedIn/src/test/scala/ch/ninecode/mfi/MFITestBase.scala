@@ -1,10 +1,11 @@
 package ch.ninecode.mfi
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.gl.GridLABD
-import ch.ninecode.util.TestUtil
 import com.sun.rowset.CachedRowSetImpl
 import org.apache.spark.sql.SparkSession
+
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.testutil.TestUtil
 
 class MFITestBase extends TestUtil
 {

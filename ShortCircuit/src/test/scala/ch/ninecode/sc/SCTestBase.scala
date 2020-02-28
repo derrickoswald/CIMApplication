@@ -2,7 +2,7 @@ package ch.ninecode.sc
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.util.TestUtil
+import ch.ninecode.testutil.TestUtil
 
 class SCTestBase extends TestUtil
 {

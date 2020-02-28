@@ -80,10 +80,10 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.util</groupId>
-            <artifactId>Util</artifactId>
+            <groupId>ch.ninecode.testutil</groupId>
+            <artifactId>TestUtil</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
+            <scope>test</scope>
         </dependency>
 
     </dependencies>

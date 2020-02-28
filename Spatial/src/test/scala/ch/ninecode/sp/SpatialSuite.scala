@@ -2,11 +2,13 @@ package ch.ninecode.sp
 
 import java.io.File
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.util.TestUtil
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
+
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.testutil.TestUtil
+
 import org.scalatest._
 
 class SpatialSuite extends TestUtil with BeforeAndAfter

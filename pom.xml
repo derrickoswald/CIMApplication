@@ -118,24 +118,24 @@
     </build>
 
     <modules>
-        <module>Util</module>
         <module>CIMConnector</module>
-        <module>CIMWeb</module>
         <module>CIMEar</module>
+        <module>CIMWeb</module>
+        <module>CopyCassandra</module>
         <module>GridLAB-D</module>
-        <module>ShortCircuit</module>
-        <module>Spatial</module>
-        <module>SmartMeter</module>
-        <module>MSCONSReader</module>
         <module>Ingest</module>
-        <module>Simulation</module>
-        <module>NetworkParameters</module>
-        <module>OneOfN</module>
         <module>LowVoltage</module>
         <module>MaximumFeedIn</module>
-        <module>CopyCassandra</module>
-        <module>TimeSeries</module>
+        <module>NetworkParameters</module>
+        <module>MSCONSReader</module>
+        <module>OneOfN</module>
         <module>PandaPower</module>
+        <module>ShortCircuit</module>
+        <module>Simulation</module>
+        <module>SmartMeter</module>
+        <module>Spatial</module>
+        <module>TestUtil</module>
+        <module>TimeSeries</module>
     </modules>
 
 </project>

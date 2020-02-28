@@ -10,7 +10,7 @@ import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.Island.identifier
 import ch.ninecode.model.Element
 import ch.ninecode.model.EnergyConsumer
-import ch.ninecode.util.TestUtil
+import ch.ninecode.testutil.TestUtil
 
 import org.scalatest.BeforeAndAfter
 

@@ -15,7 +15,8 @@ import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
-import ch.ninecode.util.Unzip
+import ch.ninecode.testutil.Unzip
+
 import org.scalactic.source.Position
 import org.scalatest.BeforeAndAfter
 import org.scalatest.Canceled

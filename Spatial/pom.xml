@@ -65,6 +65,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.testutil</groupId>
+            <artifactId>TestUtil</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${version.dependency.scala}</artifactId>
             <version>${version.dependency.scalatest}</version>
@@ -76,13 +83,6 @@
             <artifactId>junit</artifactId>
             <version>${version.dependency.junit}</version>
             <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.util</groupId>
-            <artifactId>Util</artifactId>
-            <version>${project.version}</version>
-            <scope>compile</scope>
         </dependency>
 
     </dependencies>

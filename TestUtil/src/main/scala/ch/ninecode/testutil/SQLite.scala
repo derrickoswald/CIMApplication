@@ -1,4 +1,4 @@
-package ch.ninecode.util
+package ch.ninecode.testutil
 
 import java.sql.DriverManager
 import com.sun.rowset.CachedRowSetImpl

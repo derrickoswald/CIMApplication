@@ -37,13 +37,6 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.util</groupId>
-            <artifactId>Util</artifactId>
-            <version>${project.version}</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
             <groupId>ch.ninecode.gl</groupId>
             <artifactId>GridLAB-D</artifactId>
             <version>${project.version}</version>
@@ -90,6 +83,13 @@
             <artifactId>spark-graphx_${version.dependency.scala}</artifactId>
             <version>${version.dependency.spark}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.testutil</groupId>
+            <artifactId>TestUtil</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>

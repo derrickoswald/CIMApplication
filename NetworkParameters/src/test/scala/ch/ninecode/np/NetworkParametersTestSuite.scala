@@ -1,8 +1,9 @@
 package ch.ninecode.np
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.util.TestUtil
 import org.apache.spark.sql.SparkSession
+
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.testutil.TestUtil
 
 class NetworkParametersTestSuite extends TestUtil
 {

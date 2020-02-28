@@ -2,11 +2,12 @@ package ch.ninecode.sm
 
 import java.util.HashMap
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.util.TestUtil
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
+
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.testutil.TestUtil
 
 class SmartMeterSuite extends TestUtil
 {

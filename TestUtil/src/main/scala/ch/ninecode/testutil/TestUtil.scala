@@ -1,4 +1,4 @@
-package ch.ninecode.util
+package ch.ninecode.testutil
 
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils

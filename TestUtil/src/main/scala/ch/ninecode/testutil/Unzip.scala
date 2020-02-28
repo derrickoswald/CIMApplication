@@ -1,4 +1,4 @@
-package ch.ninecode.util
+package ch.ninecode.testutil
 
 import java.io.BufferedOutputStream
 import java.io.File
@@ -7,21 +7,22 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.zip.ZipInputStream
 
-trait Using {
-    def using[T <: AutoCloseable, R] (resource: T)(block: T => R): R =
-    {
-        try
+trait Unzip {
+
+    trait Using {
+        def using[T <: AutoCloseable, R] (resource: T)(block: T => R): R =
         {
-            block (resource)
-        }
-        finally
-        {
-            resource.close ()
+            try
+            {
+                block (resource)
+            }
+            finally
+            {
+                resource.close ()
+            }
         }
     }
-}
 
-trait Unzip {
     /**
      * This utility extracts files and directories of a standard zip file to
      * a destination directory.

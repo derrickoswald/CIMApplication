@@ -2,13 +2,14 @@ package ch.ninecode.lv
 
 import java.util
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.gl.GridLABD
-import ch.ninecode.model.Element
-import ch.ninecode.util.TestUtil
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
+
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.model.Element
+import ch.ninecode.testutil.TestUtil
 
 class LowVoltageSuite extends TestUtil
 {
