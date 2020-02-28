@@ -685,7 +685,6 @@ object GridLABD
             classOf [ch.ninecode.gl.SwingNode],
             classOf [ch.ninecode.gl.SwitchEdge],
             classOf [ch.ninecode.gl.ThreePhaseComplexDataElement],
-            classOf [ch.ninecode.gl.Trace],
             classOf [ch.ninecode.gl.TransformerData],
             classOf [ch.ninecode.gl.TransformerEdge],
             classOf [ch.ninecode.gl.TransformerServiceArea],

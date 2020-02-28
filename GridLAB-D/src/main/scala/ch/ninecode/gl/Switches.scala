@@ -51,10 +51,16 @@ final case class Switches (
     def refAssetDataSheet (switch: Switch): String = switch.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
 
     def topological_order (t1: Terminal, t2: Terminal): String =
-        if (t1.TopologicalNode < t2.TopologicalNode)
-            s"${t1.TopologicalNode}_${t2.TopologicalNode}"
+        if (null == t1.TopologicalNode || null == t2.TopologicalNode)
+            if (t1.id < t2.id)
+                s"${t1.id}_${t2.id}"
+            else
+                s"${t2.id}_${t1.id}"
         else
-            s"${t2.TopologicalNode}_${t1.TopologicalNode}"
+            if (t1.TopologicalNode < t2.TopologicalNode)
+                s"${t1.TopologicalNode}_${t2.TopologicalNode}"
+            else
+                s"${t2.TopologicalNode}_${t1.TopologicalNode}"
 
     /**
      * Create an RDD of composite Switch objects.

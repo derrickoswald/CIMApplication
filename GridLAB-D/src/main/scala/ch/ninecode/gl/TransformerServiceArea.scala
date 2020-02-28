@@ -27,7 +27,7 @@ import ch.ninecode.model._
  * @param storage_level The storage level to use in persisting the edges and nodes.
  * @param debug         flag to turn on debug output
  */
-case class TransformerServiceArea (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), debug: Boolean = false) extends CIMRDD
+case class TransformerServiceArea (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), debug: Boolean = false) extends CIMRDD with Graphable
 {
     import TransformerServiceArea._
 
@@ -42,20 +42,6 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
     val terminal_rdd: RDD[Terminal] = getOrElse [Terminal]
     val topological_island_rdd: RDD[TopologicalIsland] = getOrElse [TopologicalIsland]
     val topological_node_rdd: RDD[TopologicalNode] = getOrElse [TopologicalNode]
-
-    /**
-     * Compute the vertex id.
-     *
-     * @param string The CIM mRID.
-     * @return the node id (similar to the hash code of the mRID)
-     */
-    def vertex_id (string: String): VertexId =
-    {
-        var h = 2166136261L
-        for (c ← string)
-            h = (h * 16777619) ^ c
-        h
-    }
 
     /**
      * Determine if the bitfield is set for the given mask.
