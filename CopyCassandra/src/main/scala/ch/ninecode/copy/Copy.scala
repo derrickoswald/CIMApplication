@@ -1,6 +1,5 @@
 package ch.ninecode.copy
 
-
 import com.datastax.driver.core.ConsistencyLevel
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
@@ -11,6 +10,8 @@ import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector.writer.WriteConf
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector.rdd.ReadConf
+
+import ch.ninecode.util.Schema
 
 /**
  * Copy between Cassandra instances and/or keyspaces.
@@ -35,7 +36,7 @@ case class Copy (session: SparkSession, options: CopyOptions)
     {
         val source: CassandraConnector = CassandraConnector (cassandra (options.source_host, options.source_port))
         val target: CassandraConnector = CassandraConnector (cassandra (options.target_host, options.target_port))
-        val schema = SchemaMaker (session, options.target_keyspace, options.target_replication, true)
+        val schema = Schema (session, "/simulation_schema.sql", options.target_keyspace, options.target_replication, true)
         if (schema.make (target))
         {
             val tables: Array[String] =

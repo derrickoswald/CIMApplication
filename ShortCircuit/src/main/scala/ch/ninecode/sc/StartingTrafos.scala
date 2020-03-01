@@ -3,8 +3,8 @@ package ch.ninecode.sc
 import org.apache.spark.graphx.VertexId
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.gl.Complex
 import ch.ninecode.gl.TransformerSet
+import ch.ninecode.util._
 
 /**
  * Transformers for which an available power and angle is known, to be used as the starting points for calculation.

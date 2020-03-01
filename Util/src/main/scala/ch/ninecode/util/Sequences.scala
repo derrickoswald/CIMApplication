@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.util
 
 /**
  * Positive and zero sequence values.

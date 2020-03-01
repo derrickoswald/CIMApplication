@@ -2,14 +2,14 @@ package ch.ninecode.sc
 
 import java.io.File
 
-import org.scalatest.BeforeAndAfter
-
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.gl.Complex
+import ch.ninecode.util._
+
+import org.scalatest.BeforeAndAfter
 
 class NonradialSuite extends SCTestBase with BeforeAndAfter
 {

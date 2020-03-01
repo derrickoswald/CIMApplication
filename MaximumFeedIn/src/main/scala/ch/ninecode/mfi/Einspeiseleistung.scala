@@ -8,6 +8,7 @@ import java.util.TimeZone
 
 import scala.collection._
 import scala.io.Source
+
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -15,20 +16,20 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.GridlabFailure
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.Solar
-import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.gl.TransformerData
 import ch.ninecode.gl.TransformerIsland
 import ch.ninecode.gl.Transformers
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Terminal
+import ch.ninecode.util._
 
 case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions) extends CIMRDD
 {

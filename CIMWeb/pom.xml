@@ -113,6 +113,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.util</groupId>
+            <artifactId>Util</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>javax</groupId>
             <artifactId>javaee-api</artifactId>
             <version>${version.dependency.javaee}</version>

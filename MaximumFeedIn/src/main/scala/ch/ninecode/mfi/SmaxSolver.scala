@@ -1,6 +1,6 @@
 package ch.ninecode.mfi
 
-import ch.ninecode.gl.Complex
+import ch.ninecode.util._
 
 /**
  *

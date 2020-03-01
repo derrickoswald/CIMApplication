@@ -1,5 +1,7 @@
 package ch.ninecode.gl
 
+import ch.ninecode.util._
+
 /**
  * Groups transformers supplying the same TopologicalIsland.
  *

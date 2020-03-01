@@ -17,8 +17,8 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
-import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.util._
 
 object Main
 {
@@ -339,6 +339,8 @@ object Main
                 configuration.registerKryoClasses (GridLABD.classes)
                 // register ShortCircuit analysis classes
                 configuration.registerKryoClasses (ShortCircuit.classes)
+                // register Util classes
+                configuration.registerKryoClasses (Util.classes)
                 // register GraphX classes
                 GraphXUtils.registerKryoClasses (configuration)
 

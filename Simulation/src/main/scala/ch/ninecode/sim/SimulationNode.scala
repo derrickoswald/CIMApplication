@@ -1,7 +1,6 @@
 package ch.ninecode.sim
 
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.Graphable
 
 /**
  * Vertex data.

@@ -4,6 +4,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.model._
+import ch.ninecode.util._
 
 /**
  * One element of a line between two nodes.

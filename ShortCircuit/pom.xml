@@ -51,6 +51,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.util</groupId>
+            <artifactId>Util</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${version.dependency.scalalibrary}</version>

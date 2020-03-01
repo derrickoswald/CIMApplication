@@ -15,6 +15,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
+import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.DataType
 import com.datastax.driver.core.ResultSet
 import com.datastax.spark.connector._
@@ -23,7 +24,9 @@ import com.datastax.driver.core.DataType.Name._
 
 case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = "", cassandra_table_name: String = "") extends CIMWebFunction
 {
-    jars = Array (jarForObject (this), jarForObject (SomeColumns ("mrid")), jarForObject (new com.twitter.jsr166e.LongAdder ()))
+    jars = Array (
+        jarForObject (this),
+        jarForObject (Cluster.builder))                // spark-cassandra-connector.jar
 
     def packRow (row: Row): JsonObjectBuilder =
     {

@@ -2,10 +2,12 @@ package ch.ninecode.sc
 
 import java.io.File
 
-import ch.ninecode.gl.Complex
 import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+
+import ch.ninecode.util._
+
 import org.scalatest.BeforeAndAfter
 
 class ShortCircuitSuite extends SCTestBase with BeforeAndAfter

@@ -1,5 +1,7 @@
 package ch.ninecode.gl
 
+import ch.ninecode.util.Graphable
+
 /**
  * Basic properties of a node.
  */

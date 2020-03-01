@@ -1,6 +1,7 @@
 package ch.ninecode.gl
 
 import ch.ninecode.model.ACLineSegment
+import ch.ninecode.util._
 
 final case class LineEdge
 (

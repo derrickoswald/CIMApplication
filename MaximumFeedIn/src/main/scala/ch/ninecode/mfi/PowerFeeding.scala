@@ -14,8 +14,8 @@ import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 import org.slf4j.Logger
+
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.Complex
 import ch.ninecode.gl.PV
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
@@ -27,6 +27,7 @@ import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Connector
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
+import ch.ninecode.util._
 
 class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER) extends CIMRDD with Serializable
 {

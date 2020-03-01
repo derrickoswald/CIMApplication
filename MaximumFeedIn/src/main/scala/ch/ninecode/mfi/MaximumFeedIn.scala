@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.util.Util
 
 object MaximumFeedIn
 {
@@ -75,7 +76,7 @@ object MaximumFeedIn
      * Build jar with dependencies (target/MaximumFeedIn-2.11-2.4.4-2.7.0-jar-with-dependencies.jar):
      * mvn package
      * Invoke (on the cluster) with:
-     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.4.4-2.7.0-jar-with-dependencies.jar hdfs://sandbox:8020/data/filename.rdf
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g MaximumFeedIn-*-with-dependencies.jar --verbose --all hdfs://sandbox:8020/DemoData.rdf
      */
     def main (args: Array[String])
     {
@@ -114,6 +115,8 @@ object MaximumFeedIn
                             configuration.registerKryoClasses (GridLABD.classes)
                             // register Einspeiseleistung classes
                             configuration.registerKryoClasses (Einspeiseleistung.classes)
+                            // register Util classes
+                            configuration.registerKryoClasses (Util.classes)
                             // register GraphX classes
                             GraphXUtils.registerKryoClasses (configuration)
                         }

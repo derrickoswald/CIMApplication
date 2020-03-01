@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.util
 
 import org.apache.spark.graphx.VertexId
 

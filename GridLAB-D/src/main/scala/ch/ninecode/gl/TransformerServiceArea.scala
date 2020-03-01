@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
+import ch.ninecode.util.Graphable
 
 /**
  * Identify the islands in each transformer service area.

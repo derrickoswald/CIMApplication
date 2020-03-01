@@ -5,19 +5,21 @@ import java.net.URI
 import java.net.URLDecoder
 import java.util.Properties
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.DefaultSource
-import ch.ninecode.gl.GridLABD
-import ch.ninecode.mfi.Einspeiseleistung
+import scala.collection.mutable
+import scala.tools.nsc.io.Jar
+import scala.util.Random
+import scopt.OptionParser
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
-import scopt.OptionParser
 
-import scala.collection.mutable
-import scala.tools.nsc.io.Jar
-import scala.util.Random
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.DefaultSource
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.mfi.Einspeiseleistung
+import ch.ninecode.util.Util
 
 object Main
 {
@@ -205,6 +207,8 @@ object Main
                     configuration.registerKryoClasses (GridLABD.classes)
                     // register Einspeiseleistung classes
                     configuration.registerKryoClasses (Einspeiseleistung.classes)
+                    // register Util classes
+                    configuration.registerKryoClasses (Util.classes)
                 }
                 configuration.set ("spark.ui.showConsoleProgress", "false")
 

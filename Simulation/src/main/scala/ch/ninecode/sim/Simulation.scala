@@ -51,6 +51,7 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import ch.ninecode.util.Schema
 
 /**
  * Execute simulations using GridLAB-D.
@@ -527,7 +528,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             {
                 log.info ("""starting simulation %s""".format (job.id))
 
-                val schema = Schema (session, job.output_keyspace, job.replication, options.verbose)
+                val schema = Schema (session, "/simulation_schema.sql", job.output_keyspace, job.replication, options.verbose)
                 if (schema.make)
                 {
                     // perform the extra queries and insert into the key_value table

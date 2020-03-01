@@ -15,17 +15,17 @@ import scala.collection.JavaConverters._
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
-
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Row
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
-
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.FixMethodOrder
 import org.junit.Test
 import org.junit.runners.MethodSorters
+
+import ch.ninecode.util.Schema
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class SimulationSuiteIT
@@ -1251,7 +1251,7 @@ object SimulationSuiteIT
             "mode" → "DROPMALFORMED",
             "inferSchema" → "true"
         )
-        Schema (session, KEYSPACE, 1, verbose = true).make
+        Schema (session, "/test_simulation_schema.sql", KEYSPACE, 1, verbose = true).make
         println (s"reading $FILE_DEPOT$FILENAME0.csv")
         val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (s"$FILE_DEPOT$FILENAME0.csv")
         val ok = df.rdd.map (row ⇒ (row.getString (0), "energy", row.getTimestamp (1), 900000, row.getDouble (2), 0.0, "Wh"))

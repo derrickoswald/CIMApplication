@@ -2,7 +2,7 @@ package ch.ninecode.mfi
 
 import org.apache.spark.graphx.VertexId
 
-import ch.ninecode.gl.Graphable
+import ch.ninecode.util.Graphable
 
 /**
  * Start of a feeder branch.

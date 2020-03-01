@@ -14,6 +14,7 @@ import org.slf4j.Logger
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.util.Util
 
 object Main
 {
@@ -93,11 +94,11 @@ object Main
                         val sim = jarForClass (SimulationOptions ().getClass)
                         val glm = jarForClass (Class.forName ("ch.ninecode.gl.GLMEdge"))
                         val reader = jarForClass (Class.forName ("ch.ninecode.cim.DefaultSource"))
+                        val util = jarForClass (Class.forName ("ch.ninecode.util.Complex"))
                         val json = jarForClass (Class.forName ("javax.json.JsonStructure"))
                         val json_impl = jarForClass (Class.forName ("org.glassfish.json.JsonProviderImpl"))
                         val datastax = jarForClass (Class.forName ("com.datastax.driver.core.Cluster"))
-                        val twitter = jarForClass (Class.forName ("com.twitter.jsr166e.LongAdder"))
-                        configuration.setJars (Set (sim, glm, reader, json, json_impl, datastax, twitter).toArray)
+                        configuration.setJars (Set (sim, glm, reader, util, json, json_impl, datastax).toArray)
 
                         // register CIMReader classes
                         configuration.registerKryoClasses (CIMClasses.list)
@@ -105,6 +106,8 @@ object Main
                         configuration.registerKryoClasses (GridLABD.classes)
                         // register Simulation analysis classes
                         configuration.registerKryoClasses (Simulation.classes)
+                        // register Util classes
+                        configuration.registerKryoClasses (Util.classes)
 
                         // make a Spark session
                         val session = SparkSession.builder ().config (configuration).getOrCreate ()

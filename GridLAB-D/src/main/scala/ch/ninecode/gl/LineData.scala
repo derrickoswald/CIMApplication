@@ -1,6 +1,7 @@
 package ch.ninecode.gl
 
 import ch.ninecode.gl.LineDetails.CIM_BASE_TEMPERATURE
+import ch.ninecode.util.Sequences
 
 /**
  * Line data.

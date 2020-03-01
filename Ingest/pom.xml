@@ -28,6 +28,13 @@
     <dependencies>
 
         <dependency>
+            <groupId>ch.ninecode.util</groupId>
+            <artifactId>Util</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.datastax.spark</groupId>
             <artifactId>spark-cassandra-connector_${version.dependency.scala}</artifactId>
             <version>${version.dependency.cassandra_spark}</version>

@@ -37,6 +37,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.util</groupId>
+            <artifactId>Util</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.github.scopt</groupId>
             <artifactId>scopt_${version.dependency.scala}</artifactId>
             <version>${version.dependency.scopt}</version>

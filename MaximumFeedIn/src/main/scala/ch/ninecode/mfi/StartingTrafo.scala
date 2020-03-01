@@ -1,7 +1,8 @@
 package ch.ninecode.mfi
 
-import ch.ninecode.gl.Complex
 import org.apache.spark.graphx.VertexId
+
+import ch.ninecode.util._
 
 /**
  * The starting point for the Pregel trace.

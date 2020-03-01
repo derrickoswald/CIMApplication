@@ -4,10 +4,12 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import scala.math._
+
 import ch.ninecode.gl._
 import ch.ninecode.model.Element
 import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
+import ch.ninecode.util._
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
     extends GLMGenerator (one_phase, 20.0, date_format, true) // ToDo: get library base temperature and target temperature as command line input

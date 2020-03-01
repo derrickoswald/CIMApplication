@@ -9,7 +9,6 @@ import java.util.TimeZone
 
 import javax.json.Json
 import javax.json.JsonObject
-
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process.Process
@@ -19,8 +18,8 @@ import org.apache.log4j.LogManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.gl.Complex
-import ch.ninecode.gl.ThreePhaseComplexDataElement
+import ch.ninecode.util.ThreePhaseComplexDataElement
+import ch.ninecode.util._
 
 /**
  * Perform a GridLAB-D simulation.

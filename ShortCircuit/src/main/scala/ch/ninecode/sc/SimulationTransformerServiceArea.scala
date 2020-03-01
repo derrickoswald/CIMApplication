@@ -2,10 +2,10 @@ package ch.ninecode.sc
 
 import java.util.Calendar
 
-import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.TransformerIsland
+import ch.ninecode.util._
 
 /**
  * A container for a simulation piece of work.

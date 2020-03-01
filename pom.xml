@@ -136,6 +136,7 @@
         <module>Spatial</module>
         <module>TestUtil</module>
         <module>TimeSeries</module>
+        <module>Util</module>
     </modules>
 
 </project>

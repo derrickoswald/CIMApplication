@@ -1,6 +1,6 @@
 package ch.ninecode.mfi
 
-import ch.ninecode.gl.Complex
+import ch.ninecode.util._
 
 import org.scalatest.FunSuite
 
@@ -44,7 +44,7 @@ class SmaxSolverSuite extends FunSuite
             val solver = SmaxSolver (threshold, cosphi)
             val p = solver.solve (v, z)
             assert ((p - s).modulus < 0.001 * smax, s"$message Z = $z")
-            assert (near (p.angle, phi), s"power angle (${p.angle}) differs from expected ${phi}")
+            assert (near (p.angle, phi), s"power angle (${p.angle}) differs from expected $phi")
         }
         else
             assert (false, s"components of impedance $z must be positive: $message")
@@ -153,7 +153,7 @@ class SmaxSolverSuite extends FunSuite
 
             if (z.re >= 0.0 && z.im >= 0.0)
             {
-                run (cosphi, angle, v, threshold, smax, s"$cosphi power factor @ ${angle}° for ${threshold * 100}%% at ${v}V ${smax}W")
+                run (cosphi, angle, v, threshold, smax, s"$cosphi power factor @ $angle° for ${threshold * 100}%% at ${v}V ${smax}W")
 //                val solver = SmaxSolver (threshold, cosphi)
 //                val p = solver.solve (v, z)
 //                assert ((p - s).modulus < 0.001 * smax, s"$cosphi power factor @ $angle° for ${threshold * 100}% at ${v}V ${smax}VA Z = $z")

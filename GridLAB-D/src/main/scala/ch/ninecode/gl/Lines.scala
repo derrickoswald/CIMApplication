@@ -81,15 +81,11 @@ final case class Lines (
     {
         // get ac lines with two terminals
         val tt = getOrElse[Terminal].keyBy (_.ConductingEquipment).groupByKey
-        val a =
+        val lines_terminals =
             getOrElse[ACLineSegment]
-        val b = a
             .keyBy (_.id)
-        val c = b
             .leftOuterJoin (tt)
-        val d = c
             .values
-        val lines_terminals: RDD[(ACLineSegment, Terminal, Terminal)] = d
             .flatMap (unpack)
 
         // append parameters if any

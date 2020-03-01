@@ -19,4 +19,4 @@ fi
 
 set -x
 # mvn clean dependency:purge-local-repository;
-mvn clean -Dmaven.test.skip=true -DskipTests -DskipITs --projects CIMConnector,Ingest,TimeSeries,GridLAB-D,ShortCircuit,MaximumFeedIn,Simulation,Spatial,CIMWeb,CIMEar install; docker build --quiet --file ${AppServer}.Dockerfile --tag derrickoswald/cimapplication:${Tag} .;docker tag derrickoswald/cimapplication:${Tag} derrickoswald/cimapplication:latest
+mvn clean -Dmaven.test.skip=true -DskipTests -DskipITs --projects Util,CIMConnector,Ingest,TimeSeries,GridLAB-D,ShortCircuit,MaximumFeedIn,Simulation,Spatial,CIMWeb,CIMEar install; docker build --quiet --file ${AppServer}.Dockerfile --tag derrickoswald/cimapplication:${Tag} .;docker tag derrickoswald/cimapplication:${Tag} derrickoswald/cimapplication:latest

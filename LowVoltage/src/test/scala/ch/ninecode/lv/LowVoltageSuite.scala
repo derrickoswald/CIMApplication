@@ -10,10 +10,11 @@ import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.Element
 import ch.ninecode.testutil.TestUtil
+import ch.ninecode.util._
 
 class LowVoltageSuite extends TestUtil
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes)
+    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Util.classes)
     def readFile (session: SparkSession, filename: String): RDD[Element] =
     {
         val files = filename.split (",")

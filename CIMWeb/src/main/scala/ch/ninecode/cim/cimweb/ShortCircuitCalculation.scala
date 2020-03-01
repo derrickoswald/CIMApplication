@@ -8,22 +8,22 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 import javax.ejb.Stateless
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-
+import javax.json.JsonException
+import javax.json.JsonObject
 import javax.json.Json
 import javax.json.JsonObjectBuilder
 import javax.resource.ResourceException
+import javax.ws.rs.POST
+import javax.ws.rs.Path
+import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
+
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMResultSet
-import ch.ninecode.gl.Complex
 import ch.ninecode.sc.ShortCircuitOptions
-import javax.json.JsonException
-import javax.json.JsonObject
-import javax.ws.rs.POST
+import ch.ninecode.util._
 
 @Stateless
 @Path ("short_circuit")

@@ -1,7 +1,5 @@
 package ch.ninecode.sc
 
-import ch.ninecode.gl.Complex
-import ch.ninecode.gl.Graphable
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.Cut
@@ -16,6 +14,7 @@ import ch.ninecode.model.ProtectedSwitch
 import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser
 import ch.ninecode.model.Switch
+import ch.ninecode.util._
 
 /**
  * Short circuit extended GraphX edge.

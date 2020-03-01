@@ -1,4 +1,4 @@
-package ch.ninecode.sim
+package ch.ninecode.util
 
 import scala.io.Source
 
@@ -17,17 +17,16 @@ import org.slf4j.LoggerFactory
  * $ sed --in-place 's/enable_scripted_user_defined_functions: false/enable_scripted_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml
  *
  * @param session the Spark session
+ * @param resource the schema file (cqlsh commands) to process
  * @param keyspace the target keyspace to create (if it does not exist)
  * @param replication the replication factor for the keyspace (if it does not exist)
  * @param verbose the flag to trigger logging at INFO level
  */
-case class Schema (session: SparkSession, keyspace: String = "cimapplication", replication: Int = 2, verbose: Boolean)
+case class Schema (session: SparkSession, resource: String, keyspace: String = "cimapplication", replication: Int = 2, verbose: Boolean)
 {
     if (verbose)
         org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
-
-    val RESOURCE = """/simulation_schema.sql"""
 
     /**
      * Generate a function to edit each line of the schema file.
@@ -46,7 +45,7 @@ case class Schema (session: SparkSession, keyspace: String = "cimapplication", r
         /**
          * The edit function.
          *
-         * @param line the string to transforme.
+         * @param line the string to transform.
          * @return the updated string
          */
         def edit (line: String): String =
@@ -76,9 +75,9 @@ case class Schema (session: SparkSession, keyspace: String = "cimapplication", r
      *
      * @return <code>true</code> if all DDL executed successsuflly, <code>false</code> if the schema file doesn't exist or there were errors
      */
-    def make: Boolean =
+    def make (connector: CassandraConnector = CassandraConnector (session.sparkContext.getConf)): Boolean =
     {
-        val schema = this.getClass.getResourceAsStream (RESOURCE)
+        val schema = this.getClass.getResourceAsStream (resource)
         if (null != schema)
         {
             log.info ("""ensuring Cassandra keyspace %s exists""".format (keyspace))
@@ -92,7 +91,7 @@ case class Schema (session: SparkSession, keyspace: String = "cimapplication", r
                 {
                     try
                     {
-                        CassandraConnector (session.sparkContext.getConf).withSessionDo (session => session.execute (sql))
+                        connector.withSessionDo (session => session.execute (sql))
                         true
                     }
 
@@ -107,7 +106,7 @@ case class Schema (session: SparkSession, keyspace: String = "cimapplication", r
         }
         else
         {
-            log.error ("""failed to get schema sql resource: %s""".format (RESOURCE))
+            log.error ("""failed to get schema sql resource: %s""".format (resource))
             false
         }
     }

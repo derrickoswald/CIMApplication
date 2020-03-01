@@ -6,12 +6,18 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim.connector.CIMFunction.Return
+import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.sc.ShortCircuitOptions
 import ch.ninecode.sc.ShortCircuit
+import ch.ninecode.util.Complex
 
 case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFunction
 {
-    jars = Array (jarForObject (this), jarForObject (options))
+    jars = Array (
+        jarForObject (this),
+        jarForObject (options),               // ShortCircuit.jar
+        jarForObject (new GLMGenerator ()),   // GridLAB-D.jar
+        jarForObject (Complex (0.0, 0.0)))    // Util.jar
 
     override def getReturnType: Return = Return.Dataset
 

@@ -33,14 +33,21 @@
             <groupId>ch.ninecode.gl</groupId>
             <artifactId>GridLAB-D</artifactId>
             <version>${project.version}</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>
             <groupId>ch.ninecode.mfi</groupId>
             <artifactId>MaximumFeedIn</artifactId>
             <version>${project.version}</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.util</groupId>
+            <artifactId>Util</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
         </dependency>
 
         <dependency>

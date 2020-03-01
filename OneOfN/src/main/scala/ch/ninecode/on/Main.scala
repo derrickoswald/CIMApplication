@@ -5,6 +5,11 @@ import java.net.URI
 import java.net.URLDecoder
 import java.util.Properties
 
+import scala.collection.mutable
+import scala.tools.nsc.io.Jar
+import scala.util.Random
+import scopt.OptionParser
+
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.gl.GridLABD
@@ -13,11 +18,8 @@ import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
-import scopt.OptionParser
 
-import scala.collection.mutable
-import scala.tools.nsc.io.Jar
-import scala.util.Random
+import ch.ninecode.util.Util
 
 object Main
 {
@@ -251,6 +253,8 @@ object Main
                         configuration.registerKryoClasses (GridLABD.classes)
                         // register OneOfN classes
                         configuration.registerKryoClasses (OneOfN.classes)
+                        // register OneOfN classes
+                        configuration.registerKryoClasses (Util.classes)
                         // register GraphX classes
                         GraphXUtils.registerKryoClasses (configuration)
                     }

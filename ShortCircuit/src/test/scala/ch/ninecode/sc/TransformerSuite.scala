@@ -3,11 +3,10 @@ package ch.ninecode.sc
 import java.io.File
 
 import org.scalatest.BeforeAndAfter
-
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
-import ch.ninecode.gl.Complex
+import ch.ninecode.util._
 
 class TransformerSuite extends SCTestBase with BeforeAndAfter
 {

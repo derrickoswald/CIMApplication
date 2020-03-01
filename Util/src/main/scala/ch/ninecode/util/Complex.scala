@@ -1,9 +1,9 @@
-package ch.ninecode.gl
+package ch.ninecode.util
 
 import java.util.regex.Pattern
 
-import scala.math._
 import scala.language.implicitConversions
+import scala.math._
 
 /**
  * Complex number implementation.

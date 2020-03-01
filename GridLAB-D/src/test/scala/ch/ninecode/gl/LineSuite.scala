@@ -16,6 +16,7 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.testutil.Unzip
+import ch.ninecode.util._
 
 import org.scalactic.source.Position
 import org.scalatest.BeforeAndAfter
@@ -40,7 +41,7 @@ case class Probe ()
 class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
 {
     type FixtureParam = SparkSession
-    val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list)
+    val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Util.classes)
     val FILE_DEPOT = "data/"
     val FILENAME = "LineTest"
 
@@ -61,13 +62,13 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
     before
     {
         // unpack the zip files
-        if (!new File (s"${FILE_DEPOT}${FILENAME}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME}.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME.zip", FILE_DEPOT)
     }
 
     after
     {
-        new File (s"${FILE_DEPOT}${FILENAME}.rdf").delete
+        new File (s"$FILE_DEPOT$FILENAME.rdf").delete
     }
 
     def jarForObject (obj: Object): String =
@@ -115,7 +116,8 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
             val s1 = jarForObject (new DefaultSource ())
             val s2 = jarForObject (ThreePhaseComplexDataElement (null, 0L, null, null, null, null))
             val s3 = jarForObject (Probe ())
-            configuration.setJars (Array (s1, s2, s3))
+            val s4 = jarForObject (Lines)
+            configuration.setJars (Array (s1, s2, s3, s4))
 
             // register relevant classes
             registerDependency (configuration)
@@ -194,12 +196,12 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
     {
         session: SparkSession =>
             val gridlabd = new GridLABD (session, workdir = s"hdfs://sandbox:8020/")
-            val source = Source.fromFile (new File (s"${FILE_DEPOT}${FILENAME}.rdf"), "UTF-8")
+            val source = Source.fromFile (new File (s"$FILE_DEPOT$FILENAME.rdf"), "UTF-8")
             val bytes = source.getLines.mkString ("\n").getBytes ("UTF-8")
-            gridlabd.writeInputFile ("/", s"${FILENAME}.rdf", bytes)
+            gridlabd.writeInputFile ("/", s"$FILENAME.rdf", bytes)
             source.close
 
-            val filename = s"hdfs://sandbox:8020/${FILENAME}.rdf"
+            val filename = s"hdfs://sandbox:8020/$FILENAME.rdf"
             readCIMElements (session, filename)
 
             LineDetails.PROPERTIES_ARE_ERRONEOUSLY_PER_KM = true // should be default value anyway
@@ -223,6 +225,6 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
             assert (pull ("CAB0001", lines1) == pull ("CAB0001", lines2)) // for correctly specified cables, ERRONEOUS doesn't matter
             assert (pull ("CAB0001", lines2) != pull ("CAB0002", lines2)) // setting ERRONEOUS wrong
 
-            gridlabd.eraseInputFile (s"${FILENAME}.rdf")
+            gridlabd.eraseInputFile (s"$FILENAME.rdf")
     }
 }

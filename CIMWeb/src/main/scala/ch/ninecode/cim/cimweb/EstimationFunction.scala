@@ -2,15 +2,16 @@ package ch.ninecode.cim.cimweb
 
 import javax.json.Json
 import javax.json.JsonStructure
-
 import com.datastax.driver.core.Cluster
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
+import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.sim.Simulation
 import ch.ninecode.sim.SimulationOptions
+import ch.ninecode.util._
 
 /**
  * Simulate a glm file and the associated input_data.
@@ -22,7 +23,8 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
     jars = Array (
         jarForObject (this),
         jarForObject (options),                           // Simulate.jar
-        jarForObject (ch.ninecode.gl.Complex (0.0, 0.0)), // GridLabD.jar
+        jarForObject (new GLMGenerator ()),               // GridLabD.jar
+        jarForObject (Complex (0.0, 0.0)),                // Util.jar
         jarForObject (Cluster.builder),                   // spark-cassandra-connector.jar
         jarForObject (Json.createObjectBuilder))          // javaee-api <JSON implementation>.jar
 

@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model._
+import ch.ninecode.util._
 
 case class GridlabFailure (trafoID: String, errorMessages: List[String])
 
@@ -683,7 +684,7 @@ object GridLABD
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf [ch.ninecode.gl.Complex],
+            classOf [Complex],
             classOf [ch.ninecode.gl.EdgeData],
             classOf [ch.ninecode.gl.FlowDirection],
             classOf [ch.ninecode.gl.GLMEdge],
@@ -698,7 +699,7 @@ object GridLABD
             classOf [ch.ninecode.gl.Solar],
             classOf [ch.ninecode.gl.SwingNode],
             classOf [ch.ninecode.gl.SwitchEdge],
-            classOf [ch.ninecode.gl.ThreePhaseComplexDataElement],
+            classOf [ThreePhaseComplexDataElement],
             classOf [ch.ninecode.gl.TransformerData],
             classOf [ch.ninecode.gl.TransformerEdge],
             classOf [ch.ninecode.gl.TransformerServiceArea],

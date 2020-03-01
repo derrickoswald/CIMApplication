@@ -2,12 +2,12 @@ package ch.ninecode.on
 
 import java.text.SimpleDateFormat
 
-import ch.ninecode.gl.Complex
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.util._
 
 /**
  * Medium voltage GridLAB-D model file exporter.

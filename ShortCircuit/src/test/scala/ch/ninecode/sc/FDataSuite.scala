@@ -1,6 +1,7 @@
 package ch.ninecode.sc
 
-import ch.ninecode.gl.Complex
+import ch.ninecode.util._
+
 import org.scalatest.FunSuite
 
 class FDataSuite extends FunSuite

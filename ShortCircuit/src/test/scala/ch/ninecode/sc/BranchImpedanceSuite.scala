@@ -1,8 +1,8 @@
 package ch.ninecode.sc
 
-import org.scalatest.FunSuite
+import ch.ninecode.util._
 
-import ch.ninecode.gl.Complex
+import org.scalatest.FunSuite
 
 class BranchImpedanceSuite extends FunSuite
 {

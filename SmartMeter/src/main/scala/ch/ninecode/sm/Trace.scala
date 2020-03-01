@@ -7,24 +7,7 @@ import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.graphx.VertexId
 
 import ch.ninecode.model._
-
-// just to get a single copy of the vertex_id function
-trait Graphable
-{
-    /**
-     * Compute the vertex id.
-     *
-     * @param string The CIM mRID.
-     * @return the node id (similar to the hash code of the mRID)
-     */
-    def vertex_id (string: String): VertexId =
-    {
-        var h = 2166136261l
-        for (c ← string)
-            h = (h * 16777619) ^ c
-        h
-    }
-}
+import ch.ninecode.util._
 
 // define the minimal node and edge classes
 case class PreNode (id_seq: String, voltage: Double) extends Graphable with Serializable

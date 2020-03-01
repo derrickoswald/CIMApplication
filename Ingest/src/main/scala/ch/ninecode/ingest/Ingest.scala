@@ -28,6 +28,7 @@ import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 
 import ch.ninecode.mscons._
+import ch.ninecode.util.Schema
 
 /**
  * Import measured data into Cassandra.
@@ -591,8 +592,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     {
         val begin = System.nanoTime ()
 
-        val schema = Schema (session, options.keyspace, options.replication, verbose = options.verbose)
-        if (schema.make)
+        val schema = Schema (session, "/simulation_schema.sql", options.keyspace, options.replication, verbose = options.verbose)
+        if (schema.make ())
         {
             val db = System.nanoTime ()
             log.info (s"schema: ${(db - begin) / 1e9} seconds")
