@@ -268,7 +268,7 @@ class GLMGenerator
      */
     def gather (rdd: Iterable[String]): String =
     {
-        rdd.fold ("")((x: String, y: String) ⇒ s"$x$y")
+        rdd.fold ("")((x: String, y: String) => s"$x$y")
     }
 
     /**

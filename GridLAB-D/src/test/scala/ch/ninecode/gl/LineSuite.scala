@@ -81,7 +81,7 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
         }
         catch
         {
-            case e: UnsupportedEncodingException ⇒ e.printStackTrace ()
+            case e: UnsupportedEncodingException => e.printStackTrace ()
         }
         if (!ret.toLowerCase ().endsWith (".jar"))
         {

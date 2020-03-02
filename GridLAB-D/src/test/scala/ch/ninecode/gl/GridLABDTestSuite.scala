@@ -373,7 +373,7 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
                 }
             val glms = for
             {
-                (id, trafo) ← transformers
+                (id, trafo) <- transformers
                 n = nodes.filter (_._1 == id).map (_._2).collect
                 e = edges.filter (_._1 == id).map (_._2).filter (notTheTransformer (trafo)).collect
             }

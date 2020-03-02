@@ -27,17 +27,17 @@ object FlowDirection
         var i_flags = 0
         s.split ("""\x7c""").foreach
         {
-            case "AF" ⇒ i_flags = i_flags | 0x001
-            case "AR" ⇒ i_flags = i_flags | 0x002
-            case "AN" ⇒ i_flags = i_flags | 0x003
-            case "BF" ⇒ i_flags = i_flags | 0x010
-            case "BR" ⇒ i_flags = i_flags | 0x020
-            case "BN" ⇒ i_flags = i_flags | 0x030
-            case "CF" ⇒ i_flags = i_flags | 0x100
-            case "CR" ⇒ i_flags = i_flags | 0x200
-            case "CN" ⇒ i_flags = i_flags | 0x300
-            case "UNKNOWN" ⇒ i_flags = 0
-            case _ ⇒
+            case "AF" => i_flags = i_flags | 0x001
+            case "AR" => i_flags = i_flags | 0x002
+            case "AN" => i_flags = i_flags | 0x003
+            case "BF" => i_flags = i_flags | 0x010
+            case "BR" => i_flags = i_flags | 0x020
+            case "BN" => i_flags = i_flags | 0x030
+            case "CF" => i_flags = i_flags | 0x100
+            case "CR" => i_flags = i_flags | 0x200
+            case "CN" => i_flags = i_flags | 0x300
+            case "UNKNOWN" => i_flags = 0
+            case _ =>
                 // OK, so this is a thing
                 //            2018-07-19 10:15:15 UTC,+399.862,-0.575961
                 //            2018-07-19 10:15:20 UTC,+400,-1.58843e-06

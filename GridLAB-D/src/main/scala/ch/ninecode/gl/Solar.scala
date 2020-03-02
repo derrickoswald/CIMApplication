@@ -40,7 +40,7 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
 
         // get solar to service linkage, e.g. ("EEA5280", "MST115133")
         // and service to house linkage, e.g. ("MST115133", "HAS138130")
-        val pairs = attributes.keyBy (_.value).join (strings.keyBy (_.id)).values.map (x ⇒ (x._1.name, x._2.value))
+        val pairs = attributes.keyBy (_.value).join (strings.keyBy (_.id)).values.map (x => (x._1.name, x._2.value))
 
         // get a simple list of house to pv id pairs
         val links = pairs.join (pairs.map (_.swap)).values
@@ -49,14 +49,14 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
         val solars = getOrElse [SolarGeneratingUnit]
 
         // get a simple list of house to pv pairs
-        val house_solars = links.map (x ⇒ (x._2, x._1)).join (solars.keyBy (_.id)).values
+        val house_solars = links.map (x => (x._2, x._1)).join (solars.keyBy (_.id)).values
 
         // get the terminals
         val terminals = getOrElse [Terminal]
 
         // link to the connectivity/topological node through the terminal
         val t = terminals.keyBy (_.ConductingEquipment).join (house_solars).values.map (
-            x ⇒ PV (if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
+            x => PV (if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
 
         val pv = t.groupBy (_.node)
 

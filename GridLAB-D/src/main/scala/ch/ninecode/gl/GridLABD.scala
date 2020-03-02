@@ -225,7 +225,7 @@ class GridLABD
                                 ratedCurrent,
                                 e)
                     case _ =>
-                        for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                        for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                         {
                             ret = ret :+ PreEdge (
                                 terminals (0).id,
