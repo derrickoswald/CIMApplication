@@ -1,8 +1,8 @@
 package ch.ninecode.ingest
 
 import java.io.ByteArrayInputStream
-import java.io.FileOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
@@ -11,8 +11,9 @@ import java.util.TimeZone
 import java.util.regex.Pattern
 import java.util.zip.ZipInputStream
 
-import scala.collection._
-
+import ch.ninecode.gl.Complex
+import ch.ninecode.gl.ThreePhaseComplexDataElement
+import ch.ninecode.mscons._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
@@ -27,7 +28,7 @@ import org.slf4j.LoggerFactory
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 
-import ch.ninecode.mscons._
+import scala.collection._
 import ch.ninecode.util.Schema
 
 /**
@@ -454,18 +455,24 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         }
     }
 
-    def process_mscons (join_table: Map[String, String])(files: Seq[String]): Unit =
+    def process_mscons (join_table: Map[String, String])(file: String): Unit =
     {
-        val start = System.nanoTime ()
+        def processOneFile (filename: String): Seq[ThreePhaseComplexDataElement] =
+        {
+            val parser = MSCONSParser (MSCONSOptions ())
+            parser.parse (filename).flatMap (to_tuples (join_table))
+        }
 
-        val records = files.flatMap (
-            filename =>
-            {
-                val mscons = MSCONSParser (MSCONSOptions ())
-                val records = mscons.parse (filename) // type = List[(mscons.ID, mscons.Quantity, mscons.Time, mscons.Period, mscons.Real, mscons.Imaginary, mscons.Units)]
-                records
-            }
-        )
+        def complex2 (m: Iterable[ThreePhaseComplexDataElement]): ThreePhaseComplexDataElement =
+        {
+            val head = m.head
+            ThreePhaseComplexDataElement (head.element, head.millis, Complex (m.map (_.value_a.re).sum, m.map (_.value_a.im).sum), null, null, head.units)
+        }
+
+        def split (record: ThreePhaseComplexDataElement): (String, String, Long, Int, Double, Double, String) =
+        {
+            (record.element, "energy", record.millis, 900000, record.value_a.re, record.value_a.im, record.units)
+        }
 
         /**
          * Make tuples suitable for Cassandra:
@@ -473,22 +480,25 @@ case class Ingest (session: SparkSession, options: IngestOptions)
          *
          * @param record a reading from the MSCONS parser
          */
-        def to_tuples (join_table: Map[String, String])(record: (String, String, Calendar, Int, Double, Double, String)): Option[MeasuredValue] =
+        def to_tuples (join_table: Map[String, String])(record: (String, String, Calendar, Int, Double, Double, String)): Option[ThreePhaseComplexDataElement] =
         {
             val mrid = join_table.getOrElse (record._1, null)
             if (null != mrid)
-                Some ((mrid, record._2, record._3.getTimeInMillis, record._4, record._5, record._6, record._7))
+                Some (ThreePhaseComplexDataElement (mrid, record._3.getTimeInMillis, Complex (record._5, record._6), null, null, record._7))
             else
                 None
         }
 
-        val raw = session.sparkContext.parallelize (records)
-        val rdd = raw.flatMap (to_tuples (join_table))
+        val start = System.nanoTime ()
+        val mscons_files: Seq[String] = getFiles (file)
+        val rdd = session.sparkContext.parallelize (mscons_files)
+
+        val raw = rdd.flatMap (processOneFile)
         // combine real and imaginary parts
-        val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+        val grouped = raw.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
         grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         val end = System.nanoTime ()
-        log.info (s"processed files [${files.mkString ("")}]: ${(end - start) / 1e9} seconds")
+        log.info (s"processed files [${file.mkString ("")}]: ${(end - start) / 1e9} seconds")
     }
 
     def isNumber (s: String): Boolean = s forall Character.isDigit
@@ -622,7 +632,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 {
                     case "Belvis" => options.datafiles.foreach (process_belvis (join_table))
                     case "LPEx" => options.datafiles.foreach (process_lpex (join_table))
-                    case "MSCONS" => process_mscons (join_table)(options.datafiles)
+                    case "MSCONS" => options.datafiles.foreach (process_mscons (join_table))
                     case "Custom" => options.datafiles.foreach (process_custom (join_table))
                 }
 
