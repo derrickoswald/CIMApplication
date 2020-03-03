@@ -11,6 +11,7 @@ import ch.ninecode.gl.Island.identifier
 import ch.ninecode.model.Element
 import ch.ninecode.model.EnergyConsumer
 import ch.ninecode.testutil.TestUtil
+import ch.ninecode.net.TransformerServiceArea
 
 import org.scalatest.BeforeAndAfter
 

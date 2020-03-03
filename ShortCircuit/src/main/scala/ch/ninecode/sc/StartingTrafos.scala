@@ -3,7 +3,7 @@ package ch.ninecode.sc
 import org.apache.spark.graphx.VertexId
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.gl.TransformerSet
+import ch.ninecode.net.TransformerSet
 import ch.ninecode.util._
 
 /**

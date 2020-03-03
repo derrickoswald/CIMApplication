@@ -1,5 +1,7 @@
 package ch.ninecode.gl
 
+import ch.ninecode.net.SwitchData
+import ch.ninecode.net.SwitchDetails
 import ch.ninecode.model._
 
 case class SwitchEdge

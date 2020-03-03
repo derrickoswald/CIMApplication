@@ -4,7 +4,7 @@ import java.util.Calendar
 
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.TransformerIsland
+import ch.ninecode.net.TransformerIsland
 import ch.ninecode.util._
 
 /**

@@ -9,6 +9,7 @@ import ch.ninecode.gl._
 import ch.ninecode.model.Element
 import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
+import ch.ninecode.net._
 import ch.ninecode.util._
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)

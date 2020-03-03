@@ -35,15 +35,9 @@ import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.Island
 import ch.ninecode.gl.Island._
-import ch.ninecode.gl.LineData
 import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.SwitchData
 import ch.ninecode.gl.SwitchEdge
-import ch.ninecode.gl.TransformerSet
-import ch.ninecode.gl.TransformerData
 import ch.ninecode.gl.TransformerEdge
-import ch.ninecode.gl.TransformerServiceArea
-import ch.ninecode.gl.Transformers
 import ch.ninecode.model.DiagramObject
 import ch.ninecode.model.DiagramObjectPoint
 import ch.ninecode.model.PositionPoint
@@ -51,6 +45,7 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import ch.ninecode.net._
 import ch.ninecode.util.Schema
 
 /**

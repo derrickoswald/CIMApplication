@@ -5,12 +5,14 @@ import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.TimeZone
 
-import scala.collection.mutable.HashMap
+import scala.collection.mutable
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CHIM
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
@@ -19,9 +21,6 @@ import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.LineDetails
-import ch.ninecode.gl.TransformerSet
-import ch.ninecode.gl.Transformers
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
@@ -30,8 +29,9 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-
-import scala.collection.mutable
+import ch.ninecode.net.LineDetails
+import ch.ninecode.net.TransformerSet
+import ch.ninecode.net.Transformers
 
 case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 {

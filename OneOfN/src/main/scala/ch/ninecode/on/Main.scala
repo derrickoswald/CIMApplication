@@ -10,14 +10,16 @@ import scala.tools.nsc.io.Jar
 import scala.util.Random
 import scopt.OptionParser
 
-import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.DefaultSource
-import ch.ninecode.gl.GridLABD
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
+
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.DefaultSource
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.net.Net
 
 import ch.ninecode.util.Util
 
@@ -251,6 +253,8 @@ object Main
                         configuration.registerKryoClasses (CIMClasses.list)
                         // register GridLAB-D classes
                         configuration.registerKryoClasses (GridLABD.classes)
+                        // register Net classes
+                        configuration.registerKryoClasses (Net.classes)
                         // register OneOfN classes
                         configuration.registerKryoClasses (OneOfN.classes)
                         // register OneOfN classes

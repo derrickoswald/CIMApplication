@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.net
 
 import scala.util.Random
 
@@ -330,4 +330,21 @@ object TransformerServiceArea
      * Index of open field in Switch bitmask.
      */
     val openMask: Int = Switch.fields.indexOf ("open")
+
+    /**
+     * Edge data for transformer service area processing.
+     *
+     * @param id          the mRID of the edge element
+     * @param isConnected <code>true</code> if there is a connection between the islands, i.e. a closed switch,
+     *                    which means the islands are in the same transformer service area
+     */
+    case class EdgeData (id: String, isConnected: Boolean)
+
+    /**
+     * Vertex data for transformer service area processing.
+     *
+     * @param area_label   the area label
+     * @param island_label the mRID of the island
+     */
+    case class VertexData (var area_label: String = "", var island_label: String = "")
 }

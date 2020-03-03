@@ -28,6 +28,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.net.TransformerSet
 import ch.ninecode.model._
 import ch.ninecode.util._
 
@@ -684,8 +685,6 @@ object GridLABD
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf [Complex],
-            classOf [ch.ninecode.gl.EdgeData],
             classOf [ch.ninecode.gl.FlowDirection],
             classOf [ch.ninecode.gl.GLMEdge],
             classOf [ch.ninecode.gl.GLMGenerator],
@@ -699,13 +698,7 @@ object GridLABD
             classOf [ch.ninecode.gl.Solar],
             classOf [ch.ninecode.gl.SwingNode],
             classOf [ch.ninecode.gl.SwitchEdge],
-            classOf [ThreePhaseComplexDataElement],
-            classOf [ch.ninecode.gl.TransformerData],
-            classOf [ch.ninecode.gl.TransformerEdge],
-            classOf [ch.ninecode.gl.TransformerServiceArea],
-            classOf [ch.ninecode.gl.VertexData],
-            classOf [ch.ninecode.gl.EdgeData],
-            classOf [ch.ninecode.gl.TransformerSet]
+            classOf [ch.ninecode.gl.TransformerEdge]
         )
     }
 }

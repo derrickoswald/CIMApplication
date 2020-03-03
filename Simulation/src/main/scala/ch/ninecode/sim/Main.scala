@@ -14,6 +14,7 @@ import org.slf4j.Logger
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.net.Net
 import ch.ninecode.util.Util
 
 object Main
@@ -104,6 +105,8 @@ object Main
                         configuration.registerKryoClasses (CIMClasses.list)
                         // register GridLAB-D classes
                         configuration.registerKryoClasses (GridLABD.classes)
+                        // register Net classes
+                        configuration.registerKryoClasses (Net.classes)
                         // register Simulation analysis classes
                         configuration.registerKryoClasses (Simulation.classes)
                         // register Util classes

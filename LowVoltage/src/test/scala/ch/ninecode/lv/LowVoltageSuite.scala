@@ -9,12 +9,13 @@ import org.apache.spark.sql.SparkSession
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.Element
+import ch.ninecode.net.Net
 import ch.ninecode.testutil.TestUtil
 import ch.ninecode.util._
 
 class LowVoltageSuite extends TestUtil
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Util.classes)
+    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Net.classes, Util.classes)
     def readFile (session: SparkSession, filename: String): RDD[Element] =
     {
         val files = filename.split (",")

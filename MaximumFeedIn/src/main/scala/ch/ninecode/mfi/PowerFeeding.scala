@@ -19,14 +19,10 @@ import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.PV
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
-import ch.ninecode.gl.TransformerIsland
-import ch.ninecode.gl.TransformerSet
 import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Connector
-import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
+import ch.ninecode.net.TransformerIsland
 import ch.ninecode.util._
 
 class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER) extends CIMRDD with Serializable

@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.net;
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession

@@ -6,8 +6,8 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.TransformerData
-import ch.ninecode.gl.TransformerIsland
+import ch.ninecode.net.TransformerIsland
+import ch.ninecode.net.TransformerData
 
 /**
  * A work package for gridlab simulation.

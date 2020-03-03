@@ -15,6 +15,7 @@ import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
+import ch.ninecode.net._
 import ch.ninecode.testutil.Unzip
 import ch.ninecode.util._
 
@@ -41,7 +42,7 @@ case class Probe ()
 class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
 {
     type FixtureParam = SparkSession
-    val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Util.classes)
+    val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Net.classes, Util.classes)
     val FILE_DEPOT = "data/"
     val FILENAME = "LineTest"
 
@@ -117,7 +118,8 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
             val s2 = jarForObject (ThreePhaseComplexDataElement (null, 0L, null, null, null, null))
             val s3 = jarForObject (Probe ())
             val s4 = jarForObject (Lines)
-            configuration.setJars (Array (s1, s2, s3, s4))
+            val s5 = jarForObject (FlowDirection)
+            configuration.setJars (Array (s1, s2, s3, s4, s5))
 
             // register relevant classes
             registerDependency (configuration)

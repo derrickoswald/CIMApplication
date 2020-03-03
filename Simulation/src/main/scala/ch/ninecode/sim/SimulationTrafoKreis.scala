@@ -7,9 +7,9 @@ import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.SwitchEdge
-import ch.ninecode.gl.TransformerData
 import ch.ninecode.gl.TransformerEdge
-import ch.ninecode.gl.TransformerSet
+import ch.ninecode.net.TransformerData
+import ch.ninecode.net.TransformerSet
 import ch.ninecode.model._
 
 import org.slf4j.Logger

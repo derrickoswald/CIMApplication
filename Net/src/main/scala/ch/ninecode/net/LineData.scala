@@ -1,6 +1,6 @@
-package ch.ninecode.gl
+package ch.ninecode.net;
 
-import ch.ninecode.gl.LineDetails.CIM_BASE_TEMPERATURE
+import ch.ninecode.net.LineDetails.CIM_BASE_TEMPERATURE
 import ch.ninecode.util.Sequences
 
 /**

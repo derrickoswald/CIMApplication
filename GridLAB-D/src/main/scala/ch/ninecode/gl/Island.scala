@@ -7,6 +7,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.net._
 import ch.ninecode.model._
 
 /**

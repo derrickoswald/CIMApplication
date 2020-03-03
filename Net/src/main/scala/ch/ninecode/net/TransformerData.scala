@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.net;
 
 import ch.ninecode.model.EquivalentInjection
 import ch.ninecode.model.PowerTransformer

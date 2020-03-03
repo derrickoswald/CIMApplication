@@ -19,20 +19,12 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.Island
+import ch.ninecode.gl._
 import ch.ninecode.gl.Island._
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.SwitchEdge
-import ch.ninecode.gl.TransformerData
-import ch.ninecode.gl.TransformerEdge
-import ch.ninecode.gl.TransformerIsland
-import ch.ninecode.gl.TransformerServiceArea
-import ch.ninecode.gl.Transformers
-import ch.ninecode.sc.ScEdge.resistanceAt
 import ch.ninecode.model._
+import ch.ninecode.net._
 import ch.ninecode.util._
+import ch.ninecode.sc.ScEdge.resistanceAt
 
 /**
  * Short circuit calculation.

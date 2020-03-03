@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.net.Net
 import ch.ninecode.util.Util
 
 object MaximumFeedIn
@@ -111,10 +112,12 @@ object MaximumFeedIn
                         {
                             // register CIMReader classes
                             configuration.registerKryoClasses (CIMClasses.list)
-                            // register GridLAB-D classes
-                            configuration.registerKryoClasses (GridLABD.classes)
                             // register Einspeiseleistung classes
                             configuration.registerKryoClasses (Einspeiseleistung.classes)
+                            // register GridLAB-D classes
+                            configuration.registerKryoClasses (GridLABD.classes)
+                            // register Net classes
+                            configuration.registerKryoClasses (Net.classes)
                             // register Util classes
                             configuration.registerKryoClasses (Util.classes)
                             // register GraphX classes

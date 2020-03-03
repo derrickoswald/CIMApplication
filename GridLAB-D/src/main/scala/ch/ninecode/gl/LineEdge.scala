@@ -1,5 +1,6 @@
 package ch.ninecode.gl
 
+import ch.ninecode.net.LineData
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.util._
 

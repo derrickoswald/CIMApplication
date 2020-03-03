@@ -1,6 +1,7 @@
 package ch.ninecode.gl
 
 import ch.ninecode.model.PowerTransformerEnd
+import ch.ninecode.net.TransformerSet
 
 case class TransformerEdge
 (

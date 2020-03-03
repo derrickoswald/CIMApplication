@@ -3,6 +3,8 @@ package ch.ninecode.gl
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.net.LineData
+import ch.ninecode.net.LineDetails
 import ch.ninecode.model._
 import ch.ninecode.util.Graphable
 

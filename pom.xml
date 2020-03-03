@@ -126,6 +126,7 @@
         <module>Ingest</module>
         <module>LowVoltage</module>
         <module>MaximumFeedIn</module>
+        <module>Net</module>
         <module>NetworkParameters</module>
         <module>MSCONSReader</module>
         <module>OneOfN</module>

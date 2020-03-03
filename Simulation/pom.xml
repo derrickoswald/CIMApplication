@@ -43,6 +43,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.net</groupId>
+            <artifactId>Net</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>ch.ninecode.util</groupId>
             <artifactId>Util</artifactId>
             <version>${project.version}</version>

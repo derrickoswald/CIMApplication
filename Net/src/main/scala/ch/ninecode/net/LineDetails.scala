@@ -1,4 +1,4 @@
-package ch.ninecode.gl
+package ch.ninecode.net;
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -90,6 +90,7 @@ final case class LineDetails (
     /** @return a summary string for this line */
     override def toString: String = s"${line.id} z=${impedance.toString}"
 }
+
 
 /**
  * Constants for the LineDetails class.

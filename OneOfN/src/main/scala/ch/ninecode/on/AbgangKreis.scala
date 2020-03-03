@@ -3,15 +3,13 @@ package ch.ninecode.on
 import java.util.Calendar
 
 import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.LineData
-import ch.ninecode.gl.LineDetails
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.SwingNode
 import ch.ninecode.gl.TransformerEdge
-import ch.ninecode.gl.TransformerSet
 import ch.ninecode.model._
+import ch.ninecode.net._
 
 case class AbgangKreis
 (

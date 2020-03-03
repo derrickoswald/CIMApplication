@@ -1,25 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <artifactId>CIMApplication</artifactId>
         <groupId>ch.ninecode.cim</groupId>
-        <relativePath>../pom.xml</relativePath>
         <version>2.11-2.4.4-2.7.0</version>
     </parent>
-    <artifactId>GridLAB-D</artifactId>
-    <groupId>ch.ninecode.gl</groupId>
-    <name>GridLAB-D</name>
-    <description>Perform GridLAB-D load flow using Spark and Scala</description>
-    <inceptionYear>2016</inceptionYear>
-    <url>https://github.com/derrickoswald/CIMApplication/tree/master/GridLAB-D</url>
-    <scm>
-        <url>git@github.com:derrickoswald/CIMApplication.git</url>
-        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
-        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
-    </scm>
+    <artifactId>Net</artifactId>
+    <groupId>ch.ninecode.net</groupId>
+    <name>Net</name>
+    <description>Network datatypes and functionality</description>
+    <inceptionYear>2020</inceptionYear>
+    <url>https://github.com/derrickoswald/CIMApplication/tree/master/Net</url>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
 
     <dependencies>
 
@@ -27,13 +26,6 @@
             <groupId>ch.ninecode.cim</groupId>
             <artifactId>CIMReader</artifactId>
             <version>${version.dependency.cimreader}</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.net</groupId>
-            <artifactId>Net</artifactId>
-            <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
 
@@ -48,13 +40,26 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${version.dependency.scalalibrary}</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-compiler</artifactId>
             <version>${version.dependency.scalalibrary}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.testutil</groupId>
+            <artifactId>TestUtil</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${version.dependency.junit}</version>
             <scope>test</scope>
         </dependency>
 
@@ -83,21 +88,7 @@
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${version.dependency.scala}</artifactId>
             <version>${version.dependency.scalatest}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${version.dependency.junit}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.testutil</groupId>
-            <artifactId>TestUtil</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
+            <scope>provided</scope>
         </dependency>
 
     </dependencies>
@@ -156,8 +147,8 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.gl.TestSuite</suites>
+                    <filereports>NetSuite.txt</filereports>
+                    <suites>ch.ninecode.net.TestSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
@@ -170,5 +161,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>

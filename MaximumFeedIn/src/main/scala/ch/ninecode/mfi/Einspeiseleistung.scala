@@ -18,17 +18,10 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.GridlabFailure
-import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.PreNode
-import ch.ninecode.gl.Solar
-import ch.ninecode.gl.TransformerData
-import ch.ninecode.gl.TransformerIsland
-import ch.ninecode.gl.Transformers
+import ch.ninecode.gl._
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Terminal
+import ch.ninecode.net._
 import ch.ninecode.util._
 
 case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions) extends CIMRDD
@@ -48,7 +41,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
     var storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK
-    val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
+    val workdir: String = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
     var gridlabd: GridLABD = new GridLABD (session, storage_level, workdir, options.cable_impedance_limit)
 
     // for dates without time zones, the timezone of the machine is used:

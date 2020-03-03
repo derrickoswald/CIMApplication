@@ -6,10 +6,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.cim.CIMTopologyOptions
-import ch.ninecode.gl._
-import ch.ninecode.mfi._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
@@ -20,6 +16,12 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import ch.ninecode.cim.CIMNetworkTopologyProcessor
+import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.gl._
+import ch.ninecode.mfi._
+import ch.ninecode.net._
 
 import scala.collection.mutable
 import scala.io.Source

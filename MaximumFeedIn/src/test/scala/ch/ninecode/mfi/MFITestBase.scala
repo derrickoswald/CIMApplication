@@ -5,12 +5,18 @@ import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.net.Net
 import ch.ninecode.testutil.TestUtil
 import ch.ninecode.util.Util
 
 class MFITestBase extends TestUtil
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Einspeiseleistung.classes, Util.classes)
+    override val classesToRegister: Array[Array[Class[_]]] = Array (
+        CIMClasses.list,
+        Einspeiseleistung.classes,
+        GridLABD.classes,
+        Net.classes,
+        Util.classes)
     val FILE_DEPOT = "data/"
 
     def runMFI (session: SparkSession, options: EinspeiseleistungOptions): Unit =

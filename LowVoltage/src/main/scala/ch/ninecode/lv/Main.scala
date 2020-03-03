@@ -19,6 +19,7 @@ import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.mfi.Einspeiseleistung
+import ch.ninecode.net.Net
 import ch.ninecode.util.Util
 
 object Main
@@ -203,6 +204,8 @@ object Main
                 {
                     // register CIMReader classes
                     configuration.registerKryoClasses (CIMClasses.list)
+                    // register Net classes
+                    configuration.registerKryoClasses (Net.classes)
                     // register GridLAB-D classes
                     configuration.registerKryoClasses (GridLABD.classes)
                     // register Einspeiseleistung classes
