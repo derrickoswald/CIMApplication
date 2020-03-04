@@ -23,6 +23,20 @@
     <dependencies>
 
         <dependency>
+            <groupId>ch.ninecode.mscons</groupId>
+            <artifactId>MSCONSReader</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.ninecode.gl</groupId>
+            <artifactId>GridLAB-D</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.datastax.spark</groupId>
             <artifactId>spark-cassandra-connector_${version.dependency.scala}</artifactId>
             <version>${version.dependency.cassandra_spark}</version>
@@ -46,14 +60,14 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${version.dependency.scalalibrary}</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-compiler</artifactId>
             <version>${version.dependency.scalalibrary}</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.scala-lang.modules</groupId>
@@ -66,21 +80,14 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${version.dependency.scala}</artifactId>
             <version>${version.dependency.spark}</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-sql_${version.dependency.scala}</artifactId>
             <version>${version.dependency.spark}</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.ninecode.mscons</groupId>
-            <artifactId>MSCONSReader</artifactId>
-            <version>${project.version}</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
