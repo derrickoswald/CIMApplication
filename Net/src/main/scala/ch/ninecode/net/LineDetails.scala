@@ -24,12 +24,14 @@ final case class LineDetails (
     CIMBaseTemperature: Double = LineDetails.CIM_BASE_TEMPERATURE,
     Alpha: Double = LineDetails.ALPHA)
 {
+    import LineDetails._
+
     /**
      * Predicate to determine if the <code>perLengthImpedance</code> method would return default values.
      *
      * @return <code>true</code> if the <code>perLengthImpedance</code> uses a default value, <code>false</code> otherwise.
      */
-    var perLengthImpedanceIsDefault: Boolean = false
+    lazy val perLengthImpedanceIsDefault: Boolean = checkIfPerLengthImpedanceIsDefault (this)
 
     /**
      * Per length impedance of this line, as found in the CIM file.
@@ -41,7 +43,7 @@ final case class LineDetails (
      *
      * @return the positive and zero sequence impedances (Ω/m) at the temperature implicit in the CIM file
      */
-    var perLengthImpedance: Sequences = LineDetails.DEFAULT_PER_LENGTH_IMPEDANCE
+    lazy val perLengthImpedance: Sequences = getPerLengthImpedance (this)
 
     /**
      * Temperature adjusted resistance.
@@ -225,7 +227,7 @@ object LineDetails
      *
      * @return <code>true</code> if the <code>perLengthImpedance</code> uses a default value, <code>false</code> otherwise.
      */
-    def perLengthImpedanceIsDefault (details: LineDetails): Boolean =
+    def checkIfPerLengthImpedanceIsDefault (details: LineDetails): Boolean =
     {
         details.per_length_impedance match
         {
@@ -253,7 +255,7 @@ object LineDetails
      *
      * @return the positive and zero sequence impedances (Ω/m) at the temperature implicit in the CIM file
      */
-    def perLengthImpedance (details: LineDetails): Sequences =
+    def getPerLengthImpedance (details: LineDetails): Sequences =
     {
         details.per_length_impedance match
         {
@@ -283,11 +285,12 @@ object LineDetails
     /**
      * Defaults for physical constants included in the closure sent to executors.
      *
-     * @param DefaultPerLengthImpedance
-     * @param EmitWarningWhenDefault
-     * @param PropertiesAreErroneouslyPerKilometer
-     * @param CIMBaseTemperature
-     * @param Alpha
+     * @param DefaultPerLengthImpedance the supplied per meter impedance if the ACLineSegment doesn't have one
+     * @param EmitWarningWhenDefault the flag to show a warning message when a cable has no per length impedance
+     *        (or it is invalid or an un-supported subclass)
+     * @param PropertiesAreErroneouslyPerKilometer the flag indicating r and x properties are actually per kilometer values
+     * @param CIMBaseTemperature the temperature of the per unit resistance values found in the CIM file
+     * @param Alpha the temperature coefficient of resistance used to calculate the resistance at a temperature other than the above
      */
     case class StaticLineDetails (
         DefaultPerLengthImpedance: Sequences = DEFAULT_PER_LENGTH_IMPEDANCE,
@@ -310,9 +313,6 @@ object LineDetails
         PROPERTIES_ARE_ERRONEOUSLY_PER_KM = static_line_details.PropertiesAreErroneouslyPerKilometer
         CIM_BASE_TEMPERATURE = static_line_details.CIMBaseTemperature
         ALPHA = static_line_details.Alpha
-        val details = LineDetails (line, terminal1, terminal2, per_length_impedance, wire_info, CIM_BASE_TEMPERATURE, ALPHA)
-        details.perLengthImpedanceIsDefault = perLengthImpedanceIsDefault (details)
-        details.perLengthImpedance = perLengthImpedance (details)
-        details
+        LineDetails (line, terminal1, terminal2, per_length_impedance, wire_info, CIM_BASE_TEMPERATURE, ALPHA)
     }
 }

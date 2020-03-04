@@ -74,10 +74,10 @@ final case class Lines (
     /**
      * Create an RDD of composite ACLineSegment objects.
      *
-     * @param line_filter filter to remove bad lines, default is lines > default_cable_impedance_limit Ω
+     * @param line_filter filter to remove bad lines, default is lines > default_cable_impedance_limit Ω && in use
      * @return the RDD of cable data
      */
-    def getLines (line_filter: LineData => Boolean = impedance_limit): RDD[LineData] =
+    def getLines (line_filter: LineData => Boolean = filter): RDD[LineData] =
     {
         // get ac lines with two terminals
         val tt = getOrElse[Terminal].keyBy (_.ConductingEquipment).groupByKey
@@ -123,4 +123,21 @@ object Lines
         // all cable impedances are less than the limit
         data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.modulus < DEFAULT_CABLE_IMPEDANCE_LIMIT)
     }
+
+    def in_use (data: LineData): Boolean =
+    {
+        data.lines.forall (
+            line =>
+            {
+                val status = line.line.Conductor.ConductingEquipment.SvStatus
+                if (null != status)
+                    // ToDo: get a list of SvStatus element mRID where inService == "false"
+                    status.head != "not_in_use"
+                else
+                    true
+            }
+        )
+    }
+
+    def filter (data: LineData): Boolean = in_use (data) && impedance_limit (data)
 }

@@ -48,7 +48,7 @@ object MeasurementTransform
     def build (program: String): MeasurementTransform =
     {
         val toolbox = scala.reflect.runtime.currentMirror.mkToolBox ()
-        val tree = toolbox.parse ("import ch.ninecode.sim._; import ch.ninecode.gl._; " + program)
+        val tree = toolbox.parse ("import ch.ninecode.sim._; import ch.ninecode.gl._; import ch.ninecode.net._; import ch.ninecode.util._; " + program)
         val compiledCode = toolbox.compile (tree)
         compiledCode() match
         {
