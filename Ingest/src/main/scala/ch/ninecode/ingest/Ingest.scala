@@ -11,8 +11,8 @@ import java.util.TimeZone
 import java.util.regex.Pattern
 import java.util.zip.ZipInputStream
 
-import ch.ninecode.gl.Complex
-import ch.ninecode.gl.ThreePhaseComplexDataElement
+import ch.ninecode.util.Complex
+import ch.ninecode.util.ThreePhaseComplexDataElement
 import ch.ninecode.mscons._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
