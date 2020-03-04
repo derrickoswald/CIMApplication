@@ -21,12 +21,6 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>ch.ninecode.cim</groupId>
-            <artifactId>CIMReader</artifactId>
-            <version>${version.dependency.cimreader}</version>
-            <scope>compile</scope>
-        </dependency>
 
         <dependency>
             <groupId>com.datastax.spark</groupId>
