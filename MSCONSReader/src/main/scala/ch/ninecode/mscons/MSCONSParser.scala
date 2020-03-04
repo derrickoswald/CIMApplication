@@ -74,7 +74,7 @@ case class MSCONSParser (options: MSCONSOptions)
         catch
         {
             case e: Exception =>
-                e.getMessage
+                log.error(s"failed to read file($file) with error: ${e.getMessage}")
         }
         finally {
             if (data != null)
