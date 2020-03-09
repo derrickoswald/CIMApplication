@@ -5,6 +5,8 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.sql.Date
+import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
@@ -24,11 +26,10 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.DataType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
-
 import scala.collection._
+
 import ch.ninecode.util.Schema
 
 /**
@@ -52,6 +53,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     type MeasuredValue = (Mrid, Type, Time, Period, Real_a, Imag_a, Units)
 
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+    if (options.verbose) org.apache.log4j.LogManager.getLogger ("ch.ninecode.mscons.MSCONSParser").setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
     val MeasurementTimeZone: TimeZone = TimeZone.getTimeZone (options.timezone)
@@ -74,26 +76,72 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     lazy val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
 
+    case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
+
     def map_csv_options: Map[String, String] =
     {
         Map[String, String](
-            "header"                   -> "true",
-            "ignoreLeadingWhiteSpace"  -> "false",
+            "header" -> "true",
+            "ignoreLeadingWhiteSpace" -> "false",
             "ignoreTrailingWhiteSpace" -> "false",
-            "sep"                      -> ";",
-            "quote"                    -> "\"",
-            "escape"                   -> "\\",
-            "encoding"                 -> "UTF-8",
-            "comment"                  -> "#",
-            "nullValue"                -> "",
-            "nanValue"                 -> "NaN",
-            "positiveInf"              -> "Inf",
-            "negativeInf"              -> "-Inf",
-            "dateFormat"               -> "yyyy-MM-dd",
-            "timestampFormat"          -> "dd.MM.yyyy HH:mm",
-            "mode"                     -> "PERMISSIVE",
-            "inferSchema"              -> "true"
-        )
+            "sep" -> ";",
+            "quote" -> "\"",
+            "escape" -> "\\",
+            "encoding" -> "UTF-8",
+            "comment" -> "#",
+            "nullValue" -> "",
+            "nanValue" -> "NaN",
+            "positiveInf" -> "Inf",
+            "negativeInf" -> "-Inf",
+            "dateFormat" -> "yyyy-MM-dd",
+            "timestampFormat" -> "dd.MM.yyyy HH:mm",
+            "mode" -> "PERMISSIVE",
+            "inferSchema" -> "true")
+    }
+
+    def to_reading (s: (String, Row)): (String, Reading) =
+    {
+        val time = s._2.getTimestamp (0)
+        (s._1 + time.toString, Reading (s._1, time, s._2.getInt (6) * 60, (for (i <- 0 until 96) yield
+            {
+                if (s._2.isNullAt (7 + (2 * i))) 0.0 else s._2.getDouble (7 + (2 * i))
+            }).toArray))
+    }
+
+    def sum (a: Reading, b: Reading): Reading =
+    {
+        val values: Array[Double] = new Array[Double](math.max (a.values.length, b.values.length))
+        for (i ← a.values.indices)
+            values (i) = a.values (i)
+        for (i ← b.values.indices)
+            values (i) = values (i) + b.values (i)
+        Reading (a.mRID, a.time, a.period, values)
+    }
+
+    /**
+     * Make tuples suitable for Cassandra:
+     * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+     *
+     * @param reading the reading from the csv
+     * @return the list of time series records
+     */
+    def to_timeseries (reading: Reading): IndexedSeq[MeasuredValue] =
+    {
+        // Note: reading.period is in seconds and we need milliseconds for Cassandra
+        val period = 1000 * reading.period
+
+        // reading.time thinks it's in GMT but it's not
+        // so use the timezone to convert it to GMT
+        val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
+        val measurement_time = new Date (timestamp.getTime).getTime
+        for
+            {
+            i <- reading.values.indices
+            time = measurement_time + period * i
+            if (time >= options.mintime) && (time < options.maxtime)
+        }
+            yield
+                (reading.mRID, "energy", time, period, 1000.0 * reading.values (i), 0.0, "Wh")
     }
 
     // build a file system configuration, including core-site.xml
@@ -141,11 +189,23 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         else
         {
             val start = System.nanoTime ()
-            val name = s"/${base_name (file)}"
+            val name = base_name (file)
             val files = putFile (session, name, file, file.toLowerCase.endsWith (".zip"))
             val end = System.nanoTime ()
             log.info (s"copy $file: ${(end - start) / 1e9} seconds")
             files
+        }
+    }
+
+    def readFile (file: String): Array[Byte] =
+    {
+        try
+            Files.readAllBytes (Paths.get (file))
+        catch
+        {
+            case e: Exception =>
+                log.error (s"""ingest failed for file "$file"""", e)
+                Array ()
         }
     }
 
@@ -161,18 +221,22 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     {
         var ret = Seq [String]()
         val fs = hdfs
-        val file = new Path (fs.getUri.toString, dst)
+        val file = new Path (fs.getUri.toString, s"${options.workdir}$dst")
+        // write the file
         try
         {
             val parent = if (dst.endsWith ("/")) file else file.getParent
-            fs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
-            if (!parent.isRoot)
-                fs.setPermission (parent, new FsPermission ("ugoa-rwx"))
+            if (!fs.exists (parent))
+            {
+                fs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
+                if (!parent.isRoot)
+                    fs.setPermission (parent, new FsPermission ("ugoa-rwx"))
+            }
 
             if (unzip)
             {
                 try
-                Files.newInputStream(Paths.get (src))
+                    Files.newInputStream(Paths.get (src))
                 catch
                 {
                     case e: Exception =>
@@ -455,32 +519,15 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         }
     }
 
-    def process_mscons (join_table: Map[String, String])(file: String): Unit =
+    def process_mscons (join_table: Map[String, String])(files: Seq[String]): Unit =
     {
-        def processOneFile (filename: String): Seq[ThreePhaseComplexDataElement] =
-        {
-            val parser = MSCONSParser (MSCONSOptions ())
-            parser.parse (filename).flatMap (to_tuples (join_table))
-        }
-
-        def complex2 (m: Iterable[ThreePhaseComplexDataElement]): ThreePhaseComplexDataElement =
-        {
-            val head = m.head
-            ThreePhaseComplexDataElement (head.element, head.millis, Complex (m.map (_.value_a.re).sum, m.map (_.value_a.im).sum), null, null, head.units)
-        }
-
-        def split (record: ThreePhaseComplexDataElement): (String, String, Long, Int, Double, Double, String) =
-        {
-            (record.element, "energy", record.millis, 900000, record.value_a.re, record.value_a.im, record.units)
-        }
-
         /**
-         * Make tuples suitable for Cassandra:
-         * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+         * Make a three phase data element from record returned by MSCONS parser.
          *
+         * @param join_table the mapping from meter id to mRID
          * @param record a reading from the MSCONS parser
          */
-        def to_tuples (join_table: Map[String, String])(record: (String, String, Calendar, Int, Double, Double, String)): Option[ThreePhaseComplexDataElement] =
+        def to_data_element (join_table: Map[String, String])(record: (String, String, Calendar, Int, Double, Double, String)): Option[ThreePhaseComplexDataElement] =
         {
             val mrid = join_table.getOrElse (record._1, null)
             if (null != mrid)
@@ -489,16 +536,56 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 None
         }
 
-        val start = System.nanoTime ()
-        val mscons_files: Seq[String] = getFiles (file)
-        val rdd = session.sparkContext.parallelize (mscons_files)
+        /**
+         * Apply the MSCONS parser to parse a file.
+         *
+         * @param filename the file to parse
+         * @return the sequence of data elements found in the file
+         */
+        def processOneFile (filename: String): Seq[ThreePhaseComplexDataElement] =
+        {
+            val parser = MSCONSParser (MSCONSOptions ())
+            parser.parse (filename).flatMap (to_data_element (join_table))
+        }
 
-        val raw = rdd.flatMap (processOneFile)
+        /**
+         * Sum the elements for an mRID.
+         *
+         * @param m the measurements for an mRID
+         * @return the aggregated (sum) of elements
+         */
+        def complex2 (m: Iterable[ThreePhaseComplexDataElement]): ThreePhaseComplexDataElement =
+        {
+            val head = m.head
+            val sum = Complex (m.map (_.value_a.re).sum, m.map (_.value_a.im).sum)
+            ThreePhaseComplexDataElement (head.element, head.millis, sum, null, null, head.units)
+        }
+
+        /**
+         * Prepare the data element for insertion into Cassandra.
+         *
+         * @param record the three phase data element
+         * @return a tuple suitable for Cassandra:
+         *         ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+         */
+        def split (record: ThreePhaseComplexDataElement): (String, String, Long, Int, Double, Double, String) =
+        {
+            (record.element, "energy", record.millis, 900000, record.value_a.re, record.value_a.im, record.units)
+        }
+
+        val start = System.nanoTime ()
+        val all_files = files.flatMap (getFiles)
+        val mscons_files = session.sparkContext.parallelize (all_files)
+
+        // read all files into one RDD
+        val raw = mscons_files.flatMap (processOneFile)
         // combine real and imaginary parts
         val grouped = raw.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
         grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         val end = System.nanoTime ()
-        log.info (s"processed files [${file.mkString ("")}]: ${(end - start) / 1e9} seconds")
+        val some_files = all_files.take (6).mkString (",")
+        val more_files = all_files.length > 6
+        log.info (s"processed files [${some_files}${if (more_files) "..." else ""}]: ${(end - start) / 1e9} seconds")
     }
 
     def isNumber (s: String): Boolean = s forall Character.isDigit
@@ -611,7 +698,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 if (options.nocopy)
                     Seq (options.mapping)
                 else
-                    putFile (session, "/" + base_name (options.mapping), options.mapping, options.mapping.toLowerCase.endsWith (".zip"))
+                    putFile (session, base_name (options.mapping), options.mapping, options.mapping.toLowerCase.endsWith (".zip"))
             if (mapping_files.nonEmpty)
             {
                 val filename = mapping_files.head
@@ -632,7 +719,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 {
                     case "Belvis" => options.datafiles.foreach (process_belvis (join_table))
                     case "LPEx" => options.datafiles.foreach (process_lpex (join_table))
-                    case "MSCONS" => options.datafiles.foreach (process_mscons (join_table))
+                    case "MSCONS" => process_mscons (join_table) (options.datafiles)
                     case "Custom" => options.datafiles.foreach (process_custom (join_table))
                 }
 

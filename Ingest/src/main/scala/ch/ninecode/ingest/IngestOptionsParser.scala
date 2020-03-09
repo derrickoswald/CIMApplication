@@ -82,6 +82,10 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         action ((_, c) ⇒ c.copy (nocopy = true)).
         text ("use files 'as is' without unzipping and copying to HDFS [%s]".format (default.nocopy))
 
+    opt [String]("workdir").
+        action ((x, c) ⇒ c.copy (workdir = if (x.endsWith ("/")) x else s"$x/")).
+        text ("working directory for unzip and copy [%s]".format (default.workdir))
+
     opt [String]("mapping").
         action ((x, c) ⇒ c.copy (mapping = x)).
         text ("file name of mapping CSV [%s] (required)".format (default.mapping))

@@ -12,107 +12,53 @@ object Formats extends Enumeration
     val Belvis, LPEx, MSCONS, Custom = Value
 }
 
+/**
+ *
+ * @param valid False if either help or version requested (i.e. don't proceed with execution).
+ * @param unittest If <code>true</code>, don't call sys.exit().
+ * @param verbose If <code>true</code>, emit progress messages.
+ * @param master Spark master.
+ * @param options Spark options.
+ * @param host Cassandra connection host.
+ * @param port Cassandra connection port.
+ * @param storage Storage level for RDD serialization.
+ * @param log_level Logging level.
+ * @param nocopy If <code>true</code>, use the file names provided directly, without unzipping or transferring them to HDFS.
+ * @param workdir Working directory for unzipping and copying if nocopy is <code>false</code>.
+ * @param mapping Mapping CSV file name.
+ * @param metercol Mapping CSV measurement identifier column name (column containing CH############################### values).
+ * @param mridcol Mapping CSV mRID column name (column containing HAS##### values).
+ * @param timezone Time zone for the measurement files.
+ * @param mintime Minimum time for ingestion timespan.
+ *                The default is the minimum representable time in the Linux epoch.
+ * @param maxtime Maximum time for ingestion timespan.
+ *                The default is the maximum representable time in the Linux epoch.
+ * @param format Type of data file, either Belvis, LPEx or MSCONS.
+ * @param datafiles Source Belvis/LPEx/MSCONS files.
+ * @param keyspace Cassandra keyspace.
+ * @param replication Cassandra keyspace replication factor only if the keyspace is created.
+ */
 case class IngestOptions
 (
-    /**
-     * False if either help or version requested (i.e. don't proceed with execution).
-     */
     var valid: Boolean = true,
-
-    /**
-     * If <code>true</code>, don't call sys.exit().
-     */
     unittest: Boolean = false,
-
-    /**
-     * If <code>true</code>, emit progress messages.
-     */
     verbose: Boolean = false,
-
-    /**
-     * Spark master.
-     */
     master: String = "local[*]",
-
-    /**
-     * Spark options.
-     */
     options: Map[String, String] = Map (),
-
-    /**
-     * Cassandra connection host.
-     */
     host: String = "localhost",
-
-    /**
-     * Cassandra connection port.
-     */
     port: Int = 9042,
-
-    /**
-     * Storage level for RDD serialization.
-     */
     storage: String = "MEMORY_AND_DISK_SER",
-
-    /**
-     * Logging level.
-     */
     log_level: LogLevels.Value = LogLevels.OFF,
-
-    /**
-     * If <code>true</code>, use the file names provided directly, without unzipping or transferring them to HDFS.
-     */
     nocopy: Boolean = false,
-
-    /**
-     * Mapping CSV file name.
-     */
+    workdir: String = "",
     mapping: String = "",
-
-    /**
-     * Mapping CSV measurement identifier column name (column containing CH############################### values).
-     */
     metercol: String = "Messpunktbezeichnung",
-
-    /**
-     * Mapping CSV mRID column name (column containing HAS##### values).
-     */
     mridcol: String = "NISNr",
-
-    /**
-     * Time zone for the measurement files.
-     */
     timezone: String = "Europe/Berlin",
-
-    /**
-     * Minimum time for ingestion timespan.
-     * The default is the minimum representable time in the Linux epoch.
-     */
     mintime: Long = 0L, // "1970-01-01 00:00:00.000+0000"
-
-    /**
-     * Maximum time for ingestion timespan.
-     * The default is the maximum representable time in the Linux epoch.
-     */
     maxtime: Long = Long.MaxValue, // "292278994-08-17 07:12:55.807+0000"
-
-    /**
-     * Type of data file, either Belvis or LPEx.
-     */
     format: Formats.Value = Formats.Belvis,
-
-    /**
-     * Source Belvis/LPEx files.
-     */
     datafiles: Seq[String] = Seq (),
-
-    /**
-     * Cassandra keyspace.
-     */
     keyspace: String = "cimapplication",
-
-    /**
-     * Cassandra keyspace replication factor.
-     */
     replication: Int = 1
 )
