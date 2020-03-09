@@ -1,5 +1,8 @@
 package ch.ninecode.mscons
 
+import java.io.ByteArrayOutputStream
+import java.io.FileOutputStream
+import java.io.PrintStream
 import java.text.SimpleDateFormat
 import java.util.Properties
 
@@ -28,14 +31,24 @@ object MSCONS
             case Some (options) =>
                 if (options.valid)
                 {
-                    //                    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+                    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+                    if (options.verbose) org.apache.log4j.LogManager.getLogger ("ch.ninecode.mscons.MSCONSParser").setLevel (org.apache.log4j.Level.INFO)
 
                     val template = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
                     if (options.mscons.nonEmpty)
                         for (name <- options.mscons)
                         {
                             val readings = MSCONSParser (options).parse (name)
-                            readings.foreach (x => println (s"${x._1} ${x._2} ${template.format (x._3.getTime)} ${x._4} ${x._5}+${x._6}j ${x._7}"))
+                            val out = if (null == options.output_file) System.out else new PrintStream (new FileOutputStream (options.output_file, true))
+                            readings.foreach (
+                                x =>
+                                {
+                                    val d = options.delimiter
+                                    val record = s"${x._1}$d${x._2}$d${template.format (x._3.getTime)}$d${x._4}$d${x._5}+${x._6}j$d${x._7}"
+                                    out.println (record)
+                                }
+                            )
+                            out.close ()
                         }
                     else
                         log.error ("no input MSCONS files specified")
