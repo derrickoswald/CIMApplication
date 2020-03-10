@@ -133,10 +133,10 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
         val measurement_time = new Date (timestamp.getTime).getTime
         for
-            {
+        {
             i <- reading.values.indices
             time = measurement_time + period * i
-            if (time >= options.mintime) && (time < options.maxtime)
+            if (time >= options.mintime) && (time <= options.maxtime)
         }
             yield
                 (reading.mRID, "energy", time, period, 1000.0 * reading.values (i), 0.0, "Wh")
@@ -427,7 +427,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 val period = fields (14).toInt
                 val interval = period * ONE_MINUTE_IN_MILLIS
                 val list = for
-                    {
+                {
                     i ← 15 until fields.length by 2
                     flags = fields (i + 1)
                     if flags == "W"
@@ -511,7 +511,9 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         def processOneFile (filename: String): Seq[ThreePhaseComplexDataElement] =
         {
             val parser = MSCONSParser (MSCONSOptions ())
-            parser.parse (filename).flatMap (to_data_element (join_table))
+            parser.parse (filename)
+                .flatMap (to_data_element (join_table))
+                .filter (x => (x.millis >= options.mintime) && (x.millis <= options.maxtime))
         }
 
         /**
