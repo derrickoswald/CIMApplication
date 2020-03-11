@@ -241,7 +241,7 @@ class GLMGenerator
      */
     def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.isInstanceOf [LineEdge]).map (_.asInstanceOf [LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        edges.filter (_.isInstanceOf[LineEdge]).map (_.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 
     /**

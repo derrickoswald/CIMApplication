@@ -307,10 +307,10 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         val reference = triggers.head.reference
         val default = triggers.head.default.toString
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-        def maximum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.max (a, Math.max (b, c)))
-        def minimum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.min (a, Math.min (b, c)))
-        def per_phase[Type_x: TypeTag] = udf [Double, Double]((x: Double) => x / Math.sqrt (3.0))
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+        def maximum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf[Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.max (a, Math.max (b, c)))
+        def minimum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf[Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.min (a, Math.min (b, c)))
+        def per_phase[Type_x: TypeTag] = udf[Double, Double]((x: Double) => x / Math.sqrt (3.0))
 
         val to_drop = if (three_phase)
             Seq("simulation", "type", "units")
@@ -326,14 +326,14 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         val values = if (three_phase)
         {
             val references = keyvalues
-                .withColumn ("reference", per_phase [Double].apply (keyvalues.col ("value").cast ("double")))
+                .withColumn ("reference", per_phase[Double].apply (keyvalues.col ("value").cast ("double")))
                 .drop ("value")
             simulated_values
-                .withColumn ("value_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a"))).cache
-                .withColumn ("value_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b"))).cache
-                .withColumn ("value_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c"))).cache
-                .withColumn ("value_max", maximum [Double, Double, Double].apply (functions.col ("value_a"), functions.col ("value_b"), functions.col ("value_c")))
-                .withColumn ("value_min", minimum [Double, Double, Double].apply (functions.col ("value_a"), functions.col ("value_b"), functions.col ("value_c")))
+                .withColumn ("value_a", magnitude[Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a"))).cache
+                .withColumn ("value_b", magnitude[Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b"))).cache
+                .withColumn ("value_c", magnitude[Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c"))).cache
+                .withColumn ("value_max", maximum[Double, Double, Double].apply (functions.col ("value_a"), functions.col ("value_b"), functions.col ("value_c")))
+                .withColumn ("value_min", minimum[Double, Double, Double].apply (functions.col ("value_a"), functions.col ("value_b"), functions.col ("value_c")))
                 .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "value_a", "value_b", "value_c")
                 .join (references, Seq ("mrid"))
         }
@@ -343,7 +343,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
                 .withColumn ("reference", keyvalues.col ("value").cast ("double"))
                 .drop ("value")
             simulated_values
-                .withColumn ("value1", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                .withColumn ("value1", magnitude[Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
                 .drop ("value", "real_a", "imag_a")
                 .join (references, Seq ("mrid"))
         }

@@ -8,9 +8,9 @@ object Util
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf [ch.ninecode.util.Complex],
-            classOf [ch.ninecode.util.Sequences],
-            classOf [ch.ninecode.util.ThreePhaseComplexDataElement]
+            classOf[ch.ninecode.util.Complex],
+            classOf[ch.ninecode.util.Sequences],
+            classOf[ch.ninecode.util.ThreePhaseComplexDataElement]
         )
     }
 }

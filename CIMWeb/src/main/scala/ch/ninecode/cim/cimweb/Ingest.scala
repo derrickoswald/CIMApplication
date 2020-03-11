@@ -128,8 +128,8 @@ class Ingest extends RESTful
                             throw new ResourceException ("null is not a MappedRecord")
                         else
                         {
-                            val record = output.asInstanceOf [CIMMappedRecord]
-                            val struct = record.get (CIMFunction.RESULT).asInstanceOf [JsonObject]
+                            val record = output.asInstanceOf[CIMMappedRecord]
+                            val struct = record.get (CIMFunction.RESULT).asInstanceOf[JsonObject]
                             ret = RESTfulJSONResult (struct.getString ("status"), struct.getString ("message"), struct.getJsonObject ("result"))
                         }
                     case None =>

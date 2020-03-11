@@ -119,7 +119,7 @@ case class SimulationGLMGenerator (
 
     override def emit_edge (edge: GLMEdge): String =
     {
-        val e = edge.asInstanceOf [SimulationEdge]
+        val e = edge.asInstanceOf[SimulationEdge]
         val recorders = e.recorders.map (emit_recorder).mkString ("")
         val players = e.players.map (emit_edge_player).mkString ("")
         super.emit_edge (e.rawedge) + recorders + players
@@ -127,7 +127,7 @@ case class SimulationGLMGenerator (
 
     override def emit_slack (node: GLMNode): String =
     {
-        val n = node.asInstanceOf [SimulationNode]
+        val n = node.asInstanceOf[SimulationNode]
         val recorders = n.recorders.map (emit_recorder).mkString ("")
         val players = n.players.map (emit_node_player (n)).mkString ("")
         super.emit_slack (node) + recorders + players
@@ -135,7 +135,7 @@ case class SimulationGLMGenerator (
 
     override def emit_node (node: GLMNode): String =
     {
-        val n = node.asInstanceOf [SimulationNode]
+        val n = node.asInstanceOf[SimulationNode]
         val recorders = n.recorders.map (emit_recorder).mkString ("")
         val players = n.players.map (emit_node_player (n)).mkString ("")
         super.emit_node (node) + recorders + players
@@ -158,6 +158,6 @@ case class SimulationGLMGenerator (
      */
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.asInstanceOf [SimulationEdge].rawedge.isInstanceOf [LineEdge]).map (_.asInstanceOf [SimulationEdge].rawedge.asInstanceOf [LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[LineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 }

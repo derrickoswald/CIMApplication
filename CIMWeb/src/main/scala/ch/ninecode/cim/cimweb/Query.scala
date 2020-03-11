@@ -56,8 +56,8 @@ class Query extends RESTful
                     throw new ResourceException ("null is not a MappedRecord")
                 else
                 {
-                    val record = output.asInstanceOf [CIMMappedRecord]
-                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
+                    val record = output.asInstanceOf[CIMMappedRecord]
+                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
                 }
                 interaction.close ()
             }

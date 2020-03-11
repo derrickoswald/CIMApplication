@@ -377,7 +377,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val write = System.nanoTime ()
         log.info ("export: " + (write - start) / 1e9 + " seconds")
 
-        var ret = null.asInstanceOf [RDD[MaxEinspeiseleistung]]
+        var ret = null.asInstanceOf[RDD[MaxEinspeiseleistung]]
         if (!options.export_only)
         {
             val c = experiments.map (generate_player_file (gridlabd)).count
@@ -557,7 +557,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val precalc_results =
         {
             // construct the initial graph from the real edges and nodes
-            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
             val pf = new PowerFeeding (session, storage_level)
             pf.threshold_calculation (initial, sdata, transformers, options)
         }
@@ -653,7 +653,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 // (trafoid (nodeid, feeder))
                 val trafos_nodes_feeders = vertices.map (x => (x.source_obj.trafo_id, (x.id, if (null != x.feeder) x.feeder.feeder_id else null)))
                 // (nodeid, equipmentid)
-                val nodes_equipment = get [Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get [ConductingEquipment].keyBy (_.id))
+                val nodes_equipment = get[Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get[ConductingEquipment].keyBy (_.id))
                     .flatMap (x => x._2._1.map (y => y.TopologicalNode).toSet.map ((z: String) => (z, x._2._2.id)))
                 // (trafoid, (equipment, feeder)) -- with duplicates, possibly with different feeders, for two terminal equipment
                 val trafo_equipment_feeder = nodes_equipment.join (trafos_nodes_feeders.keyBy (_._2._1)).values
@@ -679,18 +679,18 @@ object Einspeiseleistung
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf [ch.ninecode.mfi.Einspeiseleistung],
-            classOf [ch.ninecode.mfi.EinspeiseleistungGLMGenerator],
-            classOf [ch.ninecode.mfi.EinspeiseleistungOptions],
-            classOf [ch.ninecode.mfi.Experiment],
-            classOf [ch.ninecode.mfi.Feeder],
-            classOf [ch.ninecode.mfi.MaxEinspeiseleistung],
-            classOf [ch.ninecode.mfi.MaxPowerFeedingNodeEEA],
-            classOf [ch.ninecode.mfi.PowerFeeding],
-            classOf [ch.ninecode.mfi.PowerFeedingNode],
-            classOf [ch.ninecode.mfi.PreCalculationResults],
-            classOf [ch.ninecode.mfi.StartingTrafo],
-            classOf [ch.ninecode.mfi.Trafokreis]
+            classOf[ch.ninecode.mfi.Einspeiseleistung],
+            classOf[ch.ninecode.mfi.EinspeiseleistungGLMGenerator],
+            classOf[ch.ninecode.mfi.EinspeiseleistungOptions],
+            classOf[ch.ninecode.mfi.Experiment],
+            classOf[ch.ninecode.mfi.Feeder],
+            classOf[ch.ninecode.mfi.MaxEinspeiseleistung],
+            classOf[ch.ninecode.mfi.MaxPowerFeedingNodeEEA],
+            classOf[ch.ninecode.mfi.PowerFeeding],
+            classOf[ch.ninecode.mfi.PowerFeedingNode],
+            classOf[ch.ninecode.mfi.PreCalculationResults],
+            classOf[ch.ninecode.mfi.StartingTrafo],
+            classOf[ch.ninecode.mfi.Trafokreis]
         )
     }
 }

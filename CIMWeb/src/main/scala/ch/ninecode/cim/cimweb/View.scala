@@ -85,8 +85,8 @@ class View extends RESTful
                 }
                 else
                 {
-                    val record = output.asInstanceOf [CIMMappedRecord]
-                    val rdf = record.get (CIMFunction.RESULT).asInstanceOf [String]
+                    val record = output.asInstanceOf[CIMMappedRecord]
+                    val rdf = record.get (CIMFunction.RESULT).asInstanceOf[String]
                     interaction.close ()
                     if (try { zip.toBoolean } catch { case _: Throwable => false })
                     {

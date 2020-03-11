@@ -308,7 +308,7 @@ case class SimulationTrafoKreis
         (raw_nodes ++ Seq (SimulationNode (transformer_edge.cn1, transformer_edge.transformer.v0, transformer_edge.transformer.transformer_name, null, null))).map (
             raw =>
             {
-                val node = raw.asInstanceOf [SimulationNode]
+                val node = raw.asInstanceOf[SimulationNode]
                 val my_players = players.filter (_.parent == raw.id)
                 // for power recorders of nodes with players, it has to be attached to the player, not the node
                 // the query has been altered to make the parent name for these nodes have the form <mrid>_load_object
@@ -340,7 +340,7 @@ case class SimulationTrafoKreis
             hacked = true
         }
         def notTheTransformer (edge: GLMEdge): Boolean =
-            edge.asInstanceOf [SimulationEdge].rawedge match
+            edge.asInstanceOf[SimulationEdge].rawedge match
             {
                 case trafo: TransformerEdge =>
                     trafo.transformer.transformer_name != transformer.transformer_name
@@ -350,7 +350,7 @@ case class SimulationTrafoKreis
         raw_edges.filter (notTheTransformer).map (
             raw =>
             {
-                val edge: SimulationEdge = raw.asInstanceOf [SimulationEdge]
+                val edge: SimulationEdge = raw.asInstanceOf[SimulationEdge]
                 val id = edge.id
                 val these_recorders = recorders.filter (_.parent == id)
                 val these_players = players.filter (_.parent == id)

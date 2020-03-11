@@ -28,7 +28,7 @@ class LowVoltageSuite extends TestUtil
         options.put ("ch.ninecode.cim.do_topo_islands", "false")
         val elements: DataFrame = session.read.format ("ch.ninecode.cim").options (options).load (files: _*)
         println (elements.count () + " elements")
-        session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf [RDD[Element]]
+        session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf[RDD[Element]]
     }
 
     test ("Basic")

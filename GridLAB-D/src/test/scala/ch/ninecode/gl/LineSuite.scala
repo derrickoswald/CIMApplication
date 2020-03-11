@@ -170,7 +170,7 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
         }
         if (thisOptions == null)
         {
-            thisOptions = Map [String, String](
+            thisOptions = Map[String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER"
             )

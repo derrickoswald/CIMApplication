@@ -140,7 +140,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
 
         // create the initial Graph with PowerFeedingNode vertices
         def add_feeder (id: VertexId, v: PreNode, feeder: Option[Feeder]): PowerFeedingNode =
-            PowerFeedingNode (v.id, null, null, v.nominal_voltage, null.asInstanceOf [StartingTrafo], feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
+            PowerFeedingNode (v.id, null, null, v.nominal_voltage, null.asInstanceOf[StartingTrafo], feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
 
         val pregraph = initial.outerJoinVertices (feeders.keyBy (_.vertex))(add_feeder)
 
@@ -153,8 +153,8 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val graph = pregraph.outerJoinVertices (starting_nodes.keyBy (_.nsPin))(starting_map).persist (storage_level)
 
         // run Pregel
-        val default_message = PowerFeedingNode (null, null, null, 0, null.asInstanceOf [StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
-        graph.pregel [PowerFeedingNode](default_message, 10000, EdgeDirection.Either)(
+        val default_message = PowerFeedingNode (null, null, null, 0, null.asInstanceOf[StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
+        graph.pregel[PowerFeedingNode](default_message, 10000, EdgeDirection.Either)(
             vertexProgram,
             sendMessage,
             mergeMessage
@@ -224,7 +224,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
     def get_threshold_per_has (nodes: RDD[PowerFeedingNode], options: EinspeiseleistungOptions): RDD[MaxPowerFeedingNodeEEA] =
     {
         val houses = nodes.filter (_.sum_z.re > 0.0)
-        val psrtype = get [Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get [ConductingEquipment].keyBy (_.id))
+        val psrtype = get[Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get[ConductingEquipment].keyBy (_.id))
             .filter (_._2._1.size == 1).map (x ⇒ (x._2._1.head.TopologicalNode, (x._2._2.id, x._2._2.Equipment.PowerSystemResource.PSRType)))
         houses.keyBy (_.id).leftOuterJoin (psrtype).values.map (calc_max_feeding_power (options))
     }
@@ -329,9 +329,9 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 if (triplet.attr.connected)
                     (source.trafo_id, triplet.attr)
                 else
-                    (null.asInstanceOf [String], triplet.attr)
+                    (null.asInstanceOf[String], triplet.attr)
             else
-                (null.asInstanceOf [String], triplet.attr)
+                (null.asInstanceOf[String], triplet.attr)
         }
 
         val vertices = graph.vertices.values

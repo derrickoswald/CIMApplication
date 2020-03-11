@@ -47,7 +47,7 @@ object Main
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map [String, String]()
+            var ret = Map[String, String]()
             val ss = s.split (",")
             for (p <- ss)
             {
@@ -76,49 +76,49 @@ object Main
     {
         head (APPLICATION_NAME, APPLICATION_VERSION)
 
-        opt [Unit]('q', "quiet").
+        opt[Unit]('q', "quiet").
             action ((_, c) => c.copy (quiet = true)).
             text ("suppress informational messages")
 
-        opt [String]('m', "master").valueName ("MASTER_URL").
+        opt[String]('m', "master").valueName ("MASTER_URL").
             action ((x, c) => c.copy (master = x)).
             text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
-        opt [Map[String, String]]('o', "opts").valueName ("k1=v1,k2=v2").
+        opt[Map[String, String]]('o', "opts").valueName ("k1=v1,k2=v2").
             action ((x, c) => c.copy (opts = x)).
             text ("Spark options")
 
-        opt [String]('s', "storage_level").
+        opt[String]('s', "storage_level").
             action ((x, c) => c.copy (storage = x)).
             text ("storage level for RDD serialization (default: MEMORY_AND_DISK_SER)")
 
-        opt [Unit]('u', "deduplicate").
+        opt[Unit]('u', "deduplicate").
             action ((_, c) => c.copy (dedup = true)).
             text ("de-duplicate input (striped) files")
 
-        opt [Unit]('3', "three").
+        opt[Unit]('3', "three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations")
 
-        opt [String]('t', "trafos").valueName ("<TRA file>").
+        opt[String]('t', "trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
 
-        opt [LogLevels.Value]('l', "logging").
+        opt[LogLevels.Value]('l', "logging").
             action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (","))
 
-        opt [String]('k', "checkpointdir").valueName ("<dir>").
+        opt[String]('k', "checkpointdir").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
 
-        opt [String]('w', "workdir").valueName ("<dir>").
+        opt[String]('w', "workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
 
         help ("help").text ("prints this usage text")
 
-        arg [String]("<CIM> <CIM> ...").unbounded ().
+        arg[String]("<CIM> <CIM> ...").unbounded ().
             action ((x, c) => c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -229,7 +229,7 @@ object Main
 
                 val options = LowVoltageOptions (
                     verbose = !arguments.quiet,
-                    cim_reader_options = mutable.HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
+                    cim_reader_options = mutable.HashMap[String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                     three = arguments.three,
                     trafos = arguments.trafos,
                     workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir,

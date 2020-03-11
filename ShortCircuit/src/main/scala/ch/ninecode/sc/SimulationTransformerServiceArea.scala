@@ -31,7 +31,7 @@ case class SimulationTransformerServiceArea
     // experiment only on houses and busbars
     def keep (node: GLMNode): Boolean =
     {
-        val e = node.asInstanceOf [SimulationNode]
+        val e = node.asInstanceOf[SimulationNode]
         e.consumer || e.busbar
     }
 
@@ -40,7 +40,7 @@ case class SimulationTransformerServiceArea
         .map (
         x =>
         {
-            val node = x._1.asInstanceOf [SimulationNode]
+            val node = x._1.asInstanceOf[SimulationNode]
             ScExperiment (name, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (100.0))
         }
     ).toArray
@@ -50,7 +50,7 @@ case class SimulationTransformerServiceArea
      *
      * @param c The Calendar value to be cloned.
      */
-    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
+    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
 
     val finish_time: Calendar =
     {

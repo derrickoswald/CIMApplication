@@ -228,7 +228,7 @@ class BranchImpedanceSuite extends FunSuite
             )
         )
 
-        val branch = ComplexBranch ("PIN26199_topo", "HAS118345_topo", 4.0, branches.asInstanceOf [Array[Branch]])
+        val branch = ComplexBranch ("PIN26199_topo", "HAS118345_topo", 4.0, branches.asInstanceOf[Array[Branch]])
         val x = branch.justFuses
         val y = branch.lastFuses
         val w = y.map (_.asFuse).mkString (",")

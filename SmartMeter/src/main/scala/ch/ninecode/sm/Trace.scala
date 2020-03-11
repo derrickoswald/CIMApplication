@@ -68,27 +68,27 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
         cls match
         {
             case "Switch" =>
-                !element.asInstanceOf [Switch].normalOpen
+                !element.asInstanceOf[Switch].normalOpen
             case "Cut" =>
-                !element.asInstanceOf [Cut].Switch.normalOpen
+                !element.asInstanceOf[Cut].Switch.normalOpen
             case "Disconnector" =>
-                !element.asInstanceOf [Disconnector].Switch.normalOpen
+                !element.asInstanceOf[Disconnector].Switch.normalOpen
             case "Fuse" =>
-                !element.asInstanceOf [Fuse].Switch.normalOpen
+                !element.asInstanceOf[Fuse].Switch.normalOpen
             case "GroundDisconnector" =>
-                !element.asInstanceOf [GroundDisconnector].Switch.normalOpen
+                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
             case "Jumper" =>
-                !element.asInstanceOf [Jumper].Switch.normalOpen
+                !element.asInstanceOf[Jumper].Switch.normalOpen
             case "ProtectedSwitch" =>
-                !element.asInstanceOf [ProtectedSwitch].Switch.normalOpen
+                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
             case "Sectionaliser" =>
-                !element.asInstanceOf [Sectionaliser].Switch.normalOpen
+                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
             case "Breaker" =>
-                !element.asInstanceOf [Breaker].ProtectedSwitch.Switch.normalOpen
+                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
             case "LoadBreakSwitch" =>
-                !element.asInstanceOf [LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
+                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
             case "Recloser" =>
-                !element.asInstanceOf [Recloser].ProtectedSwitch.Switch.normalOpen
+                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
             case "PowerTransformer" =>
                 false
             case _ =>
@@ -162,7 +162,7 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
 
         // perform the trace, marking all traced nodes with the distance from the starting nodes
         val default_message = NodeData (null, 0, "", "", Double.PositiveInfinity, Double.PositiveInfinity)
-        val tracedGraph = tree.pregel [NodeData](default_message, 10000, EdgeDirection.Either)(
+        val tracedGraph = tree.pregel[NodeData](default_message, 10000, EdgeDirection.Either)(
             vertexProgram,
             sendMessage (starting_id),
             mergeMessage

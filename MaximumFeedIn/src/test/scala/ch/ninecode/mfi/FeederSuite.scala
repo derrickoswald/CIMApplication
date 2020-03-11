@@ -54,7 +54,7 @@ class FeederSuite extends MFITestBase with BeforeAndAfter
             val begin = System.nanoTime ()
 
             val filename = s"$FILE_DEPOT$FILENAME.rdf"
-            val opts = Map [String, String](
+            val opts = Map[String, String](
                 "ch.ninecode.cim.do_topo_islands" -> "true",
                 "ch.ninecode.cim.force_retain_switches" -> "ForceTrue",
                 "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue")

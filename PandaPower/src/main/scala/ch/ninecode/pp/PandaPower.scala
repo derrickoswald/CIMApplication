@@ -171,7 +171,7 @@ extends Serializable
         val pandapower =
             if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
             {
-                Array [String](
+                Array[String](
                     "bash",
                     "-c",
                     "while read line; do " +
@@ -185,7 +185,7 @@ extends Serializable
             }
             else // cluster, either hdfs://XX or wasb://YY
             {
-                Array [String](
+                Array[String](
                     "bash",
                     "-c",
                     "while read line; do " +
@@ -206,6 +206,6 @@ extends Serializable
 
         val out = files.pipe (pandapower)
         // take only the first error message
-        out.map (check).fold ((true, List [String]()))((x, y) ⇒ (x._1 && y._1, if (!y._1) x._2 :+ y._2.head else x._2))
+        out.map (check).fold ((true, List[String]()))((x, y) ⇒ (x._1 && y._1, if (!y._1) x._2 :+ y._2.head else x._2))
     }
 }

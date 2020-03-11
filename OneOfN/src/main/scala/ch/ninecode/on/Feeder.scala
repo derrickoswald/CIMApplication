@@ -163,11 +163,11 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     {
         // get the list of N5 voltages
         // ToDo: fix this 1000V multiplier
-        val medium_voltages = getOrElse [BaseVoltage].filter (x ⇒ x.nominalVoltage > 1.0 && x.nominalVoltage < 50.0).map (_.id).collect
+        val medium_voltages = getOrElse[BaseVoltage].filter (x ⇒ x.nominalVoltage > 1.0 && x.nominalVoltage < 50.0).map (_.id).collect
 
         // get the list of M5 level feeders in substations
         // ToDo: is it faster to use RDD[Connector] and join with RDD[Element] ?
-        val ret = getOrElse [Element]("Elements").filter (isFeeder (medium_voltages, Array ("PSRType_Substation")))
+        val ret = getOrElse[Element]("Elements").filter (isFeeder (medium_voltages, Array ("PSRType_Substation")))
 
         ret.persist (storage)
         ret.name = "Feeders"
@@ -182,7 +182,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def feederNodes: RDD[(String, Element)] =
     {
-        val ret = getOrElse [Terminal].map (x ⇒ (x.ConductingEquipment, x.TopologicalNode)).join (feeders.keyBy (_.id)).values // (feederid, nodeid)
+        val ret = getOrElse[Terminal].map (x ⇒ (x.ConductingEquipment, x.TopologicalNode)).join (feeders.keyBy (_.id)).values // (feederid, nodeid)
 
         ret.persist (storage)
         ret.name = "FeederNodes"
@@ -197,7 +197,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def feederIslands: RDD[(String, Element)] =
     {
-        val t = getOrElse [TopologicalNode].map (x ⇒ (x.id, x.TopologicalIsland)) // (nodeid, islandid)
+        val t = getOrElse[TopologicalNode].map (x ⇒ (x.id, x.TopologicalIsland)) // (nodeid, islandid)
         val ret = t.join (feederNodes).values // (islandid, Feeder)
 
         ret.persist (storage)
@@ -241,7 +241,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
             val alias = x._1.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName
             val number = parseNumber (description)
             val header = "%s [%s]".format (description, alias)
-            val feeder = x._1.asInstanceOf [Element]
+            val feeder = x._1.asInstanceOf[Element]
 
             // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
             x._2 match
@@ -253,8 +253,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
             }
         }
 
-        val connectors = feeders.map (_.asInstanceOf [Connector])
-        val ret = connectors.keyBy (_.ConductingEquipment.Equipment.EquipmentContainer).join (getOrElse [Element]("Elements").keyBy (_.id)).values.map (station_fn)
+        val connectors = feeders.map (_.asInstanceOf[Connector])
+        val ret = connectors.keyBy (_.ConductingEquipment.Equipment.EquipmentContainer).join (getOrElse[Element]("Elements").keyBy (_.id)).values.map (station_fn)
 
         ret.persist (storage)
         ret.name = "feederStations"
@@ -268,9 +268,9 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def edges: RDD[Edge[EdgeData]] =
     {
-        val equipment_islands = getOrElse [Terminal].keyBy (_.TopologicalNode).join (getOrElse [TopologicalNode].keyBy (_.id)).values
+        val equipment_islands = getOrElse[Terminal].keyBy (_.TopologicalNode).join (getOrElse[TopologicalNode].keyBy (_.id)).values
             .map (x ⇒ (x._1.ConductingEquipment, x._2.TopologicalIsland)).groupByKey // (equipmentid, [islandid])
-        val equipment = getOrElse [ConductingEquipment].keyBy (_.id).join (getOrElse [Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
+        val equipment = getOrElse[ConductingEquipment].keyBy (_.id).join (getOrElse[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (equipmentid, element)
             .join (equipment_islands).values // (Element, [islandid])
         equipment.flatMap (
             x ⇒
@@ -302,7 +302,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
             .map (
             x ⇒
             {
-                val starting_feeders = x._2.map (y ⇒ y.map (_.id).toSet).getOrElse (Set [String]())
+                val starting_feeders = x._2.map (y ⇒ y.map (_.id).toSet).getOrElse (Set[String]())
                 (vertex_id (x._1), VertexData (x._1, starting_feeders, starting_feeders))
             }
         ).persist (storage) // (vertexid, VertexData)
@@ -334,7 +334,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
 
         def send_message (triplet: EdgeTriplet[VertexData, EdgeData]): Iterator[(VertexId, VertexData)] =
         {
-            var ret = List [(VertexId, VertexData)]()
+            var ret = List[(VertexId, VertexData)]()
             // the island on the source side can hop to the destination by closing the switch
             if (!triplet.srcAttr.sources.subsetOf (triplet.dstAttr.feeders))
             {
@@ -362,11 +362,11 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         // assigns the minimum VertexId of all electrically identical islands
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
         val graph: Graph[VertexData, EdgeData] = Graph (vertices, edges, VertexData (), storage, storage).cache
-        val g = graph.pregel [VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).cache
+        val g = graph.pregel[VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).cache
 
         // label every node (not just the ones on the boundary switches
         val island_feeders = g.vertices.map (x ⇒ (x._2.id, x._2.feeders)).filter (null != _._2) // (islandid, [feeders])
-        getOrElse [TopologicalNode].keyBy (_.TopologicalIsland).join (island_feeders).values
+        getOrElse[TopologicalNode].keyBy (_.TopologicalIsland).join (island_feeders).values
             .flatMap (x ⇒ x._2.map (y ⇒ (x._1.id, y))) // (nodeid, feederid)
     }
 }

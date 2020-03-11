@@ -58,9 +58,9 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         cls match
         {
             case "ACLineSegment" ⇒
-                element.asInstanceOf [ACLineSegment].Conductor.len
+                element.asInstanceOf[ACLineSegment].Conductor.len
             case "Conductor" ⇒
-                element.asInstanceOf [Conductor].len
+                element.asInstanceOf[Conductor].len
             case _ ⇒
                 0.0
         }
@@ -80,7 +80,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
 
     def edge_operator (voltages: Map[String, Double])(arg: (((Element, Double), Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[PreEdge] =
     {
-        var ret = List [PreEdge]()
+        var ret = List[PreEdge]()
 
         val e = arg._1._1._1
         val ratedCurrent = arg._1._1._2
@@ -95,7 +95,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
             // sort terminals by sequence number (and hence the primary is index 0)
             val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
             // get the equipment
-            val equipment = c.asInstanceOf [ConductingEquipment]
+            val equipment = c.asInstanceOf[ConductingEquipment]
             // make a list of voltages
             val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
             val volts =
@@ -107,7 +107,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
                         val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
                         tends.map (e ⇒ 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
                     case None ⇒
-                        Array [Double](volt, volt)
+                        Array[Double](volt, volt)
                 }
             // Note: we eliminate 230V edges because transformer information doesn't exist and
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
@@ -198,8 +198,8 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
      */
     def getCableMaxCurrent: RDD[(String, Double)] =
     {
-        val wireinfos = get [WireInfo]
-        val lines = get [ACLineSegment]
+        val wireinfos = get[WireInfo]
+        val lines = get[ACLineSegment]
         val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
         val cables = keyed.join (wireinfos.keyBy (_.id)).values.map (x ⇒ (x._1.id, x._2.ratedCurrent))
 
@@ -213,16 +213,16 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
     def prepare: Graph[PreNode, PreEdge] =
     {
         // get a map of voltages
-        val voltages = get ("BaseVoltage").asInstanceOf [RDD[BaseVoltage]].map ((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals
-        val terminals = get ("Terminal").asInstanceOf [RDD[Terminal]].filter (null != _.ConnectivityNode)
+        val terminals = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
 
         // get the terminals keyed by equipment
         val terms = terminals.groupBy (_.ConductingEquipment)
 
         // get all elements
-        val elements = get [Element]("Elements")
+        val elements = get[Element]("Elements")
 
         // join with WireInfo to get ratedCurrent (only for ACLineSegments)
         val cableMaxCurrent = getCableMaxCurrent
@@ -239,7 +239,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         })
 
         // get the transformer ends keyed by transformer
-        val ends = get ("PowerTransformerEnd").asInstanceOf [RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+        val ends = get ("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
 
         // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
         val elementsplus = joined_elements.leftOuterJoin (ends)
@@ -257,7 +257,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val nodes = if (topological_nodes)
         {
             // get the topological nodes RDD
-            val tnodes = get ("TopologicalNode").asInstanceOf [RDD[TopologicalNode]]
+            val tnodes = get ("TopologicalNode").asInstanceOf[RDD[TopologicalNode]]
 
             // map the topological nodes to prenodes with voltages
             tnodes.keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
@@ -265,7 +265,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         else
         {
             // get the connectivity nodes RDD
-            val connectivitynodes = get ("ConnectivityNode").asInstanceOf [RDD[ConnectivityNode]]
+            val connectivitynodes = get ("ConnectivityNode").asInstanceOf[RDD[ConnectivityNode]]
 
             // map the connectivity nodes to prenodes with voltages
             connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (connectivity_node_operator).distinct
@@ -286,7 +286,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         }
 
         // construct the initial graph from the real edges and nodes
-        Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
+        Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
     }
 
 
@@ -338,8 +338,8 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val initial = prepare
 
         // get the ConnectivityNode corresponding to the given starting node
-        val terminal = get [Terminal].filter (terminal => terminal.ConductingEquipment == starting_node).first
-        val start_at = Array [VertexId](pn.vertex_id (if (topological_nodes) terminal.TopologicalNode else terminal.ConnectivityNode))
+        val terminal = get[Terminal].filter (terminal => terminal.ConductingEquipment == starting_node).first
+        val start_at = Array[VertexId](pn.vertex_id (if (topological_nodes) terminal.TopologicalNode else terminal.ConnectivityNode))
 
         val trace = new Trace (initial)
         val tracedGraph = trace.run (start_at)
@@ -368,8 +368,8 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
             withoutEmptyLeafes = filterEmptyLeaves (tracedRenamedVertices)
         }
 
-        val name = get [Name]
-        val userAttr = get [UserAttribute]
+        val name = get[Name]
+        val userAttr = get[UserAttribute]
         // legacy
         //      val joinedMst = name.keyBy(_.IdentifiedObject).join(userAttr.keyBy(_.name))
         val joinedMst = name.keyBy (_.IdentifiedObject).join (userAttr.keyBy (_.name))
@@ -459,7 +459,7 @@ object SmartMeter
         val setup = System.nanoTime ()
 
         val files = filename.split (",")
-        val options = new HashMap[String, String]().asInstanceOf [java.util.Map[String, String]]
+        val options = new HashMap[String, String]().asInstanceOf[java.util.Map[String, String]]
         options.put ("path", filename)
         options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
         options.put ("ch.ninecode.cim.do_topo_islands", "true")

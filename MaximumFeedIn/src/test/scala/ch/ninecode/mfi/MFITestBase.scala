@@ -33,7 +33,7 @@ class MFITestBase extends TestUtil
         val begin = System.nanoTime ()
 
         val files = filename.split (",")
-        val options = Map [String, String](
+        val options = Map[String, String](
             "path" -> filename,
             "StorageLevel" -> "MEMORY_AND_DISK_SER",
             "ch.ninecode.cim.do_topo" -> "true",

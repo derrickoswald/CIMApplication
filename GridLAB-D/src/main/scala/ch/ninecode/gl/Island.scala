@@ -121,7 +121,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         val terminals: RDD[(Terminal, identifier, TopologicalNode, Double)] =
             getOrElse[Terminal]
             .keyBy (terminal => terminal.TopologicalNode)
-            .join (getOrElse [TopologicalNode].keyBy (_.id))
+            .join (getOrElse[TopologicalNode].keyBy (_.id))
             .values
             .map (
                 tn =>

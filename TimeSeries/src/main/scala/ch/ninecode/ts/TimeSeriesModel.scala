@@ -76,10 +76,10 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         hdfs.delete (directory, true)
     }
 
-    def tick[Type_t: TypeTag, Type_period: TypeTag]: UserDefinedFunction = udf [Int, Timestamp, Int](
+    def tick[Type_t: TypeTag, Type_period: TypeTag]: UserDefinedFunction = udf[Int, Timestamp, Int](
         (t: Timestamp, period: Int) =>
             ((t.getTime / period) % (24 * 60 * 60 * 1000 / period)).toInt)
-    def day[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
+    def day[Type_t: TypeTag]: UserDefinedFunction = udf[Int, Timestamp](
         (t: Timestamp) =>
         {
             val c = Calendar.getInstance ()
@@ -88,13 +88,13 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             c.get (Calendar.DAY_OF_WEEK)
         }
     )
-    def one_hot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf [Int, Int, Int](
+    def one_hot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf[Int, Int, Int](
         (day: Int, index: Int) =>
         {
             if (day == index) 1 else 0
         }
     )
-    def week[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
+    def week[Type_t: TypeTag]: UserDefinedFunction = udf[Int, Timestamp](
         (t: Timestamp) =>
         {
             val c = Calendar.getInstance ()
@@ -103,7 +103,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             c.get (Calendar.WEEK_OF_YEAR)
         }
     )
-    def demultiplex[Type_m: TypeTag, Type_c: TypeTag]: UserDefinedFunction = udf [Int, Map[String,Int], String](
+    def demultiplex[Type_m: TypeTag, Type_c: TypeTag]: UserDefinedFunction = udf[Int, Map[String,Int], String](
         (map: Map[String, Int], cls: String) =>
         {
             map.getOrElse (cls, 0)
@@ -131,14 +131,14 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     def gen_day_columns (frame: DataFrame, day_col: String): DataFrame =
     {
         var ret = frame
-        day_ordinals.foreach (day => ret = ret.withColumn (day._1, one_hot [Int, Int].apply (functions.col (day_col), functions.lit (day._2))))
+        day_ordinals.foreach (day => ret = ret.withColumn (day._1, one_hot[Int, Int].apply (functions.col (day_col), functions.lit (day._2))))
         ret
     }
 
     def gen_class_columns (frame: DataFrame, class_col: String): DataFrame =
     {
         var ret = frame
-        class_names.foreach (cls => ret = ret.withColumn (cls, demultiplex [Map[String,Int], String].apply (functions.col (class_col), functions.lit (cls))))
+        class_names.foreach (cls => ret = ret.withColumn (cls, demultiplex[Map[String,Int], String].apply (functions.col (class_col), functions.lit (cls))))
         ret
     }
 
@@ -151,9 +151,9 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
             .load
             .filter (s"real_a > 0.0")
-            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
-            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
-            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+            .withColumn ("tick", tick[Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
+            .withColumn ("week", week[Timestamp].apply (functions.col ("time")))
+            .withColumn ("day", day[Timestamp].apply (functions.col ("time")))
         data = gen_day_columns (data, "day")
             .join (averages, Seq ("mrid", "type"))
         val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names
@@ -180,9 +180,9 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .filter (s"type='energy' and $in") // push down filter
             .filter (s"real_a > 0.0")
             .join (stats_and_meta, Seq ("mrid", "type"))
-            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
-            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
-            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+            .withColumn ("tick", tick[Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
+            .withColumn ("week", week[Timestamp].apply (functions.col ("time")))
+            .withColumn ("day", day[Timestamp].apply (functions.col ("time")))
         data = gen_day_columns (data, "day")
         data = gen_class_columns (data, "classes")
         val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names ++ class_names
@@ -209,9 +209,9 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .filter (s"real_a > 0.0")
             .join (stats_and_meta, Seq ("mrid", "type"))
             .filter (s"classes['$cls'] = 1")
-            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
-            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
-            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+            .withColumn ("tick", tick[Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
+            .withColumn ("week", week[Timestamp].apply (functions.col ("time")))
+            .withColumn ("day", day[Timestamp].apply (functions.col ("time")))
         data = gen_day_columns (data, "day")
         val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names
         data

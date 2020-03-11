@@ -159,7 +159,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             Json.createReader (new StringReader (string)).readArray match
             {
                 case obj: JsonArray =>
-                    obj.getValuesAs (classOf [JsonObject]).asScala
+                    obj.getValuesAs (classOf[JsonObject]).asScala
                 case _ =>
                     log.error ("""not a JsonArray""")
                     Seq ()
@@ -251,13 +251,13 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    lazy val world_points: RDD[(String, Iterable[PositionPoint])] = get [PositionPoint].groupBy (_.Location)
+    lazy val world_points: RDD[(String, Iterable[PositionPoint])] = get[PositionPoint].groupBy (_.Location)
     lazy val schematic_points: RDD[(String, Iterable[DiagramObjectPoint])] = getOrElse[DiagramObject].keyBy (_.id).join (getOrElse[DiagramObjectPoint].groupBy (_.DiagramObject)).values.map (x => (x._1.IdentifiedObject_attr, x._2))
 
     def node_maker (rdd: RDD[NodeParts]): RDD[Node] =
     {
         val just_one: RDD[TerminalData] = rdd.map (_.head)
-        val with_psr: RDD[(TerminalData, PowerSystemResource)] = just_one.keyBy (_._5.id).join (get [PowerSystemResource].keyBy (_.id)).values
+        val with_psr: RDD[(TerminalData, PowerSystemResource)] = just_one.keyBy (_._5.id).join (get[PowerSystemResource].keyBy (_.id)).values
 
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates =
@@ -267,7 +267,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def line_maker (rdd: RDD[(LineData, (identifier, GLMNode))]): RDD[(identifier, GLMEdge)] =
     {
-        val with_psr = rdd.keyBy (_._1.lines.head.line.id).join (get [PowerSystemResource].keyBy (_.id)).values
+        val with_psr = rdd.keyBy (_._1.lines.head.line.id).join (get[PowerSystemResource].keyBy (_.id)).values
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates =
             with_world.map (x => (x._1._1.lines.head.line.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
@@ -289,7 +289,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 unique_identifiers.map (y => x.find (_._2._1 == y).get)
             }
         )
-        val with_psr = switches.keyBy (_._1.switches.head.element.id).join (get [PowerSystemResource].keyBy (_.id)).values
+        val with_psr = switches.keyBy (_._1.switches.head.element.id).join (get[PowerSystemResource].keyBy (_.id)).values
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates =
             with_world.map (x => (x._1._1.switches.head.element.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
@@ -311,7 +311,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 unique_identifiers.map (y => x.find (_._2._1 == y).get)
             }
         )
-        val with_psr = transformers.keyBy (_._1.transformers.head.transformer.id).join (get [PowerSystemResource].keyBy (_.id)).values
+        val with_psr = transformers.keyBy (_._1.transformers.head.transformer.id).join (get[PowerSystemResource].keyBy (_.id)).values
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates =
             with_world.map (x => (x._1._1.transformers.head.transformer.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
@@ -329,15 +329,15 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         log.info ("""preparing simulation job "%s"""".format (job.name))
 
         // get all transformer set secondary TopologicalIsland names
-        val islands_trafos: RDD[(island_id, identifier)] = get [PowerTransformer]
+        val islands_trafos: RDD[(island_id, identifier)] = get[PowerTransformer]
             .keyBy (_.id)
             .join (
-                get [Terminal]
+                get[Terminal]
                     .filter (_.ACDCTerminal.sequenceNumber == 2)
                     .keyBy (_.ConductingEquipment))
             .map (x => (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
-                get [TopologicalNode]
+                get[TopologicalNode]
                 .keyBy (_.id))
             .map (x => (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
             .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).persist (options.storage_level).setName (s"${job.id}_island_trafo") // (islandid, trafosetname)
@@ -389,8 +389,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                     SimulationTask (
                         net._1, // trafo
                         net._2, // island
-                        start.clone.asInstanceOf [Calendar],
-                        end.clone.asInstanceOf [Calendar],
+                        start.clone.asInstanceOf[Calendar],
+                        end.clone.asInstanceOf[Calendar],
                         net._3, // nodes
                         net._4, // edges
                         players,
@@ -503,7 +503,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         // get the transformer(s)
         val transformer_data = new Transformers (session, options.storage_level).getTransformers ()
         val tx = transformer_data.keyBy (_.node1.id) // (low_voltage_node_name, TransformerData)
-            .join (get [TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
+            .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
             .map (x => (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
             .groupByKey.values
         def toTransformerSet (transformers: Iterable[(TransformerData, String)]): (String, TransformerSet) =
@@ -588,7 +588,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                 }
                             }
                         ).persist (options.storage_level).setName (s"${job.id}_simulations")
-                    val numsimulations = _simulations.count.asInstanceOf [Int]
+                    val numsimulations = _simulations.count.asInstanceOf[Int]
                     log.info ("""%d GridLAB-D simulation%s to do for simulation %s batch %d""".format (numsimulations, if (1 == numsimulations) "" else "s", job.id, batchno))
 
                     if (0 != numsimulations)
@@ -744,26 +744,26 @@ object Simulation
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf [ch.ninecode.sim.Simulation],
-            classOf [ch.ninecode.sim.SimulationAggregate],
-            classOf [ch.ninecode.sim.SimulationDirectionGenerator],
-            classOf [ch.ninecode.sim.SimulationEdge],
-            classOf [ch.ninecode.sim.SimulationExtraQuery],
-            classOf [ch.ninecode.sim.SimulationGLMGenerator],
-            classOf [ch.ninecode.sim.SimulationJob],
-            classOf [ch.ninecode.sim.SimulationNode],
-            classOf [ch.ninecode.sim.SimulationOptions],
-            classOf [ch.ninecode.sim.SimulationPlayer],
-            classOf [ch.ninecode.sim.SimulationPlayerData],
-            classOf [ch.ninecode.sim.SimulationPlayerQuery],
-            classOf [ch.ninecode.sim.SimulationPlayerResult],
-            classOf [ch.ninecode.sim.SimulationRecorder],
-            classOf [ch.ninecode.sim.SimulationRecorderQuery],
-            classOf [ch.ninecode.sim.SimulationRecorderResult],
-            classOf [ch.ninecode.sim.SimulationResult],
-            classOf [ch.ninecode.sim.SimulationSparkQuery],
-            classOf [ch.ninecode.sim.SimulationTask],
-            classOf [ch.ninecode.sim.SimulationTrafoKreis]
+            classOf[ch.ninecode.sim.Simulation],
+            classOf[ch.ninecode.sim.SimulationAggregate],
+            classOf[ch.ninecode.sim.SimulationDirectionGenerator],
+            classOf[ch.ninecode.sim.SimulationEdge],
+            classOf[ch.ninecode.sim.SimulationExtraQuery],
+            classOf[ch.ninecode.sim.SimulationGLMGenerator],
+            classOf[ch.ninecode.sim.SimulationJob],
+            classOf[ch.ninecode.sim.SimulationNode],
+            classOf[ch.ninecode.sim.SimulationOptions],
+            classOf[ch.ninecode.sim.SimulationPlayer],
+            classOf[ch.ninecode.sim.SimulationPlayerData],
+            classOf[ch.ninecode.sim.SimulationPlayerQuery],
+            classOf[ch.ninecode.sim.SimulationPlayerResult],
+            classOf[ch.ninecode.sim.SimulationRecorder],
+            classOf[ch.ninecode.sim.SimulationRecorderQuery],
+            classOf[ch.ninecode.sim.SimulationRecorderResult],
+            classOf[ch.ninecode.sim.SimulationResult],
+            classOf[ch.ninecode.sim.SimulationSparkQuery],
+            classOf[ch.ninecode.sim.SimulationTask],
+            classOf[ch.ninecode.sim.SimulationTrafoKreis]
         )
     }
 }

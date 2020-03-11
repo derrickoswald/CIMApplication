@@ -55,12 +55,12 @@ case class SimulationDirectionGenerator
 
     override def emit_edge (edge: GLMEdge): String =
     {
-        super.emit_edge (edge.asInstanceOf [SimulationEdge].rawedge)
+        super.emit_edge (edge.asInstanceOf[SimulationEdge].rawedge)
     }
 
     override def emit_node (node: GLMNode): String =
     {
-        emit_load (node.asInstanceOf [SimulationNode])
+        emit_load (node.asInstanceOf[SimulationNode])
     }
 
     /**
@@ -73,6 +73,6 @@ case class SimulationDirectionGenerator
      */
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.asInstanceOf [SimulationEdge].rawedge.isInstanceOf [LineEdge]).map (_.asInstanceOf [SimulationEdge].rawedge.asInstanceOf [LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[LineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 }

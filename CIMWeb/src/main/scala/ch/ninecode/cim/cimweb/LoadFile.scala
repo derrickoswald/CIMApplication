@@ -137,8 +137,8 @@ class LoadFile extends RESTful
                 else
                 {
                     // if not found use Response.Status.NOT_FOUND
-                    val record = output.asInstanceOf [CIMMappedRecord]
-                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
+                    val record = output.asInstanceOf[CIMMappedRecord]
+                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
                     val response = ret.result.asInstanceOf[JsonObject]
                     if (response.containsKey ("error"))
                     {

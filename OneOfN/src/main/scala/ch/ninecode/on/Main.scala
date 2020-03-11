@@ -48,7 +48,7 @@ object Main
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map [String, String]()
+            var ret = Map[String, String]()
             val ss = s.split (",")
             for (p <- ss)
             {
@@ -111,56 +111,56 @@ object Main
                     case Right (_) => sys.exit (0)
                 }
 
-        opt [Unit]("unittest").
+        opt[Unit]("unittest").
             hidden ().
             action ((_, c) ⇒ c.copy (unittest = true)).
             text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
-        opt [Unit]("quiet").
+        opt[Unit]("quiet").
             action ((_, c) => c.copy (quiet = true)).
             text ("suppress informational messages [%s]".format (default.quiet))
 
-        opt [String]("master").valueName ("MASTER_URL").
+        opt[String]("master").valueName ("MASTER_URL").
             action ((x, c) => c.copy (master = x)).
             text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
-        opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
+        opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) => c.copy (opts = c.opts ++ x)).
             text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
-        opt [String]("storage_level").
+        opt[String]("storage_level").
             action ((x, c) => c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
-        opt [Unit]("deduplicate").
+        opt[Unit]("deduplicate").
             action ((_, c) => c.copy (dedup = true)).
             text ("de-duplicate input (striped) files [%s]".format (default.dedup))
 
-        opt [Unit]("three").
+        opt[Unit]("three").
             action ((_, c) => c.copy (three = true)).
             text ("use three phase computations [%s]".format (default.three))
 
-        opt [Double]("tbase").valueName ("<value>").
+        opt[Double]("tbase").valueName ("<value>").
             action ((x, c) ⇒ c.copy (base_temperature = x)).
             text ("temperature assumed in CIM file (°C) [%g]".format (default.base_temperature))
 
-        opt [Double]("temp").valueName ("<value>").
+        opt[Double]("temp").valueName ("<value>").
             action ((x, c) ⇒ c.copy (temperature = x)).
             text ("low temperature for maximum fault (°C) [%g]".format (default.temperature))
 
-        opt [LogLevels.Value]("logging").
+        opt[LogLevels.Value]("logging").
             action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-        opt [String]("checkpoint").valueName ("<dir>").
+        opt[String]("checkpoint").valueName ("<dir>").
             action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://... [%s]".format (default.checkpoint_dir))
 
-        opt [String]("workdir").valueName ("<dir>").
+        opt[String]("workdir").valueName ("<dir>").
             action ((x, c) => c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files [%s]".format (default.workdir))
 
-        arg [String]("<CIM> <CIM> ...").optional ().unbounded ().
+        arg[String]("<CIM> <CIM> ...").optional ().unbounded ().
             action ((x, c) => c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
@@ -277,7 +277,7 @@ object Main
 
                     val options = OneOfNOptions (
                         verbose = !arguments.quiet,
-                        cim_reader_options = mutable.HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
+                        cim_reader_options = mutable.HashMap[String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                         three = arguments.three,
                         base_temperature = arguments.base_temperature,
                         temperature = arguments.temperature,

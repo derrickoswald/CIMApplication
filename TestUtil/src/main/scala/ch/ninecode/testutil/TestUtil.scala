@@ -74,7 +74,7 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
         }
         if (thisOptions == null)
         {
-            thisOptions = Map [String, String](
+            thisOptions = Map[String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",

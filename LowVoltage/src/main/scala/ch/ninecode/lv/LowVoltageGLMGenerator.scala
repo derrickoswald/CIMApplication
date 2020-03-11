@@ -24,7 +24,7 @@ class LowVoltageGLMGenerator
      *
      * @param c The Calendar value to be cloned.
      */
-    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
+    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
 
     override def name: String = trafokreis.name
 
@@ -112,12 +112,12 @@ class LowVoltageGLMGenerator
                 "        };\n"
         }
 
-        super.emit_edge (edge) + (if (edge.isInstanceOf [LineEdge]) recorders else "")
+        super.emit_edge (edge) + (if (edge.isInstanceOf[LineEdge]) recorders else "")
     }
 
     override def emit_slack (node: GLMNode): String =
     {
-        val swing = node.asInstanceOf [SwingNode]
+        val swing = node.asInstanceOf[SwingNode]
         // generate low voltage pin (NSPIN) swing node
         val trafo = swing.name
         "\n" +

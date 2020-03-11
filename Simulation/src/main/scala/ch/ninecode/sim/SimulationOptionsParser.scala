@@ -36,7 +36,7 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
             }
     }
 
-    opt [Unit]("unittest").
+    opt[Unit]("unittest").
         hidden ().
         action ((_, c) => { unittest = true; c.copy (unittest = true) }).
         text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
@@ -51,62 +51,62 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
             )
         )
 
-    opt [Unit]("verbose").
+    opt[Unit]("verbose").
         action ((_, c) ⇒ c.copy (verbose = true)).
         text ("emit progress messages [%s]".format (default.verbose))
 
-    opt [String]("master").valueName ("MASTER_URL").
+    opt[String]("master").valueName ("MASTER_URL").
         action ((x, c) ⇒ c.copy (master = x)).
         text ("local[*], spark://host:port, mesos://host:port or yarn [%s]".format (default.master))
 
-    opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
+    opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
         action ((x, c) => c.copy (options = c.options ++ x)).
         text ("Spark options [%s]".format (default.options.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
-    opt [String]("host").valueName ("<cassandra>").
+    opt[String]("host").valueName ("<cassandra>").
         action ((x, c) ⇒ c.copy (host = x)).
         text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
 
-    opt [Int]("port").valueName ("<port_number>").
+    opt[Int]("port").valueName ("<port_number>").
         action ((x, c) ⇒ c.copy (port = x)).
         text ("Cassandra connection port [%s]".format (default.port))
 
-    opt [LogLevels.Value]("log").
+    opt[LogLevels.Value]("log").
         action ((x, c) => c.copy (log_level = x)).
         text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-    opt [String]("checkpoint").valueName ("<dir>").
+    opt[String]("checkpoint").valueName ("<dir>").
         action ((x, c) ⇒ c.copy (checkpoint = x)).
         text ("checkpoint directory on HDFS, e.g. hdfs://... [\"%s\"]".format (default.checkpoint))
 
-    opt [String]("workdir").valueName ("<dir>").
+    opt[String]("workdir").valueName ("<dir>").
         action ((x, c) ⇒
         {
             val sep = System.getProperty ("file.separator"); c.copy (workdir = if (x.endsWith (sep)) x else x + sep)
         }).
         text ("directory for work files on each executor [\"%s\"]".format (default.workdir))
 
-    opt [Unit]("three").
+    opt[Unit]("three").
         action ((_, c) ⇒ c.copy (three_phase = true)).
         text ("perform simulation using three phase load-flow [%s]".format (default.three_phase))
 
-    opt [Unit]("fake").
+    opt[Unit]("fake").
         action ((_, c) ⇒ c.copy (fake_three_phase = true)).
         text ("convert single phase measurements into three phase [%s]".format (default.fake_three_phase))
 
-    opt [Unit]("keep").
+    opt[Unit]("keep").
         action ((_, c) ⇒ c.copy (keep = true)).
         text ("keep intermediate glm and input/output files in workdir [%s]".format (default.keep))
 
-    opt [Unit]("simulationonly").
+    opt[Unit]("simulationonly").
         action ((_, c) ⇒ c.copy (simulationonly = true)).
         text ("perform simulation operations only [%s]".format (default.simulationonly))
 
-    opt [Unit]("postprocessonly").
+    opt[Unit]("postprocessonly").
         action ((_, c) ⇒ c.copy (postprocessonly = true)).
         text ("perform postprocessing operations only [%s]".format (default.postprocessonly))
 
-    arg [String]("<JSON> <JSON>...").optional ().unbounded ().
+    arg[String]("<JSON> <JSON>...").optional ().unbounded ().
         action ((x, c) ⇒
         {
             try

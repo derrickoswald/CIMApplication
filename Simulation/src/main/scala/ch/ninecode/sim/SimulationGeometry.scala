@@ -169,14 +169,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
             for
             {
                 raw ← trafo.nodes
-                sim_node = raw.asInstanceOf [SimulationNode]
+                sim_node = raw.asInstanceOf[SimulationNode]
                 if null != sim_node.world_position
             }
                 yield sim_node.world_position
         for
         {
             raw ← trafo.edges
-            sim_edge = raw.asInstanceOf [SimulationEdge]
+            sim_edge = raw.asInstanceOf[SimulationEdge]
             if null != sim_edge.world_position
         }
             points = points ++ sim_edge.world_position
@@ -189,14 +189,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
             for
             {
                 raw ← trafo.nodes
-                sim_node = raw.asInstanceOf [SimulationNode]
+                sim_node = raw.asInstanceOf[SimulationNode]
                 if null != sim_node.schematic_position
             }
                 yield sim_node.schematic_position
         for
         {
             raw ← trafo.edges
-            sim_edge = raw.asInstanceOf [SimulationEdge]
+            sim_edge = raw.asInstanceOf[SimulationEdge]
             if null != sim_edge.schematic_position
         }
             points = points ++ sim_edge.schematic_position
@@ -245,7 +245,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
             x ⇒ (trafo.name, x.transformer.id, x.transformer.ConductingEquipment.Equipment.PowerSystemResource.Location)))
         // get the world positions
         val location_trafo = transformers.map (x ⇒ (x._3, x._1)).collectAsMap
-        val world_positions: RDD[(String, (Double, Double))] = get [PositionPoint].flatMap (
+        val world_positions: RDD[(String, (Double, Double))] = get[PositionPoint].flatMap (
             point ⇒
             {
                 val location = point.Location
@@ -325,16 +325,16 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         val islands_transformers: RDD[(IslandmRID, (Simulation, Transformer))] = nodes_islands.join (transformers).values
 
         // get a map of equipment containers and islands
-        val terminals = getOrElse [Terminal]
+        val terminals = getOrElse[Terminal]
         val psrtypes = Array ("PSRType_Substation", "PSRType_TransformerStation", "PSRType_DistributionBox")
-        val containers: RDD[Substation] = getOrElse [Substation].filter (station ⇒ psrtypes.contains (station.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType))
+        val containers: RDD[Substation] = getOrElse[Substation].filter (station ⇒ psrtypes.contains (station.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType))
         val equipment_islands: RDD[(EquipmentmRID, IslandmRID)] = terminals.map (terminal ⇒ (terminal.TopologicalNode, terminal.ConductingEquipment)).join (nodes_islands).values
-        val equipment_containers: RDD[(EquipmentmRID, StationmRID)] = getOrElse [Equipment].map (equipment ⇒ (equipment.id, equipment.EquipmentContainer))
+        val equipment_containers: RDD[(EquipmentmRID, StationmRID)] = getOrElse[Equipment].map (equipment ⇒ (equipment.id, equipment.EquipmentContainer))
         val islands_containers: RDD[(IslandmRID, StationmRID)] = equipment_islands.join (equipment_containers).values.distinct
 
         val stations: RDD[(StationmRID, (Simulation, Transformer))] = islands_containers.join (islands_transformers).values
-        val diagramObjects: RDD[(TargetmRID, DiagramObject)] = getOrElse [DiagramObject].keyBy (_.IdentifiedObject_attr)
-        val diagramObjectsPoints: RDD[(DiagrammRID, Iterable[DiagramObjectPoint])] = getOrElse [DiagramObjectPoint].keyBy (_.DiagramObject).groupByKey
+        val diagramObjects: RDD[(TargetmRID, DiagramObject)] = getOrElse[DiagramObject].keyBy (_.IdentifiedObject_attr)
+        val diagramObjectsPoints: RDD[(DiagrammRID, Iterable[DiagramObjectPoint])] = getOrElse[DiagramObjectPoint].keyBy (_.DiagramObject).groupByKey
         val station_diagram: RDD[(StationmRID, ((Simulation, Transformer), DiagramObject))] = stations.join (diagramObjects)
 
         val diagramid_station: RDD[(DiagrammRID, (StationmRID, Simulation, Transformer))] = station_diagram.map (x ⇒ (x._2._2.id, (x._1, x._2._1._1, x._2._1._2)))

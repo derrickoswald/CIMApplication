@@ -192,11 +192,11 @@ final case class Transformers (
     ): RDD[TransformerData] =
     {
         // get ends and terminals
-        val ends_terminals = getOrElse [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal).join (getOrElse [Terminal].keyBy (_.id)).values
+        val ends_terminals = getOrElse[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal).join (getOrElse[Terminal].keyBy (_.id)).values
 
         // get a map of voltages
         // ToDo: fix this 1kV multiplier on the voltages
-        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
+        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
 
         // attach them to the ends
         val ends_terminals_voltages: RDD[(PowerTransformerEnd, Terminal, (String, Double))] = ends_terminals
@@ -223,23 +223,23 @@ final case class Transformers (
 
         // get the transformers of interest and join to end information (filter out transformers with less than 2 ends)
         val ends = ends_terminals_voltages_nodes.keyBy (_._1.PowerTransformer).groupByKey.filter (_._2.size >= 2)
-        val transformers = getOrElse [PowerTransformer]
+        val transformers = getOrElse[PowerTransformer]
             .keyBy (_.id).join (ends)
             .values.map (to_transformer_data)
             .filter (transformer_filter)
 
         // add station if any
         // ToDo: should we invent a dummy station?
-        val substations_by_id = getOrElse [Substation].filter (substation_filter).keyBy (_.id)
+        val substations_by_id = getOrElse[Substation].filter (substation_filter).keyBy (_.id)
         val transformers_stations = transformers.keyBy (_.transformer.ConductingEquipment.Equipment.EquipmentContainer)
-            .leftOuterJoin (get [Element]("Elements").keyBy (_.id)).values
+            .leftOuterJoin (get[Element]("Elements").keyBy (_.id)).values
             .map (x => (station_fn (x._2), x._1))
             .leftOuterJoin (substations_by_id).values
             .map (x => x._1.copy (station = x._2.orNull))
 
         // add equivalent injection, or default
-        val injections_by_node = getOrElse [EquivalentInjection].keyBy (_.id)
-            .join (getOrElse [Terminal].keyBy (_.ConductingEquipment)).values
+        val injections_by_node = getOrElse[EquivalentInjection].keyBy (_.id)
+            .join (getOrElse[Terminal].keyBy (_.ConductingEquipment)).values
             .map (x => (x._2.TopologicalNode, x._1))
             .groupByKey.mapValues (_.head)
         transformers_stations.keyBy (_.node0.id)

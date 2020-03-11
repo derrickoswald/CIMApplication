@@ -46,7 +46,7 @@ object Main
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         s ⇒
         {
-            var ret = Map [String, String]()
+            var ret = Map[String, String]()
             val ss = s.split (",")
             for (p ← ss)
             {
@@ -105,125 +105,125 @@ object Main
 
         val default = new Arguments
 
-        opt [Unit]("quiet").
+        opt[Unit]("quiet").
             action ((_, c) ⇒ c.copy (quiet = true)).
             text ("suppress informational messages [false]")
 
-        opt [String]("master").valueName ("MASTER_URL").
+        opt[String]("master").valueName ("MASTER_URL").
             action ((x, c) ⇒ c.copy (master = x)).
             text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
-        opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
+        opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) ⇒ c.copy (opts = c.opts ++ x)).
             text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
-        opt [String]("storage").
+        opt[String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
-        opt [Long]("splitsize").
+        opt[Long]("splitsize").
             action ((x, c) ⇒ c.copy (splitsize = x)).
             text ("file input format maximum size [%s]".format (default.splitsize))
 
-        opt [Unit]("deduplicate").
+        opt[Unit]("deduplicate").
             action ((_, c) ⇒ c.copy (dedup = true)).
             text ("de-duplicate input (striped) files [false]")
 
-        opt [LogLevels.Value]("logging").
+        opt[LogLevels.Value]("logging").
             action ((x, c) ⇒ c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (",") + " [%s]".format (default.log_level))
 
-        opt [String]("checkpoint").valueName ("<dir>").
+        opt[String]("checkpoint").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
 
-        opt [String]("description").valueName ("<text>").
+        opt[String]("description").valueName ("<text>").
             action ((x, c) ⇒ c.copy (description = x)).
             text ("text describing this program execution for SQLite run table")
 
-        opt [Double]("netp_max").valueName ("<Sk_max>").
+        opt[Double]("netp_max").valueName ("<Sk_max>").
             action ((x, c) ⇒ c.copy (default_network_power_max = x)).
             text ("maximum network power if not in CIM, VA [%g]".format (default.default_network_power_max))
 
-        opt [Complex]("netz_max").valueName ("<r + xj>").
+        opt[Complex]("netz_max").valueName ("<r + xj>").
             action ((x, c) ⇒ c.copy (default_network_impedance_max = x)).
             text ("network impedance at maximum power if not in CIM, Ω [%s]".format (default.default_network_impedance_max))
 
-        opt [Double]("neta_max").valueName ("<angle>").
+        opt[Double]("neta_max").valueName ("<angle>").
             action ((x, c) ⇒ c.copy (default_network_angle_max = x)).
             text ("network power factor angle at maximum power if not in CIM, overrides impedance, ° [%s]".format (default.default_network_angle_max))
 
-        opt [Double]("netp_min").valueName ("<Sk_min>").
+        opt[Double]("netp_min").valueName ("<Sk_min>").
             action ((x, c) ⇒ c.copy (default_network_power_min = x)).
             text ("minimum network power if not in CIM, VA [%g]".format (default.default_network_power_min))
 
-        opt [Complex]("netz_min").valueName ("<r + xj>").
+        opt[Complex]("netz_min").valueName ("<r + xj>").
             action ((x, c) ⇒ c.copy (default_network_impedance_min = x)).
             text ("network impedance at minumum power if not in CIM, Ω [%s]".format (default.default_network_impedance_min))
 
-        opt [Double]("neta_min").valueName ("<angle>").
+        opt[Double]("neta_min").valueName ("<angle>").
             action ((x, c) ⇒ c.copy (default_network_angle_min = x)).
             text ("network power factor angle at minimum power if not in CIM, overrides impedance, ° [%s]".format (default.default_network_angle_min))
 
-        opt [Double]("tbase").valueName ("<value>").
+        opt[Double]("tbase").valueName ("<value>").
             action ((x, c) ⇒ c.copy (base_temperature = x)).
             text ("temperature assumed in CIM file (°C) [%g]".format (default.base_temperature))
 
-        opt [Double]("tlow").valueName ("<value>").
+        opt[Double]("tlow").valueName ("<value>").
             action ((x, c) ⇒ c.copy (low_temperature = x)).
             text ("low temperature for maximum fault (°C) [%g]".format (default.low_temperature))
 
-        opt [Double]("thigh").valueName ("<value>").
+        opt[Double]("thigh").valueName ("<value>").
             action ((x, c) ⇒ c.copy (high_temperature = x)).
             text ("high temperature for minimum fault (°C) [%g]".format (default.high_temperature))
 
-        opt [String]("trafos").valueName ("<TRA file>").
+        opt[String]("trafos").valueName ("<TRA file>").
             action ((x, c) => c.copy (trafos = x)).
             text ("file of transformer names (one per line) to process")
 
-        opt [Double]("trafop").valueName ("<ratedS>").
+        opt[Double]("trafop").valueName ("<ratedS>").
             action ((x, c) => c.copy (default_transformer_power = x)).
             text ("transformer power if not in CIM, VA [%g]".format (default.default_transformer_power))
 
-        opt [Complex]("trafoz").valueName ("<r + xj>").
+        opt[Complex]("trafoz").valueName ("<r + xj>").
             action ((x, c) => c.copy (default_transformer_impedance = x)).
             text ("transformer impedance if not in CIM, Ω [%s]".format (default.default_transformer_impedance))
 
-        opt [Double]("cmax").
+        opt[Double]("cmax").
             action ((x, c) => c.copy (cmax = x)).
             text ("voltage factor for maximum fault level, used for rating equipment [%g]".format (default.cmax))
 
-        opt [Double]("cmin").
+        opt[Double]("cmin").
             action ((x, c) => c.copy (cmin = x)).
             text ("voltage factor for minimum fault level, used for protections settings [%g]".format (default.cmin))
 
-        opt [Double]("cosphi").
+        opt[Double]("cosphi").
             action ((x, c) => c.copy (cosphi = x, worstcasepf = false)).
             text ("load power factor, used for maximum inrush current [worst case]")
 
-        opt [Int]("fuse_table").
+        opt[Int]("fuse_table").
             action ((x, c) => c.copy (fuse_table = x)).
             text ("recommended fuse sizing table, #1 from 65A⇒25 to 2400A⇒630, #2 from 28A⇒10 to 2500A⇒630 [%s], #3 DIN as #1, SEV 200A⇒60 to 1150A⇒400".format (default.fuse_table))
 
-        opt [Int]("messagemax").
+        opt[Int]("messagemax").
             action ((x, c) => c.copy (messagemax = x)).
             text ("maximum number of warning and error messages per node [%d]".format (default.messagemax))
 
-        opt [Long]("batchsize").
+        opt[Long]("batchsize").
             action ((x, c) => c.copy (batchsize = x)).
             text ("size of result collections for driver database writes [%d]".format (default.batchsize))
 
-        opt [Double]("cable_impedance_limit").valueName ("<value>").
+        opt[Double]("cable_impedance_limit").valueName ("<value>").
             action ((x, c) ⇒ c.copy (cable_impedance_limit = x)).
             text ("cables with higher impedances for R1 will not be processed with gridlabd [%g]".format (default.cable_impedance_limit))
 
-        opt [String]("workdir").valueName ("<dir>").
+        opt[String]("workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
 
         help ("help").text ("prints this usage text")
 
-        arg [String]("<CIM>,<CIM>...").unbounded ().
+        arg[String]("<CIM>,<CIM>...").unbounded ().
             action ((x, c) ⇒ c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 

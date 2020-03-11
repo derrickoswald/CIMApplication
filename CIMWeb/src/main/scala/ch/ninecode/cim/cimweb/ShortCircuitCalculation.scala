@@ -244,11 +244,11 @@ class ShortCircuitCalculation extends RESTful
                             if (null == output)
                                 throw new ResourceException ("null is not a ResultSet")
                             else
-                                if (!output.getClass.isAssignableFrom (classOf [CIMResultSet]))
+                                if (!output.getClass.isAssignableFrom (classOf[CIMResultSet]))
                                     throw new ResourceException ("object of class %s is not a ResultSet".format (output.getClass.toGenericString))
                                 else
                                 {
-                                    val resultset = output.asInstanceOf [CIMResultSet]
+                                    val resultset = output.asInstanceOf[CIMResultSet]
                                     try
                                     {
                                         // form the response

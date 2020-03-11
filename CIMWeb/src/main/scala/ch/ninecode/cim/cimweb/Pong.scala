@@ -164,8 +164,8 @@ class Pong extends RESTful
                     throw new ResourceException ("null is not a MappedRecord")
                 else
                 {
-                    val record = output.asInstanceOf [CIMMappedRecord]
-                    ret.add ("spark_instance", record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
+                    val record = output.asInstanceOf[CIMMappedRecord]
+                    ret.add ("spark_instance", record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
                 }
                 interaction.close ()
             }

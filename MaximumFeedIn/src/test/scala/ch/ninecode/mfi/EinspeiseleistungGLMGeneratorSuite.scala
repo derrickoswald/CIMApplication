@@ -11,7 +11,7 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
     {
         val parser = new CHIM (xml)
         val result = CHIM.parse (parser)
-        result._1 ("ID123").asInstanceOf [SolarGeneratingUnit]
+        result._1 ("ID123").asInstanceOf[SolarGeneratingUnit]
     }
 
     def getConstantPower (solargen: SolarGeneratingUnit, one_phase: Boolean = true): List[(String, String)] =

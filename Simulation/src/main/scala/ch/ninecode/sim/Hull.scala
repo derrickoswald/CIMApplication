@@ -35,7 +35,7 @@ object Hull extends Serializable
      */
     def add (hull: List[Point], point: Point): List[Point] =
     {
-        point :: hull.foldRight (List.empty [Point])
+        point :: hull.foldRight (List.empty[Point])
         {
             case (p1, rest@p0 :: _) =>
                 if (ccw (p0, p1, point))
@@ -64,7 +64,7 @@ object Hull extends Serializable
 
         def angle (point: Point): Double = atan2 (point._2 - min._2, point._1 - min._1)
 
-        min :: pp.sortBy (angle).foldLeft (List.empty [Point])(add)
+        min :: pp.sortBy (angle).foldLeft (List.empty[Point])(add)
     }
 
     //    def main (args: Array[String]): Unit =

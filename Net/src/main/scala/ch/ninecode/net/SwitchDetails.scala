@@ -47,7 +47,7 @@ final case class SwitchDetails (
             case s: Sectionaliser =>      s.Switch
             case _ =>
                 log.error (s"non-switch (${element.getClass}:${element.id}) in SwitchEdge")
-                null.asInstanceOf [Switch]
+                null.asInstanceOf[Switch]
         }
     }
 

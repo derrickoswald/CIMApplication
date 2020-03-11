@@ -35,8 +35,8 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
     {
         log.info ("Coincidence Factor")
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-        def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+        def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf[Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
 
         val typ = "power"
         val to_drop = if (options.three_phase)
@@ -48,17 +48,17 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
             if (options.three_phase)
             {
                 val intermediate = simulated_values
-                    .withColumn ("power_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                    .withColumn ("power_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
-                    .withColumn ("power_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
+                    .withColumn ("power_a", magnitude[Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                    .withColumn ("power_b", magnitude[Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
+                    .withColumn ("power_c", magnitude[Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
                     .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
                 intermediate
-                    .withColumn ("power", summation [Double, Double, Double].apply (intermediate ("power_a"), intermediate ("power_b"), intermediate ("power_c")))
+                    .withColumn ("power", summation[Double, Double, Double].apply (intermediate ("power_a"), intermediate ("power_b"), intermediate ("power_c")))
                     .drop ("power_a", "power_b", "power_c")
             }
             else
                 simulated_values
-                    .withColumn ("power", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                    .withColumn ("power", magnitude[Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
                     .drop ("real_a", "imag_a")
         val simulated_power_values_by_day = simulated_power_values
             .withColumn ("date", simulated_values ("time").cast (DateType))

@@ -49,7 +49,7 @@ object MainCustomer2
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         s ⇒
         {
-            var ret = Map [String, String]()
+            var ret = Map[String, String]()
             val ss = s.split (",")
             for (p ← ss)
             {
@@ -110,52 +110,52 @@ object MainCustomer2
                     case Right (_) => sys.exit (0)
                 }
 
-        opt [Unit]("unittest").
+        opt[Unit]("unittest").
             hidden ().
             action ((_, c) ⇒ c.copy (unittest = true)).
             text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
-        opt [Unit]("quiet").
+        opt[Unit]("quiet").
             action ((_, c) ⇒ c.copy (quiet = true)).
             text ("suppress informational messages [%s]".format (default.quiet))
 
-        opt [String]("master").valueName ("MASTER_URL").
+        opt[String]("master").valueName ("MASTER_URL").
             action ((x, c) ⇒ c.copy (master = x)).
             text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
-        opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
+        opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
             action ((x, c) ⇒ c.copy (opts = c.opts ++ x)).
             text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
 
-        opt [String]("storage").
+        opt[String]("storage").
             action ((x, c) ⇒ c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
-        opt [Unit]("deduplicate").
+        opt[Unit]("deduplicate").
             action ((_, c) ⇒ c.copy (dedup = true)).
             text ("de-duplicate input (striped) files [%s]".format (default.dedup))
 
-        opt [LogLevels.Value]("logging").
+        opt[LogLevels.Value]("logging").
             action ((x, c) ⇒ c.copy (log_level = x)).
             text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-        opt [String]("checkpoint").valueName ("<dir>").
+        opt[String]("checkpoint").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://server:8020/... [%s]".format (default.checkpoint_dir))
 
-        opt [String]("csv1").valueName ("<file>").
+        opt[String]("csv1").valueName ("<file>").
             action ((x, c) ⇒ c.copy (csv1_file = x)).
             text ("csv file of mapping between station and transformer [%s]".format (default.csv1_file))
 
-        opt [String]("csv2").valueName ("<file>").
+        opt[String]("csv2").valueName ("<file>").
             action ((x, c) ⇒ c.copy (csv2_file = x)).
             text ("csv file of available power at station data [%s]".format (default.csv2_file))
 
-        opt [String]("export").valueName ("<CIM>").
+        opt[String]("export").valueName ("<CIM>").
             action ((x, c) ⇒ c.copy (export = x)).
             text ("name of deduped + topologically processed CIM file [%s]".format (default.export))
 
-        arg [String]("<CIM>,<CIM>...").optional ().unbounded ().
+        arg[String]("<CIM>,<CIM>...").optional ().unbounded ().
             action ((x, c) ⇒ c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 

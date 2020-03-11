@@ -20,7 +20,7 @@ import org.junit.runner.RunWith
 /**
  * CIMWeb test suite.
  */
-@RunWith (classOf [Arquillian])
+@RunWith (classOf[Arquillian])
 object CIMWebTest
 {
     val WEBEAR_SRC = "src/main"
@@ -32,21 +32,21 @@ object CIMWebTest
     {
         try
         {
-            val war = ShrinkWrap.create (classOf [WebArchive], "CIMWeb.war")
+            val war = ShrinkWrap.create (classOf[WebArchive], "CIMWeb.war")
             war.setWebXML (new File (WEBAPP_SRC, "WEB-INF/web.xml"))
             war.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb")) // getClass().getPackage()
-            war.deleteClass (classOf [CIMWebTest])
+            war.deleteClass (classOf[CIMWebTest])
             war.addAsWebResource (new File (WEBAPP_SRC, "index.html"))
             war.addManifest ()
             println (war.toString (true))
-            war.as (classOf [ZipExporter]).exportTo (new File ("./target/CIMWeb.war"), true)
-            val ear = ShrinkWrap.create (classOf [EnterpriseArchive], "CIMWeb.ear")
+            war.as (classOf[ZipExporter]).exportTo (new File ("./target/CIMWeb.war"), true)
+            val ear = ShrinkWrap.create (classOf[EnterpriseArchive], "CIMWeb.ear")
             ear.addAsModules (war)
             ear.add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-2.11-2.4.4-2.7.0.rar")), "CIMConnector.rar")
             ear.addManifest ()
             ear.addAsManifestResource (new File (WEBEAR_SRC, "application.xml"))
             println (ear.toString (true))
-            ear.as (classOf [ZipExporter]).exportTo (new File ("./target/CIMWeb.ear"), true)
+            ear.as (classOf[ZipExporter]).exportTo (new File ("./target/CIMWeb.ear"), true)
             //        final EnterpriseArchive ear = ShrinkWrap.createFromZipFile (EnterpriseArchive.class, new File ("../CIMEar/target/CIMApplication.ear"));
             //        println (ear.toString (true));
             //        ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
@@ -61,7 +61,7 @@ object CIMWebTest
     }
 }
 
-@RunWith (classOf [Arquillian])
+@RunWith (classOf[Arquillian])
 class CIMWebTest
 {
     var context: InitialContext = _
@@ -108,7 +108,7 @@ class CIMWebTest
         context = initialContext
         print_context ("java:")
         print_context ("openejb:")
-        val connectionFactory = initialContext.lookup ("openejb:Resource/CIMConnector.rar").asInstanceOf [ConnectionFactory]
+        val connectionFactory = initialContext.lookup ("openejb:Resource/CIMConnector.rar").asInstanceOf[ConnectionFactory]
         val connection = connectionFactory.getConnection
         assertNotNull (connection)
         connection.close ()

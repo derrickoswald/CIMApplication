@@ -176,7 +176,7 @@ class GridLABD
 
     def edge_operator (voltages: Map[String, Double])(arg: (((Element, Double), Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[PreEdge] =
     {
-        var ret = List [PreEdge]()
+        var ret = List[PreEdge]()
 
         val e = arg._1._1._1
         val ratedCurrent = arg._1._1._2
@@ -189,7 +189,7 @@ class GridLABD
         if (null != c)
         {
             // get the equipment
-            val equipment = c.asInstanceOf [ConductingEquipment]
+            val equipment = c.asInstanceOf[ConductingEquipment]
             // sort terminals by sequence number (and hence the primary is index 0)
             val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
             // make a list of voltages
@@ -203,7 +203,7 @@ class GridLABD
                         val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
                         tends.map (e => 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
                     case None =>
-                        Array [Double](volt, volt)
+                        Array[Double](volt, volt)
                 }
             // Note: we eliminate 230V edges because transformer information doesn't exist and
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
@@ -381,7 +381,7 @@ class GridLABD
         writeInputFile (generator.directory, "output_data/dummy", null) // mkdir
     }
 
-    def check (input: String): Option [GridlabFailure] =
+    def check (input: String): Option[GridlabFailure] =
     {
         val criticalErrors = List ("FATAL", "ERROR", "FAIL", "command not found", "Cannot fork", "pthread_create")
         val allLines = input.split ('|').toList
@@ -427,7 +427,7 @@ class GridLABD
                         write(pipeContent)
                         close
                     }
-                    Array [String](
+                    Array[String](
                         "bash",
                         pipeFileName,
                         workdir_path
@@ -435,7 +435,7 @@ class GridLABD
                 }
                 else
                 {
-                    Array [String](
+                    Array[String](
                         "bash",
                         "-c",
                         "while read line; do " +
@@ -452,7 +452,7 @@ class GridLABD
             }
             else // cluster, either hdfs://XX or wasb://YY
             {
-                Array [String](
+                Array[String](
                     "bash",
                     "-c",
                     "while read line; do " +
@@ -685,20 +685,20 @@ object GridLABD
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf [ch.ninecode.gl.FlowDirection],
-            classOf [ch.ninecode.gl.GLMEdge],
-            classOf [ch.ninecode.gl.GLMGenerator],
-            classOf [ch.ninecode.gl.GLMNode],
-            classOf [ch.ninecode.gl.GridLABD],
-            classOf [ch.ninecode.gl.Island],
-            classOf [ch.ninecode.gl.LineEdge],
-            classOf [ch.ninecode.gl.PreEdge],
-            classOf [ch.ninecode.gl.PreNode],
-            classOf [ch.ninecode.gl.PV],
-            classOf [ch.ninecode.gl.Solar],
-            classOf [ch.ninecode.gl.SwingNode],
-            classOf [ch.ninecode.gl.SwitchEdge],
-            classOf [ch.ninecode.gl.TransformerEdge]
+            classOf[ch.ninecode.gl.FlowDirection],
+            classOf[ch.ninecode.gl.GLMEdge],
+            classOf[ch.ninecode.gl.GLMGenerator],
+            classOf[ch.ninecode.gl.GLMNode],
+            classOf[ch.ninecode.gl.GridLABD],
+            classOf[ch.ninecode.gl.Island],
+            classOf[ch.ninecode.gl.LineEdge],
+            classOf[ch.ninecode.gl.PreEdge],
+            classOf[ch.ninecode.gl.PreNode],
+            classOf[ch.ninecode.gl.PV],
+            classOf[ch.ninecode.gl.Solar],
+            classOf[ch.ninecode.gl.SwingNode],
+            classOf[ch.ninecode.gl.SwitchEdge],
+            classOf[ch.ninecode.gl.TransformerEdge]
         )
     }
 }

@@ -24,7 +24,7 @@ class MSCONSOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
             }
     }
 
-    opt [Unit]("unittest").
+    opt[Unit]("unittest").
         hidden ().
         action ((_, c) => { unittest = true; c.copy (unittest = true) }).
         text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
@@ -39,23 +39,23 @@ class MSCONSOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         )
         )
 
-    opt [Unit]("verbose").
+    opt[Unit]("verbose").
         action ((_, c) ⇒ c.copy (verbose = true)).
         text ("emit progress messages [%s]".format (default.verbose))
 
-    opt [LogLevels.Value]("log").
+    opt[LogLevels.Value]("log").
         action ((x, c) => c.copy (log_level = x)).
         text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-    opt [String]("output_file").
+    opt[String]("output_file").
         action ((x, c) ⇒ c.copy (output_file = x)).
         text ("output file to create, when null use stdout")
 
-    opt [String]("delimiter").
+    opt[String]("delimiter").
         action ((x, c) ⇒ c.copy (delimiter = x)).
         text ("delimiter between fields in each output record")
 
-    arg [String]("<MSCONS> <MSCONS>...").optional ().unbounded ().
+    arg[String]("<MSCONS> <MSCONS>...").optional ().unbounded ().
         action ((x, c) ⇒ c.copy (mscons = c.mscons :+ x)).
         text ("MSCONS files to process")
 

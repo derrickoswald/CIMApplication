@@ -35,14 +35,14 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val voltage_rdd: RDD[BaseVoltage] = getOrElse [BaseVoltage]
-    val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse [ConductingEquipment]
-    val element_rdd: RDD[Element] = getOrElse [Element]("Elements")
-    val power_transformer_rdd: RDD[PowerTransformer] = getOrElse [PowerTransformer]
-    val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse [PowerTransformerEnd]
-    val terminal_rdd: RDD[Terminal] = getOrElse [Terminal]
-    val topological_island_rdd: RDD[TopologicalIsland] = getOrElse [TopologicalIsland]
-    val topological_node_rdd: RDD[TopologicalNode] = getOrElse [TopologicalNode]
+    val voltage_rdd: RDD[BaseVoltage] = getOrElse[BaseVoltage]
+    val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse[ConductingEquipment]
+    val element_rdd: RDD[Element] = getOrElse[Element]("Elements")
+    val power_transformer_rdd: RDD[PowerTransformer] = getOrElse[PowerTransformer]
+    val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse[PowerTransformerEnd]
+    val terminal_rdd: RDD[Terminal] = getOrElse[Terminal]
+    val topological_island_rdd: RDD[TopologicalIsland] = getOrElse[TopologicalIsland]
+    val topological_node_rdd: RDD[TopologicalNode] = getOrElse[TopologicalNode]
 
     /**
      * Determine if the bitfield is set for the given mask.
@@ -133,7 +133,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
     {
         // get a map of voltages
         // ToDo: fix this 1kV multiplier on the voltages
-        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
+        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
 
         // get all power transformers for transformer service areas
         val power_transformers = power_transformer_rdd
@@ -297,7 +297,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         // assigns the area_label (the source transformer set name) to all "connected" islands (joined by closed switches)
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
             Graph (nodes, edges, VertexData (), storage_level, storage_level)
-        graph.pregel [VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).persist (storage_level)
+        graph.pregel[VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).persist (storage_level)
     }
 
     def hasIslands: Boolean = !topological_island_rdd.isEmpty

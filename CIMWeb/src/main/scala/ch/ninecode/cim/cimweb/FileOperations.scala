@@ -79,10 +79,10 @@ class FileOperations extends RESTful
                 else
                 {
                     // if not found use Response.Status.NOT_FOUND
-                    val record = output.asInstanceOf [CIMMappedRecord]
+                    val record = output.asInstanceOf[CIMMappedRecord]
                     if (fetch)
                     {
-                        val xml = record.get (CIMFunction.RESULT).asInstanceOf [String]
+                        val xml = record.get (CIMFunction.RESULT).asInstanceOf[String]
                         interaction.close ()
                         if (xml.startsWith ("File does not exist:"))
                             Response.status (Response.Status.NOT_FOUND).build
@@ -123,7 +123,7 @@ class FileOperations extends RESTful
                     }
                     else
                     {
-                        ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
+                        ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
                         interaction.close ()
                         val response = ret.result.asInstanceOf[JsonObject]
                         if (response.containsKey ("error"))
@@ -185,8 +185,8 @@ class FileOperations extends RESTful
                     throw new ResourceException ("null is not a MappedRecord")
                 else
                 {
-                    val record = output.asInstanceOf [CIMMappedRecord]
-                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
+                    val record = output.asInstanceOf[CIMMappedRecord]
+                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
                     val response = ret.result.asInstanceOf[JsonObject]
                     if (response.containsKey ("error"))
                     {
@@ -240,8 +240,8 @@ class FileOperations extends RESTful
                     throw new ResourceException ("null is not a MappedRecord")
                 else
                 {
-                    val record = output.asInstanceOf [CIMMappedRecord]
-                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
+                    val record = output.asInstanceOf[CIMMappedRecord]
+                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
                     val response = ret.result.asInstanceOf[JsonObject]
                     if (response.containsKey ("error"))
                     {

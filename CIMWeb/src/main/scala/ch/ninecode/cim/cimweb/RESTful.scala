@@ -139,7 +139,7 @@ object RESTful
                     if (debug)
                         print_context (debug_out, context, "java:")
                     try
-                        _ConnectionFactory = context.lookup ("java:openejb/Resource/SparkConnectionFactory").asInstanceOf [CIMConnectionFactory]
+                        _ConnectionFactory = context.lookup ("java:openejb/Resource/SparkConnectionFactory").asInstanceOf[CIMConnectionFactory]
                     catch
                     {
                         case ne: NamingException ⇒

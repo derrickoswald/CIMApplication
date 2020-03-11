@@ -74,7 +74,7 @@ case class Trafokreis
 
     def finish_time: Calendar =
     {
-        val t = start_time.clone ().asInstanceOf [Calendar]
+        val t = start_time.clone ().asInstanceOf[Calendar]
         t.add (Calendar.SECOND, experiments.length * window)
         t
     }

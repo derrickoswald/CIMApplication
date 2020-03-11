@@ -219,7 +219,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
      */
     def putFile (spark: SparkSession, dst: String, src: String, unzip: Boolean = false): Seq[String] =
     {
-        var ret = Seq [String]()
+        var ret = Seq[String]()
         val fs = hdfs
         val file = new Path (fs.getUri.toString, s"${options.workdir}$dst")
         // write the file

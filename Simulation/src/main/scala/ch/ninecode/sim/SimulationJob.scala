@@ -558,7 +558,7 @@ object SimulationJob
     {
         val title = recorder.getString ("title", "")
         val interval = recorder.getInt ("interval", 900)
-        val array = recorder.getJsonArray ("aggregations").getValuesAs (classOf [JsonObject]).asScala
+        val array = recorder.getJsonArray ("aggregations").getValuesAs (classOf[JsonObject]).asScala
         val aggregations = array.flatMap (parseAggregation).toList
         val queries = parseQuery (name, s"recorder:$title", recorder)
         queries match

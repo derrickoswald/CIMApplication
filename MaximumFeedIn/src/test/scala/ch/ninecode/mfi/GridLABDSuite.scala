@@ -88,7 +88,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             assert (result.size == 28, "number of records")
             while (result.next)
             {
-                checkResults (result, null.asInstanceOf [Double], "no results", "invalid element (CAB0014 r=0.14600148356433446 > limit=0.14)")
+                checkResults (result, null.asInstanceOf[Double], "no results", "invalid element (CAB0014 r=0.14600148356433446 > limit=0.14)")
             }
         }
     }

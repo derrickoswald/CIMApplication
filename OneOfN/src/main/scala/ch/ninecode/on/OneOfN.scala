@@ -102,22 +102,22 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         log.info (keep.count + " medium voltage feeders")
 
         // create an RDD of elements in substations (PSRType_Substation)
-        val markers = get [PowerSystemResource].filter (_.PSRType == "PSRType_Substation")
+        val markers = get[PowerSystemResource].filter (_.PSRType == "PSRType_Substation")
 
         // create an RDD of EquipmentContainer id values for these elements
-        val containers = get [Equipment].keyBy (_.id).join (markers.keyBy (_.id)).map (x ⇒ x._2._1.EquipmentContainer).distinct.map (x ⇒ (x, x))
+        val containers = get[Equipment].keyBy (_.id).join (markers.keyBy (_.id)).map (x ⇒ x._2._1.EquipmentContainer).distinct.map (x ⇒ (x, x))
 
         // delete all CIM elements and their terminals where EquipmentContainer is in that RDD
         // except for equipment (cables) with PSRType_Underground or PSRType_Overhead
         // and excluding the feeder objects from the first step
-        val elements = get [Element]("Elements")
+        val elements = get[Element]("Elements")
         val kelements = elements.keyBy (_.id).persist (options.storage)
-        val in_station = get [Equipment].filter (!externalCable (_)).keyBy (_.EquipmentContainer).join (containers)
+        val in_station = get[Equipment].filter (!externalCable (_)).keyBy (_.EquipmentContainer).join (containers)
             .map (x ⇒ (x._2._1.id, x._2._1.id))
             .join (kelements)
             .map (x ⇒ (x._1, x._2._2))
         val doomed = in_station.subtractByKey (keep.keyBy (_.id))
-        val doomed_terminals = get [Terminal].keyBy (_.ConductingEquipment).join (doomed)
+        val doomed_terminals = get[Terminal].keyBy (_.ConductingEquipment).join (doomed)
             .map (x ⇒ (x._2._1.id, x._2._1.id))
             .join (kelements)
             .map (x ⇒ (x._1, x._2._2))
@@ -192,8 +192,8 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // get a map of voltage for each TopologicalNode starting from Terminal elements
         // ToDo: fix these 1kV multiplier on the voltages
         log.info ("creating nodes")
-        val voltages = get ("BaseVoltage").asInstanceOf [RDD[BaseVoltage]].map (v ⇒ (v.id, v.nominalVoltage * 1000.0)).collectAsMap
-        val end_voltages = getOrElse [PowerTransformerEnd].map (
+        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map (v ⇒ (v.id, v.nominalVoltage * 1000.0)).collectAsMap
+        val end_voltages = getOrElse[PowerTransformerEnd].map (
             x ⇒
             {
                 val voltage = voltages.getOrElse (x.TransformerEnd.BaseVoltage, x.ratedU * 1000.0)
@@ -203,7 +203,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         val zeros = end_voltages.filter (_._2 == 0.0)
         if (!zeros.isEmpty ())
             log.warn ("""%s transformer ends with no nominal voltage, e.g. %s""".format (zeros.count, zeros.take (5).map (_._1).mkString (",")))
-        val equipment_voltages = getOrElse [Terminal].keyBy (_.ConductingEquipment).join (getOrElse [ConductingEquipment].keyBy (_.id)).values.map (
+        val equipment_voltages = getOrElse[Terminal].keyBy (_.ConductingEquipment).join (getOrElse[ConductingEquipment].keyBy (_.id)).values.map (
             x ⇒
             {
                 val voltage = voltages.getOrElse (x._2.BaseVoltage, 0.0)
@@ -211,11 +211,11 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
             }
         )
         val nodevoltages = end_voltages.filter (_._2 != 0.0).union (equipment_voltages.filter (_._2 != 0))
-            .join (getOrElse [Terminal].keyBy (_.id)).values
+            .join (getOrElse[Terminal].keyBy (_.id)).values
             .map (x ⇒ (x._2.TopologicalNode, x._1))
 
         // put it all together
-        val ff = nodes_feeders.join (get [TopologicalNode].keyBy (_.id)).leftOuterJoin (nodevoltages).map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (nodeid, (feederid, TopologicalNode, voltage?))
+        val ff = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).leftOuterJoin (nodevoltages).map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (nodeid, (feederid, TopologicalNode, voltage?))
     val nodes: RDD[(String, FeederNode)] = ff.leftOuterJoin (feeder.feederNodes).values // ((feederid, TopologicalNode, voltage?), feeder?)
         .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List (_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0))))).persist (options.storage)
         if (options.verbose)
@@ -223,11 +223,11 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 
         // get equipment with nodes & terminals
         log.info ("creating edges")
-        val gg: RDD[(String, Iterable[(String, Terminal)])] = get [Terminal].map (x ⇒ (x.ConductingEquipment, (x.TopologicalNode, x))).groupByKey // (equipmentid, [(nodeid, terminal)])
+        val gg: RDD[(String, Iterable[(String, Terminal)])] = get[Terminal].map (x ⇒ (x.ConductingEquipment, (x.TopologicalNode, x))).groupByKey // (equipmentid, [(nodeid, terminal)])
     // eliminate 0Ω links
     val hh = gg.filter (x ⇒ x._2.groupBy (_._1).size > 1)
-        val eq: RDD[(Iterable[(String, Terminal)], Element)] = get [ConductingEquipment]
-            .keyBy (_.id).join (get [Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (elementid, Element)
+        val eq: RDD[(Iterable[(String, Terminal)], Element)] = get[ConductingEquipment]
+            .keyBy (_.id).join (get[Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (elementid, Element)
             .join (hh).values.map (_.swap) // ([(nodeid, terminal)], Element)
             // eliminate edges with only one end
             .filter (x ⇒ (x._1.size > 1) && x._1.map (_._1).forall (_ != null)) // ([(nodeid, terminal)], Element)
@@ -318,7 +318,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
             //     do
             //         echo 1970-01-01 00:00:00 UTC,CLOSED>$file.csv
             //     done
-            val switches = (area.edges.filter (_.isInstanceOf [PlayerSwitchEdge]).map (_.id) ++ generator.swing_nodes.map (_.id)).mkString (" \\\n")
+            val switches = (area.edges.filter (_.isInstanceOf[PlayerSwitchEdge]).map (_.id) ++ generator.swing_nodes.map (_.id)).mkString (" \\\n")
             val UNIX_EPOC: String = date_format.format (0L)
             val text =
                 """for file in \
@@ -350,17 +350,17 @@ object OneOfN
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf [ch.ninecode.on.AbgangKreis],
-            classOf [ch.ninecode.on.EdgeData],
-            classOf [ch.ninecode.on.Feeder],
-            classOf [ch.ninecode.on.FeederArea],
-            classOf [ch.ninecode.on.FeederMetadata],
-            classOf [ch.ninecode.on.FeederNode],
-            classOf [ch.ninecode.on.OneOfN],
-            classOf [ch.ninecode.on.OneOfNGLMGenerator],
-            classOf [ch.ninecode.on.OneOfNOptions],
-            classOf [ch.ninecode.on.PlayerSwitchEdge],
-            classOf [ch.ninecode.on.VertexData]
+            classOf[ch.ninecode.on.AbgangKreis],
+            classOf[ch.ninecode.on.EdgeData],
+            classOf[ch.ninecode.on.Feeder],
+            classOf[ch.ninecode.on.FeederArea],
+            classOf[ch.ninecode.on.FeederMetadata],
+            classOf[ch.ninecode.on.FeederNode],
+            classOf[ch.ninecode.on.OneOfN],
+            classOf[ch.ninecode.on.OneOfNGLMGenerator],
+            classOf[ch.ninecode.on.OneOfNOptions],
+            classOf[ch.ninecode.on.PlayerSwitchEdge],
+            classOf[ch.ninecode.on.VertexData]
         )
     }
 }

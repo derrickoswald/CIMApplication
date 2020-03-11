@@ -29,44 +29,44 @@ class CopyOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
             }
     }
 
-    opt [Unit]("unittest").
+    opt[Unit]("unittest").
         hidden ().
         action ((_, c) => { unittest = true; c.copy (unittest = true) }).
         text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
-    opt [LogLevels.Value]("log").
+    opt[LogLevels.Value]("log").
         action ((x, c) => c.copy (log_level = x)).
         text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-    opt [String]("master").valueName ("MASTER_URL").
+    opt[String]("master").valueName ("MASTER_URL").
         action ((x, c) ⇒ c.copy (master = x)).
         text ("local[*], spark://host:port, mesos://host:port or yarn [%s]".format (default.master))
 
-    opt [String]("source_host").valueName ("Cassandra").
+    opt[String]("source_host").valueName ("Cassandra").
         action ((x, c) ⇒ c.copy (source_host = x)).
         text ("Cassandra source connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.source_host))
 
-    opt [Int]("source_port").valueName ("<port>").
+    opt[Int]("source_port").valueName ("<port>").
         action ((x, c) ⇒ c.copy (source_port = x)).
         text ("Cassandra source connection port [%s]".format (default.source_port))
 
-    opt [String]("source_keyspace").valueName ("<name>").
+    opt[String]("source_keyspace").valueName ("<name>").
         action ((x, c) ⇒ c.copy (source_keyspace = x)).
         text ("source Cassandra keyspace [%s]".format (default.source_keyspace))
 
-    opt [String]("target_host").valueName ("Cassandra").
+    opt[String]("target_host").valueName ("Cassandra").
         action ((x, c) ⇒ c.copy (target_host = x)).
         text ("Cassandra destination connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.target_host))
 
-    opt [Int]("target_port").valueName ("<port>").
+    opt[Int]("target_port").valueName ("<port>").
         action ((x, c) ⇒ c.copy (target_port = x)).
         text ("Cassandra destination connection port [%s]".format (default.target_port))
 
-    opt [String]("target_keyspace").valueName ("<name>").
+    opt[String]("target_keyspace").valueName ("<name>").
         action ((x, c) ⇒ c.copy (target_keyspace = x)).
         text ("destination Cassandra keyspace [%s]".format (default.target_keyspace))
 
-    opt [Int]("target_replication").valueName ("<#>").
+    opt[Int]("target_replication").valueName ("<#>").
         action ((x, c) ⇒ c.copy (target_replication = x)).
         text ("destination keyspace replication if the Cassandra keyspace needs creation [%s]".format (default.target_replication))
 

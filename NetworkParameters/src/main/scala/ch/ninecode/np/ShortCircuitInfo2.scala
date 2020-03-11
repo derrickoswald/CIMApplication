@@ -382,7 +382,7 @@ case class ShortCircuitInfo2 (
         val chim = new CHIM ("")
         val classes: List[ClassInfo] = chim.classes
         val subsetters: List[String] = classes.map (info ⇒ info.name)
-        val old_elements = session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf [RDD[Element]]
+        val old_elements = session.sparkContext.getPersistentRDDs.filter (_._2.name == "Elements").head._2.asInstanceOf[RDD[Element]]
 
         // get the list of classes that need to be merged
         def supers (element: Element): List[String] =
