@@ -2,7 +2,8 @@ package ch.ninecode.gl
 
 import ch.ninecode.net.SwitchData
 import ch.ninecode.net.SwitchDetails
-import ch.ninecode.model._
+import ch.ninecode.model.Element
+import ch.ninecode.model.Terminal
 
 case class SwitchEdge
 (

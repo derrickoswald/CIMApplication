@@ -3,7 +3,11 @@ package ch.ninecode.sim
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import ch.ninecode.gl._
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMGenerator
+import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.TransformerEdge
 
 /**
  * GridLAB-D glm file generator.

@@ -10,7 +10,7 @@ import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.apache.log4j.spi.LoggingEvent
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.enumerationAsScalaIteratorConverter
 import scala.collection.mutable.ArrayBuffer
 
 import org.junit.Test

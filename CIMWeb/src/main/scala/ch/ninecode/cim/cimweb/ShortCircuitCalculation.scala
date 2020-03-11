@@ -23,7 +23,7 @@ import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMResultSet
 import ch.ninecode.sc.ShortCircuitOptions
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 @Stateless
 @Path ("short_circuit")

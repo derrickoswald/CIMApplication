@@ -6,7 +6,7 @@ import org.scalatest.BeforeAndAfter
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 class TransformerSuite extends SCTestBase with BeforeAndAfter
 {

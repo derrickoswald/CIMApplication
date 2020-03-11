@@ -3,7 +3,7 @@ package ch.ninecode.mfi
 import java.io.File
 
 import org.apache.spark.sql.SparkSession
-import org.scalatest._
+import org.scalatest.BeforeAndAfter
 
 class GridLABDSuite extends MFITestBase with BeforeAndAfter
 {

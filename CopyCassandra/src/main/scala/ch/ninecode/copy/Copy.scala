@@ -1,15 +1,18 @@
 package ch.ninecode.copy
 
-import com.datastax.driver.core.ConsistencyLevel
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import com.datastax.spark.connector._
-import com.datastax.spark.connector.rdd.CassandraTableScanRDD
-import com.datastax.spark.connector.writer.WriteConf
+
+import com.datastax.driver.core.ConsistencyLevel
+import com.datastax.spark.connector.CassandraRow
+import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.cql.CassandraConnector
+import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector.rdd.ReadConf
+import com.datastax.spark.connector.writer.WriteConf
+import com.datastax.spark.connector._
 
 import ch.ninecode.util.Schema
 

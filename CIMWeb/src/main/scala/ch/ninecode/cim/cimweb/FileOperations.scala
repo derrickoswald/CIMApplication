@@ -21,7 +21,7 @@ import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
 import javax.ws.rs.core.Response
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions.iterableAsScalaIterable
 
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec

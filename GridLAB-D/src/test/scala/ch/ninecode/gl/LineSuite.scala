@@ -15,9 +15,13 @@ import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
-import ch.ninecode.net._
+import ch.ninecode.net.LineData
+import ch.ninecode.net.LineDetails
+import ch.ninecode.net.Lines
+import ch.ninecode.net.Net
 import ch.ninecode.testutil.Unzip
-import ch.ninecode.util._
+import ch.ninecode.util.ThreePhaseComplexDataElement
+import ch.ninecode.util.Util
 
 import org.scalactic.source.Position
 import org.scalatest.BeforeAndAfter

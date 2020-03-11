@@ -1,6 +1,6 @@
 package ch.ninecode.net
 
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 /**
  * Groups transformers supplying the same TopologicalIsland.

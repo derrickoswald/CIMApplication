@@ -10,8 +10,8 @@ import java.nio.file.attribute.PosixFilePermission
 import java.text.ParseException
 import java.text.SimpleDateFormat
 
-import scala.collection._
-import scala.collection.JavaConverters._
+import scala.collection.Map
+import scala.collection.JavaConverters.setAsJavaSetConverter
 
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
@@ -29,8 +29,30 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.net.TransformerSet
-import ch.ninecode.model._
-import ch.ninecode.util._
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.Breaker
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Conductor
+import ch.ninecode.model.Cut
+import ch.ninecode.model.Disconnector
+import ch.ninecode.model.Element
+import ch.ninecode.model.Fuse
+import ch.ninecode.model.GroundDisconnector
+import ch.ninecode.model.Jumper
+import ch.ninecode.model.LoadBreakSwitch
+import ch.ninecode.model.MktSwitch
+import ch.ninecode.model.ProtectedSwitch
+import ch.ninecode.model.PowerTransformer
+import ch.ninecode.model.PowerTransformerEnd
+import ch.ninecode.model.Recloser
+import ch.ninecode.model.Sectionaliser
+import ch.ninecode.model.Switch
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
+import ch.ninecode.model.WireInfo
+import ch.ninecode.util.Complex
+import ch.ninecode.util.ThreePhaseComplexDataElement
 
 case class GridlabFailure (trafoID: String, errorMessages: List[String])
 

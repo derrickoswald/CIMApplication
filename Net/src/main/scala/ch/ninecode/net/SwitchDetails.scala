@@ -4,7 +4,21 @@ package ch.ninecode.net;
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.model._
+import ch.ninecode.model.Breaker
+import ch.ninecode.model.Cut
+import ch.ninecode.model.Disconnector
+import ch.ninecode.model.Element
+import ch.ninecode.model.Fuse
+import ch.ninecode.model.GroundDisconnector
+import ch.ninecode.model.Jumper
+import ch.ninecode.model.LoadBreakSwitch
+import ch.ninecode.model.MktSwitch
+import ch.ninecode.model.ProtectedSwitch
+import ch.ninecode.model.Recloser
+import ch.ninecode.model.Sectionaliser
+import ch.ninecode.model.Switch
+import ch.ninecode.model.SwitchInfo
+import ch.ninecode.model.Terminal
 
 /**
  * A switch element.

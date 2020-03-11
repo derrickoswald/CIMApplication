@@ -10,8 +10,7 @@ import java.io.PrintWriter
 import java.util.Properties
 import java.util.zip.ZipInputStream
 
-import scala.collection._
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.asScalaBufferConverter
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
@@ -1233,7 +1232,7 @@ object SimulationSuiteIT
         val session = SparkSession.builder.config (configuration).getOrCreate
         session.sparkContext.setLogLevel ("WARN")
 
-        val measurement_options = immutable.HashMap (
+        val measurement_options = Map[String,String] (
             "header" → "false",
             "ignoreLeadingWhiteSpace" → "false",
             "ignoreTrailingWhiteSpace" → "false",

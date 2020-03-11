@@ -13,7 +13,8 @@ import javax.json.JsonObject
 import javax.json.JsonString
 import javax.json.JsonValue
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.mapAsScalaMapConverter
 import scala.collection.mutable
 
 import org.apache.spark.sql.SparkSession

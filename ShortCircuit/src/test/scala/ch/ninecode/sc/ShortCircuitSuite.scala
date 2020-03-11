@@ -6,7 +6,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 import org.scalatest.BeforeAndAfter
 

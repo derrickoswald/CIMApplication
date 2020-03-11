@@ -7,7 +7,13 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model._
+import ch.ninecode.model.BreakerInfo
+import ch.ninecode.model.Element
+import ch.ninecode.model.OldSwitchInfo
+import ch.ninecode.model.RecloserInfo
+import ch.ninecode.model.Switch
+import ch.ninecode.model.SwitchInfo
+import ch.ninecode.model.Terminal
 
 final case class Switches (
     session: SparkSession,

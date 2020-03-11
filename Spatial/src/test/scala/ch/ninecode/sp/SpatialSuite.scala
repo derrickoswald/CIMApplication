@@ -9,7 +9,7 @@ import org.apache.spark.sql.SparkSession
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.testutil.TestUtil
 
-import org.scalatest._
+import org.scalatest.BeforeAndAfter
 
 class SpatialSuite extends TestUtil with BeforeAndAfter
 {

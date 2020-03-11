@@ -12,7 +12,9 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.CHIM
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.ClassInfo
-import ch.ninecode.model._
+import ch.ninecode.model.Element
+import ch.ninecode.model.PositionPoint
+import ch.ninecode.model.PowerSystemResource
 
 class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
 {

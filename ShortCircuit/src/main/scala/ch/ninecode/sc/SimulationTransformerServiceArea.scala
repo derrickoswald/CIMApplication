@@ -5,7 +5,7 @@ import java.util.Calendar
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.net.TransformerIsland
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 /**
  * A container for a simulation piece of work.

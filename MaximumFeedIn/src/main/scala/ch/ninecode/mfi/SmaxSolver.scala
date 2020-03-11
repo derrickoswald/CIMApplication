@@ -1,6 +1,6 @@
 package ch.ninecode.mfi
 
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 /**
  *

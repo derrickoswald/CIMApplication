@@ -11,7 +11,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
 
-import org.scalatest._
+import org.scalatest.fixture
 
 import ch.ninecode.cim.CIMClasses
 

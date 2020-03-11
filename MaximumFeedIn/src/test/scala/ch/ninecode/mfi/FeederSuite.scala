@@ -6,7 +6,7 @@ import ch.ninecode.model.Connector
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
 import org.apache.spark.sql.SparkSession
-import org.scalatest._
+import org.scalatest.BeforeAndAfter
 
 
 case class MyFeeders

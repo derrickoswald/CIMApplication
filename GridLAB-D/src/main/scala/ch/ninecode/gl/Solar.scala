@@ -4,7 +4,10 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model._
+import ch.ninecode.model.SolarGeneratingUnit
+import ch.ninecode.model.StringQuantity
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.UserAttribute
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 

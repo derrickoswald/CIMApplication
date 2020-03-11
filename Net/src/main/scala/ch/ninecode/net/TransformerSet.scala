@@ -4,7 +4,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.model.EquivalentInjection
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 /**
  * Groups ganged transformers (usually identical transformers in parallel).

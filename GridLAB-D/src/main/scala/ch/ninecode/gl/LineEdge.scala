@@ -2,7 +2,8 @@ package ch.ninecode.gl
 
 import ch.ninecode.net.LineData
 import ch.ninecode.model.ACLineSegment
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
+import ch.ninecode.util.Sequences
 
 final case class LineEdge
 (

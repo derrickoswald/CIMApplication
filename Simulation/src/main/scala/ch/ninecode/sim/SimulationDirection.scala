@@ -17,7 +17,8 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.gl.LineEdge
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
+import ch.ninecode.util.ThreePhaseComplexDataElement
 
 /**
  * Determine the direction of current in the passive network.

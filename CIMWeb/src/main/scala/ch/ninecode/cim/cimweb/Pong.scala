@@ -14,7 +14,10 @@ import javax.ws.rs.MatrixParam
 import javax.ws.rs.Path
 import javax.ws.rs.Produces
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions.collectionAsScalaIterable
+import scala.collection.JavaConversions.mapAsScalaMap
+import scala.collection.JavaConversions.propertiesAsScalaMap
+
 import ch.ninecode.cim.connector.CIMConnectionMetaData
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec

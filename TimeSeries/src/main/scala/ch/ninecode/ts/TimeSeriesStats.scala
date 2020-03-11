@@ -4,7 +4,7 @@ import java.util.Date
 
 import com.datastax.driver.core.ConsistencyLevel
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions.asScalaIterator
 
 import org.apache.commons.lang.StringUtils
 import org.apache.log4j.Level

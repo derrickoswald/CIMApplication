@@ -2,7 +2,7 @@ package ch.ninecode.ingest
 
 import java.util.Properties
 
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.Row

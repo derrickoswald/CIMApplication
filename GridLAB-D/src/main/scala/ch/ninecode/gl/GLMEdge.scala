@@ -5,7 +5,11 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.net.LineData
 import ch.ninecode.net.LineDetails
-import ch.ninecode.model._
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Conductor
+import ch.ninecode.model.Element
+import ch.ninecode.model.Terminal
 import ch.ninecode.util.Graphable
 
 /**

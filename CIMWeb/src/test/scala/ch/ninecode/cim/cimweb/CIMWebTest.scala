@@ -2,7 +2,10 @@ package ch.ninecode.cim.cimweb
 
 import java.io.File
 import java.util.Properties
-import javax.naming._
+
+import javax.naming.Context
+import javax.naming.InitialContext
+import javax.naming.NamingException
 import javax.resource.cci.ConnectionFactory
 
 import org.jboss.arquillian.container.test.api.Deployment

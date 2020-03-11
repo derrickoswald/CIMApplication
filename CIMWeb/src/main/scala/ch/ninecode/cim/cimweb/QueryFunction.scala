@@ -10,17 +10,45 @@ import javax.json.Json
 import javax.json.JsonObjectBuilder
 import javax.json.JsonStructure
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions.asScalaIterator
+import scala.collection.JavaConversions.collectionAsScalaIterable
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.DataType
+import com.datastax.driver.core.DataType.Name.ASCII
+import com.datastax.driver.core.DataType.Name.BIGINT
+import com.datastax.driver.core.DataType.Name.BLOB
+import com.datastax.driver.core.DataType.Name.BOOLEAN
+import com.datastax.driver.core.DataType.Name.COUNTER
+import com.datastax.driver.core.DataType.Name.CUSTOM
+import com.datastax.driver.core.DataType.Name.DATE
+import com.datastax.driver.core.DataType.Name.DECIMAL
+import com.datastax.driver.core.DataType.Name.DOUBLE
+import com.datastax.driver.core.DataType.Name.FLOAT
+import com.datastax.driver.core.DataType.Name.INET
+import com.datastax.driver.core.DataType.Name.INT
+import com.datastax.driver.core.DataType.Name.LIST
+import com.datastax.driver.core.DataType.Name.MAP
+import com.datastax.driver.core.DataType.Name.SET
+import com.datastax.driver.core.DataType.Name.SMALLINT
+import com.datastax.driver.core.DataType.Name.TEXT
+import com.datastax.driver.core.DataType.Name.TIME
+import com.datastax.driver.core.DataType.Name.TIMESTAMP
+import com.datastax.driver.core.DataType.Name.TIMEUUID
+import com.datastax.driver.core.DataType.Name.TINYINT
+import com.datastax.driver.core.DataType.Name.TUPLE
+import com.datastax.driver.core.DataType.Name.VARCHAR
+import com.datastax.driver.core.DataType.Name.VARINT
+import com.datastax.driver.core.DataType.Name.UDT
+import com.datastax.driver.core.DataType.Name.UUID
 import com.datastax.driver.core.ResultSet
-import com.datastax.spark.connector._
+import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.cql.CassandraConnector
-import com.datastax.driver.core.DataType.Name._
+import com.datastax.spark.connector._
 
 case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = "", cassandra_table_name: String = "") extends CIMWebFunction
 {

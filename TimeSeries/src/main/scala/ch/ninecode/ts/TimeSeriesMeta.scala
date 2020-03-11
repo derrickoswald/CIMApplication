@@ -1,6 +1,6 @@
 package ch.ninecode.ts
 
-import scala.collection._
+import scala.collection.mutable
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
@@ -196,8 +196,8 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
     lazy val all: Array[Classifier] = Array.concat (common, apts, Array(unknown))
     lazy val classes: Array[String] = all.map (_.cls).distinct.sortWith (_ < _)
 
-    val map: immutable.Map[String, Classifier] = common.map (x => (x.keyword, x)).toMap
-    val apt_map: immutable.Map[String, Classifier] = apts.map (x => (x.keyword, x)).toMap
+    val map: Map[String, Classifier] = common.map (x => (x.keyword, x)).toMap
+    val apt_map: Map[String, Classifier] = apts.map (x => (x.keyword, x)).toMap
     def classify (in: String, addr: String): Option[Classifier] =
     {
         val splits = in.split ("[ ,()-/]")
@@ -291,7 +291,7 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
         )
 
         // write to Cassandra
-        def toClasses (classnames: Iterable[String]): Map[String, Int] =
+        def toClasses (classnames: Iterable[String]): mutable.Map[String, Int] =
         {
             val col = mutable.Map[String, Int] ()
             classnames.foreach (
@@ -309,7 +309,7 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
             col
         }
         val rdd = session.sparkContext.parallelize (classified.toSeq)
-        val raw: RDD[(String, Map[String, Int])] = rdd.groupByKey.mapValues (toClasses)
+        val raw: RDD[(String, mutable.Map[String, Int])] = rdd.groupByKey.mapValues (toClasses)
         val columns = SomeColumns ("mrid", "classes")
         val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
         raw.saveToCassandra  (options.keyspace, "measured_value_meta", columns, writeConf)

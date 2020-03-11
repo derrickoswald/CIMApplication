@@ -3,7 +3,7 @@ package ch.ninecode.sc
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 /**
  * Experiment parameters.

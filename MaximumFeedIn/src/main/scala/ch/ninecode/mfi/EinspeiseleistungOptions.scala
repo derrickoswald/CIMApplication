@@ -1,6 +1,6 @@
 package ch.ninecode.mfi
 
-import scala.collection._
+import scala.collection.Map
 
 /**
  * Logging level enumeration.
@@ -69,7 +69,7 @@ case class EinspeiseleistungOptions
     log_level: LogLevels.Value = LogLevels.OFF,
     checkpoint_dir: String = "",
     verbose: Boolean = false,
-    cim_reader_options: Iterable[(String, String)] = new immutable.HashMap[String, String](),
+    cim_reader_options: Iterable[(String, String)] = Map[String, String](),
     three: Boolean = false,
     precalculation: Boolean = false,
     trafos: String = "",

@@ -2,7 +2,6 @@ package ch.ninecode.sim
 
 import java.util.Calendar
 
-
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.LineEdge
@@ -10,10 +9,17 @@ import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerSet
-import ch.ninecode.model._
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import ch.ninecode.model.BasicElement
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Equipment
+import ch.ninecode.model.IdentifiedObject
+import ch.ninecode.model.PowerSystemResource
+import ch.ninecode.model.Switch
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
 
 /**
  * A container for a simulation piece of work.

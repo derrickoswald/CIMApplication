@@ -3,8 +3,13 @@ package ch.ninecode.net;
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.model._
-import ch.ninecode.util._
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.Element
+import ch.ninecode.model.PerLengthPhaseImpedance
+import ch.ninecode.model.PerLengthSequenceImpedance
+import ch.ninecode.model.Terminal
+import ch.ninecode.util.Complex
+import ch.ninecode.util.Sequences
 
 /**
  * One element of a line between two nodes.

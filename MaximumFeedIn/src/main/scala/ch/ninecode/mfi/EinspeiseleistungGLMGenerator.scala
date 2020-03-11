@@ -3,14 +3,20 @@ package ch.ninecode.mfi
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import scala.math._
+import scala.math.acos
 
-import ch.ninecode.gl._
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMGenerator
+import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.SwingNode
+import ch.ninecode.gl.SwitchEdge
+import ch.ninecode.gl.TransformerEdge
 import ch.ninecode.model.Element
 import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
-import ch.ninecode.net._
-import ch.ninecode.util._
+import ch.ninecode.net.TransformerSet
+import ch.ninecode.util.Complex
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
     extends GLMGenerator (one_phase, 20.0, date_format, true) // ToDo: get library base temperature and target temperature as command line input

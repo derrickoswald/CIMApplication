@@ -4,24 +4,22 @@ import java.sql.Date
 import java.sql.Timestamp
 
 import javax.json.JsonObject
-
 import scala.reflect.runtime.universe.TypeTag
 
-import org.apache.spark.sql._
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types.DateType
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.driver.mapping.annotations.UDT
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.writer.WriteConf
+import org.apache.spark.sql.functions
 
 // Measurements needed from GridLAB-D recorders:
 //   - PowerTransformer (N6) apparent power [Scheinleistung (S)] (VA)

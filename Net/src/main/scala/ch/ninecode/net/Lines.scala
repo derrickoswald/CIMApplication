@@ -7,7 +7,14 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model._
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.ConcentricNeutralCableInfo
+import ch.ninecode.model.Element
+import ch.ninecode.model.OverheadWireInfo
+import ch.ninecode.model.PerLengthPhaseImpedance
+import ch.ninecode.model.PerLengthSequenceImpedance
+import ch.ninecode.model.TapeShieldCableInfo
+import ch.ninecode.model.Terminal
 
 final case class Lines (
     session: SparkSession,

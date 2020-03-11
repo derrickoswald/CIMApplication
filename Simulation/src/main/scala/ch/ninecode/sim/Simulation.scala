@@ -14,7 +14,8 @@ import javax.json.JsonArray
 import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.stream.JsonGenerator
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.collection.JavaConverters.asScalaBufferConverter
 
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
@@ -34,7 +35,13 @@ import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.Island
-import ch.ninecode.gl.Island._
+import ch.ninecode.gl.Island.Edges
+import ch.ninecode.gl.Island.Node
+import ch.ninecode.gl.Island.NodeParts
+import ch.ninecode.gl.Island.Nodes
+import ch.ninecode.gl.Island.TerminalData
+import ch.ninecode.gl.Island.identifier
+import ch.ninecode.gl.Island.island_id
 import ch.ninecode.gl.LineEdge
 import ch.ninecode.gl.SwitchEdge
 import ch.ninecode.gl.TransformerEdge
@@ -45,7 +52,12 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-import ch.ninecode.net._
+import ch.ninecode.net.LineData
+import ch.ninecode.net.SwitchData
+import ch.ninecode.net.TransformerData
+import ch.ninecode.net.TransformerServiceArea
+import ch.ninecode.net.TransformerSet
+import ch.ninecode.net.Transformers
 import ch.ninecode.util.Schema
 
 /**

@@ -15,7 +15,7 @@ import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions.asScalaIterator
 
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec

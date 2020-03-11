@@ -11,7 +11,7 @@ import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.sim.Simulation
 import ch.ninecode.sim.SimulationOptions
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 /**
  * Simulate a glm file and the associated input_data.

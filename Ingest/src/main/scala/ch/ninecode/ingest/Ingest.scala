@@ -13,9 +13,6 @@ import java.util.TimeZone
 import java.util.regex.Pattern
 import java.util.zip.ZipInputStream
 
-import ch.ninecode.util.Complex
-import ch.ninecode.util.ThreePhaseComplexDataElement
-import ch.ninecode.mscons._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
@@ -28,9 +25,12 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
-import scala.collection._
 
+import ch.ninecode.mscons.MSCONSOptions
+import ch.ninecode.mscons.MSCONSParser
+import ch.ninecode.util.Complex
 import ch.ninecode.util.Schema
+import ch.ninecode.util.ThreePhaseComplexDataElement
 
 /**
  * Import measured data into Cassandra.

@@ -7,7 +7,11 @@ import org.slf4j.LoggerFactory
 import org.slf4j.Logger
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model._
+import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.Element
+import ch.ninecode.model.Connector
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.Switch
 
 /**
  * Creates an RDD of feeders.

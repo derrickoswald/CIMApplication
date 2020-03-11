@@ -23,7 +23,7 @@ import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Terminal
 import ch.ninecode.net.TransformerIsland
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER) extends CIMRDD with Serializable
 {

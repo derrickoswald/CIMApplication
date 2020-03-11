@@ -19,9 +19,18 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMTopologyOptions
-import ch.ninecode.gl._
-import ch.ninecode.mfi._
-import ch.ninecode.net._
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.PreNode
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.Solar
+import ch.ninecode.mfi.EinspeiseleistungOptions
+import ch.ninecode.mfi.PowerFeeding
+import ch.ninecode.mfi.PowerFeedingNode
+import ch.ninecode.mfi.MaxPowerFeedingNodeEEA
+import ch.ninecode.mfi.Trafokreis
+import ch.ninecode.net.Transformers
+import ch.ninecode.net.TransformerData
+import ch.ninecode.net.TransformerIsland
 
 import scala.collection.mutable
 import scala.io.Source

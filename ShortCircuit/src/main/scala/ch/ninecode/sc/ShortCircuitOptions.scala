@@ -1,6 +1,6 @@
 package ch.ninecode.sc
 
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 /**
  * Short circuit calculation options.

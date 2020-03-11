@@ -1,6 +1,7 @@
 package ch.ninecode.sc
 
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
+import ch.ninecode.util.Graphable
 
 /**
  * Vertex data for GraphX trace.

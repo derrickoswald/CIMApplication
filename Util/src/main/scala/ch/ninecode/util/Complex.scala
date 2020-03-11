@@ -3,7 +3,12 @@ package ch.ninecode.util
 import java.util.regex.Pattern
 
 import scala.language.implicitConversions
-import scala.math._
+import scala.math.atan2
+import scala.math.cos
+import scala.math.pow
+import scala.math.sin
+import scala.math.sqrt
+import scala.math.Pi
 
 /**
  * Complex number implementation.

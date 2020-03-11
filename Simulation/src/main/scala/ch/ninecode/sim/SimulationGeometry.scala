@@ -10,7 +10,14 @@ import com.datastax.spark.connector.writer.WriteConf
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.LineEdge
-import ch.ninecode.model._
+import ch.ninecode.model.DiagramObject
+import ch.ninecode.model.DiagramObjectPoint
+import ch.ninecode.model.EnergyConsumer
+import ch.ninecode.model.Equipment
+import ch.ninecode.model.PositionPoint
+import ch.ninecode.model.Substation
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
 
 case class SimulationGeometry (session: SparkSession, keyspace: String) extends CIMRDD
 {

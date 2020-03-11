@@ -8,8 +8,23 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model._
-import ch.ninecode.util._
+import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.BasicElement
+import ch.ninecode.model.Bay
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Element
+import ch.ninecode.model.Equipment
+import ch.ninecode.model.EquivalentEquipment
+import ch.ninecode.model.EquivalentInjection
+import ch.ninecode.model.IdentifiedObject
+import ch.ninecode.model.PowerSystemResource
+import ch.ninecode.model.PowerTransformer
+import ch.ninecode.model.PowerTransformerEnd
+import ch.ninecode.model.Substation
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
+import ch.ninecode.model.VoltageLevel
+import ch.ninecode.util.Complex
 
 /**
  * Get information about transformers.

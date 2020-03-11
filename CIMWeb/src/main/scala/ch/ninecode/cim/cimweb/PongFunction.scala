@@ -7,7 +7,8 @@ import javax.json.JsonStructure
 
 import org.apache.spark.sql.SparkSession
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions.asScalaIterator
+import scala.collection.JavaConversions.iterableAsScalaIterable
 
 case class PongFunction () extends CIMWebFunction
 {

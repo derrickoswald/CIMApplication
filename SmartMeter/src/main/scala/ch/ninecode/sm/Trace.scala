@@ -6,7 +6,19 @@ import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.Graph.graphToGraphOps
 import org.apache.spark.graphx.VertexId
 
-import ch.ninecode.model._
+import ch.ninecode.model.Breaker
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Cut
+import ch.ninecode.model.Disconnector
+import ch.ninecode.model.Element
+import ch.ninecode.model.Fuse
+import ch.ninecode.model.GroundDisconnector
+import ch.ninecode.model.Jumper
+import ch.ninecode.model.LoadBreakSwitch
+import ch.ninecode.model.ProtectedSwitch
+import ch.ninecode.model.Recloser
+import ch.ninecode.model.Sectionaliser
+import ch.ninecode.model.Switch
 import ch.ninecode.util._
 
 // define the minimal node and edge classes

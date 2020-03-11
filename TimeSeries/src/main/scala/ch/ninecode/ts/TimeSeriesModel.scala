@@ -17,9 +17,11 @@ import org.apache.spark.ml.regression.DecisionTreeRegressionModel
 import org.apache.spark.ml.regression.DecisionTreeRegressor
 import org.apache.spark.ml.tuning.ParamGridBuilder
 import org.apache.spark.ml.tuning.TrainValidationSplit
-import org.apache.spark.sql._
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.UserDefinedFunction
+import org.apache.spark.sql.functions
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types.DoubleType
@@ -30,12 +32,12 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
 import com.intel.analytics.bigdl.dlframes.DLEstimator
 import com.intel.analytics.bigdl.nn._
 import com.intel.analytics.bigdl.tensor.TensorNumericMath.TensorNumeric.NumericFloat
+
 
 case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 {

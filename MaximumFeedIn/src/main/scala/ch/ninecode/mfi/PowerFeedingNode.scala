@@ -2,7 +2,7 @@ package ch.ninecode.mfi
 
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.PreEdge
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
 
 /**
  * Vertex data for the precalculation Pregel algorithm.

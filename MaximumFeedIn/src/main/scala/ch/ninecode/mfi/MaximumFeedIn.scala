@@ -5,7 +5,6 @@ import java.net.URLDecoder
 import java.net.URI
 import java.util.Properties
 
-import scala.collection._
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 

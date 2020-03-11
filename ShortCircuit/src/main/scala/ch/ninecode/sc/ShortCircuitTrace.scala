@@ -2,7 +2,6 @@ package ch.ninecode.sc
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
@@ -10,7 +9,7 @@ import org.apache.spark.graphx.VertexId
 import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model._
+import ch.ninecode.model.ACLineSegment
 
 /**
  * Short circuit calculation tracing.

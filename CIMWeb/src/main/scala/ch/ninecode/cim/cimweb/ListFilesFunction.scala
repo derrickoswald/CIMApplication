@@ -3,7 +3,7 @@ package ch.ninecode.cim.cimweb
 import javax.json.Json
 import javax.json.JsonStructure
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConversions.iterableAsScalaIterable
 
 import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.fs.Path

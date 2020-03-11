@@ -11,7 +11,7 @@ import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.Element
 import ch.ninecode.net.Net
 import ch.ninecode.testutil.TestUtil
-import ch.ninecode.util._
+import ch.ninecode.util.Util
 
 class LowVoltageSuite extends TestUtil
 {

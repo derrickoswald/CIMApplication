@@ -14,7 +14,8 @@ import ch.ninecode.model.ProtectedSwitch
 import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser
 import ch.ninecode.model.Switch
-import ch.ninecode.util._
+import ch.ninecode.util.Complex
+import ch.ninecode.util.Graphable
 
 /**
  * Short circuit extended GraphX edge.

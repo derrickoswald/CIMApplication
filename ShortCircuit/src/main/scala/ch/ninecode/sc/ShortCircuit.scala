@@ -19,11 +19,36 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl._
-import ch.ninecode.gl.Island._
-import ch.ninecode.model._
-import ch.ninecode.net._
-import ch.ninecode.util._
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.Island
+import ch.ninecode.gl.Island.Node
+import ch.ninecode.gl.Island.NodeParts
+import ch.ninecode.gl.Island.identifier
+import ch.ninecode.gl.Island.island_id
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.SwitchEdge
+import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.BaseVoltage
+import ch.ninecode.model.Bay
+import ch.ninecode.model.BusbarSection
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Element
+import ch.ninecode.model.EnergyConsumer
+import ch.ninecode.model.PowerTransformer
+import ch.ninecode.model.PowerTransformerEnd
+import ch.ninecode.model.Substation
+import ch.ninecode.model.Terminal
+import ch.ninecode.model.TopologicalNode
+import ch.ninecode.model.VoltageLevel
+import ch.ninecode.net.TransformerData
+import ch.ninecode.net.TransformerIsland
+import ch.ninecode.net.TransformerServiceArea
+import ch.ninecode.net.Transformers
+import ch.ninecode.util.Complex
+import ch.ninecode.util.Graphable
+import ch.ninecode.util.ThreePhaseComplexDataElement
 import ch.ninecode.sc.ScEdge.resistanceAt
 
 /**

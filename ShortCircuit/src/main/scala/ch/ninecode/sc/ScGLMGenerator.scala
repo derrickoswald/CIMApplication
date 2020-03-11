@@ -3,8 +3,20 @@ package ch.ninecode.sc
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import ch.ninecode.gl._
-import ch.ninecode.model._
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMGenerator
+import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.SwingNode
+import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.BasicElement
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Conductor
+import ch.ninecode.model.Equipment
+import ch.ninecode.model.IdentifiedObject
+import ch.ninecode.model.PowerSystemResource
+import ch.ninecode.model.Terminal
 import ch.ninecode.net._
 import ch.ninecode.util._
 
