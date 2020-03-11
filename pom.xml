@@ -62,9 +62,9 @@
         <version.dependency.cassandra-maven-plugin>3.6</version.dependency.cassandra-maven-plugin>
         <!-- see http://davidb.github.com/scala-maven-plugin -->
         <version.dependency.scala-maven-plugin>4.2.0</version.dependency.scala-maven-plugin>
+        <version.dependency.wartremover>2.4.5</version.dependency.wartremover>
         <version.dependency.scalatest-maven-plugin>2.0.0</version.dependency.scalatest-maven-plugin>
         <version.dependency.buildnumber-maven-plugin>1.4</version.dependency.buildnumber-maven-plugin>
-
     </properties>
 
     <build>
@@ -113,6 +113,39 @@
                     <doCheck>false</doCheck>
                     <doUpdate>false</doUpdate>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>${version.dependency.scala-maven-plugin}</version>
+                <configuration>
+                    <scalaCompatVersion>${version.dependency.scala}</scalaCompatVersion>
+                    <scalaVersion>${version.dependency.scalalibrary}</scalaVersion>
+                    <archive>
+                        <addMavenDescriptor>false</addMavenDescriptor>
+                    </archive>
+                    <compilerPlugins>
+                        <compilerPlugin>
+                            <groupId>org.wartremover</groupId>
+                            <artifactId>wartremover_${version.dependency.scalalibrary}</artifactId>
+                            <version>${version.dependency.wartremover}</version>
+                        </compilerPlugin>
+                    </compilerPlugins>
+                    <args>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Unsafe</arg>
+                    </args>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <configuration>
+                            <scalaVersion>${version.dependency.scalalibrary}</scalaVersion>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
