@@ -49,7 +49,7 @@ final case class Transformers (
     default_supply_network_short_circuit_power_min: Double = 100.0e6,
     default_supply_network_short_circuit_impedance_min: Complex = Complex (0.875571570, -2.405613110),
     default_supply_network_short_circuit_angle_min: Double = Double.NaN
-    ) extends CIMRDD with Serializable
+    ) extends CIMRDD
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -57,7 +57,7 @@ final case class Transformers (
     /**
      * Default transformer filter predicate.
      *
-     * Eliminates transformers named Messen_Steuern and transformers under 1000VA.
+     * Eliminates transformers named Messen_Steuern, transformers under 1000VA and public lighting "transformers" (230V Übergang).
      *
      * @param transformer the transformer to test
      * @return <code>true</code> if the transformer should be kept
@@ -66,7 +66,8 @@ final case class Transformers (
     {
         val power_transformer = transformer.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
         val power_significant = transformer.ends.forall (_.ratedS > 1000.0)
-        power_transformer && power_significant
+        val voltage_significant = transformer.voltages.forall (_._2 >= 400.0)
+        power_transformer && power_significant && voltage_significant
     }
 
     /**
@@ -148,17 +149,17 @@ final case class Transformers (
     {
         val mRID = "EquivalentInjection_" + transformer
         val description = "default equivalent generation injection"
-        val element = BasicElement (null, mRID)
+        val element = BasicElement (mRID = mRID)
         element.bitfields = Array (Integer.parseInt ("1", 2))
-        val obj = IdentifiedObject (element, null, description, mRID, null, null, null, null, null, null)
+        val obj = IdentifiedObject (sup = element, description = description, mRID = mRID)
         obj.bitfields = Array (Integer.parseInt ("110", 2))
-        val psr = PowerSystemResource (obj, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
+        val psr = PowerSystemResource (sup = obj)
         psr.bitfields = Array (0)
-        val equipment = Equipment (psr, false, true, false, true, null, null, null, station, null, null, null, null, null, null, null, null, null)
+        val equipment = Equipment (sup = psr, inService = true, normallyInService = true, EquipmentContainer = station)
         equipment.bitfields = Array (Integer.parseInt ("10001010", 2))
-        val conducting = ConductingEquipment (equipment, voltage._1, null, null, null, null, null, null)
+        val conducting = ConductingEquipment (sup = equipment, BaseVoltage = voltage._1)
         conducting.bitfields = Array (Integer.parseInt ("1", 2))
-        val equivalent = EquivalentEquipment (conducting, null)
+        val equivalent = EquivalentEquipment (sup = conducting)
         equivalent.bitfields = Array (0)
 
         // if there is only one supplied angle, apply it to both max and min conditions

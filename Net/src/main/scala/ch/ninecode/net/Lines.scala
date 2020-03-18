@@ -21,7 +21,7 @@ final case class LineTerminals (line: ACLineSegment, t1: Terminal, t2: Terminal)
 final case class Lines (
     session: SparkSession,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
-) extends CIMRDD with Serializable
+) extends CIMRDD
 {
     import Lines._
 
@@ -66,10 +66,19 @@ final case class Lines (
 
     def topological_order (lt: LineTerminals): String =
         if (null == lt.t1.TopologicalNode || null == lt.t2.TopologicalNode)
-            if (lt.t1.ConnectivityNode < lt.t2.ConnectivityNode)
-                s"${lt.t1.ConnectivityNode}_${lt.t2.ConnectivityNode}"
+            if (null == lt.t1.ConnectivityNode || null == lt.t2.ConnectivityNode)
+            {
+                log.warn (s"${lt.line.id} has no topological or connectivity nodes on terminals ${lt.t1.id} or ${lt.t2.id}")
+                if (lt.t1.id < lt.t2.id)
+                    s"${lt.t1.id}_${lt.t2.id}"
+                else
+                    s"${lt.t2.id}_${lt.t1.id}"
+            }
             else
-                s"${lt.t2.ConnectivityNode}_${lt.t1.ConnectivityNode}"
+                if (lt.t1.ConnectivityNode < lt.t2.ConnectivityNode)
+                    s"${lt.t1.ConnectivityNode}_${lt.t2.ConnectivityNode}"
+                else
+                    s"${lt.t2.ConnectivityNode}_${lt.t1.ConnectivityNode}"
         else
             if (lt.t1.TopologicalNode < lt.t2.TopologicalNode)
                 s"${lt.t1.TopologicalNode}_${lt.t2.TopologicalNode}"
@@ -123,12 +132,33 @@ object Lines
      */
     var DEFAULT_CABLE_IMPEDANCE_LIMIT: Double = 5.0
 
+    /**
+     * Checks that the line segment impedance is not too large.
+     *
+     * @note The use of high impedance cables in GridLAB-D leads to long convergence times and
+     *       often failures to converge. We use a rule of thumb that drops these cables from consideration.
+     *
+     * @param data the ACLineSegment data to check
+     * @return <code>true</code> if all cable per length impedances are less than the limit
+     */
     def impedance_limit (data: LineData): Boolean =
     {
-        // all cable impedances are less than the limit
         data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.modulus < DEFAULT_CABLE_IMPEDANCE_LIMIT)
     }
 
+    /**
+     * Checks that the line segement is in use according to the related SvStatus.
+     *
+     * @note The CIM 16 reference from ConductingEquipment to SvStatus, was changed in CIM100 to be a
+     *       reference from SvStatus to ConductingEquipment. This method relies on the incorrect
+     *       (denormalized) CIM exports that have the original CIM16 reference *and* a also uses a
+     *       hard-coded mRID for (the one) SvStatus that has SvStatus.inService == false.
+     *       ToDo: This should be changed to get a list of SvStatus mRID where inService == "false"
+     *       or add the SvStatus to the LineDetails via join when the CIM export is corrected.
+     *
+     * @param data the ACLineSegment data to check
+     * @return <code>true</code> if this is an "in use" line segment
+     */
     def in_use (data: LineData): Boolean =
     {
         data.lines.forall (
@@ -136,7 +166,6 @@ object Lines
             {
                 val status = line.line.Conductor.ConductingEquipment.SvStatus
                 if (null != status)
-                    // ToDo: get a list of SvStatus element mRID where inService == "false"
                     status.head != "not_in_use"
                 else
                     true
@@ -144,5 +173,24 @@ object Lines
         )
     }
 
-    def filter (data: LineData): Boolean = in_use (data) && impedance_limit (data)
+    /**
+     * Checks that there are two different topological nodes on each end of the line segment.
+     *
+     * @note The CIMNetworkTopologyProcessor currently uses a simplistic check for a non-zero length
+     *       and a non-zero impedance (ACLineSegment.r + ACLineSegment.x j) which collapses some
+     *       erroneous ACLineSegments to start and end on the same TopologicalNode.
+     *       When the CIMNetworkTopologyProcessor is changed to be smarter, this can be removed.
+     *
+     * @param data the ACLineSegment data to check
+     * @return <code>true</code> if this is a valid edge in the topology
+     */
+    def topological_edge (data: LineData): Boolean = data.node0 != data.node1
+
+    /**
+     * Predicate to eliminate invalid ACLineSegments.
+     *
+     * @param data the ACLineSegment data to check
+     * @return <code>true</code> if this is a valid line segment
+     */
+    def filter (data: LineData): Boolean = topological_edge (data) && in_use (data) && impedance_limit (data)
 }

@@ -267,10 +267,10 @@ object LineDetails
             case Some (seq: PerLengthSequenceImpedance) =>
                 Sequences (Complex (seq.r, seq.x), Complex (seq.r0, seq.x0))
             case Some (phased: PerLengthPhaseImpedance) =>
-                maybe_warn (() => s"ACLineSegment ${details.line.id} PerLengthPhaseImpedance ${phased.id} is not supported, using default impedance $DEFAULT_PER_LENGTH_IMPEDANCE /m")
+                maybe_warn (() => s"ACLineSegment ${details.line.id} PerLengthPhaseImpedance ${phased.id} is not supported, using default impedance $DEFAULT_PER_LENGTH_IMPEDANCE Ω/m")
                 DEFAULT_PER_LENGTH_IMPEDANCE
             case Some (element: Element) =>
-                maybe_warn (() => s"ACLineSegment ${details.line.id} unrecognized PerLengthImpedance class ${element.id}, using default impedance $DEFAULT_PER_LENGTH_IMPEDANCE /m")
+                maybe_warn (() => s"ACLineSegment ${details.line.id} unrecognized PerLengthImpedance class ${element.id}, using default impedance $DEFAULT_PER_LENGTH_IMPEDANCE Ω/m")
                 DEFAULT_PER_LENGTH_IMPEDANCE
             case None =>
                 if (PROPERTIES_ARE_ERRONEOUSLY_PER_KM && hasRX (details))
@@ -281,7 +281,7 @@ object LineDetails
                 }
                 else
                 {
-                    maybe_warn (() => s"ACLineSegment ${details.line.id} using default impedance ${DEFAULT_PER_LENGTH_IMPEDANCE} /m")
+                    maybe_warn (() => s"ACLineSegment ${details.line.id} using default impedance ${DEFAULT_PER_LENGTH_IMPEDANCE} Ω/m")
                     DEFAULT_PER_LENGTH_IMPEDANCE
                 }
         }

@@ -18,7 +18,7 @@ import ch.ninecode.model.Terminal
 final case class Switches (
     session: SparkSession,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
-) extends CIMRDD with Serializable
+) extends CIMRDD
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)

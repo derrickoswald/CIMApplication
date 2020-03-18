@@ -13,7 +13,7 @@ import ch.ninecode.net.SwitchData
 import ch.ninecode.net.Switches
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.net.Transformers
-import ch.ninecode.model.BaseVoltage
+import ch.ninecode.net.Voltages
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
@@ -26,7 +26,11 @@ import ch.ninecode.model.TopologicalNode
  * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with GridLAB-D, the reason is bad performance in GridLAB-D with to high
  *                              impedance values
  */
-class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), cable_impedance_limit: Double = 5.0) extends CIMRDD with Serializable
+class Island (
+    spark: SparkSession,
+    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
+    cable_impedance_limit: Double = 5.0)
+extends CIMRDD with Serializable
 {
     implicit val session: SparkSession = spark
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -64,14 +68,20 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         rdd.flatMap (
             x =>
             {
-                val unique_identifiers = x.map (_._2._1).toList.distinct
-                unique_identifiers.map (
-                    y =>
-                    {
-                        val switch = x.find (_._2._1 == y).get
-                        (switch._2._1, SwitchEdge (switch._1))
-                    }
-                )
+                // keep only switches with both terminals in this island
+                if (x.size > 1)
+                {
+                    val unique_identifiers = x.map (_._2._1).toSet
+                    unique_identifiers.map (
+                        y =>
+                        {
+                            val switch = x.find (_._2._1 == y).get
+                            (switch._2._1, SwitchEdge (switch._1))
+                        }
+                    )
+                }
+                else
+                    Iterable ()
             }
         )
     }
@@ -108,10 +118,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         : (Nodes, Edges) =
     {
         // create a collection of all BaseVoltage
-        val voltages: Map[String, Double] = getOrElse[BaseVoltage]
-            .map (voltage => (voltage.id, voltage.nominalVoltage * 1000.0)) // ToDo: remove this 1000.0V multiplier
-            .collect
-            .toMap
+        val voltages: Map[String, Double] = Voltages (session).getVoltages
 
         // terminals have two pieces of information that we want:
         // - the identifier (transformer service area, feeder) they are in by joining through TopologicalNode.TopologicalIsland
