@@ -8,8 +8,8 @@ import ch.ninecode.testutil.TestUtil
 class LinesSuite extends TestUtil
 {
     override val classesToRegister: Array[Array[Class[_]]] = Array(CIMClasses.list)
-    val FILENAME = "hdfs://sandbox:8020/ckw/TRA9702.rdf"
-    test ("basic")
+    val FILENAME = "hdfs://sandbox:8020/DemoData.rdf"
+    ignore ("basic")
     {
         session: SparkSession =>
             readCIMElements (session, FILENAME, Map[String, String]())

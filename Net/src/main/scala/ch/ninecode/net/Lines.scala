@@ -16,6 +16,8 @@ import ch.ninecode.model.PerLengthSequenceImpedance
 import ch.ninecode.model.TapeShieldCableInfo
 import ch.ninecode.model.Terminal
 
+final case class LineTerminals (line: ACLineSegment, t1: Terminal, t2: Terminal)
+
 final case class Lines (
     session: SparkSession,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
@@ -27,7 +29,7 @@ final case class Lines (
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
     implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
 
-    def unpack (pair: (ACLineSegment, Option[Iterable[Terminal]])): Option[(ACLineSegment, Terminal, Terminal)] =
+    def unpack (pair: (ACLineSegment, Option[Iterable[Terminal]])): Option[LineTerminals] =
     {
         val (line, terminals) = pair
         terminals match
@@ -35,15 +37,11 @@ final case class Lines (
             case Some (terminals) =>
                 if (2 == terminals.size)
                 {
-                    val t1 = terminals.head
-                    val t2 = terminals.tail.head
-                    if (t1.id != t2.id)
-                        if (t1.ACDCTerminal.sequenceNumber < t2.ACDCTerminal.sequenceNumber)
-                            Some ((line, t1, t2))
-                        else
-                            Some ((line, t2, t1))
+                    val (t1 :: t2 :: _) = terminals.toList
+                    if (t1.ACDCTerminal.sequenceNumber < t2.ACDCTerminal.sequenceNumber)
+                        Some (LineTerminals (line, t1, t2))
                     else
-                        None
+                        Some (LineTerminals (line, t2, t1))
                 }
                 else
                     None
@@ -62,21 +60,21 @@ final case class Lines (
         getOrElse[TapeShieldCableInfo].asInstanceOf[RDD[Element]]
     )
 
-    def refPerLengthImpedance (line: ACLineSegment): String = line.PerLengthImpedance
+    def refPerLengthImpedance (lt: LineTerminals): String = lt.line.PerLengthImpedance
 
-    def refAssetDataSheet (line: ACLineSegment): String = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
+    def refAssetDataSheet (lt: LineTerminals): String = lt.line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
 
-    def topological_order (t1: Terminal, t2: Terminal): String =
-        if (null == t1.TopologicalNode || null == t2.TopologicalNode)
-            if (t1.id < t2.id)
-                s"${t1.id}_${t2.id}"
+    def topological_order (lt: LineTerminals): String =
+        if (null == lt.t1.TopologicalNode || null == lt.t2.TopologicalNode)
+            if (lt.t1.ConnectivityNode < lt.t2.ConnectivityNode)
+                s"${lt.t1.ConnectivityNode}_${lt.t2.ConnectivityNode}"
             else
-                s"${t2.id}_${t1.id}"
+                s"${lt.t2.ConnectivityNode}_${lt.t1.ConnectivityNode}"
         else
-            if (t1.TopologicalNode < t2.TopologicalNode)
-                s"${t1.TopologicalNode}_${t2.TopologicalNode}"
+            if (lt.t1.TopologicalNode < lt.t2.TopologicalNode)
+                s"${lt.t1.TopologicalNode}_${lt.t2.TopologicalNode}"
             else
-                s"${t2.TopologicalNode}_${t1.TopologicalNode}"
+                s"${lt.t2.TopologicalNode}_${lt.t1.TopologicalNode}"
 
     /**
      * Create an RDD of composite ACLineSegment objects.
@@ -96,23 +94,23 @@ final case class Lines (
             .flatMap (unpack)
 
         // append parameters if any
-        val lines_terminals_parameters: RDD[(ACLineSegment, Terminal, Terminal, Option[Element])] =
-            lines_terminals.keyBy (x => refPerLengthImpedance (x._1)).leftOuterJoin (per_length_impedance.keyBy (_.id))
+        val lines_terminals_parameters: RDD[(LineTerminals, Option[Element])] =
+            lines_terminals.keyBy (x => refPerLengthImpedance (x)).leftOuterJoin (per_length_impedance.keyBy (_.id))
             .values
-            .map (x => (x._1._1, x._1._2, x._1._3, x._2))
+            .map (x => (x._1, x._2))
 
         // append asset info if any
-        val lines_terminals_parameters_info: RDD[(ACLineSegment, Terminal, Terminal, Option[Element], Option[Element])] =
+        val lines_terminals_parameters_info: RDD[(LineTerminals, Option[Element], Option[Element])] =
             lines_terminals_parameters.keyBy (x => refAssetDataSheet (x._1)).leftOuterJoin (wire_info.keyBy (_.id))
             .values
-            .map (x => (x._1._1, x._1._2, x._1._3, x._1._4, x._2))
+            .map (x => (x._1._1, x._1._2, x._2))
 
         // find parallel lines by grouping by alphabetically concatenated node id strings
         lines_terminals_parameters_info
-            .keyBy (x => topological_order (x._2, x._3))
+            .keyBy (x => topological_order (x._1))
             .groupByKey
             .values
-            .map (x => LineData (x.map (y => LineDetails (y._1, y._2, y._3, y._4, y._5))))
+            .map (x => LineData (x.map (y => LineDetails (y._1.line, y._1.t1, y._1.t2, y._2, y._3))))
             .filter (line_filter)
             .persist (storage_level)
     }
