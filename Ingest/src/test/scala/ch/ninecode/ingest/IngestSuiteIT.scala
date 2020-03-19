@@ -129,9 +129,6 @@ class IngestSuiteIT
             s"${FILE_DEPOT}20191215_045129_12X-SAK-N------6_E66_12X-SAK-N------6_ESLEVU14572845_1003992095.txt"
         )
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
-        session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
-
         main (Array.concat (Array ("--unittest", "--verbose",
             "--master", "local[2]",
             "--host", "localhost",
@@ -141,6 +138,7 @@ class IngestSuiteIT
             "--mapping", MAPPING_FILE,
             "--format", "MSCONS"), FILES))
 
+        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='USR0001' and type='energy'", 96L, "merged records")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time = '2019-12-13 23:15:00.000+0000'", 36300, 10800, "Wh")
         session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
@@ -153,9 +151,6 @@ class IngestSuiteIT
         val MAPPING_FILE = s"${FILE_DEPOT}sample.csv"
         val FILE = s"${FILE_DEPOT}sample.zip"
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
-        session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
-
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
             "--host", "localhost",
@@ -163,9 +158,9 @@ class IngestSuiteIT
             "--keyspace", KEYSPACE,
             "--mapping", MAPPING_FILE,
             "--format", "MSCONS",
-            "--workdir", "/tmp/",
             FILE))
 
+        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='USR0001' and type='energy'", 96L, "merged records")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time = '2019-12-13 23:15:00.000+0000'", 36300, 10800, "Wh")
         session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")

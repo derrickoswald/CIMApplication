@@ -235,6 +235,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
             if (unzip)
             {
+                val in =
                 try
                     Files.newInputStream(Paths.get (src))
                 catch
@@ -243,7 +244,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                         log.error (s"""ingest failed for file "$file"""", e)
                         new ByteArrayInputStream (Array[Byte]())
                 }
-                val in = Files.newInputStream (Paths.get (src))
                 val zip = new ZipInputStream (in)
                 val buffer = new Array[Byte](1024)
                 var more = true
@@ -397,19 +397,14 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 {
                     i ← 7 until fields.length by 2
                     reading = fields (i)
-                    if "" != reading
-                    value = reading.toDouble * factor
+                    value = if ("" != reading) asDouble (reading) * factor else 0.0
                     slot = (i - 7) / 2
                     timestamp = time + (interval * slot)
                     if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
                 }
                     yield
                         (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
-                // discard all zero records
-                if (list.exists (x => x._5 != 0.0 || x._6 != 0.0))
-                    list
-                else
-                    List ()
+                list
             }
             else
                 List ()
@@ -471,7 +466,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                     i ← 15 until fields.length by 2
                     flags = fields (i + 1)
                     if flags == "W"
-                    value = fields (i).toDouble * factor
+                    value = asDouble (fields (i)) * factor
                     slot = (i - 15) / 2
                     timestamp = time + (interval * slot)
                     if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
@@ -585,6 +580,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val grouped = raw.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
         grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         val end = System.nanoTime ()
+        if (!options.nocopy)
+            all_files.foreach (x => hdfs.delete (new Path (x), false))
         val some_files = all_files.take (6).mkString (",")
         val more_files = all_files.length > 6
         log.info (s"processed files [${some_files}${if (more_files) "..." else ""}]: ${(end - start) / 1e9} seconds")
@@ -596,7 +593,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         try
         {
             s.toDouble
-        } catch
+        }
+        catch
         {
             case _: Throwable => 0.0
         }
