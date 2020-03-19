@@ -75,7 +75,7 @@ case class MSCONSParser (options: MSCONSOptions)
             try
             {
                 val fs = file.getFileSystem (hdfs_configuration)
-                log.info (s"file system URI: ${fs.getUri}")
+                log.info (s"file: ${file}")
                 data = fs.open (file)
                 // ToDo: handle files bigger than 2GB
                 val size = fs.getFileStatus (file).getLen.toInt
