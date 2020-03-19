@@ -50,7 +50,7 @@ case class IngestOptions
     storage: String = "MEMORY_AND_DISK_SER",
     log_level: LogLevels.Value = LogLevels.OFF,
     nocopy: Boolean = false,
-    workdir: String = "",
+    workdir: String = s"${IngestOptions.cwd}/work/",
     mapping: String = "",
     metercol: String = "Messpunktbezeichnung",
     mridcol: String = "NISNr",
@@ -62,3 +62,15 @@ case class IngestOptions
     keyspace: String = "cimapplication",
     replication: Int = 1
 )
+
+object IngestOptions
+{
+    def cwd: String =
+    {
+        val pwd = new java.io.File(".").getCanonicalPath
+        if (pwd.endsWith ("."))
+            pwd.substring (0, pwd.length - 1)
+        else
+            pwd
+    }
+}

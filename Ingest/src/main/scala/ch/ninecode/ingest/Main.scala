@@ -83,7 +83,7 @@ object Main
                         val s1 = jarForObject (IngestOptions ())
                         val s2 = jarForObject (com.datastax.spark.connector.mapper.ColumnMapper)
                         val s3 = jarForObject (new com.twitter.jsr166e.LongAdder ())
-                        configuration.setJars (Array (s1, s2, s3))
+                        configuration.setJars (Set (s1, s2, s3).toArray)
 
                         configuration.set ("spark.ui.showConsoleProgress", "false")
 

@@ -73,6 +73,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
     val ZuluTimestampFormat: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSS")
     ZuluTimestampFormat.setCalendar (ZuluTimeCalendar)
 
+    lazy val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
+
     case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
 
     def map_csv_options: Map[String, String] =
@@ -95,7 +97,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             "mode" -> "PERMISSIVE",
             "inferSchema" -> "true")
     }
-
 
     def to_reading (s: (String, Row)): (String, Reading) =
     {
@@ -187,8 +188,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         else
         {
             val start = System.nanoTime ()
-            val name = s"/${base_name (file)}"
-            val files = putFile (session, name, readFile (file), file.toLowerCase.endsWith (".zip"))
+            val name = base_name (file)
+            val files = putFile (session, name, file, file.toLowerCase.endsWith (".zip"))
             val end = System.nanoTime ()
             log.info (s"copy $file: ${(end - start) / 1e9} seconds")
             files
@@ -207,15 +208,23 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         }
     }
 
-    def putFile (spark: SparkSession, path: String, data: Array[Byte], unzip: Boolean = false): Seq[String] =
+    /**
+     * Put a file on HDFS
+     * @param spark the Spark session
+     * @param dst the path to save the file
+     * @param src the file to save
+     * @param unzip flag indicating the stream is a ZIP file that needs to be expanded
+     * @return
+     */
+    def putFile (spark: SparkSession, dst: String, src: String, unzip: Boolean = false): Seq[String] =
     {
-        var ret = Seq [String]()
+        var ret = Seq[String]()
         val fs = hdfs
-        val file = new Path (fs.getUri.toString, s"${options.workdir}$path")
+        val file = new Path (fs.getUri.toString, s"${options.workdir}$dst")
         // write the file
         try
         {
-            val parent = if (path.endsWith ("/")) file else file.getParent
+            val parent = if (dst.endsWith ("/")) file else file.getParent
             if (!fs.exists (parent))
             {
                 fs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
@@ -223,121 +232,73 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                     fs.setPermission (parent, new FsPermission ("ugoa-rwx"))
             }
 
-            if (0 != data.length && !path.endsWith ("/"))
+            if (unzip)
             {
-                if (unzip)
+                val in =
+                try
+                    Files.newInputStream(Paths.get (src))
+                catch
                 {
-                    val zip = new ZipInputStream (new ByteArrayInputStream (data))
-                    val buffer = new Array[Byte](1024)
-                    var more = true
-                    do
+                    case e: Exception =>
+                        log.error (s"""ingest failed for file "$file"""", e)
+                        new ByteArrayInputStream (Array[Byte]())
+                }
+                val zip = new ZipInputStream (in)
+                val buffer = new Array[Byte](1024)
+                var more = true
+                do
+                {
+                    val entry = zip.getNextEntry
+                    if (null != entry)
                     {
-                        val entry = zip.getNextEntry
-                        if (null != entry)
+                        if (entry.isDirectory)
                         {
-                            if (entry.isDirectory)
-                            {
-                                val path = new Path (parent, entry.getName)
-                                fs.mkdirs (path, new FsPermission ("ugoa-rwx"))
-                                fs.setPermission (path, new FsPermission ("ugoa-rwx"))
-                            }
-                            else
-                            {
-                                val tmp = File.createTempFile ("ingest", null, null)
-                                val stream = new FileOutputStream (tmp)
-                                var eof = false
-                                do
-                                {
-                                    val len = zip.read (buffer, 0, buffer.length)
-                                    if (-1 == len)
-                                        eof = true
-                                    else
-                                        stream.write (buffer, 0, len)
-                                }
-                                while (!eof)
-                                stream.close ()
-                                val f = new Path (parent, entry.getName)
-                                fs.copyFromLocalFile (true, true, new Path (tmp.getAbsolutePath), f)
-                                ret = ret :+ f.toString
-                            }
-                            zip.closeEntry ()
+                            val path = new Path (parent, entry.getName)
+                            fs.mkdirs (path, new FsPermission ("ugoa-rwx"))
+                            fs.setPermission (path, new FsPermission ("ugoa-rwx"))
                         }
                         else
-                            more = false
+                        {
+                            val tmp = File.createTempFile ("ingest", null, null)
+                            val stream = new FileOutputStream (tmp)
+                            var eof = false
+                            do
+                            {
+                                val len = zip.read (buffer, 0, buffer.length)
+                                if (-1 == len)
+                                    eof = true
+                                else
+                                    stream.write (buffer, 0, len)
+                            }
+                            while (!eof)
+                            stream.close ()
+                            val f = new Path (parent, entry.getName)
+                            fs.copyFromLocalFile (true, true, new Path (tmp.getAbsolutePath), f)
+                            ret = ret :+ f.toString
+                        }
+                        zip.closeEntry ()
                     }
-                    while (more)
-                    zip.close ()
+                    else
+                        more = false
                 }
-                else
-                {
-                    val out = fs.create (file)
-                    out.write (data)
-                    out.close ()
-                    ret = ret :+ file.toString
-                }
+                while (more)
+                zip.close ()
             }
             else
-                log.error (f"""putFile could not store ${data.length}%d bytes for path "$path"""")
+            {
+                val f = new Path (parent, dst)
+                fs.copyFromLocalFile (false, true, new Path (src), f)
+                ret = ret :+ file.toString
+            }
         }
         catch
         {
             case e: Exception =>
-                log.error (s"""putFile failed for path "$path" with unzip=$unzip""", e)
+                log.error (s"""putFile failed for "$src" to "$dst" with unzip=$unzip""", e)
         }
 
         ret
     }
-
-    def sub_belvis (filename: String, measurement_options: Map[String, String], join_table: Map[String, String]): Unit =
-    {
-        // we assume a very specific format since there is no header
-        val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (filename)
-        val rdd = df.rdd
-        val raw = rdd.keyBy (row => join_table.getOrElse (row.getString (1), "")).filter (_._1 != "").map (to_reading)
-        val readings: RDD[MeasuredValue] = raw.reduceByKey (sum).values.flatMap (to_timeseries)
-        val ok: RDD[MeasuredValue] = readings.filter (_._1 != null)
-        ok.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-        df.unpersist (false)
-        rdd.unpersist (false)
-        raw.unpersist (false)
-        readings.unpersist (false)
-        ok.unpersist (false)
-    }
-
-    def process_belvis (join_table: Map[String, String])(file: String): Unit =
-    {
-        val measurement_csv_options = Map[String,String] (
-            "header" → "false",
-            "ignoreLeadingWhiteSpace" → "false",
-            "ignoreTrailingWhiteSpace" → "false",
-            "sep" → ";",
-            "quote" → "\"",
-            "escape" → "\\",
-            "encoding" → "UTF-8",
-            "comment" → "#",
-            "nullValue" → "",
-            "nanValue" → "NaN",
-            "positiveInf" → "Inf",
-            "negativeInf" → "-Inf",
-            "dateFormat" → "yyyy-MM-dd",
-            "timestampFormat" → "dd.MM.yyyy HH:mm",
-            "mode" → "DROPMALFORMED",
-            "inferSchema" → "true"
-        )
-
-        val belvis_files: Seq[String] = getFiles (file)
-        for (filename ← belvis_files)
-        {
-            val start = System.nanoTime ()
-            sub_belvis (filename, measurement_csv_options, join_table)
-            if (!options.nocopy)
-                hdfs.delete (new Path (filename), false)
-            val end = System.nanoTime ()
-            log.info (s"process $filename: ${(end - start) / 1e9} seconds")
-        }
-    }
-
-    val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
 
     /**
      * Decode an OBIS code into actionable values.
@@ -403,13 +364,86 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             ("", false, false, s"'$code' has an OBIS code format error", 0.0)
     }
 
+    def complex (measurements: Iterable[MeasuredValue]): MeasuredValue =
+    {
+        val a = measurements.head
+        (a._1, a._2, a._3, a._4, measurements.map (_._5).sum, measurements.map (_._6).sum, a._7)
+    }
+
+    /**
+     * Make tuples suitable for Cassandra:
+     * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+     *
+     * @param line one line from the BelVis file
+     */
+    def parse_belvis_line (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
+    {
+        val ONE_MINUTE_IN_MILLIS = 60000
+
+        val fields = line.split (";")
+        // eliminate blank lines at the end
+        if (fields.length > 1)
+        {
+            val datetime = MeasurementDateTimeFormat2.parse (fields (0))
+            val mrid = join_table.getOrElse (fields (1), null)
+            if (null != mrid)
+            {
+                val (typ, real, imag, units, factor) = decode_obis (fields (2), fields (3), "1.0")
+                val time = datetime.getTime
+                val period = fields (6).toInt
+                val interval = period * ONE_MINUTE_IN_MILLIS
+                val list = for
+                {
+                    i ← 7 until fields.length by 2
+                    reading = fields (i)
+                    value = if ("" != reading) asDouble (reading) * factor else 0.0
+                    slot = (i - 7) / 2
+                    timestamp = time + (interval * slot)
+                    if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
+                }
+                    yield
+                        (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
+                list
+            }
+            else
+                List ()
+        }
+        else
+            List ()
+    }
+
+    def sub_belvis (filename: String, join_table: Map[String, String]): Unit =
+    {
+        // it's almost a CSV file
+        // for daylight savings time changes, not all lines have the same number of columns
+        val lines = session.sparkContext.textFile (filename)
+        val rdd = lines.flatMap (parse_belvis_line (join_table))
+        // combine real and imaginary parts
+        val grouped = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+        grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+    }
+
+    def process_belvis (join_table: Map[String, String])(file: String): Unit =
+    {
+        val belvis_files: Seq[String] = getFiles (file)
+        for (filename ← belvis_files)
+        {
+            val start = System.nanoTime ()
+            sub_belvis (filename, join_table)
+            if (!options.nocopy)
+                hdfs.delete (new Path (filename), false)
+            val end = System.nanoTime ()
+            log.info (s"process $filename: ${(end - start) / 1e9} seconds")
+        }
+    }
+
     /**
      * Make tuples suitable for Cassandra:
      * ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
      *
      * @param line one line from the LPEx file
      */
-    def to_tuples (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
+    def parse_lpex_line (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
     {
         val ONE_MINUTE_IN_MILLIS = 60000
 
@@ -431,7 +465,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                     i ← 15 until fields.length by 2
                     flags = fields (i + 1)
                     if flags == "W"
-                    value = fields (i).toDouble * factor
+                    value = asDouble (fields (i)) * factor
                     slot = (i - 15) / 2
                     timestamp = time + (interval * slot)
                     if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
@@ -451,12 +485,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             List ()
     }
 
-    def complex (measurements: Iterable[MeasuredValue]): MeasuredValue =
-    {
-        val a = measurements.head
-        (a._1, a._2, a._3, a._4, measurements.map (_._5).sum, measurements.map (_._6).sum, a._7)
-    }
-
     def sub_lpex (filename: String, join_table: Map[String, String]): Unit =
     {
         // it's almost a CSV file but they screwed up and gave it a version line
@@ -464,7 +492,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val lines = session.sparkContext.textFile (filename)
         if (lines.first.startsWith ("LPEX V3.0"))
         {
-            val rdd = lines.flatMap (to_tuples (join_table))
+            val rdd = lines.flatMap (parse_lpex_line (join_table))
             // combine real and imaginary parts
             val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
@@ -551,6 +579,8 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val grouped = raw.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
         grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         val end = System.nanoTime ()
+        if (!options.nocopy)
+            all_files.foreach (x => hdfs.delete (new Path (x), false))
         val some_files = all_files.take (6).mkString (",")
         val more_files = all_files.length > 6
         log.info (s"processed files [${some_files}${if (more_files) "..." else ""}]: ${(end - start) / 1e9} seconds")
@@ -558,13 +588,15 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     def isNumber (s: String): Boolean = s forall Character.isDigit
 
-    def asDouble (s: String): Double = try
-    {
-        s.toDouble
-    } catch
-    {
-        case _: Throwable => 0.0
-    }
+    def asDouble (s: String): Double =
+        try
+        {
+            s.toDouble
+        }
+        catch
+        {
+            case _: Throwable => 0.0
+        }
 
     /**
      * Make tuples suitable for Cassandra:
@@ -665,7 +697,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 if (options.nocopy)
                     Seq (options.mapping)
                 else
-                    putFile (session, "/" + base_name (options.mapping), readFile (options.mapping), options.mapping.toLowerCase.endsWith (".zip"))
+                    putFile (session, base_name (options.mapping), options.mapping, options.mapping.toLowerCase.endsWith (".zip"))
             if (mapping_files.nonEmpty)
             {
                 val filename = mapping_files.head
