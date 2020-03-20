@@ -31,9 +31,9 @@ import ch.ninecode.mfi.Trafokreis
 import ch.ninecode.net.Transformers
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
-
 import scala.collection.mutable
 import scala.io.Source
+import scala.xml.Node
 
 //  <md:FullModel rdf:about="sias_current">
 //        <md:Model.created>2017-06-01T23:00:20</md:Model.created>
@@ -118,12 +118,36 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         try
         {
             Header (
-                toDate ((x \\ "Model.created").head.text),
-                (x \\ "Model.description").head.text,
-                (x \\ "Model.modelingAuthoritySet").head.text,
-                (x \\ "Model.profile").head.text,
-                toDate ((x \\ "Model.scenarioTime").head.text),
-                (x \\ "Model.version").head.text
+                (x \\ "Model.created").headOption match
+                {
+                    case Some (node) => toDate (node.text)
+                    case _ => Calendar.getInstance ()
+                },
+                (x \\ "Model.description").headOption match
+                {
+                    case Some (node) => node.text
+                    case _ => "no description"
+                },
+                (x \\ "Model.modelingAuthoritySet").headOption match
+                {
+                    case Some (node) => node.text
+                    case _ => "no modeling authority"
+                },
+                (x \\ "Model.profile").headOption match
+                {
+                    case Some (node) => node.text
+                    case _ => "no profile"
+                },
+                (x \\ "Model.scenarioTime").headOption match
+                {
+                    case Some (node) => toDate (node.text)
+                    case _ => Calendar.getInstance ()
+                },
+                (x \\ "Model.version").headOption match
+                {
+                    case Some (node) => node.text
+                    case _ => "no version"
+                }
             )
         }
         catch
