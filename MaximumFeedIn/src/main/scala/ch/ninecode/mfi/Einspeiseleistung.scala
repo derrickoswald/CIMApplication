@@ -294,7 +294,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val b4_solve = System.nanoTime ()
         val gridlabFailures = gridlabd.solve (reduced_trafos.map (_._1))
         val solved = System.nanoTime ()
-        if (gridlabFailures.nonEmpty)
+        if (gridlabFailures.isEmpty)
             log.info ("solve: %s seconds successful".format ((solved - b4_solve) / 1e9))
         else
         {
