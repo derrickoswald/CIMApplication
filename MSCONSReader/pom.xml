@@ -14,7 +14,7 @@
     <url>https://github.com/derrickoswald/CIMApplication/tree/master/MSCONSReader</url>
 
     <properties>
-        <version.dependency.parser-combinators>1.1.2</version.dependency.parser-combinators>
+        <version.dependency.parser-combinators>1.1.0</version.dependency.parser-combinators>
     </properties>
 
     <dependencies>
