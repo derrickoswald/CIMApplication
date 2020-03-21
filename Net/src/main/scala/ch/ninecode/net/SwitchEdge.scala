@@ -21,20 +21,3 @@ extends LoadFlowEdge (
 
 }
 
-//object SwitchEdge
-//{
-//    // ToDo: remove me
-//import ch.ninecode.model.Element
-//import ch.ninecode.model.Terminal
-//
-//    def apply (
-//        cn1: String,
-//        cn2: String,
-//        switches: Iterable[Element]
-//    ): SwitchEdge =
-//    {
-//        val t1 = Terminal (TopologicalNode = cn1)
-//        val t2 = Terminal (TopologicalNode = cn2)
-//        SwitchEdge (SwitchData (switches.map (x => SwitchDetails (x, t1, t2, None))))
-//    }
-//}

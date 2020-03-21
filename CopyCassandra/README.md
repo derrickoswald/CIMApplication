@@ -12,9 +12,9 @@ Operation
 The program needs to be run using `spark-submit`:
 
 ```bash
-spark-submit --master spark://sandbox:7077 CopyCassandra-2.11-2.4.4-2.7.0-jar-with-dependencies.jar --help
+spark-submit --master spark://sandbox:7077 CopyCassandra-2.11-2.4.5-2.7.1-jar-with-dependencies.jar --help
 
-CopyCassandra 2.11-2.4.4-2.7.0
+CopyCassandra 2.11-2.4.5-2.7.1
 Usage: CopyCassandra [options]
 
   --log <value>            log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN [OFF]
@@ -26,7 +26,7 @@ Usage: CopyCassandra [options]
   --target_port <port>     Cassandra destination connection port [9042]
   --target_keyspace <name> destination Cassandra keyspace [cimapplication]
   --target_replication <#> destination keyspace replication if the Cassandra keyspace needs creation [1]
-  --version                Scala: 2.11, Spark: 2.4.4, CopyCassandra: 2.5.0
+  --version                Scala: 2.11, Spark: 2.4.5, CopyCassandra: 2.7.1
 
 Copies data from one Cassandra instance or keyspace to another through Spark.
 ```

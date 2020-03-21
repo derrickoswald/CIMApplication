@@ -269,11 +269,11 @@ object Main
     }
 
     /**
-     * Build jar with dependencies (target/ShortCircuit-2.11-2.4.4-2.7.0-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/ShortCircuit-2.11-2.4.5-2.7.1-jar-with-dependencies.jar):
      * mvn package
      * Assuming the data files and csv files exist on hdfs in the data directory,
      * invoke (on the cluster) with:
-     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.4.4-2.7.0-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
+     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/ShortCircuit-2.11-2.4.5-2.7.1-jar-with-dependencies.jar --csv "hdfs://sandbox:8020/data/KS_Leistungen.csv" --logging "INFO" "hdfs://sandbox:8020/data/bkw_cim_export_schopfen_all.rdf"
      */
 
     def read_cim (session: SparkSession, arguments: Arguments): Unit =

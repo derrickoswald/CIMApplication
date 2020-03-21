@@ -59,17 +59,17 @@ Use the
 [spark-submit](http://spark.apache.org/docs/latest/submitting-applications.html#launching-applications-with-spark-submit)
 command to launch the program. Using the --help switch:
 ```
-$ spark-submit Customer2_NetworkParameters-2.11-2.4.4-2.7.0-jar-with-dependencies.jar --help
+$ spark-submit Customer2_NetworkParameters-2.11-2.4.5-2.7.1-jar-with-dependencies.jar --help
 ```
 will print out a short summary of available parameters like so:
 ```
-Customer2_NetworkParameters 2.11-2.4.4-2.7.0
+Customer2_NetworkParameters 2.11-2.4.5-2.7.1
 Usage: Customer2_NetworkParameters [options] [<CIM>,<CIM>...]
 
 Creates EquivalentInjection objects for the network supplying transformers from external data files.
 
   --help               prints this usage text
-  --version            Scala: 2.11, Spark: 2.4.4, Customer2_NetworkParameters: 2.6.0
+  --version            Scala: 2.11, Spark: 2.4.5, Customer2_NetworkParameters: 2.7.1
   --quiet              suppress informational messages [false]
   --master MASTER_URL  local[*], spark://host:port, mesos://host:port, yarn []
   --opts k1=v1,k2=v2   Spark options []

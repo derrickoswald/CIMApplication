@@ -73,7 +73,7 @@ object MaximumFeedIn
     }
 
     /**
-     * Build jar with dependencies (target/MaximumFeedIn-2.11-2.4.4-2.7.0-jar-with-dependencies.jar):
+     * Build jar with dependencies (target/MaximumFeedIn-2.11-2.4.5-2.7.1-jar-with-dependencies.jar):
      * mvn package
      * Invoke (on the cluster) with:
      * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g MaximumFeedIn-*-with-dependencies.jar --verbose --all hdfs://sandbox:8020/DemoData.rdf

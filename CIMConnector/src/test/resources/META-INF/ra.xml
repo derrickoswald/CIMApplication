@@ -14,7 +14,7 @@
         <config-property>
             <config-property-name>YarnConfigurationPath</config-property-name>
             <config-property-type>java.lang.String</config-property-type>
-            <config-property-value>/home/derrick/spark/spark-2.4.4-bin-hadoop2.7/conf</config-property-value>
+            <config-property-value>/home/derrick/spark/spark-2.4.5-bin-hadoop2.7/conf</config-property-value>
         </config-property>
         <config-property>
             <config-property-name>SparkDriverMemory</config-property-name>
