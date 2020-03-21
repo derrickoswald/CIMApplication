@@ -14,7 +14,8 @@ LABEL maintainer = "Derrick.Oswald@9code.ch"
 
 # Install Cassandra
 RUN echo "deb http://www.apache.org/dist/cassandra/debian 311x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
-RUN curl https://www.apache.org/dist/cassandra/KEYS | apt-key add -
+RUN curl https://downloads.apache.org/cassandra/KEYS | apt-key add -
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq apt-transport-https ca-certificates
 RUN apt-get update \
   && apt-key adv --keyserver pool.sks-keyservers.net --recv-key A278B781FE4B2BDA
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends cassandra
