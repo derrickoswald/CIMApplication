@@ -8,10 +8,10 @@ import scala.math.acos
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.SwingNode
-import ch.ninecode.gl.SwitchEdge
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMSwitchEdge
+import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.model.Element
 import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.SolarGeneratingUnit
@@ -29,21 +29,21 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def finish_time: Calendar = trafokreis.finish_time
 
-    def makeTransformerEdge (elements: Iterable[Element], cn1: String, cn2: String): TransformerEdge =
+    def makeTransformerEdge (elements: Iterable[Element], cn1: String, cn2: String): GLMTransformerEdge =
     {
         val element = elements.head
         val trafo = trafokreis.subtransmission_trafos.filter (data => data.transformer.id == element.id)
-        TransformerEdge (TransformerSet (Array (trafo.headOption.orNull)))
+        GLMTransformerEdge (TransformerSet (Array (trafo.headOption.orNull)))
     }
 
     override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges => GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2, makeTransformerEdge))
 
-    override def transformers: Iterable[TransformerEdge] =
-        trafokreis.transformers.transformers.map (TransformerEdge)
+    override def transformers: Iterable[GLMTransformerEdge] =
+        trafokreis.transformers.transformers.map (GLMTransformerEdge)
 
-    override def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
+    override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.filter (edge => edge match { case _: TransformerEdge => true case _ => false }).asInstanceOf[Iterable[TransformerEdge]]
+        val subtransmission_trafos = edges.filter (edge => edge match { case _: GLMTransformerEdge => true case _ => false }).asInstanceOf[Iterable[GLMTransformerEdge]]
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
@@ -87,7 +87,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
      * @param generator the driver program
      * @return A switch string (.glm text) for this edge.
      */
-    def emit_switch (edge: SwitchEdge, generator: GLMGenerator): String =
+    def emit_switch (edge: GLMSwitchEdge, generator: GLMGenerator): String =
     {
         val status = if (edge.normalOpen) "OPEN" else "CLOSED"
         val current = 9999.0 // override so it never trips
@@ -127,13 +127,13 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
         edge match
         {
-            case cable: LineEdge => super.emit_edge (cable) + current_recorder
-            case swtch: SwitchEdge => emit_switch (swtch, this)
+            case cable: GLMLineEdge => super.emit_edge (cable) + current_recorder
+            case swtch: GLMSwitchEdge => emit_switch (swtch, this)
             case _ => super.emit_edge (edge)
         }
     }
 
-    override def emit_transformer (transformer: TransformerEdge): String =
+    override def emit_transformer (transformer: GLMTransformerEdge): String =
     {
         val name = transformer.transformer.transformer_name
 

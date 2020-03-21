@@ -6,8 +6,8 @@ import java.util.Calendar
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMLineEdge
+import ch.ninecode.gl.GLMTransformerEdge
 
 /**
  * GridLAB-D glm file generator.
@@ -44,7 +44,7 @@ case class SimulationGLMGenerator (
 
     override def edges: Iterable[SimulationEdge] = kreis.edges
 
-    override def transformers: Iterable[TransformerEdge] = List (kreis.transformer_edge)
+    override def transformers: Iterable[GLMTransformerEdge] = List (kreis.transformer_edge)
 
     override def swing_nodes: Iterable[GLMNode] = kreis.swing_nodes
 
@@ -145,7 +145,7 @@ case class SimulationGLMGenerator (
         super.emit_node (node) + recorders + players
     }
 
-    override def emit_transformer (transformer: TransformerEdge): String =
+    override def emit_transformer (transformer: GLMTransformerEdge): String =
     {
         val name = transformer.transformer.transformer_name
         super.emit_transformer (transformer) +
@@ -162,6 +162,6 @@ case class SimulationGLMGenerator (
      */
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[LineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[GLMLineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[GLMLineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 }

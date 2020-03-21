@@ -1,40 +1,26 @@
 package ch.ninecode.gl
 
-import ch.ninecode.util.Graphable
+import ch.ninecode.net.LoadFlowNode
 
 /**
- * Basic properties of a node.
+ * A node in the GLM file.
  */
-trait GLMNode extends Graphable with Serializable
+trait GLMNode extends LoadFlowNode
 {
     /**
-     * The unique node identifier.
-     *
-     * @return The ID of the node (the mRID of the ConnectivityNode or TopologicalNode).
-     */
-    def id: String
-
-    /**
-     * The nominal voltage of the node.
-     *
-     * @return The voltage of the node (volts).
-     */
-    def nominal_voltage: Double
-
-    /**
-     * Return the .glm text for the node.
+     * Return the .glm text for the node, by default make a meter.
      *
      * @return The string value to be included in the .glm file for this node.
      */
     def emit (generator: GLMGenerator): String =
-        """
-          |        object meter
-          |        {
-          |            name "%s";
-          |            phases %s;
-          |            bustype PQ;
-          |            nominal_voltage %sV;
-          |        };
-          |""".stripMargin.format (id, if (generator.isSinglePhase) "AN" else "ABCN", nominal_voltage)
+        s"""
+        |        object meter
+        |        {
+        |            name "$id";
+        |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
+        |            bustype PQ;
+        |            nominal_voltage ${nominal_voltage}V;
+        |        };
+        |""".stripMargin
 }
 

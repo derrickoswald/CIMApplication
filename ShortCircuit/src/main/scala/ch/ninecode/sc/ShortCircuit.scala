@@ -20,15 +20,11 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.Island
-import ch.ninecode.gl.Island.Node
-import ch.ninecode.gl.Island.NodeParts
-import ch.ninecode.gl.Island.identifier
-import ch.ninecode.gl.Island.island_id
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.SwitchEdge
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMLineEdge
+import ch.ninecode.gl.GLMSwitchEdge
+import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.Bay
@@ -42,6 +38,12 @@ import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.model.VoltageLevel
+import ch.ninecode.net.Island
+import ch.ninecode.net.Island.identifier
+import ch.ninecode.net.Island.island_id
+import ch.ninecode.net.LoadFlowEdge
+import ch.ninecode.net.LoadFlowNode
+import ch.ninecode.net.TerminalPlus
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
@@ -582,7 +584,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                 val v2 = voltage2.value_a.modulus
                                 x match
                                 {
-                                    case switch: SwitchEdge =>
+                                    case switch: GLMSwitchEdge =>
                                         if (switch.normalOpen)
                                             List ()
                                         else
@@ -603,7 +605,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                                 else
                                                     List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, name, rating))
                                         }
-                                    case cable: LineEdge =>
+                                    case cable: GLMLineEdge =>
                                         if (Math.abs (v1 - v2) < 1e-6)
                                             List ()
                                         else
@@ -634,7 +636,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                             else
                                                 List (SimpleBranch (x.cn2, x.cn1, ((voltage2.value_a - voltage1.value_a) / z.impedanz_low).modulus, x.id, name, None, z))
                                         }
-                                    case transformer: TransformerEdge =>
+                                    case transformer: GLMTransformerEdge =>
                                         List (TransformerBranch (x.cn1, x.cn2, 0.0, transformer.transformer.transformer_name, x.id,
                                             transformer.transformer.power_rating, v1, v2, transformer.transformer.total_impedance_per_unit._1))
                                     case _ =>
@@ -852,31 +854,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         solve_and_analyse (gridlabd = gridlabd, one_phase = true, isMax, simulations)
     }
 
-    def node_maker (rdd: RDD[NodeParts]): RDD[Node] =
-    {
-        def house (element: Element): Boolean = element match
-        {
-            case _: EnergyConsumer => true
-            case _ => false
-        }
-
-        def busbar (element: Element): Boolean = element match
-        {
-            case _: BusbarSection => true
-            case _ => false
-        }
-
-        rdd.map (
-            parts =>
-            {
-                val has = parts.find (h => house (h._5))
-                val bus = parts.find (b => busbar (b._5))
-                val ele: Element = has.getOrElse (bus.getOrElse (parts.head))._5
-                (parts.head._2, SimulationNode (parts.head._3.id, parts.head._4, ele.id, house (ele), busbar (ele)))
-            }
-        )
-    }
-
     def zero (list: RDD[(String, String)], results: RDD[ScResult]): RDD[ScResult] =
     {
         results.keyBy (_.tx).leftOuterJoin (list).values.map
@@ -994,8 +971,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         if (!trafo_island_mapping.filter (_._2 != "").isEmpty)
         {
-            val island_helper = new Island (session, storage_level, options.cable_impedance_limit)
-            val graph_stuff = island_helper.queryNetwork (trafo_island_mapping, node_maker) // ([nodes], [edges])
+            val island_helper = new ShortCircuitIsland (session, storage_level)
+            val graph_stuff = island_helper.queryNetwork (trafo_island_mapping) // ([nodes], [edges])
             val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
 
             // set up simulations
@@ -1004,7 +981,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             {
                 edge match
                 {
-                    case t: TransformerEdge =>
+                    case t: GLMTransformerEdge =>
                         val sets = island.transformers.map (_.transformer_name)
                         !sets.contains (t.transformer.transformer_name)
                     case _ => true
@@ -1016,7 +993,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 .map (
                     x =>
                     {
-                        val (island, nodes, edges) = (x._2, x._1._1, x._1._2)
+                        val ((nodes, edges), island) = x.asInstanceOf[((Iterable[SimulationNode], Iterable[GLMEdge]), TransformerIsland)]
                         SimulationTransformerServiceArea (
                             island = island,
                             nodes = nodes,
@@ -1072,7 +1049,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         FData.fuse_sizing_table (options.fuse_table)
         assert (null != get[TopologicalNode], "no topology")
 
-        val transformer_data = new Transformers (
+        val transformer_data = Transformers (
             spark,
             storage_level,
             options.default_short_circuit_power_max,

@@ -2,8 +2,8 @@ package ch.ninecode.sim
 
 import java.util.Calendar
 
-import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GLMNode
+import ch.ninecode.net.LoadFlowEdge
+import ch.ninecode.net.LoadFlowNode
 
 /**
  * A work unit to be simulated.
@@ -24,8 +24,8 @@ case class SimulationTask
     island: String,
     start: Calendar,
     end: Calendar,
-    nodes: Iterable[GLMNode],
-    edges: Iterable[GLMEdge],
+    nodes: Iterable[SimulationNode],
+    edges: Iterable[SimulationEdge],
     players: Iterable[SimulationPlayer],
     recorders: Iterable[SimulationRecorder]
 )

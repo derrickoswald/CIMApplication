@@ -6,8 +6,8 @@ import java.util.Calendar
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMLineEdge
+import ch.ninecode.gl.GLMTransformerEdge
 
 case class SimulationDirectionGenerator
 (
@@ -26,7 +26,7 @@ case class SimulationDirectionGenerator
 
     override def edges: Iterable[SimulationEdge] = kreis.edges
 
-    override def transformers: Iterable[TransformerEdge] = List (TransformerEdge (kreis.transformer))
+    override def transformers: Iterable[GLMTransformerEdge] = List (GLMTransformerEdge (kreis.transformer))
 
     override def swing_nodes: Iterable[GLMNode] = kreis.swing_nodes
 
@@ -77,6 +77,6 @@ case class SimulationDirectionGenerator
      */
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[LineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[GLMLineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[GLMLineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 }

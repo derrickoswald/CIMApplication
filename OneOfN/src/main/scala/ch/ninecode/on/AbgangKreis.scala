@@ -3,11 +3,11 @@ package ch.ninecode.on
 import java.util.Calendar
 
 import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.SwingNode
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.Conductor
@@ -103,7 +103,9 @@ object AbgangKreis
      */
     def toGLMEdge (transformers: Array[TransformerSet])(elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
     {
-        case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
+        case class fakeEdge (override val id: String, override val cn1: String, override val cn2: String)
+        extends LoadFlowEdge (id, cn1, cn2)
+        with GLMEdge
 
         // ToDo: check that all elements are the same class, e.g. ACLineSegment
         val element = elements.head
@@ -115,7 +117,7 @@ object AbgangKreis
                 val t1 = Terminal (TopologicalNode = cn1)
                 val t2 = Terminal (TopologicalNode = cn2)
                 implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
-                LineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
+                GLMLineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
             //                DEFAULT_R: Double = 0.225,
             //                DEFAULT_X: Double = 0.068
             case _: PowerTransformer ⇒
@@ -127,7 +129,7 @@ object AbgangKreis
                     fakeEdge (element.id, cn1, cn2)
                 }
                 else
-                    TransformerEdge (t)
+                    GLMTransformerEdge (t)
             case _ ⇒
                 println ("""edge %s has unhandled class '%s'""".format (element.id, element.getClass.getName)) // ToDo: log somehow
                 fakeEdge (element.id, cn1, cn2)

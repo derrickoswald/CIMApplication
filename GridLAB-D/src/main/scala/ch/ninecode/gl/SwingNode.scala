@@ -1,3 +1,10 @@
 package ch.ninecode.gl
 
-case class SwingNode (id: String, nominal_voltage: Double, name: String) extends GLMNode
+import ch.ninecode.net.LoadFlowNode
+
+case class SwingNode (
+    override val id: String,
+    override val nominal_voltage: Double,
+    name: String)
+extends LoadFlowNode (id, nominal_voltage)
+with GLMNode

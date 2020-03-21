@@ -6,9 +6,9 @@ import java.util.Calendar
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.SwingNode
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BasicElement
 import ch.ninecode.model.ConductingEquipment
@@ -45,15 +45,15 @@ case class ScGLMGenerator
 
     override def edges: Iterable[GLMEdge] = area.edges
 
-    override def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
+    override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.filter (edge => edge match { case _: TransformerEdge => true case _ => false }).asInstanceOf[Iterable[TransformerEdge]]
+        val subtransmission_trafos = edges.filter (edge => edge match { case _: GLMTransformerEdge => true case _ => false }).asInstanceOf[Iterable[GLMTransformerEdge]]
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
     }
 
-    override def transformers: Iterable[TransformerEdge] = area.island.transformers.map (TransformerEdge)
+    override def transformers: Iterable[GLMTransformerEdge] = area.island.transformers.map (GLMTransformerEdge)
 
     class ShortCircuitSwingNode (val set: TransformerSet) extends SwingNode (set.node0, set.v0, set.transformer_name)
 
@@ -104,7 +104,7 @@ case class ScGLMGenerator
             val t1 = Terminal (TopologicalNode = "N5")
             val t2 = Terminal (TopologicalNode = node.id)
             implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
-            val line = LineEdge (LineData (Iterable (LineDetails (l, t1, t2, None, None))))
+            val line = GLMLineEdge (LineData (Iterable (LineDetails (l, t1, t2, None, None))))
             val config = line.make_line_configuration ("N5_configuration", Sequences (Complex (z.re, z.im), Complex (0.0)), false, this)
             val cable =
                 """

@@ -3,7 +3,6 @@ package ch.ninecode.sc
 import java.util.Calendar
 
 import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GLMNode
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.util.Complex
 
@@ -21,7 +20,7 @@ import ch.ninecode.util.Complex
 case class SimulationTransformerServiceArea
 (
     island: TransformerIsland,
-    nodes: Iterable[GLMNode],
+    nodes: Iterable[SimulationNode],
     edges: Iterable[GLMEdge],
     start_time: Calendar,
     directory: String) extends Serializable
@@ -29,19 +28,15 @@ case class SimulationTransformerServiceArea
     val name: String = island.island_name
 
     // experiment only on houses and busbars
-    def keep (node: GLMNode): Boolean =
-    {
-        val e = node.asInstanceOf[SimulationNode]
-        e.consumer || e.busbar
-    }
+    def keep (node: SimulationNode): Boolean = node.consumer || node.busbar
 
     // generate experiments as 5 seconds short circuit (100Ω) at each node
     lazy val experiments: Array[ScExperiment] = nodes.filter (keep).zipWithIndex // (node, index)
         .map (
         x =>
         {
-            val node = x._1.asInstanceOf[SimulationNode]
-            ScExperiment (name, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (100.0))
+            val (node, index) = x
+            ScExperiment (name, node.id, node.equipment, start_time, index, 5, node.nominal_voltage, Complex (100.0))
         }
     ).toArray
 

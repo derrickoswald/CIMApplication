@@ -217,7 +217,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // put it all together
         val ff = nodes_feeders.join (get[TopologicalNode].keyBy (_.id)).leftOuterJoin (nodevoltages).map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (nodeid, (feederid, TopologicalNode, voltage?))
     val nodes: RDD[(String, FeederNode)] = ff.leftOuterJoin (feeder.feederNodes).values // ((feederid, TopologicalNode, voltage?), feeder?)
-        .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List (_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0))))).persist (options.storage)
+        .map (x ⇒ (x._1._1, FeederNode (x._2.map (List (_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0))))).persist (options.storage)
         if (options.verbose)
             log.info ("%s nodes".format (nodes.count))
 

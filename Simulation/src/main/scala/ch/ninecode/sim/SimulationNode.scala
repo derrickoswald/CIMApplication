@@ -1,6 +1,7 @@
 package ch.ninecode.sim
 
 import ch.ninecode.gl.GLMNode
+import ch.ninecode.net.LoadFlowNode
 
 /**
  * Vertex data.
@@ -15,14 +16,19 @@ import ch.ninecode.gl.GLMNode
  */
 case class SimulationNode
 (
-    id: String,
-    nominal_voltage: Double,
+    override val id: String,
+    override val nominal_voltage: Double,
     equipment: String,
     world_position: (Double, Double),
     schematic_position: (Double, Double),
     players: Iterable[SimulationPlayer] = null,
     recorders: Iterable[SimulationRecorder] = null
-) extends GLMNode
+)
+extends LoadFlowNode (
+    id,
+    nominal_voltage
+)
+with GLMNode
 {
     override def toString: String =
     {

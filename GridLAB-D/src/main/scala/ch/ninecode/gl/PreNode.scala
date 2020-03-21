@@ -1,5 +1,7 @@
 package ch.ninecode.gl
 
+import ch.ninecode.net.LoadFlowNode
+
 /**
  * Vertex data.
  *
@@ -9,7 +11,7 @@ package ch.ninecode.gl
  */
 case class PreNode
 (
-    id: String,
-    nominal_voltage: Double,
-    problem: String)
-    extends GLMNode
+    override val id: String,
+    override val nominal_voltage: Double,
+    problem: String = null)
+extends LoadFlowNode (id, nominal_voltage)

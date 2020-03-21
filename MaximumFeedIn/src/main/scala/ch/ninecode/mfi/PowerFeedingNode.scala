@@ -2,6 +2,7 @@ package ch.ninecode.mfi
 
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.PreEdge
+import ch.ninecode.net.LoadFlowNode
 import ch.ninecode.util.Complex
 
 /**
@@ -19,16 +20,17 @@ import ch.ninecode.util.Complex
  */
 case class PowerFeedingNode
 (
-    id: String,
+    override val id: String,
     prev_node: String,
     conn_edge: Array[PreEdge],
-    nominal_voltage: Double,
+    override val nominal_voltage: Double,
     source_obj: StartingTrafo,
     feeder: Feeder,
     sum_z: Complex,
     min_ir: Double,
     problem: String
-) extends GLMNode
+) extends LoadFlowNode (id, nominal_voltage)
+with GLMNode
 {
     def asString: String = "[%s %gV %s@%s %sΩ %gA %s]".format (id, nominal_voltage, if (null == source_obj) "" else source_obj.asString, if (null == feeder) "" else feeder.feeder_id, if (null == sum_z) "" else sum_z.toString, min_ir, problem)
 

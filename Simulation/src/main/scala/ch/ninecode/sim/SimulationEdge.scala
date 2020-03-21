@@ -1,6 +1,8 @@
 package ch.ninecode.sim
 
 import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GLMGenerator
+import ch.ninecode.net.LoadFlowEdge
 
 /**
  * Edge data.
@@ -15,16 +17,17 @@ case class SimulationEdge
     rawedge: GLMEdge,
     world_position: Iterable[(Double, Double)],
     schematic_position: Iterable[(Double, Double)],
-    players: Iterable[SimulationPlayer] = null,
-    recorders: Iterable[SimulationRecorder] = null
-) extends GLMEdge
+    players: Iterable[SimulationPlayer],
+    recorders: Iterable[SimulationRecorder]
+)
+extends LoadFlowEdge (
+    rawedge.id,
+    rawedge.cn1,
+    rawedge.cn2
+)
+with GLMEdge
 {
-    val id: String = rawedge.id
-    val cn1: String = rawedge.cn1
-    val cn2: String = rawedge.cn2
-    override def toString: String =
-    {
-        "%s %s⇒%s".format (id, cn1, cn2)
-    }
+    override def emit (generator: GLMGenerator): String = rawedge.emit (generator)
+    override def toString: String = s"$id $cn1⇒$cn2"
 }
 

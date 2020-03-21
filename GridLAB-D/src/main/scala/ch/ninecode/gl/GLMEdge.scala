@@ -10,80 +10,29 @@ import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Conductor
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
-import ch.ninecode.util.Graphable
+import ch.ninecode.net.LoadFlowEdge
 
 /**
- * Basic properties of an edge.
+ * An edge in the GLM file.
  */
-trait GLMEdge extends Graphable with Serializable
+trait GLMEdge extends LoadFlowEdge
 {
     /**
-     * The unique edge identifier.
-     *
-     * @return The ID of the edge (the mRID of the electrical element).
-     */
-    def id: String
-
-    /**
-     * The node id connected to the first terminal.
-     *
-     * @return The ID of the ConnectivityNode or TopologicalNode reference by the Terminal with sequence number 1.
-     */
-    def cn1: String
-
-    /**
-     * The node id connected to the second terminal.
-     *
-     * @return The ID of the ConnectivityNode or TopologicalNode reference by the Terminal with sequence number 2.
-     */
-    def cn2: String
-
-    /**
-     * Ordered key.
-     * Provide a key on the two connections, independent of to-from from-to ordering.
-     */
-    def key: String = if (cn1 < cn2) cn1 + cn2 else cn2 + cn1
-
-    /**
-     * Return the .glm text for the edge.
+     * Return the .glm text for the edge, by default, make a link.
      *
      * @param generator The generator object with details on what/how to generate the .glm.
      * @return The string value to be included in the .glm file for this edge.
      */
     def emit (generator: GLMGenerator): String =
-    // by default, make a link
-        """
-          |        object link
-          |        {
-          |            name "%s";
-          |            phases %s;
-          |            from "%s";
-          |            to "%s";
-          |        };
-          |""".stripMargin.format (id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2)
-
-    /**
-     * Generate a valid configuration name.
-     *
-     * Use the given string, usually a library type description (e.g. "GKN 3x95se/95 1/0.6 kV" or "4x95, Ceanderkabel",
-     * to create a valid GridLAB-D configuration name.
-     * The intent is to allow human-readable configuration names while adhering to GrdLAB-D rules such as:
-     *
-     * - no leading digits: ERROR    [INIT] : object name '4x4' invalid, names must start with a letter or an underscore
-     * - no decimal points: KLE199604 (underground_line:227) reference to TT 3x2.5 is missing match value
-     *
-     */
-    def valid_config_name (string: String): String =
-    {
-        val s = if ((null == string) || ("" == string))
-            "unknown"
-        else
-            if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
-                string
-            else
-                "_" + string
-        s.replace (".", "d").replace (":", "$")
-    }
+        s"""
+        |        object link
+        |        {
+        |            name "$id";
+        |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
+        |            from "$cn1";
+        |            to "$cn2";
+        |        };
+        |""".stripMargin
 }
 
 object GLMEdge
@@ -120,10 +69,10 @@ object GLMEdge
         }
     }
 
-    def transformermaker (elements: Iterable[Element], cn1: String, cn2: String): TransformerEdge =
+    def transformermaker (elements: Iterable[Element], cn1: String, cn2: String): GLMTransformerEdge =
     {
         log.error (s"edge from $cn1 to $cn2 has PowerTransformer class: ${elements.head.id}")
-        TransformerEdge (null)
+        GLMTransformerEdge (null)
     }
 
     /**
@@ -138,7 +87,7 @@ object GLMEdge
      * @return a type of edge
      */
     def toGLMEdge (elements: Iterable[Element], cn1: String, cn2: String,
-       makeTransformerEdge: (Iterable[Element], String, String) => TransformerEdge = transformermaker): GLMEdge =
+        makeTransformerEdge: (Iterable[Element], String, String) => GLMTransformerEdge = transformermaker): GLMEdge =
     {
         // for now, we handle Conductor, Switch and eventually PowerTransformer
         var tagged = elements.map (x => (baseClass (x), x))
@@ -153,20 +102,21 @@ object GLMEdge
         tagged.head._1 match
         {
             case "Switch" =>
-                SwitchEdge (cn1, cn2, elements)
+                GLMSwitchEdge (cn1, cn2, elements)
             case "Conductor" =>
                 val t1 = Terminal (TopologicalNode = cn1)
                 val t2 = Terminal (TopologicalNode = cn2)
                 implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
-                LineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
-                // base_temperature: Double = 20.0,
-                // DEFAULT_R: Double = 0.225,
-                // DEFAULT_X: Double = 0.068
+                GLMLineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
+            // base_temperature: Double = 20.0,
+            // DEFAULT_R: Double = 0.225,
+            // DEFAULT_X: Double = 0.068
             case "PowerTransformer" =>
                 makeTransformerEdge (elements, cn1, cn2)
             case _ =>
                 log.error ("edge from %s to %s has unhandled class type '%s'".format (cn1, cn2, tagged.head._1))
-                case class fakeEdge (id: String, cn1: String, cn2: String) extends GLMEdge
+                case class fakeEdge (override val id: String, override val cn1: String, override val cn2: String)
+                    extends LoadFlowEdge (id, cn1, cn2) with GLMEdge
                 fakeEdge (tagged.head._2.id, cn1, cn2)
         }
     }

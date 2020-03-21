@@ -4,9 +4,9 @@ import java.util.Calendar
 
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.SwitchEdge
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMLineEdge
+import ch.ninecode.gl.GLMSwitchEdge
+import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerSet
 import org.slf4j.Logger
@@ -20,6 +20,8 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.Switch
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import ch.ninecode.net.LoadFlowEdge
+import ch.ninecode.net.LoadFlowNode
 
 /**
  * A container for a simulation piece of work.
@@ -63,7 +65,7 @@ case class SimulationTrafoKreis
     // so to fix this we adjust recorders with property "measured_power" to measure power_in of a new switch edge
     // between the (only?) incoming edge and the node
 
-    var transformer_edge: TransformerEdge = TransformerEdge (transformer)
+    var transformer_edge: GLMTransformerEdge = GLMTransformerEdge (transformer)
 
     def swing_nodes: Array[GLMNode] = if ("lo" == swing)
         nodes.filter (_.id == transformer.node1).toArray
@@ -119,18 +121,18 @@ case class SimulationTrafoKreis
         {
             case old: SimulationEdge =>
                 old.copy (rawedge = alterEdgeNode (old.rawedge, original_node, new_node))
-            case old: SwitchEdge =>
-                SwitchEdge (old.data.copy (old.data.switches.map (
+            case old: GLMSwitchEdge =>
+                GLMSwitchEdge (old.data.copy (old.data.switches.map (
                     x => x.copy (
                         terminal1 = alterTerminal (x.terminal1, original_node, new_node),
                         terminal2 = alterTerminal (x.terminal2, original_node, new_node)))))
-            case old: LineEdge =>
-                LineEdge (old.data.copy (old.data.lines.map (
+            case old: GLMLineEdge =>
+                GLMLineEdge (old.data.copy (old.data.lines.map (
                     x => x.copy (
                         terminal1 = alterTerminal (x.terminal1, original_node, new_node),
                         terminal2 = alterTerminal (x.terminal2, original_node, new_node)))))
-            case old: TransformerEdge =>
-                TransformerEdge (old.transformer.copy (old.transformer.transformers.map (
+            case old: GLMTransformerEdge =>
+                GLMTransformerEdge (old.transformer.copy (old.transformer.transformers.map (
                     (x: TransformerData) => x.copy (
                         nodes = x.nodes.map (y => alterNode (y, original_node, new_node))))))
             case _ =>
@@ -202,7 +204,7 @@ case class SimulationTrafoKreis
      *
      * @return Replacement values for the nodes, edges, recorders and transformer that include the changes.
      */
-    def kludge: (Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationRecorder], TransformerEdge) =
+    def kludge: (Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationRecorder], GLMTransformerEdge) =
     {
         val normal_recorders = recorders.filter (_.property != "measured_power")
         val power_recorders = recorders.filter (_.property == "measured_power")
@@ -266,7 +268,7 @@ case class SimulationTrafoKreis
             if (edge_node_map.contains (transformer_edge.id))
             {
                 val original_node = edge_node_map(transformer_edge.id)
-                alterEdgeNode (transformer_edge, original_node, original_node + "_pseudo").asInstanceOf[TransformerEdge]
+                alterEdgeNode (transformer_edge, original_node, original_node + "_pseudo").asInstanceOf[GLMTransformerEdge]
             }
             else
                 transformer_edge
@@ -276,9 +278,11 @@ case class SimulationTrafoKreis
             x =>
             {
                 SimulationEdge (
-                    SwitchEdge (x._1.parent + "_pseudo", x._1.parent, Seq (newSwitch (x._1.parent + "_switch"))),
-                    Seq[(Double, Double)](),
-                    Seq[(Double, Double)]()
+                    GLMSwitchEdge (x._1.parent + "_pseudo", x._1.parent, Seq (newSwitch (x._1.parent + "_switch"))),
+                    Seq (),
+                    Seq (),
+                    Iterable (),
+                    Iterable ()
                 )
             }
         )
@@ -348,7 +352,7 @@ case class SimulationTrafoKreis
         def notTheTransformer (edge: GLMEdge): Boolean =
             edge.asInstanceOf[SimulationEdge].rawedge match
             {
-                case trafo: TransformerEdge =>
+                case trafo: GLMTransformerEdge =>
                     trafo.transformer.transformer_name != transformer.transformer_name
                 case _ =>
                     true

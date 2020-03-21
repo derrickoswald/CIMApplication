@@ -3,18 +3,18 @@ package ch.ninecode.on
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.model.Switch
+import ch.ninecode.net.LoadFlowEdge
 
 case class PlayerSwitchEdge
 (
-    cn1: String,
-    cn2: String,
+    override val cn1: String,
+    override val cn2: String,
     switch: Switch,
     fuse: Boolean
 )
-    extends GLMEdge
+extends LoadFlowEdge (switch.id, cn1, cn2)
+with GLMEdge
 {
-    override def id: String = switch.id
-
     /**
      * Emit a switch or fuse.
      *
@@ -24,36 +24,35 @@ case class PlayerSwitchEdge
     override def emit (generator: GLMGenerator): String =
     {
         val obj = if (fuse) "fuse" else "switch"
-        var current = switch.ratedCurrent
-        if (current <= 0)
-            current = 9999.0 // ensure it doesn't trip immediately
-    // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
-    val details = if (fuse)
-        """
-          |        mean_replacement_time 3600.0;
-          |        current_limit %sA;
-          |        object player
-          |        {
-          |            property "status";
-          |            file "input_data/%s.csv";
-          |        };""".format (current, id).stripMargin
-    else
-        """
-          |            object player
-          |            {
-          |                property "status";
-          |                file "input_data/%s.csv";
-          |            };""".format (id).stripMargin
+        // ensure it doesn't trip immediately
+        val current = if (switch.ratedCurrent <= 0) 9999.0 else switch.ratedCurrent
+        // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
+        val details = if (fuse)
+            s"""
+              |            mean_replacement_time 3600.0;
+              |            current_limit ${current}A;
+              |            object player
+              |            {
+              |                property "status";
+              |                file "input_data/$id.csv";
+              |            };""".stripMargin
+        else
+            s"""
+              |            object player
+              |            {
+              |                property "status";
+              |                file "input_data/$id.csv";
+              |            };""".stripMargin
 
-        """
-          |        object %s
-          |        {
-          |            name "%s";
-          |            phases %s;
-          |            from "%s";
-          |            to "%s";%s
-          |        };
-          |""".stripMargin.format (obj, id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, details)
-    }
+            s"""
+              |        object $obj
+              |        {
+              |            name "$id";
+              |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
+              |            from "$cn1";
+              |            to "$cn2";$details
+              |        };
+              |""".stripMargin
+        }
 }
 

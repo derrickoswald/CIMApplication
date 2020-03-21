@@ -9,7 +9,7 @@ import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.WriteConf
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.model.DiagramObject
 import ch.ninecode.model.DiagramObjectPoint
 import ch.ninecode.model.EnergyConsumer
@@ -144,7 +144,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     val edge = x._1._3
                     edge.rawedge match
                     {
-                        case _: LineEdge =>
+                        case _: GLMLineEdge =>
                             val world = if (null != edge.world_position)
                             {
                                 val coordinates = edge.world_position.map (p ⇒ List (p._1, p._2)).toList

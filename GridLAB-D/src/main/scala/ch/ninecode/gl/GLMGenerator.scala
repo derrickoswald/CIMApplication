@@ -3,6 +3,8 @@ package ch.ninecode.gl
 import java.text.SimpleDateFormat
 import java.util.{Calendar, TimeZone}
 
+import ch.ninecode.net.LoadFlowEdge
+
 /**
  * The .glm file generator.
  *
@@ -175,7 +177,7 @@ class GLMGenerator
      *
      * @return The TransformerSet objects to include in the export.
      */
-    def transformers: Iterable[TransformerEdge] = List ()
+    def transformers: Iterable[GLMTransformerEdge] = List ()
 
     /**
      * The ID of the SWING or slack bus nodes and their voltages.
@@ -241,7 +243,8 @@ class GLMGenerator
      */
     def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.isInstanceOf[LineEdge]).map (_.asInstanceOf[LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        val lines = edges.flatMap (_ match { case line: GLMLineEdge => Some (line); case _ => None })
+        lines.groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 
     /**
@@ -252,7 +255,7 @@ class GLMGenerator
      * @param transformers The transformers in the model.
      * @return The configuration elements as strings.
      */
-    def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
+    def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
         val configurations = transformers.groupBy (_.configurationName).values
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
@@ -338,7 +341,7 @@ class GLMGenerator
      * @param transformer the edge to emit
      * @return The .glm file text for the transformer.
      */
-    def emit_transformer (transformer: TransformerEdge): String =
+    def emit_transformer (transformer: GLMTransformerEdge): String =
     {
         transformer.emit (this)
     }

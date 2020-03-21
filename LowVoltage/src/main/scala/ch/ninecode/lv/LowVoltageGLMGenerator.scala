@@ -8,9 +8,9 @@ import ch.ninecode.mfi.Trafokreis
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.LineEdge
+import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.SwingNode
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMTransformerEdge
 
 class LowVoltageGLMGenerator
 (
@@ -39,8 +39,8 @@ class LowVoltageGLMGenerator
 
     override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
 
-    override def transformers: Iterable[TransformerEdge] =
-        trafokreis.transformers.transformers.map (TransformerEdge)
+    override def transformers: Iterable[GLMTransformerEdge] =
+        trafokreis.transformers.transformers.map (GLMTransformerEdge)
 
     // the swing node is the low voltage pin
     override def swing_nodes: Iterable[GLMNode] =
@@ -112,7 +112,7 @@ class LowVoltageGLMGenerator
                 "        };\n"
         }
 
-        super.emit_edge (edge) + (if (edge.isInstanceOf[LineEdge]) recorders else "")
+        super.emit_edge (edge) + (if (edge.isInstanceOf[GLMLineEdge]) recorders else "")
     }
 
     override def emit_slack (node: GLMNode): String =
@@ -172,7 +172,7 @@ class LowVoltageGLMGenerator
             "\n"
     }
 
-    override def emit_transformer (transformer: TransformerEdge): String =
+    override def emit_transformer (transformer: GLMTransformerEdge): String =
     {
         val name = transformer.transformer.transformer_name
 

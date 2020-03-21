@@ -5,8 +5,8 @@ import java.text.SimpleDateFormat
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMLineEdge
+import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.util.Complex
 
 /**
@@ -31,11 +31,11 @@ case class OneOfNGLMGenerator
 
     override def header: String = feeder.metadata.description
 
-    override def edges: Iterable[GLMEdge] = feeder.edges.filter (!_.isInstanceOf[TransformerEdge])
+    override def edges: Iterable[GLMEdge] = feeder.edges.filter (!_.isInstanceOf[GLMTransformerEdge])
 
     override def nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder == null)
 
-    override def transformers: Iterable[TransformerEdge] = feeder.edges.filter (_.isInstanceOf[TransformerEdge]).map (_.asInstanceOf[TransformerEdge])
+    override def transformers: Iterable[GLMTransformerEdge] = feeder.edges.filter (_.isInstanceOf[GLMTransformerEdge]).map (_.asInstanceOf[GLMTransformerEdge])
 
     override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder != null)
         .groupBy (_._id).values.map (_.head) // take only one feeder per node
@@ -57,13 +57,13 @@ case class OneOfNGLMGenerator
         {
             edge match
             {
-                case line: LineEdge ⇒
+                case line: GLMLineEdge ⇒
                     val v = voltages.getOrElse (line.lines.head.Conductor.ConductingEquipment.BaseVoltage, 0.0)
                     List ((line.cn1, v), (line.cn2, v))
                 case switch: PlayerSwitchEdge ⇒
                     val v = voltages.getOrElse (switch.switch.ConductingEquipment.BaseVoltage, 0.0)
                     List ((switch.cn1, v), (switch.cn2, v))
-                case transformer: TransformerEdge ⇒
+                case transformer: GLMTransformerEdge ⇒
                     List ((transformer.cn1, transformer.transformer.v0), (transformer.cn2, transformer.transformer.v1))
                 case edge: GLMEdge ⇒
                     List ((edge.cn1, 0.0), (edge.cn2, 0.0)) // unspecified transformers
@@ -136,7 +136,7 @@ case class OneOfNGLMGenerator
      * @param transformer the edge to emit
      * @return The .glm file text for the transformer.
      */
-    override def emit_transformer (transformer: TransformerEdge): String =
+    override def emit_transformer (transformer: GLMTransformerEdge): String =
     {
         val name = transformer.transformer.transformer_name
         super.emit_transformer (transformer) +

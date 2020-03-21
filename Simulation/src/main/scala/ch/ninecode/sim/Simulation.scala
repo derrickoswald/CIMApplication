@@ -34,17 +34,9 @@ import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.Island
-import ch.ninecode.gl.Island.Edges
-import ch.ninecode.gl.Island.Node
-import ch.ninecode.gl.Island.NodeParts
-import ch.ninecode.gl.Island.Nodes
-import ch.ninecode.gl.Island.TerminalData
-import ch.ninecode.gl.Island.identifier
-import ch.ninecode.gl.Island.island_id
-import ch.ninecode.gl.LineEdge
-import ch.ninecode.gl.SwitchEdge
-import ch.ninecode.gl.TransformerEdge
+import ch.ninecode.gl.GLMLineEdge
+import ch.ninecode.gl.GLMSwitchEdge
+import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.model.DiagramObject
 import ch.ninecode.model.DiagramObjectPoint
 import ch.ninecode.model.PositionPoint
@@ -52,8 +44,16 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import ch.ninecode.net.Island
+import ch.ninecode.net.Island.Edges
+import ch.ninecode.net.Island.Nodes
+import ch.ninecode.net.Island.identifier
+import ch.ninecode.net.Island.island_id
 import ch.ninecode.net.LineData
+import ch.ninecode.net.LoadFlowEdge
+import ch.ninecode.net.LoadFlowNode
 import ch.ninecode.net.SwitchData
+import ch.ninecode.net.TerminalPlus
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.net.TransformerSet
@@ -241,101 +241,6 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         string.replace ("\n", " ").replaceAll ("[ ]+", " ")
     }
 
-    def positionPointToCoordinates (points: Option[Iterable[PositionPoint]]): Array[(Double, Double)] =
-    {
-        points match
-        {
-            case Some (positions) =>
-                positions.toArray.sortWith (_.sequenceNumber < _.sequenceNumber).map (p => (p.xPosition.toDouble, p.yPosition.toDouble))
-            case _ =>
-                null
-        }
-    }
-
-    def diagramObjectPointToCoordinates (points: Option[Iterable[DiagramObjectPoint]]): Array[(Double, Double)] =
-    {
-        points match
-        {
-            case Some (positions) =>
-                positions.toArray.sortWith (_.sequenceNumber < _.sequenceNumber).map (p => (p.xPosition.toDouble, p.yPosition.toDouble))
-            case _ =>
-                null
-        }
-    }
-
-    lazy val world_points: RDD[(String, Iterable[PositionPoint])] = get[PositionPoint].groupBy (_.Location)
-    lazy val schematic_points: RDD[(String, Iterable[DiagramObjectPoint])] = getOrElse[DiagramObject].keyBy (_.id).join (getOrElse[DiagramObjectPoint].groupBy (_.DiagramObject)).values.map (x => (x._1.IdentifiedObject_attr, x._2))
-
-    def node_maker (rdd: RDD[NodeParts]): RDD[Node] =
-    {
-        val just_one: RDD[TerminalData] = rdd.map (_.head)
-        val with_psr: RDD[(TerminalData, PowerSystemResource)] = just_one.keyBy (_._5.id).join (get[PowerSystemResource].keyBy (_.id)).values
-
-        val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
-        val with_coordinates =
-            with_world.map (x => (x._1._5.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
-        with_coordinates.map (x => (x._1._2, SimulationNode (x._1._3.id, x._1._4, x._1._5.id, if (null != x._2) x._2(0) else null, if (null != x._3) x._3(0) else null)))
-    }
-
-    def line_maker (rdd: RDD[(LineData, (identifier, GLMNode))]): RDD[(identifier, GLMEdge)] =
-    {
-        val with_psr = rdd.keyBy (_._1.lines.head.line.id).join (get[PowerSystemResource].keyBy (_.id)).values
-        val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
-        val with_coordinates =
-            with_world.map (x => (x._1._1.lines.head.line.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
-        with_coordinates.map (
-            x =>
-            {
-                val raw = LineEdge (x._1._1)
-                (x._1._2._1, SimulationEdge (raw, x._2, x._3))
-            }
-        )
-    }
-
-    def switch_maker (rdd: RDD[Iterable[(SwitchData, (identifier, GLMNode))]]): RDD[(identifier, GLMEdge)] =
-    {
-        val switches = rdd.flatMap (
-            x =>
-            {
-                val unique_identifiers = x.map (_._2._1).toList.distinct
-                unique_identifiers.map (y => x.find (_._2._1 == y).get)
-            }
-        )
-        val with_psr = switches.keyBy (_._1.switches.head.element.id).join (get[PowerSystemResource].keyBy (_.id)).values
-        val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
-        val with_coordinates =
-            with_world.map (x => (x._1._1.switches.head.element.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
-        with_coordinates.map (
-            x =>
-            {
-                val raw = SwitchEdge (x._1._1)
-                (x._1._2._1, SimulationEdge (raw, x._2, x._3))
-            }
-        )
-    }
-
-    def transformer_maker (rdd: RDD[Iterable[(TransformerSet, (identifier, GLMNode))]]): RDD[(identifier, GLMEdge)] =
-    {
-        val transformers = rdd.flatMap (
-            x =>
-            {
-                val unique_identifiers = x.map (_._2._1).toList.distinct
-                unique_identifiers.map (y => x.find (_._2._1 == y).get)
-            }
-        )
-        val with_psr = transformers.keyBy (_._1.transformers.head.transformer.id).join (get[PowerSystemResource].keyBy (_.id)).values
-        val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
-        val with_coordinates =
-            with_world.map (x => (x._1._1.transformers.head.transformer.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
-        with_coordinates.map (
-            x =>
-            {
-                val raw = TransformerEdge (x._1._1)
-                (x._1._2._1, SimulationEdge (raw, x._2, x._3))
-            }
-        )
-    }
-
     def make_tasks (job: SimulationJob): RDD[SimulationTask] =
     {
         log.info ("""preparing simulation job "%s"""".format (job.name))
@@ -384,14 +289,20 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             // maybe reduce the set of islands
             val islands_to_do: RDD[(identifier, island_id)] = if (0 != job.transformers.size) trafos_islands.filter (pair => job.transformers.contains (pair._1)) else trafos_islands
 
-            val island_helper = new Island (session, options.storage_level)
-            val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do, node_maker, line_maker, switch_maker, transformer_maker)
-            val areas: RDD[(identifier, (Iterable[GLMNode], Iterable[GLMEdge]))] = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey)
+            val island_helper = new SimulationIsland (session, options.storage_level)
+            val graph_stuff = island_helper.queryNetwork (islands_to_do)
+            val areas: RDD[(identifier, (Iterable[SimulationNode], Iterable[SimulationEdge]))] =
+                graph_stuff
+                    ._1.asInstanceOf[RDD[(identifier, SimulationNode)]]
+                    .groupByKey
+                    .join (
+                        graph_stuff._2.asInstanceOf[RDD[(identifier, SimulationEdge)]]
+                        .groupByKey)
 
             log.info ("""generating simulation tasks""")
-            val islands_network: RDD[(island_id, (identifier, Iterable[GLMNode], Iterable[GLMEdge]))] = areas.join (trafos_islands)
+            val islands_network = areas.join (trafos_islands)
                 .map (x => (x._2._2, (x._1, x._2._1._1, x._2._1._2))) // (island, (trafo, [nodes], [edges]))
-            val islands_networks_with_players_and_recorders: RDD[(identifier, island_id, Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])] = islands_network.join (players_recorders)
+            val islands_networks_with_players_and_recorders = islands_network.join (players_recorders)
                 .map (x => (x._2._1._1, x._1, x._2._1._2, x._2._1._3, x._2._2._1, x._2._2._2))  // (trafo, island, [nodes], [edges], [players], [recorders]))
             val ret = islands_networks_with_players_and_recorders.map (
                 net =>

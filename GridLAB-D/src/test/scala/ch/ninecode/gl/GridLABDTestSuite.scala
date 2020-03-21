@@ -4,53 +4,67 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.TimeZone
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.cim.CIMClasses
-import ch.ninecode.gl.Island.identifier
+import ch.ninecode.net.Island.identifier
 import ch.ninecode.model.Element
 import ch.ninecode.model.EnergyConsumer
 import ch.ninecode.testutil.TestUtil
 import ch.ninecode.net.TransformerServiceArea
-
 import org.scalatest.BeforeAndAfter
+
+import ch.ninecode.net.Island
+import ch.ninecode.net.Island.Edges
+import ch.ninecode.net.Island.Nodes
+import ch.ninecode.net.LoadFlowEdge
+import ch.ninecode.net.LoadFlowNode
+import ch.ninecode.net.TerminalPlus
 
 case class Generator (
     override val name: String,
     override val nodes: Iterable[GLMNode],
     override val edges: Iterable[GLMEdge],
-    override val transformers: Iterable[TransformerEdge],
+    override val transformers: Iterable[GLMTransformerEdge],
     override val swing_nodes: Iterable[GLMNode]
 )
     extends GLMGenerator (emit_voltage_dump = true)
 
 case class TestNode
 (
-    id: String,
-    nominal_voltage: Double,
+    override val id: String,
+    override val nominal_voltage: Double,
     equipment: Iterable[Element]
 )
-    extends GLMNode
+extends LoadFlowNode (id, nominal_voltage)
+with GLMNode
 {
     override def emit (generator: GLMGenerator): String =
     {
         val load = equipment.head match
         {
             case _: EnergyConsumer =>
-                """
-                  |        object load
-                  |        {
-                  |            name "%s_load";
-                  |            parent "%s";
-                  |            phases "%s";
-                  |            nominal_voltage %sV;
-                  |            %s 1000+0j;
-                  |        };
-                """.stripMargin.format (id, id, if (generator.isSinglePhase) "AN" else "ABCN", nominal_voltage, if (generator.isSinglePhase) "constant_power_A" else "constant_power_ABCN")
+                s"""
+                |        object load
+                |        {
+                |            name "${id}_load";
+                |            parent "${id}";
+                |            phases "${if (generator.isSinglePhase) "AN" else "ABCN"}";
+                |            nominal_voltage ${nominal_voltage}V;
+                |            ${if (generator.isSinglePhase) "constant_power_A" else "constant_power_ABCN"} 1000+0j;
+                |        };
+                """.stripMargin
             case _ => ""
         }
         super.emit (generator) + load
     }
+}
+
+class TestIsland (session: SparkSession) extends Island (session)
+{
+    override def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
+        rdd.map (parts => (parts.head.id, TestNode (parts.head.node.id, parts.head.voltage, parts.map (_.element))))
 }
 
 class GridLABDTestSuite extends TestUtil with BeforeAndAfter
@@ -97,15 +111,15 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
-            println (elements.count + " elements")
+            info (s"${elements.count} elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            info (s"read: ${(read - start) / 1e9} seconds")
 
             val gen = new GLMGenerator ()
             val text = gen.make_glm ()
 
             val generate = System.nanoTime ()
-            println ("generate: " + (generate - read) / 1e9 + " seconds")
+            info (s"generate: ${(generate - read) / 1e9} seconds")
 
             assert (text ==
                 """// gridlabd.glm
@@ -135,7 +149,7 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             complex value;
         };
 """)
-            println ("total: " + (generate - start) / 1e9 + " seconds")
+            info (s"total: ${(generate - start) / 1e9} seconds")
     }
 
     test ("Solve")
@@ -158,26 +172,26 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
-            println (elements.count + " elements")
+            info (s"${elements.count} elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            info (s"read: ${(read - start) / 1e9} seconds")
 
             val gen = new GLMGenerator ()
             val gridlabd = new GridLABD (session, workdir = "simulation/")
             gridlabd.export (gen)
 
             val generate = System.nanoTime ()
-            println ("generate: " + (generate - read) / 1e9 + " seconds")
+            info (s"generate: ${(generate - read) / 1e9} seconds")
 
             val glm = session.sparkContext.parallelize (List (gen.name))
             val results = gridlabd.solve (glm)
 
             val solve = System.nanoTime ()
-            println ("generate: " + (solve - generate) / 1e9 + " seconds")
+            info (s"generate: ${(solve - generate) / 1e9} seconds")
 
             assert (results.isEmpty, "should have no errors")
 
-            println ("total: " + (solve - start) / 1e9 + " seconds")
+            info (s"total: ${(solve - start) / 1e9} seconds")
     }
 
     test ("Error")
@@ -292,9 +306,9 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
-            println (elements.count + " elements")
+            info (s"${elements.count} elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            info (s"read: ${(read - start) / 1e9} seconds")
 
             val gen1 = new broken1 ()
             val gen2 = new broken2 ()
@@ -303,20 +317,20 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             gridlabd.export (gen2)
 
             val generate = System.nanoTime ()
-            println ("generate: " + (generate - read) / 1e9 + " seconds")
+            info (s"generate: ${(generate - read) / 1e9} seconds")
 
             val glm = session.sparkContext.parallelize (List (gen1.name, gen2.name))
             val results = gridlabd.solve (glm)
 
             val solve = System.nanoTime ()
-            println ("generate: " + (solve - generate) / 1e9 + " seconds")
+            info (s"generate: ${(solve - generate) / 1e9} seconds")
 
             assert (results.nonEmpty, "should have errors")
             assert (results.length == 2, "should have 2 results")
             assert (results(0).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method"), "foo")
             assert (results(1).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method"), "bar")
 
-            println ("total: " + (solve - start) / 1e9 + " seconds")
+            info (s"total: ${(solve - start) / 1e9} seconds")
     }
 
     test ("Parallel")
@@ -339,25 +353,23 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             )
 
             val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
-            println (elements.count + " elements")
+            info (s"${elements.count} elements")
             val read = System.nanoTime
-            println ("read: " + (read - start) / 1e9 + " seconds")
+            info (s"read: ${(read - start) / 1e9} seconds")
 
             val gridlabd = new GridLABD (session, workdir = "simulation/")
             val trafos_islands = TransformerServiceArea (session).getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
-            val island = new Island (session)
-            val (nodes, edges) = island.queryNetwork (
-                trafos_islands,
-                rdd => rdd.map (parts => (parts.head._2, TestNode (parts.head._3.id, parts.head._4, parts.map (_._5)))))
+            val island = new TestIsland (session)
+            val (nodes: Nodes, edges: Edges) = island.queryNetwork (trafos_islands)
 
             // determine the set of transformers to work on
-            def heavy (transformer: TransformerEdge): Boolean =
+            def heavy (transformer: GLMTransformerEdge): Boolean =
                 (transformer.transformer.v0 > 1000.0) && (transformer.transformer.v1 == 400.0)
-            val transformers: Array[(identifier, TransformerEdge)] =
+            val transformers: Array[(identifier, GLMTransformerEdge)] =
                 edges
                     .flatMap
                     {
-                        case (id: identifier, transformer: TransformerEdge) =>
+                        case (id: identifier, transformer: GLMTransformerEdge) =>
                             if (heavy (transformer))
                                 Some ((id, transformer))
                             else
@@ -366,17 +378,17 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
                     }
                 .collect
 
-            def notTheTransformer (transformer: TransformerEdge) (edge: GLMEdge): Boolean =
+            def notTheTransformer (transformer: GLMTransformerEdge) (edge: LoadFlowEdge): Boolean =
                 edge match
                 {
-                    case tx: TransformerEdge => if (heavy (tx)) false else true
+                    case tx: GLMTransformerEdge => if (heavy (tx)) false else true
                     case _ => true
                 }
             val glms = for
             {
                 (id, trafo) <- transformers
-                n = nodes.filter (_._1 == id).map (_._2).collect
-                e = edges.filter (_._1 == id).map (_._2).filter (notTheTransformer (trafo)).collect
+                n = nodes.filter (_._1 == id).map (_._2).collect.toIterable.asInstanceOf[Iterable[GLMNode]]
+                e = edges.filter (_._1 == id).map (_._2).filter (notTheTransformer (trafo)).collect.toIterable.asInstanceOf[Iterable[GLMEdge]]
             }
             yield
             {
@@ -385,15 +397,15 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             }
 
             val generate = System.nanoTime ()
-            println ("generate: " + (generate - read) / 1e9 + " seconds")
+            info (s"generate: ${(generate - read) / 1e9} seconds")
 
             val results = gridlabd.solve (session.sparkContext.parallelize (glms))
 
             val solve = System.nanoTime ()
-            println ("solve: " + (solve - generate) / 1e9 + " seconds")
+            info (s"solve: ${(solve - generate) / 1e9} seconds")
 
             assert (results.isEmpty, "should have no errors")
 
-            println ("total: " + (solve - start) / 1e9 + " seconds")
+            info (s"total: ${(solve - start) / 1e9} seconds")
     }
 }

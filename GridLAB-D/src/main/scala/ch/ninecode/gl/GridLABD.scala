@@ -51,6 +51,7 @@ import ch.ninecode.model.Switch
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.model.WireInfo
+import ch.ninecode.net.Island
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 
@@ -708,19 +709,17 @@ object GridLABD
     {
         Array (
             classOf[ch.ninecode.gl.FlowDirection],
-            classOf[ch.ninecode.gl.GLMEdge],
             classOf[ch.ninecode.gl.GLMGenerator],
             classOf[ch.ninecode.gl.GLMNode],
             classOf[ch.ninecode.gl.GridLABD],
-            classOf[ch.ninecode.gl.Island],
-            classOf[ch.ninecode.gl.LineEdge],
+            classOf[ch.ninecode.gl.GLMLineEdge],
             classOf[ch.ninecode.gl.PreEdge],
             classOf[ch.ninecode.gl.PreNode],
             classOf[ch.ninecode.gl.PV],
             classOf[ch.ninecode.gl.Solar],
             classOf[ch.ninecode.gl.SwingNode],
-            classOf[ch.ninecode.gl.SwitchEdge],
-            classOf[ch.ninecode.gl.TransformerEdge]
+            classOf[ch.ninecode.gl.GLMSwitchEdge],
+            classOf[ch.ninecode.gl.GLMTransformerEdge]
         )
     }
 }
