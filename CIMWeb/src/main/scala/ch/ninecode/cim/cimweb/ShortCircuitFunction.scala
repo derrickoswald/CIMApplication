@@ -7,6 +7,7 @@ import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.gl.GLMGenerator
+import ch.ninecode.net.LoadFlowNode
 import ch.ninecode.sc.ShortCircuitOptions
 import ch.ninecode.sc.ShortCircuit
 import ch.ninecode.util.Complex
@@ -17,6 +18,7 @@ case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFun
         jarForObject (this),
         jarForObject (options),               // ShortCircuit.jar
         jarForObject (new GLMGenerator ()),   // GridLAB-D.jar
+        jarForObject (new LoadFlowNode ("", 0.0)), // Net.jar
         jarForObject (Complex (0.0, 0.0)))    // Util.jar
 
     override def getReturnType: Return = Return.Dataset

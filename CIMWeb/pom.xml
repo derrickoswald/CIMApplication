@@ -120,6 +120,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.net</groupId>
+            <artifactId>Net</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>javax</groupId>
             <artifactId>javaee-api</artifactId>
             <version>${version.dependency.javaee}</version>

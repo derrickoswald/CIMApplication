@@ -98,6 +98,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.net</groupId>
+            <artifactId>Net</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
+        </dependency>
+
+        <dependency>
             <groupId>ch.ninecode.util</groupId>
             <artifactId>Util</artifactId>
             <version>${project.version}</version>
