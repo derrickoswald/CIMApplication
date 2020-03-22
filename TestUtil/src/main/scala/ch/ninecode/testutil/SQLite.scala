@@ -7,7 +7,7 @@ trait SQLite {
     def querySQLite (databasePath: String, sqlStatement: String): CachedRowSetImpl =
     {
         // load the sqlite-JDBC driver using the current class loader
-        Class.forName ("org.sqlite.JDBC")
+        val _ = Class.forName ("org.sqlite.JDBC")
         // create a database connection
         val connection = DriverManager.getConnection (s"jdbc:sqlite:$databasePath")
 

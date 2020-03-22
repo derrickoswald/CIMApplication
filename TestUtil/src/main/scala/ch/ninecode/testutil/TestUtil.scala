@@ -18,7 +18,7 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
         val t0 = System.nanoTime ()
         val ret = block
         val t1 = System.nanoTime ()
-        info (template.format ((t1 - t0) / 1e9))
+        info (template.format ((t1 - t0) / 1e9), None)
         ret
     }
 
@@ -38,6 +38,8 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
                     .set ("spark.sql.warehouse.dir", "file:///tmp/")
                     .set ("spark.ui.showConsoleProgress", "false")
                     .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+                    .set ("spark.graphx.pregel.checkpointInterval", "8")
+                    .set ("spark.sql.warehouse.dir", System.getProperty ("java.io.tmpdir", "/tmp/"))
 
                 // register relevant classes
                 registerDependency (configuration)
@@ -63,56 +65,65 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
 
     def registerDependency (configuration: SparkConf): Unit =
     {
-        classesToRegister.foreach (classToRegister =>
+        val length = classesToRegister.length
+        for (i <- Range (0, length))
         {
+            val classToRegister: Array[Class[_]] = classesToRegister(i)
             configuration.registerKryoClasses (classToRegister)
-        })
+        }
+    }
+
+    def readCIMElements (session: SparkSession, filename: String): Unit =
+    {
+        val options = Map[String, String] (
+            "path" -> filename,
+            "StorageLevel" -> "MEMORY_AND_DISK_SER",
+            "ch.ninecode.cim.do_topo" -> "true",
+            "ch.ninecode.cim.force_retain_switches" -> "Unforced",
+            "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+            "ch.ninecode.cim.debug" -> "true",
+            "ch.ninecode.cim.do_deduplication" -> "true"
+        )
+        readCIMElements (session, filename, options)
     }
 
     def readCIMElements (session: SparkSession,
                          filename: String,
-                         options: Map[String, String] = null,
-                         files: Array[String] = null)
+                         options: Map[String, String])
     {
         time ("read: %s seconds")
         {
-            val thisFiles = if (files == null)
-                filename.split (",")
-            else
-                files
-
-            val thisOptions = if (options == null)
-            {
-                Map[String, String](
-                    "path" -> filename,
-                    "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                    "ch.ninecode.cim.do_topo" -> "true",
-                    "ch.ninecode.cim.force_retain_switches" -> "Unforced",
-                    "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-                    "ch.ninecode.cim.debug" -> "true",
-                    "ch.ninecode.cim.do_deduplication" -> "true"
-                )
-            }
-            else
+            val files = filename.split (",")
+            val thisOptions =
                 if (options.contains ("path"))
                     options
                 else
                     options + ("path" -> filename)
             val elements = session.sqlContext.read.format ("ch.ninecode.cim")
                 .options (thisOptions)
-                .load (thisFiles: _*)
+                .load (files: _*)
                 .persist (StorageLevel.MEMORY_AND_DISK_SER)
-            info (s"${elements.count} elements")
+            info (s"${elements.count} elements", None)
         }
     }
 
-    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = null): Unit =
+    def near (number: Double, reference: Double): Unit =
+    {
+        val diff = number - reference
+        assert (Math.abs (diff) <= 1.0e-3,
+            s"""$number vs. reference $reference differs by more than 0.001 ($diff)""")
+    }
+
+    def near (number: Double, reference: Double, epsilon: Double): Unit =
     {
         val diff = number - reference
         assert (Math.abs (diff) <= epsilon,
-            if (null == message)
-                s"""$number vs. reference $reference differs by more than $epsilon ($diff)"""
-            else
-                message)
+                s"""$number vs. reference $reference differs by more than $epsilon ($diff)""")
+    }
+
+    def near (number: Double, reference: Double, epsilon: Double, message: String): Unit =
+    {
+        val diff = number - reference
+        assert (Math.abs (diff) <= epsilon, message)
     }
 }
