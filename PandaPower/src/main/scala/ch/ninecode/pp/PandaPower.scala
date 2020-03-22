@@ -6,6 +6,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.attribute.PosixFilePermission
 
+import scala.collection.JavaConverters.setAsJavaSetConverter
+
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
@@ -21,16 +23,27 @@ case class PandaPower
 (
     session: SparkSession,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
-    workdir: String = "hdfs://" + java.net.InetAddress.getLocalHost.getHostName + "/simulation/"
+    workdir: String = s"hdfs://${java.net.InetAddress.getLocalHost.getHostName}/simulation/"
 )
 extends Serializable
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
+    case class PandaPowerResult (success: Boolean, errors: List[String])
+    {
+        def combine (other: PandaPowerResult): PandaPowerResult =
+            PandaPowerResult (success && other.success, if (!other.success) errors ::: other.errors else errors)
+        override def toString: String = s"${if (success) "Succeeded" else "Failed"}${errors.mkString ("\n", "\n", "")}"
+    }
+    object PandaPowerResult
+    {
+        def apply (): PandaPowerResult = PandaPowerResult (true, List())
+    }
+
     /**
      * Get the working directory ensuring a slash terminator.
      */
-    lazy val workdir_slash: String = if (workdir.endsWith ("/")) workdir else workdir + "/"
+    lazy val workdir_slash: String = if (workdir.endsWith ("/")) workdir else s"$workdir/"
 
     /**
      * Get the scheme for the working directory.
@@ -43,6 +56,8 @@ extends Serializable
         else
             uri.getScheme
     }
+
+    lazy val isLocal: Boolean = (workdir_scheme == "file") || (workdir_scheme == "")
 
     /**
      * Get the path component of the working directory.
@@ -65,7 +80,7 @@ extends Serializable
         if (null == uri.getScheme)
             ""
         else
-            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/"
+            s"${uri.getScheme}://${if (null == uri.getAuthority) "" else uri.getAuthority}/"
     }
 
     def hdfs_filesystem (workdir: String): FileSystem =
@@ -76,65 +91,68 @@ extends Serializable
         FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
     }
 
-    def parsePermissions (s: String): java.util.Set[PosixFilePermission] =
+    def parsePermissions (s: String): Set[PosixFilePermission] =
     {
         // ToDo: parse file permissions val pattern = Pattern.compile ("\\G\\s*([ugoa]*)([+=-]+)([rwx]*)([,\\s]*)\\s*")
-        val ret = new java.util.HashSet[PosixFilePermission]()
-        ret.add (PosixFilePermission.OWNER_READ)
-        ret.add (PosixFilePermission.OWNER_WRITE)
-        ret.add (PosixFilePermission.OWNER_EXECUTE)
-        ret.add (PosixFilePermission.GROUP_READ)
-        ret.add (PosixFilePermission.GROUP_WRITE)
-        ret.add (PosixFilePermission.GROUP_EXECUTE)
-        ret.add (PosixFilePermission.OTHERS_READ)
-        ret.add (PosixFilePermission.OTHERS_WRITE)
-        ret.add (PosixFilePermission.OTHERS_EXECUTE)
-        ret
+        Set[PosixFilePermission] (
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE,
+            PosixFilePermission.GROUP_READ,
+            PosixFilePermission.GROUP_WRITE,
+            PosixFilePermission.GROUP_EXECUTE,
+            PosixFilePermission.OTHERS_READ,
+            PosixFilePermission.OTHERS_WRITE,
+            PosixFilePermission.OTHERS_EXECUTE
+        )
     }
 
-    def writeInputFile (directory: String, path: String, bytes: Array[Byte], permissions: String = null): Any =
+    def writeInputFile (directory: String, path: String, bytes: Option[Array[Byte]], permissions: Option[String]): Unit =
     {
-        if ((workdir_scheme == "file") || (workdir_scheme == ""))
+        if (isLocal)
         {
             // ToDo: check for IOException
-            val file = Paths.get (workdir_path + directory + "/" + path)
-            Files.createDirectories (file.getParent)
-            if (null != bytes)
-            {
-                Files.write (file, bytes)
-                if (null != permissions)
-                    Files.setPosixFilePermissions (file, parsePermissions (permissions))
-            }
+            val file = Paths.get (s"$workdir_path$directory$path")
+            val _ = Files.createDirectories (file.getParent)
+            bytes.foreach (
+                b =>
+                {
+                    val f = Files.write (file, b)
+                    permissions.foreach (p => Files.setPosixFilePermissions (f, parsePermissions (p).asJava))
+                }
+            )
         }
         else
         {
             val hdfs = hdfs_filesystem (workdir_uri)
-            val file = new Path (workdir_slash + directory + "/" + path)
+            val file = new Path (s"$workdir_slash$directory/$path")
             // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
             // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
-            hdfs.mkdirs (file.getParent, new FsPermission ("ugo-rwx"))
+            val _ = hdfs.mkdirs (file.getParent, new FsPermission ("ugo-rwx"))
             hdfs.setPermission (file.getParent, new FsPermission ("ugo-rwx")) // "-"  WTF?
-
-            if (null != bytes)
-            {
-                val out = hdfs.create (file)
-                out.write (bytes)
-                out.close ()
-                if (null != permissions)
-                    hdfs.setPermission (file, new FsPermission (permissions))
-            }
+            bytes.foreach (
+                b =>
+                {
+                    val out = hdfs.create (file)
+                    out.write (b)
+                    out.close ()
+                    permissions.foreach (p => hdfs.setPermission (file, new FsPermission (p)))
+                }
+            )
         }
     }
 
     def eraseInputFile (equipment: String)
     {
-        if ((workdir_scheme == "file") || (workdir_scheme == ""))
-            FileUtils.deleteQuietly (new File (workdir_path + equipment))
+        if (isLocal)
+        {
+            val _ = FileUtils.deleteQuietly (new File (s"$workdir_path$equipment"))
+        }
         else
         {
             val hdfs = hdfs_filesystem (workdir_uri)
-            val directory = new Path (workdir_slash + equipment)
-            hdfs.delete (directory, true)
+            val directory = new Path (s"$workdir_slash$equipment")
+            val _ = hdfs.delete (directory, true)
         }
     }
 
@@ -145,31 +163,35 @@ extends Serializable
         else
         {
             if (includes_input)
-                eraseInputFile (equipment + "/input_data/")
+                eraseInputFile (s"$equipment/input_data/")
             if (includes_output)
             {
-                eraseInputFile (equipment + "/output_data/")
-                writeInputFile (equipment, "/output_data/dummy", null) // mkdir
+                eraseInputFile (s"$equipment/output_data/")
+                writeInputFile (s"$equipment/output_data/", "dummy", None, None) // mkdir
             }
         }
     }
 
-    def check (input: String): (Boolean, List[String]) =
+    def check (input: String): PandaPowerResult =
     {
-        if (input.contains ("Errno") || input.contains ("command not found") || input.contains ("Cannot fork") || input.contains ("pthread_create"))
+        if (   input.contains ("FAILED")
+            || input.contains ("Errno")
+            || input.contains ("command not found")
+            || input.contains ("Cannot fork")
+            || input.contains ("pthread_create"))
         {
-            log.error ("pandapower failed, message is: " + input)
-            (false, input.split ("\n").toList)
+            log.error (s"pandapower failed, message is: $input")
+            PandaPowerResult (false, input.split ("\n").toList)
         }
         else
-            (true, null)
+            PandaPowerResult ()
     }
 
-    def solve (files: RDD[String]): (Boolean, List[String]) =
+    def solve (files: RDD[String]): PandaPowerResult =
     {
         // assumes pandapower is installed on every node, see https://www.pandapower.org/start/
         val pandapower =
-            if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
+            if (isLocal) // local[*]
             {
                 Array[String](
                     "bash",
@@ -178,8 +200,8 @@ extends Serializable
                         "export FILE=$line; " +
                         "ulimit -Sn `ulimit -Hn`; " +
                         "pushd " + workdir_path + "$FILE; " +
-                        "python $FILE.py 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
-                        "cat $FILE.out; " +
+                        "python $FILE.py > $FILE.out 2>&1; " +
+                        "if [ $? -eq 0 ]; then RESULT=\"SUCCESS\"; else RESULT=\"FAILED\"; fi; { echo -n \"$RESULT \"; cat $FILE.out | awk '{print ENVIRON[\"FILE\"] \" \" $0}'; }; " +
                         "popd; " +
                         "done < /dev/stdin")
             }
@@ -195,7 +217,8 @@ extends Serializable
                         "ulimit -Sn `ulimit -Hn`; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +
                         "pushd $FILE; " +
-                        "python $FILE.py 2>&1 | awk '{print ENVIRON[\"FILE\"] \" \" $0}' > $FILE.out; " +
+                        "python $FILE.py > $FILE.out 2>&1; " +
+                        "if [ $? -eq 0 ]; then RESULT=\"SUCCESS\"; else RESULT=\"FAILED\"; fi; { echo -n \"$RESULT \"; cat $FILE.out | awk '{print ENVIRON[\"FILE\"] \" \" $0}'; }; " +
                         "popd; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
                         "cat $FILE/$FILE.out; " +
@@ -203,9 +226,7 @@ extends Serializable
                         "done < /dev/stdin")
             }
 
-
-        val out = files.pipe (pandapower)
-        // take only the first error message
-        out.map (check).fold ((true, List[String]()))((x, y) ⇒ (x._1 && y._1, if (!y._1) x._2 :+ y._2.head else x._2))
+        val out: RDD[String] = files.pipe (pandapower)
+        out.map (check).fold (PandaPowerResult ())((x, y) => x.combine (y))
     }
 }
