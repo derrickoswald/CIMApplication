@@ -74,9 +74,9 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
     private def round (value: Double, digits: Int): Double =
     {
         require (digits >= 0)
-        var bd = new java.math.BigDecimal (value)
-        bd = bd.setScale (digits, java.math.RoundingMode.HALF_UP)
-        bd.doubleValue ()
+        val bd = new java.math.BigDecimal (value)
+        val bd2 = bd.setScale (digits, java.math.RoundingMode.HALF_UP)
+        bd2.doubleValue ()
     }
 
     override def toString: String = toString (8)
@@ -137,7 +137,6 @@ object Complex
 {
     // constants
     lazy val j: Complex = Complex (0, 1)
-
 
     lazy val regex: Pattern = Pattern.compile ("""((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\s]*([+-<])[\s]*[ij]?((?:[+-]?(?:[0-9]*\.?[0-9]*)|(?:\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)([ijd°])?""")
 

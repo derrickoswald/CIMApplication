@@ -132,7 +132,23 @@
                         </compilerPlugin>
                     </compilerPlugins>
                     <args>
-                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Unsafe</arg>
+                        <!-- see https://github.com/wartremover/wartremover/blob/704113034f9d2829aa8d577ac4f059c2136c6781/core/src/main/scala/wartremover/warts/Unsafe.scala -->
+                        <!-- arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Any</arg -->
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.AsInstanceOf</arg>
+                        <!-- arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.DefaultArguments</arg -->
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.EitherProjectionPartial</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.IsInstanceOf</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.NonUnitStatements</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Null</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.OptionPartial</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Product</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Return</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Serializable</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.StringPlusAny</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Throw</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.TraversableOps</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.TryPartial</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Var</arg>
                     </args>
                 </configuration>
                 <executions>

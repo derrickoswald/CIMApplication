@@ -73,7 +73,7 @@ case class Schema (session: SparkSession, resource: String, keyspace: String = "
      *   - the keyspace must be cimapplication - which is changed according to <code>keyspace</code> via simple global substitution
      *   - the replication factor must be 1 - which is changed according to <code>replication</code> via simple global substitution
      *
-     * @return <code>true</code> if all DDL executed successsuflly, <code>false</code> if the schema file doesn't exist or there were errors
+     * @return <code>true</code> if all DDL executed successfully, <code>false</code> if the schema file doesn't exist or there were errors
      */
     def make (connector: CassandraConnector = CassandraConnector (session.sparkContext.getConf)): Boolean =
     {
@@ -83,15 +83,17 @@ case class Schema (session: SparkSession, resource: String, keyspace: String = "
             log.info ("""ensuring Cassandra keyspace %s exists""".format (keyspace))
 
             // separate at blank lines and change keyspace
-            val sqls = Source.fromInputStream (schema, "UTF-8").getLines.mkString ("\n").split ("\n\n").map (editor)
+            val source = Source.fromInputStream (schema, "UTF-8")
+            val statements = source.getLines.mkString ("\n").split ("\n\n").map (editor)
+            source.close
 
             // need to apply each DDL separately
-            sqls.forall (
+            statements.forall (
                 sql ⇒
                 {
                     try
                     {
-                        connector.withSessionDo (session => session.execute (sql))
+                        val _ = connector.withSessionDo (session => session.execute (sql))
                         true
                     }
 

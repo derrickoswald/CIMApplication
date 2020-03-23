@@ -4,7 +4,7 @@ package ch.ninecode.util
  * Recorder time series element.
  *
  * @param element Node or branch name (ConnectivityNode/TopologicalNode name or MRID of cable).
- * @param millis  Number of milliseconds since the epoc.
+ * @param millis  Number of milliseconds since the epoch.
  * @param value_a Phase A value.
  * @param value_b Phase B value.
  * @param value_c Phase C value.
@@ -13,8 +13,8 @@ package ch.ninecode.util
 case class ThreePhaseComplexDataElement
 (
     element: String,
-    millis: Long,
+    millis:  Long,
     value_a: Complex,
     value_b: Complex,
     value_c: Complex,
-    units: String)
+    units:   String)

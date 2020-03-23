@@ -20,8 +20,9 @@ trait Graphable
             0L
         else
         {
+            @SuppressWarnings (Array ("org.wartremover.warts.Var"))
             var h = 2166136261L
-            for (c ← string)
+            for (c <- string)
                 h = (h * 16777619) ^ c
             h
         }
