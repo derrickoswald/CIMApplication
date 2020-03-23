@@ -39,6 +39,9 @@
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
+                    <compilerArgs>
+                        <compilerArg>-Xlint:unchecked</compilerArg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>

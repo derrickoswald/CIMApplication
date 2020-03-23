@@ -212,7 +212,7 @@ extends Serializable
                     "-c",
                     "while read line; do " +
                         "export FILE=$line; " +
-                        "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
+                        s"HDFS_DIR=$${HADOOP_HDFS_HOME:-$$HADOOP_HOME}; " +
                         "HADOOP_USER_NAME=$SPARK_USER; " +
                         "ulimit -Sn `ulimit -Hn`; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +

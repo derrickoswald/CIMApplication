@@ -261,7 +261,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     val trafo = location_trafo(location)
                     val x = point.xPosition.toDouble
                     val y = point.yPosition.toDouble
-                    Some (trafo, (x, y))
+                    Some ((trafo, (x, y)))
                 }
                 else
                     None
@@ -275,7 +275,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                 if (transformer_trafo.contains (id))
                 {
                     val trafo = transformer_trafo(id)
-                    Some (obj.id, trafo)
+                    Some ((obj.id, trafo))
                 }
                 else
                     None
@@ -290,7 +290,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     val trafo = diagram_trafo(obj)
                     val x = point.xPosition.toDouble
                     val y = point.yPosition.toDouble
-                    Some (trafo, (x, y))
+                    Some ((trafo, (x, y)))
                 }
                 else
                     None
@@ -311,7 +311,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     {
                         case Some (coords) ⇒
                             val geometry2 = ("Point", List (coords._1, coords._2))
-                            Some (trafo.simulation, "pseudo_wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry2, properties)
+                            Some ((trafo.simulation, "pseudo_wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry2, properties))
                         case None ⇒
                             None
                     }

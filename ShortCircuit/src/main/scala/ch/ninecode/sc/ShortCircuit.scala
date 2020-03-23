@@ -332,7 +332,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     if (-1 == elementindex)
                         None
                     else
-                        Some (datum.element.substring (0, elementindex), datum.element.substring (elementindex + 1), value)
+                        Some ((datum.element.substring (0, elementindex), datum.element.substring (elementindex + 1), value))
                 }
                 else
                     None

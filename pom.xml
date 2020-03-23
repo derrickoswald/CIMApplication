@@ -75,6 +75,11 @@
                     <artifactId>maven-enforcer-plugin</artifactId>
                     <version>${version.dependency.maven-enforcer-plugin}</version>
                 </plugin>
+                <plugin>
+                    <groupId>net.alchim31.maven</groupId>
+                    <artifactId>scala-maven-plugin</artifactId>
+                    <version>${version.dependency.scala-maven-plugin}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -131,7 +136,13 @@
                             <version>${version.dependency.wartremover}</version>
                         </compilerPlugin>
                     </compilerPlugins>
+                    <displayCmd>true</displayCmd>
                     <args>
+                        <arg>-deprecation</arg>
+                        <arg>-feature</arg>
+                        <arg>-unchecked</arg>
+                        <arg>-Xlint:_</arg>
+                        <arg>-target:jvm-1.8</arg>
                         <!-- see https://github.com/wartremover/wartremover/blob/704113034f9d2829aa8d577ac4f059c2136c6781/core/src/main/scala/wartremover/warts/Unsafe.scala -->
                         <!-- arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Any</arg -->
                         <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.AsInstanceOf</arg>
@@ -165,7 +176,15 @@
             </plugin>
         </plugins>
     </build>
-
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>${version.dependency.scala-maven-plugin}</version>
+            </plugin>
+        </plugins>
+    </reporting>
     <modules>
         <module>CIMConnector</module>
         <module>CIMEar</module>

@@ -435,20 +435,20 @@ class GridLABD
                 if (os.startsWith ("Windows"))
                 {
                     val pipeFileName = "./src/test/resources/pipe.sh"
-                    val pipeContent = """#!/bin/bash
+                    val pipeContent = s"""#!/bin/bash
                                      |while read line; do
-                                     |    export FILE=${line/$'\r'/};
+                                     |    export FILE=$${line/$$'\r'/};
                                      |    ulimit -Sn `ulimit -Hn`;
-                                     |    pushd $1/$FILE > /dev/null;
-                                     |    gridlabd.exe $FILE.glm 2> $FILE.out;
+                                     |    pushd $$1/$$FILE > /dev/null;
+                                     |    gridlabd.exe $$FILE.glm 2> $$FILE.out;
                                      |    cat output_data/* > output.txt;
-                                     |    echo -n $FILE'|';
-                                     |    cat $FILE.out | tr '\r\n' '|';
+                                     |    echo -n $$FILE'|';
+                                     |    cat $$FILE.out | tr '\r\n' '|';
                                      |    popd > /dev/null;
                                      |done""".stripMargin
                     new PrintWriter(pipeFileName) {
-                        write(pipeContent)
-                        close
+                        write (pipeContent)
+                        close ()
                     }
                     Array[String](
                         "bash",
@@ -480,7 +480,7 @@ class GridLABD
                     "-c",
                     "while read line; do " +
                         "export FILE=$line; " +
-                        "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
+                        s"HDFS_DIR=$${HADOOP_HDFS_HOME:-$$HADOOP_HOME}; " +
                         "HADOOP_USER_NAME=$SPARK_USER; " +
                         "ulimit -Sn `ulimit -Hn`; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +

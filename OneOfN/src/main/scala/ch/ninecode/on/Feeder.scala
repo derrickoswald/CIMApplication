@@ -341,14 +341,14 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
                 if (debug && log.isDebugEnabled)
                     log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.sources.mkString (","), triplet.dstAttr.toString))
                 val union = triplet.srcAttr.sources | triplet.dstAttr.feeders
-                ret = ret :+ (triplet.dstId, VertexData (triplet.dstAttr.id, triplet.dstAttr.sources, union))
+                ret = ret :+ ((triplet.dstId, VertexData (triplet.dstAttr.id, triplet.dstAttr.sources, union)))
             }
             if (!triplet.dstAttr.sources.subsetOf (triplet.srcAttr.feeders))
             {
                 if (debug && log.isDebugEnabled)
                     log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.sources.mkString (","), triplet.srcAttr.toString))
                 val union = triplet.dstAttr.sources | triplet.srcAttr.feeders
-                ret = ret :+ (triplet.srcId, VertexData (triplet.srcAttr.id, triplet.srcAttr.sources, union))
+                ret = ret :+ ((triplet.srcId, VertexData (triplet.srcAttr.id, triplet.srcAttr.sources, union)))
             }
             ret.toIterator
         }

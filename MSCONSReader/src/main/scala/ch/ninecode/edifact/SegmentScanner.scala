@@ -39,7 +39,7 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
             {
                 if (c == una.segment_terminator)
                 {
-                    intervals = intervals :+ (start, size - 2)
+                    intervals = intervals :+ ((start, size - 2))
                     start = start + size - 1
                     size = 1
                 }
@@ -53,7 +53,7 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
                 skip = true
         }
 
-        intervals = intervals :+ (start, if (stop) size - 1 else size)
+        intervals = intervals :+ ((start, if (stop) size - 1 else size))
 
         // copy the data piece by piece to a new array
         val bytes = new Array[Byte] (intervals.map (_._2).sum)
