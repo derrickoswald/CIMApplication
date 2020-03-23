@@ -44,7 +44,7 @@ RUN mkdir -p /usr/local/wildfly
 WORKDIR /usr/local/wildfly
 
 RUN set -x \
-	&& export WILDFLY_VERSION=18.0.1.Final \
+	&& export WILDFLY_VERSION=19.0.0.Final \
 	&& curl --fail --show-error --location https://download.jboss.org/wildfly/${WILDFLY_VERSION}/wildfly-${WILDFLY_VERSION}.zip --output wildfly.zip \
 	&& unzip wildfly.zip \
 	&& mv wildfly-${WILDFLY_VERSION}/* /usr/local/wildfly \
