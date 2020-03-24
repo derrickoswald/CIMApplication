@@ -289,7 +289,7 @@ object MainCustomer2
 
                     if (arguments.export != "")
                     {
-                        export.export (elements, arguments.export, arguments.files.mkString (","))
+                        export.export (elements, arguments.export)
                         val save = System.nanoTime ()
                         log.info ("export: " + (save - initialization) / 1e9 + " seconds")
                     }
@@ -300,7 +300,7 @@ object MainCustomer2
                         val infos = ShortCircuitInfo2 (session, storage)
                         val equivalents = infos.getShortCircuitInfo (arguments.csv1_file, arguments.csv2_file)
                         val export = new CIMExport (session)
-                        export.export (equivalents, arguments.csv1_file.replace (".csv", ".rdf"), "generated from " + arguments.csv1_file)
+                        export.export (equivalents, arguments.csv1_file.replace (".csv", ".rdf"))
                         infos.merge (equivalents)
                     }
                     else
