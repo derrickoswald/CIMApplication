@@ -1,10 +1,15 @@
 package ch.ninecode.testutil
 
+import java.io.File
+
+import scala.reflect.ClassTag
+import scala.reflect.classTag
+
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-
 import org.scalatest.Outcome
 import org.scalatest.fixture
 
@@ -73,6 +78,19 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
         }
     }
 
+    /**
+     * Delete files and directories recursively.
+     *
+     * @param path The starting path.
+     */
+    def deleteRecursive (path: File): Unit =
+    {
+        if (path.isDirectory)
+            for (subpath <- path.list)
+                deleteRecursive (new File (path, subpath))
+        val _ = path.delete
+    }
+
     def readCIMElements (session: SparkSession, filename: String): Unit =
     {
         val options = Map[String, String] (
@@ -105,6 +123,48 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
                 .persist (StorageLevel.MEMORY_AND_DISK_SER)
             info (s"${elements.count} elements", None)
         }
+    }
+
+    /**
+     * Get the named RDD.
+     *
+     * @param name The name of the RDD, usually the same as the CIM class.
+     * @param spark The Spark session which persisted the named RDD.
+     * @tparam T The type of objects contained in the named RDD.
+     * @return The typed RDD, e.g. <code>RDD[T]</code>.
+     *
+     * @example The RDD of all elements is somewhat special,
+     * currently it is named Elements (plural), so this method must be used:
+     * {{{val elements: RDD[Element] = get[Element]("Elements")}}}.
+     *
+     */
+    def get[T : ClassTag](name: String)(implicit spark: SparkSession): RDD[T] =
+    {
+        spark.sparkContext.getPersistentRDDs.find (_._2.name == name) match
+        {
+            case Some ((_, rdd: RDD[_])) =>
+                rdd.asInstanceOf[RDD[T]]
+            case Some (_) | None =>
+                spark.sparkContext.emptyRDD[T]
+        }
+    }
+
+
+    /**
+     * Get the typed RDD.
+     *
+     * Convenience method where the name of the RDD is the same as the contained
+     * class type (the usual case).
+     *
+     * @param spark The Spark session which persisted the typed RDD.
+     * @tparam T The type of the RDD, e.g. <code>RDD[T]</code>.
+     * @return The RDD with the given type of objects, e.g. <code>RDD[ACLineSegment]</code>.
+     */
+    def get[T : ClassTag](implicit spark: SparkSession): RDD[T] =
+    {
+        val classname = classTag[T].runtimeClass.getName
+        val name = classname.substring (classname.lastIndexOf (".") + 1)
+        get (name)
     }
 
     def near (number: Double, reference: Double): Unit =
