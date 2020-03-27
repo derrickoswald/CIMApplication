@@ -20,7 +20,7 @@ with GLMEdge
      */
     override def emit (generator: GLMGenerator): String =
     {
-        val status = if (normalOpen) "OPEN" else "CLOSED"
+        val status = if (closed) "CLOSED" else "OPEN"
         // ensure it doesn't trip immediately
         val current = if (ratedCurrent <= 0) 9999.0 else ratedCurrent
 

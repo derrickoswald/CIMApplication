@@ -585,7 +585,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                 x match
                                 {
                                     case switch: GLMSwitchEdge =>
-                                        if (switch.normalOpen)
+                                        if (!switch.closed)
                                             List ()
                                         else
                                         {

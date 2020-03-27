@@ -113,9 +113,7 @@ extends CIMRDD with Serializable
      * @return an RDD of edges to be used in load flow simulation
      */
     def line_maker (rdd: RDD[(LineData, (identifier, LoadFlowNode))]): RDD[(identifier, LoadFlowEdge)] =
-    {
         rdd.map (x => (x._2._1, new LineEdge (x._1)))
-    }
 
     /**
      * Create edges from Switch SwitchData.

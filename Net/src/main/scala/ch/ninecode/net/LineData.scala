@@ -23,6 +23,14 @@ final case class LineData (lines: Iterable[LineDetails])
     override def toString: String = s"""${lines.map (_.toString).mkString ("||")} from $node0 to $node1"""
 
     /**
+     * Calculate the parallel impedance at the CIM file temperature.
+     *
+     * @return the positive and zero sequence impedance between the two nodes
+     */
+    def perLengthImpedance: Sequences =
+        lines.map (_.perLengthImpedance).foldLeft (Sequences ()) ((x, y) => x + y.reciprocal).reciprocal
+
+    /**
      * Calculate the parallel impedance at the specified temperature.
      *
      * @param temperature the temperature at which to calculate the impedance (°C)

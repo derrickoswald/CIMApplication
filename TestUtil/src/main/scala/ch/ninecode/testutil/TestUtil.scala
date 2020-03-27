@@ -149,7 +149,6 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
         }
     }
 
-
     /**
      * Get the typed RDD.
      *
@@ -167,23 +166,22 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
         get (name)
     }
 
-    def near (number: Double, reference: Double): Unit =
-    {
-        val diff = number - reference
-        assert (Math.abs (diff) <= 1.0e-3,
-            s"""$number vs. reference $reference differs by more than 0.001 ($diff)""")
-    }
-
-    def near (number: Double, reference: Double, epsilon: Double): Unit =
+    /**
+     * Assert the difference between a number and a reference value are less than a threshold.
+     *
+     * @param number the number to test
+     * @param reference the reference value
+     * @param epsilon the difference limit
+     * @param message a message to display if the assert fails
+     */
+    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = null): Unit =
     {
         val diff = number - reference
         assert (Math.abs (diff) <= epsilon,
-                s"""$number vs. reference $reference differs by more than $epsilon ($diff)""")
-    }
-
-    def near (number: Double, reference: Double, epsilon: Double, message: String): Unit =
-    {
-        val diff = number - reference
-        assert (Math.abs (diff) <= epsilon, message)
+            if (null == message)
+                s"""$number vs. reference $reference differs by more than $epsilon ($diff)"""
+            else
+                message
+        )
     }
 }

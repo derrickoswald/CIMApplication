@@ -6,14 +6,16 @@ import ch.ninecode.util.Sequences
 
 class LineEdge
 (
-    data: LineData
+    _data: LineData
 )
 extends LoadFlowEdge (
-    data.lines.map (_.line).map (_.id).toArray.sortWith (_ < _).mkString ("_"),
-    data.node0,
-    data.node1
+    _data.lines.map (_.line).map (_.id).toArray.sortWith (_ < _).mkString ("_"),
+    _data.node0,
+    _data.node1
 )
 {
+    lazy val data: LineData = _data
+
     lazy val lines: Iterable[ACLineSegment] = data.lines.map (_.line)
 
     /**
@@ -48,6 +50,11 @@ extends LoadFlowEdge (
         else
             n
     }
+
+    /**
+     * The length (of the longest) line.
+     */
+    lazy val length: Double = lines.map (_.Conductor.len).max
 
     /**
      * Zero ohms.

@@ -16,7 +16,8 @@ object Net
             classOf[ch.ninecode.net.TransformerIsland],
             classOf[ch.ninecode.net.TransformerSet],
             classOf[ch.ninecode.net.TransformerServiceArea.EdgeData],
-            classOf[ch.ninecode.net.TransformerServiceArea.VertexData]
+            classOf[ch.ninecode.net.TransformerServiceArea.VertexData],
+            classOf[ch.ninecode.net.TerminalPlus]
         )
     }
 }

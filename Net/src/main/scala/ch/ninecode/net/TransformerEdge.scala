@@ -4,14 +4,18 @@ import ch.ninecode.model.PowerTransformerEnd
 
 class TransformerEdge
 (
-    transformer: TransformerSet
+    _transformer: TransformerSet
 )
 extends LoadFlowEdge (
-    transformer.transformer_name,
-    transformer.node0,
-    transformer.node1
+    _transformer.transformer_name,
+    _transformer.node0,
+    _transformer.node1
 )
 {
+    lazy val transformer: TransformerSet = _transformer
+
+    lazy val name: String = transformer.transformer_name
+
     // check if this is a multi-winding transformer
     lazy val lv_windings: Array[PowerTransformerEnd] =
         for (winding <- transformer.transformers(0).ends

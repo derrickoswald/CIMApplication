@@ -32,17 +32,15 @@ import ch.ninecode.util.Complex
  * @param default_power_rating the default power rating, VA
  * @param default_impedance    the default characteristic impedance, Ω
  */
-case class TransformerSet (transformers: Array[TransformerData], default_power_rating: Double = 630000, default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875))
+case class TransformerSet (
+    transformers: Array[TransformerData],
+    default_power_rating: Double = 630000,
+    default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875))
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
     // there should be at least one transformer
-    transformers.length match
-    {
-        case 0 =>
-            throw new IllegalStateException ("no transformers in TransformerData array")
-        case _ =>
-    }
+    require (transformers.length > 0, "no transformers in TransformerData array")
 
     // get the transformer name (of the parallel transformers)
     val transformer_name: String =

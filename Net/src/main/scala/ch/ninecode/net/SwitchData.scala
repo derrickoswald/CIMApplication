@@ -16,6 +16,13 @@ final case class SwitchData (switches: Iterable[SwitchDetails])
     /** @return the mRID of the TopologicalNode for the other end of the switches */
     def node1: String = switches.head.terminal2.TopologicalNode
 
+    /**
+     * Get the closed status of the switches.
+     *
+     * @return <code>true</code> if any switch is closed, <code>false</code> otherwise
+     */
+    def closed: Boolean = switches.exists (_.closed)
+
     /** @return a summary string for the switches */
     override def toString: String = s"""${switches.map (_.toString).mkString ("||")} from $node0 to $node1"""
 }

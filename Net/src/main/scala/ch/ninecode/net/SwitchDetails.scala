@@ -114,7 +114,23 @@ final case class SwitchDetails (
             false
     }
 
-    def closed: Boolean = !normalOpen && ! open
+    /**
+     * Determine if the switch is closed.
+     *
+     * @return <code>true</code> if the switch open attribute is set false, or the normalOpen attribute is set false
+     *         or <code>true</code> otherwise
+     */
+    def closed: Boolean =
+    {
+        val openP = if (isSet (openMask))
+            asSwitch.open // open valid trumps normalOpen
+        else
+            if (isSet (normalOpenMask))
+                asSwitch.normalOpen // normalOpen valid
+            else
+                false
+        !openP
+    }
 
     /**
      * Get the rated current for the switch.

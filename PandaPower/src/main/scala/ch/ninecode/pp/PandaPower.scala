@@ -29,17 +29,6 @@ extends Serializable
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    case class PandaPowerResult (success: Boolean, errors: List[String])
-    {
-        def combine (other: PandaPowerResult): PandaPowerResult =
-            PandaPowerResult (success && other.success, if (!other.success) errors ::: other.errors else errors)
-        override def toString: String = s"${if (success) "Succeeded" else "Failed"}${errors.mkString ("\n", "\n", "")}"
-    }
-    object PandaPowerResult
-    {
-        def apply (): PandaPowerResult = PandaPowerResult (true, List())
-    }
-
     /**
      * Get the working directory ensuring a slash terminator.
      */
@@ -228,5 +217,17 @@ extends Serializable
 
         val out: RDD[String] = files.pipe (pandapower)
         out.map (check).fold (PandaPowerResult ())((x, y) => x.combine (y))
+    }
+}
+object PandaPower
+{
+    /**
+     * The list of classes that can be persisted.
+     */
+    lazy val classes: Array[Class[_]] =
+    {
+        Array (
+            classOf[ch.ninecode.pp.PandaPowerResult]
+        )
     }
 }

@@ -89,7 +89,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
      */
     def emit_switch (edge: GLMSwitchEdge, generator: GLMGenerator): String =
     {
-        val status = if (edge.normalOpen) "OPEN" else "CLOSED"
+        val status = if (edge.closed) "CLOSED" else "OPEN"
         val current = 9999.0 // override so it never trips
         val fuse_details = if (edge.fuse)
             """

@@ -10,8 +10,7 @@ extends LoadFlowEdge (
     data.node1
 )
 {
-    def normalOpen: Boolean =
-        data.switches.forall (x => x.asSwitch.normalOpen)
+    def closed: Boolean = data.closed
 
     def ratedCurrent: Double =
         data.switches.map (x => x.asSwitch.ratedCurrent).min
