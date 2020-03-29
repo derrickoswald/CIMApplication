@@ -1,6 +1,5 @@
 package ch.ninecode.cim.cimweb
 
-import java.net.URLClassLoader
 import java.util
 import java.util.logging.Logger
 import javax.ejb.Stateless
@@ -52,36 +51,11 @@ class Pong extends RESTful
             for (property ← System.getProperties)
                 properties.add (property._1, property._2)
             ret.add ("properties", properties)
-            val classpath = Json.createArrayBuilder
-            val classLoaders = new util.ArrayList[ClassLoader]
-            classLoaders.add (ClassLoader.getSystemClassLoader)
-            if (!classLoaders.contains (Thread.currentThread.getContextClassLoader))
-                classLoaders.add (Thread.currentThread.getContextClassLoader)
-            try
-                throw new Exception
-            catch
-            {
-                case exception: Exception ⇒
-                    for (element: StackTraceElement <- exception.getStackTrace)
-                        try
-                        {
-                            val classloader = Class.forName (element.getClassName).getClassLoader
-                            if ((null != classloader) && !classLoaders.contains (classloader))
-                                classLoaders.add (classloader)
-                        }
-                        catch
-                        {
-                            case oops: ClassNotFoundException ⇒
-                        }
-            }
-            for (cl <- classLoaders)
-                for (url <- cl.asInstanceOf[URLClassLoader].getURLs)
-                    if ("file" == url.getProtocol)
-                        classpath.add (url.getFile)
-            ret.add ("classpath", classpath)
+            ret.add ("classpath", getClassPaths)
         }
 
-        val factory = RESTful.getConnectionFactory () // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
+        val out = if (verbose) new StringBuffer else null
+        val factory = RESTful.getConnectionFactory (out) // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
         if (null != factory)
         {
             if (verbose)
@@ -182,6 +156,8 @@ class Pong extends RESTful
         {
             result.status = RESTfulJSONResult.FAIL
             ret.add ("error", "could not get CIMConnectionFactory")
+            if (verbose)
+                ret.add ("tried", out.toString)
         }
 
         result.setResult (ret.build)

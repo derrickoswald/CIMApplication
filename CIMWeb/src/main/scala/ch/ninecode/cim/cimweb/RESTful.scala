@@ -1,14 +1,21 @@
 package ch.ninecode.cim.cimweb
 
+import java.net.URLClassLoader
+import java.util
 import java.util.Properties
 
 import javax.annotation.Resource
+import javax.json.Json
+import javax.json.JsonArrayBuilder
 import javax.naming.Context
 import javax.naming.InitialContext
 import javax.naming.NameNotFoundException
 import javax.naming.NamingException
 import javax.resource.ResourceException
 import javax.resource.cci.MappedRecord
+
+import scala.collection.JavaConversions.collectionAsScalaIterable
+
 import ch.ninecode.cim.connector.CIMConnection
 import ch.ninecode.cim.connector.CIMConnectionFactory
 import ch.ninecode.cim.connector.CIMConnectionSpec
@@ -19,6 +26,48 @@ class RESTful ()
     import RESTful._
 
     type map = java.util.Map[String,Object]
+
+    def getClassLoaders: util.ArrayList[ClassLoader] =
+    {
+        val classLoaders = new util.ArrayList[ClassLoader]
+        classLoaders.add (ClassLoader.getSystemClassLoader)
+        if (!classLoaders.contains (Thread.currentThread.getContextClassLoader))
+            classLoaders.add (Thread.currentThread.getContextClassLoader)
+        try
+        throw new Exception
+        catch
+        {
+            case exception: Exception =>
+                for (element: StackTraceElement <- exception.getStackTrace)
+                    try
+                    {
+                        val classloader = Class.forName (element.getClassName).getClassLoader
+                        if ((null != classloader) && !classLoaders.contains (classloader))
+                            classLoaders.add (classloader)
+                    }
+                    catch
+                    {
+                        case _: ClassNotFoundException =>
+                    }
+        }
+        classLoaders
+    }
+
+    def getClassPaths: JsonArrayBuilder =
+    {
+        val classpath = Json.createArrayBuilder
+
+        for (cl <- getClassLoaders)
+            cl match
+            {
+                case url_loader: URLClassLoader =>
+                    for (url <- url_loader.getURLs)
+                        if ("file" == url.getProtocol)
+                            classpath.add (url.getFile)
+                case _ =>
+            }
+        classpath
+    }
 
     protected def getConnection (result: RESTfulJSONResult, debug: Boolean = false): CIMConnection =
     {

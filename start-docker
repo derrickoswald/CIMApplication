@@ -12,6 +12,10 @@ elif [[ $1 == glassfish ]]; then
     Container="glassfish"
     publishplus="--publish 4848:4848"
     shift
+elif [[ $1 == openliberty ]]; then
+    Container="openliberty"
+    publishplus="--publish 4848:4848"
+    shift
 else
     Container="tomee"
     publishplus=""

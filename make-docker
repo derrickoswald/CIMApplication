@@ -12,6 +12,10 @@ elif [[ $1 == glassfish ]]; then
     AppServer="Glassfish"
     Tag="glassfish"
     shift
+elif [[ $1 == openliberty ]]; then
+    AppServer="OpenLiberty"
+    Tag="openliberty"
+    shift
 else
     AppServer="TomEE"
     Tag="tomee"

@@ -9,6 +9,9 @@ elif [[ $1 == tomee ]]; then
 elif [[ $1 == glassfish ]]; then
     Container="glassfish"
     shift
+elif [[ $1 == openliberty ]]; then
+    Container="openliberty"
+    shift
 else
     Container="tomee"
 fi

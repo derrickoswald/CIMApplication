@@ -12,10 +12,10 @@ LABEL maintainer = "Derrick.Oswald@9code.ch"
 # Install Cassandra
 RUN echo "deb http://www.apache.org/dist/cassandra/debian 311x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
 RUN curl https://downloads.apache.org/cassandra/KEYS | apt-key add -
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq apt-transport-https ca-certificates
+RUN DEBIAN_FRONTEND=noninteractive apt-get install --yes --quiet apt-transport-https ca-certificates
 RUN apt-get update \
   && apt-key adv --keyserver pool.sks-keyservers.net --recv-key A278B781FE4B2BDA
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends cassandra
+RUN DEBIAN_FRONTEND=noninteractive apt-get install --yes --quiet --no-install-recommends cassandra
 RUN apt-get clean
 RUN  sed --in-place 's/enable_user_defined_functions: false/enable_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml \
   && sed --in-place 's/enable_scripted_user_defined_functions: false/enable_scripted_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml \
@@ -43,6 +43,7 @@ RUN mkdir -p /usr/local/wildfly
 
 WORKDIR /usr/local/wildfly
 
+RUN DEBIAN_FRONTEND=noninteractive apt-get install --yes --quiet execstack
 RUN set -x \
 	&& export WILDFLY_VERSION=19.0.0.Final \
 	&& curl --fail --show-error --location https://download.jboss.org/wildfly/${WILDFLY_VERSION}/wildfly-${WILDFLY_VERSION}.zip --output wildfly.zip \
@@ -76,6 +77,8 @@ RUN /usr/local/wildfly/bin/add-user.sh wildfly Green1antern
 # 1) The JavaVM will crash trying to fix the stack guard for jars that contain Windows DLLs - WTF?
 #     OpenJDK 64-Bit Server VM warning: You have loaded library <name_of_binary> which might have disabled stack guard. The VM will try to fix the stack guard now.
 #     then crash
+# see https://stackoverflow.com/questions/32841926/loading-rar-which-uses-jffi-causes-jboss-jvm-to-segfault/33151410#33151410
+# and https://developer.jboss.org/thread/274911
 # the jars that do this are the exclusions from these CIMConnector dependencies:
 #        <dependency>
 #            <groupId>ch.ninecode.cim</groupId>
