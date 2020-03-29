@@ -14,7 +14,7 @@ extends LoadFlowEdge (
     _data.node1
 )
 {
-    lazy val data: LineData = _data
+    val data: LineData = _data
 
     lazy val lines: Iterable[ACLineSegment] = data.lines.map (_.line)
 

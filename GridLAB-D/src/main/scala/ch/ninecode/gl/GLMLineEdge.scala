@@ -6,7 +6,7 @@ import ch.ninecode.util.Sequences
 
 final case class GLMLineEdge
 (
-    data: LineData
+    override val data: LineData
 )
 extends LineEdge (data)
 with GLMEdge

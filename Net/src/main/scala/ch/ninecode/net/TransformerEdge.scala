@@ -12,7 +12,7 @@ extends LoadFlowEdge (
     _transformer.node1
 )
 {
-    lazy val transformer: TransformerSet = _transformer
+    val transformer: TransformerSet = _transformer
 
     lazy val name: String = transformer.transformer_name
 

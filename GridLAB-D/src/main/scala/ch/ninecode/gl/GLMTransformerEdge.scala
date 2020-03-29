@@ -5,7 +5,7 @@ import ch.ninecode.net.TransformerSet
 
 case class GLMTransformerEdge
 (
-    transformer: TransformerSet
+    override val transformer: TransformerSet
 )
 extends TransformerEdge (transformer)
 with GLMEdge
