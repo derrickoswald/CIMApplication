@@ -189,7 +189,7 @@ extends Serializable
                         "export FILE=$line; " +
                         "ulimit -Sn `ulimit -Hn`; " +
                         "pushd " + workdir_path + "$FILE; " +
-                        "python $FILE.py > $FILE.out 2>&1; " +
+                        "python3 $FILE.py > $FILE.out 2>&1; " +
                         "if [ $? -eq 0 ]; then RESULT=\"SUCCESS\"; else RESULT=\"FAILED\"; fi; { echo -n \"$RESULT \"; cat $FILE.out | awk '{print ENVIRON[\"FILE\"] \" \" $0}'; }; " +
                         "popd; " +
                         "done < /dev/stdin")
@@ -206,7 +206,7 @@ extends Serializable
                         "ulimit -Sn `ulimit -Hn`; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +
                         "pushd $FILE; " +
-                        "python $FILE.py > $FILE.out 2>&1; " +
+                        "python3 $FILE.py > $FILE.out 2>&1; " +
                         "if [ $? -eq 0 ]; then RESULT=\"SUCCESS\"; else RESULT=\"FAILED\"; fi; { echo -n \"$RESULT \"; cat $FILE.out | awk '{print ENVIRON[\"FILE\"] \" \" $0}'; }; " +
                         "popd; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +

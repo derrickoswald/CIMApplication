@@ -6,7 +6,7 @@ Distributed load-flow calculations using [PandaPower](https://www.pandapower.org
 # Overview
 This Scala library is used within Spark programs to
 - create pandapower script (.py) files from [CIM RDD](https://github.com/derrickoswald/CIMReader)
-- run the [python](https://www.python.org/) executable on worker nodes using the script
+- run the [python3](https://www.python.org/) executable on worker nodes using the script
 - collect the contents of the files written by the output writers into RDD
 
 # pandapower
