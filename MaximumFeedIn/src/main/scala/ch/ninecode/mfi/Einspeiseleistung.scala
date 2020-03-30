@@ -284,7 +284,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
         else
         {
-            val errorMessage = error.errorMessages.mkString("\n")
+            val errorMessage = if (null == error)
+                "no returned errors"
+            else
+                error.errorMessages.mkString("\n")
             trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.feeder, e.node, e.house, None, s"gridlabd failed \n $errorMessage", "no results")).toList
         }
     }

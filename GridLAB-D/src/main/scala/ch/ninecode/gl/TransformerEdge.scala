@@ -167,6 +167,12 @@ case class TransformerEdge
         // ToDo: should be DELTA_GWYE (Dyn5), pick up windingConnection values from CIM (see https://www.answers.com/Q/What_is_the_meaning_of_DYN_11_on_a_transformer_nameplate)
         val connect = if (generator.isSinglePhase) "WYE_WYE" else "DELTA_GWYE"
 
+        def nonNegative (d: Double): Double =
+        {
+            val n = math.abs (d)
+            if (n < 1e-7) 1e-7 else n
+        }
+
         val ret =
         s"""$warn
             |        object transformer_configuration
@@ -178,8 +184,8 @@ case class TransformerEdge
             |            power_rating ${transformer.power_rating / 1000.0};
             |            primary_voltage ${transformer.v0};
             |            secondary_voltage ${if (multiwinding) transformer.v0 else transformer.v1};
-            |            resistance ${total_impedance.re};
-            |            reactance ${total_impedance.im};
+            |            resistance ${nonNegative (total_impedance.re)};
+            |            reactance ${nonNegative (total_impedance.im)};
             |        };
             |""".stripMargin
 
