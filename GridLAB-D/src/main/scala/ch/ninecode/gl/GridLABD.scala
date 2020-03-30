@@ -491,7 +491,7 @@ class GridLABD
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/output.txt " + workdir_path + "$FILE; " +
                         "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
                         "echo -n $FILE'|';" +
-                        "cat $FILE.out | tr '\\r\\n' '|';" +
+                        "cat $FILE/$FILE.out | tr '\\r\\n' '|';" +
                         "rm -rf $FILE; " +
                         "done < /dev/stdin")
             }
