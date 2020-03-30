@@ -158,21 +158,14 @@ case class ShortCircuitInfo2 (
             val sk_max = row.getDouble (19) * 1e6
             val sk_min = row.getDouble (20) * 1e6
             val ratioZ0Z1_max = row.getDouble (27)
-            val ratioZ0Z1_min = row.getDouble (28) // ToDo: not used, where to put this in the CIM model
-            val ratioX1R1_max = row.getDouble (29)
-            val ratioX1R1_min = row.getDouble (30)
             val wik1_max = - row.getDouble (31) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
             val wik1_min = - row.getDouble (32) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
             val ratioX0R0_max = row.getDouble (33)
-            val ratioX0R0_min = row.getDouble (34)
             val wik0_max = -((Math.PI / 2.0) - Math.atan (ratioX0R0_max))
-            val wik0_min = -((Math.PI / 2.0) - Math.atan (ratioX0R0_min)) // ToDo: not used, where to put this in the CIM model
 
             val c = 1.0
             val zqt1_max = (c * v1 * v1) / sk_max
-            val zqt1_min = (c * v1 * v1) / sk_min
             val zqt0_max = zqt1_max * ratioZ0Z1_max
-            val zqt0_min = zqt1_min * ratioZ0Z1_min // ToDo: not used, where to put this in the CIM model
             val netz_r1 = zqt1_max * Math.cos (wik1_max)
             val netz_x1 = zqt1_max * Math.sin (wik1_max)
             val netz_r0 = zqt0_max * Math.cos (wik0_max)

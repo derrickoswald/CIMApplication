@@ -303,7 +303,6 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         // all the threshold types, geometry tables, reference and default are the same
         val `type` = triggers.head.`type`
         val reference = triggers.head.reference
-        val default = triggers.head.default.toString
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
         def maximum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf[Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.max (a, Math.max (b, c)))

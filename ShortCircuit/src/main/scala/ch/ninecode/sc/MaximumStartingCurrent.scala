@@ -81,7 +81,6 @@ object MaximumStartingCurrent
                             ): (Double, Double) =
     {
         val root3 = sqrt (3.0)
-        val phin = network_impedance.angle
         val pmax = Math.abs (network_short_circuit_power * root3 / (6.0 * costerm (network_impedance, options)))
         (dmax_low_rep * pmax / voltage, dmax_medium_rep * pmax / voltage)
     }

@@ -177,7 +177,7 @@ case class SimulationRunner (
             dir = dir.slice(0, dir.length - 1)
         val bash = """pushd "%s%s";gridlabd --quiet "%s.glm";popd;""".format (workdir, dir, trafo.name)
         val command = Seq ("bash", "-c", bash)
-        var lines = new ListBuffer[String]()
+        val lines = new ListBuffer[String]()
         var warningLines = 0
         var errorLines = 0
 

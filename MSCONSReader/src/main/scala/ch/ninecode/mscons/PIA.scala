@@ -66,8 +66,6 @@ object PIA extends FieldExtractor[PIA]
                 { case _7140 ~ _7143 ~ _1131 ~ _3055  => Item_Number_Identification (_7140, _7143, _1131, _3055) }
         )
 
-    private lazy val _5479 = alphanumeric_? (3)
-
     lazy val pia_fields: Parser[PIA] =
         fields (
             _4347 ~ c212 ~ c212.? ~ c212.? ~ c212.? ~ c212.? ^^

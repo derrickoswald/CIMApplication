@@ -376,10 +376,8 @@ class GridLABD
         // persist edges and nodes to avoid recompute
         val xedges = real_edges.map (make_graph_edges)
         val xnodes = nodes.map (make_graph_vertices).groupByKey.map (worst)
-        val e = xedges.count
         xedges.name = "xedges"
         xedges.persist (storage_level)
-        val n = xnodes.count
         xnodes.name = "xnodes"
         xnodes.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined)

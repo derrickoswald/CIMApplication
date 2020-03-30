@@ -321,7 +321,7 @@ object Database
 
     def fetchTransformersWithEEA (simulation: Int, outputfile: String): Array[String] =
     {
-        var ret = new ArrayBuffer[String]()
+        val ret = new ArrayBuffer[String]()
 
         // check if the directory exists
         val file = Paths.get (s"${outputfile}")
@@ -379,7 +379,7 @@ object Database
      */
     def fetchHousesWithDifferentEEA (simulation: Int, reference: Int, delta: Double, outputfile: String): Array[String] =
     {
-        var ret = new ArrayBuffer[String]()
+        val ret = new ArrayBuffer[String]()
 
         // check if the directory exists
         val file = Paths.get (s"${outputfile}")

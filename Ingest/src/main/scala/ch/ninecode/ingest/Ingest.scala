@@ -316,7 +316,6 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             if (1 == matcher.group (2).toInt)
             {
-                val channel = matcher.group (4).toInt
                 val quantity = matcher.group (5).toInt
                 val what = matcher.group (6).toInt
                 var (typ, real, imag, factor, unit) = quantity match

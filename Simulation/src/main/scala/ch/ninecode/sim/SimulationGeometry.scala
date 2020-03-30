@@ -333,8 +333,6 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
 
         // get a map of equipment containers and islands
         val terminals = getOrElse[Terminal]
-        val psrtypes = Array ("PSRType_Substation", "PSRType_TransformerStation", "PSRType_DistributionBox")
-        val containers: RDD[Substation] = getOrElse[Substation].filter (station ⇒ psrtypes.contains (station.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType))
         val equipment_islands: RDD[(EquipmentmRID, IslandmRID)] = terminals.map (terminal ⇒ (terminal.TopologicalNode, terminal.ConductingEquipment)).join (nodes_islands).values
         val equipment_containers: RDD[(EquipmentmRID, StationmRID)] = getOrElse[Equipment].map (equipment ⇒ (equipment.id, equipment.EquipmentContainer))
         val islands_containers: RDD[(IslandmRID, StationmRID)] = equipment_islands.join (equipment_containers).values.distinct
