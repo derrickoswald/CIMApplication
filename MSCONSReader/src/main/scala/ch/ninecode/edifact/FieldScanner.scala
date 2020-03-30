@@ -22,7 +22,7 @@ case class FieldScanner (segment: Segment, una: UNA, begin: Int = 0) extends Rea
             {
                 if (c == una.data_element_separator)
                 {
-                    intervals = intervals :+ (start, end - 2)
+                    intervals = intervals :+ ((start, end - 2))
                     start = end - 1
                 }
                 skip = false
@@ -35,7 +35,7 @@ case class FieldScanner (segment: Segment, una: UNA, begin: Int = 0) extends Rea
                         skip = true
         }
 
-        intervals = intervals :+ (start, if (stop) end - 1 else end)
+        intervals = intervals :+ ((start, if (stop) end - 1 else end))
 
         val string = intervals.map (
             item => segment.contents.substring (item._1, item._2)

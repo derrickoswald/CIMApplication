@@ -19,7 +19,7 @@ object ServiceSegmentParser extends Parsers
     val header = unb ~ unh
     def parse[T](p: Parser[T], in: SegmentListParser): ParseResult[T] = p(in)
 
-    def read[ServiceSegments](in: List[Segment]): ParseResult[ch.ninecode.edifact.ServiceSegments] =
+    def read (in: List[Segment]): ParseResult[ch.ninecode.edifact.ServiceSegments] =
     {
         val x = parse (header, SegmentListParser (in))
         x match

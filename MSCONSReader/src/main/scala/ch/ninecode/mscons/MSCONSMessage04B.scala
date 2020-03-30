@@ -259,7 +259,7 @@ case class MSCONSMessage04B (
         {
             if (1 == matcher.group (2).toInt) // Electricity related objects
             {
-                val channel = matcher.group (4).toInt // Channel 1
+                // val channel = matcher.group (4).toInt // Channel 1
                 val quantity = matcher.group (5).toInt
                 val what = matcher.group (6).toInt
                 quantity match

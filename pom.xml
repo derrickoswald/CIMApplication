@@ -9,6 +9,11 @@
     <version>2.11-2.4.3-2.5.1</version>
     <packaging>pom</packaging>
     <name>CIM Application Multimodule</name>
+    <scm>
+        <url>git@github.com:derrickoswald/CIMApplication.git</url>
+        <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
+        <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
+    </scm>
 
     <properties>
 
@@ -57,8 +62,9 @@
         <version.dependency.cassandra-maven-plugin>3.6</version.dependency.cassandra-maven-plugin>
         <!-- see http://davidb.github.com/scala-maven-plugin -->
         <version.dependency.scala-maven-plugin>4.2.0</version.dependency.scala-maven-plugin>
+        <version.dependency.wartremover>2.4.5</version.dependency.wartremover>
         <version.dependency.scalatest-maven-plugin>2.0.0</version.dependency.scalatest-maven-plugin>
-
+        <version.dependency.buildnumber-maven-plugin>1.4</version.dependency.buildnumber-maven-plugin>
     </properties>
 
     <build>
@@ -68,6 +74,11 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-enforcer-plugin</artifactId>
                     <version>${version.dependency.maven-enforcer-plugin}</version>
+                </plugin>
+                <plugin>
+                    <groupId>net.alchim31.maven</groupId>
+                    <artifactId>scala-maven-plugin</artifactId>
+                    <version>${version.dependency.scala-maven-plugin}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -91,9 +102,91 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>buildnumber-maven-plugin</artifactId>
+                <version>${version.dependency.buildnumber-maven-plugin}</version>
+                <executions>
+                    <execution>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>create</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <doCheck>false</doCheck>
+                    <doUpdate>false</doUpdate>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>${version.dependency.scala-maven-plugin}</version>
+                <configuration>
+                    <scalaCompatVersion>${version.dependency.scala}</scalaCompatVersion>
+                    <scalaVersion>${version.dependency.scalalibrary}</scalaVersion>
+                    <archive>
+                        <addMavenDescriptor>false</addMavenDescriptor>
+                    </archive>
+                    <compilerPlugins>
+                        <compilerPlugin>
+                            <groupId>org.wartremover</groupId>
+                            <artifactId>wartremover_${version.dependency.scalalibrary}</artifactId>
+                            <version>${version.dependency.wartremover}</version>
+                        </compilerPlugin>
+                    </compilerPlugins>
+                    <displayCmd>true</displayCmd>
+                    <args>
+                        <arg>-deprecation</arg>
+                        <arg>-feature</arg>
+                        <arg>-unchecked</arg>
+                        <arg>-Ywarn-dead-code</arg>
+                        <arg>-Ywarn-unused</arg>
+                        <arg>-Xlint:_</arg>
+                        <arg>-target:jvm-1.8</arg>
+                        <!-- see https://github.com/wartremover/wartremover/blob/704113034f9d2829aa8d577ac4f059c2136c6781/core/src/main/scala/wartremover/warts/Unsafe.scala -->
+                        <!-- arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Any</arg -->
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.AsInstanceOf</arg>
+                        <!-- arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.DefaultArguments</arg -->
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.EitherProjectionPartial</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.IsInstanceOf</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.NonUnitStatements</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Null</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.OptionPartial</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Product</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Return</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Serializable</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.StringPlusAny</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Throw</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.TraversableOps</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.TryPartial</arg>
+                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Var</arg>
+                    </args>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>testCompile</goal>
+                        </goals>
+                        <configuration>
+                            <scalaVersion>${version.dependency.scalalibrary}</scalaVersion>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>${version.dependency.scala-maven-plugin}</version>
+            </plugin>
+        </plugins>
+    </reporting>
     <modules>
         <module>Util</module>
         <module>CIMConnector</module>
