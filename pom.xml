@@ -161,7 +161,6 @@
                         <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Throw</arg>
                         <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.TraversableOps</arg>
                         <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.TryPartial</arg>
-                        <arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Var</arg>
                     </args>
                 </configuration>
                 <executions>
