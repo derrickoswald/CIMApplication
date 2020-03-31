@@ -453,6 +453,7 @@ class GridLABD
                 val os = System.getProperty ("os.name")
                 if (os.startsWith ("Windows"))
                 {
+                    log.info("Running GridLABD on Windows")
                     val pipeFileName = "./src/test/resources/pipe.sh"
                     val pipeContent = """#!/bin/bash
                                      |while read line; do
@@ -477,6 +478,7 @@ class GridLABD
                 }
                 else
                 {
+                    log.info("Running GridLABD on a non-cluster Linux")
                     Array [String](
                         "bash",
                         "-c",
@@ -494,6 +496,7 @@ class GridLABD
             }
             else // cluster, either hdfs://XX or wasb://YY
             {
+                log.info("Running GridLABD on a Linux cluster")
                 Array [String](
                     "bash",
                     "-c",

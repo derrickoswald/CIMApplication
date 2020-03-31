@@ -43,6 +43,9 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val pl = org.apache.log4j.LogManager.getLogger ("ch.ninecode.mfi.PowerFeeding$")
         if (!pl.isInfoEnabled)
             pl.setLevel (org.apache.log4j.Level.INFO)
+        val gl = org.apache.log4j.LogManager.getLogger ("ch.ninecode.gl.GridLABD")
+        if (!gl.isInfoEnabled)
+            gl.setLevel (org.apache.log4j.Level.INFO)
     }
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
