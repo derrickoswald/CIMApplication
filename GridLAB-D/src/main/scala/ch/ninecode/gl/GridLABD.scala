@@ -10,6 +10,23 @@ import java.nio.file.attribute.PosixFilePermission
 import java.text.ParseException
 import java.text.SimpleDateFormat
 
+import scala.collection.JavaConverters.setAsJavaSetConverter
+import scala.collection.Map
+
+import org.apache.commons.io.FileUtils
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsPermission
+import org.apache.spark.graphx.Edge
+import org.apache.spark.graphx.VertexId
+import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BaseVoltage
@@ -36,22 +53,6 @@ import ch.ninecode.model.WireInfo
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
-import org.apache.commons.io.FileUtils
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
-import org.apache.hadoop.fs.permission.FsPermission
-import org.apache.spark.graphx.Edge
-import org.apache.spark.graphx.VertexId
-import org.apache.spark.rdd.RDD
-import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
-import scala.collection.JavaConverters.setAsJavaSetConverter
-import scala.collection.Map
 
 case class GridlabFailure (trafoID: String, errorMessages: List[String])
 
