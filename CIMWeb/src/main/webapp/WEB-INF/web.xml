@@ -8,7 +8,6 @@
 
     <display-name>Sample application to access CIMConnector</display-name>
     <description>End-to-end demonstration program for reading and computing with CIM files in Spark.</description>
-<!--
     <resource-ref>
         <description>
             Resource reference to a factory for the CIMConnnector.
@@ -26,27 +25,5 @@
             Shareable
         </res-sharing-scope>
     </resource-ref>
-
-    <resource-ref>
-        <description>
-            Resource reference to a factory for java.sql.Connection
-            instances for a SQLite results database which
-            is configured in the &lt;Context&gt;
-            configuration for the web application.
-        </description>
-        <res-ref-name>
-            jdbc/TimeSeries
-        </res-ref-name>
-        <res-type>
-            javax.sql.DataSource
-        </res-type>
-        <res-auth>
-            Container
-        </res-auth>
-        <res-sharing-scope>
-            Shareable
-        </res-sharing-scope>
-    </resource-ref>
--->
 
 </web-app>

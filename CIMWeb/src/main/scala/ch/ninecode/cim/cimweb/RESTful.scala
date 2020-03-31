@@ -13,7 +13,6 @@ import javax.naming.NameNotFoundException
 import javax.naming.NamingException
 import javax.resource.ResourceException
 import javax.resource.cci.MappedRecord
-
 import scala.collection.JavaConversions.collectionAsScalaIterable
 
 import ch.ninecode.cim.connector.CIMConnection
@@ -112,7 +111,7 @@ object RESTful
      */
     def print_context_r (out: StringBuffer, context: Context, name: String, depth: Int): Unit =
     {
-        if (null != context)
+        if (null != context && depth < 5)
         {
             val s = new StringBuilder
             var i = 0
@@ -142,12 +141,12 @@ object RESTful
             }
             catch
             {
-                case _: NameNotFoundException ⇒
+                case _: NameNotFoundException =>
                     out.append (indent)
                     out.append ("NameNotFoundException ")
                     out.append (name)
                     out.append ("\n")
-                case ne: NamingException ⇒
+                case ne: NamingException =>
                     if (!("Name is not bound to a Context" == ne.getMessage))
                     {
                         out.append (indent)
@@ -186,25 +185,39 @@ object RESTful
                 {
                     val context = new InitialContext (properties)
                     if (debug)
-                        print_context (debug_out, context, "java:")
+                        print_context (debug_out, context, "java:openejb")
                     try
                         _ConnectionFactory = context.lookup ("java:openejb/Resource/SparkConnectionFactory").asInstanceOf[CIMConnectionFactory]
                     catch
                     {
-                        case ne: NamingException ⇒
-                            System.out.println ("fuck this JNDI shit: " + ne.getMessage)
+                        case ne: NamingException =>
+                            debug_out.append ("NameNotFoundException: ")
+                            debug_out.append (ne.getMessage)
+                            debug_out.append ("\n")
+                            if (debug)
+                                print_context (debug_out, context, "java:comp")
+                            try
+                                _ConnectionFactory = context.lookup ("java:comp/env/eis/SparkConnectionFactory").asInstanceOf[CIMConnectionFactory]
+                            catch
+                            {
+                                case ne2: NamingException =>
+                                    debug_out.append ("NameNotFoundException: ")
+                                    debug_out.append (ne2.getMessage)
+                                    debug_out.append ("\n")
+                                    System.out.println ("fuck this JNDI shit, I give up")
+                            }
                     }
                 }
                 catch
                 {
-                    case nnfe: NameNotFoundException ⇒
+                    case nnfe: NameNotFoundException =>
                         if (debug)
                         {
                             debug_out.append ("NameNotFoundException: ")
                             debug_out.append (nnfe.getMessage)
                             debug_out.append ("\n")
                         }
-                    case ne: NamingException ⇒
+                    case ne: NamingException =>
                         if (debug)
                         {
                             debug_out.append ("NamingException: ")
@@ -216,7 +229,7 @@ object RESTful
         }
         catch
         {
-            case re: ResourceException ⇒
+            case re: ResourceException =>
                 if (debug)
                 {
                     debug_out.append ("ResourceException: ")

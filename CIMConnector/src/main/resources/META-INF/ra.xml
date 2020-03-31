@@ -4,11 +4,15 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/connector_1_6.xsd"
     version="1.6">
+    <module-name>CIMConnector</module-name>
     <description>Interface to CIM data in Apache Spark.</description>
     <display-name>CIMConnector</display-name>
     <vendor-name>9code GmbH</vendor-name>
     <eis-type>CIM Spark Connector</eis-type>
     <resourceadapter-version>0.1</resourceadapter-version>
+    <license>
+        <license-required>false</license-required>
+    </license>
     <resourceadapter id="CIMResourceAdapter">
         <resourceadapter-class>ch.ninecode.cim.connector.CIMResourceAdapter</resourceadapter-class>
         <config-property>

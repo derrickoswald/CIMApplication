@@ -7,19 +7,19 @@
 
     <application-name>CIMApplication</application-name>
 
-    <description>Application to access CIM files via Apache Spark</description>
+    <description>Application to access and process CIM files via Apache Spark</description>
 
     <display-name>CIMWeb</display-name>
 
-    <module>
+    <module id="CIMWeb">
         <web>
             <web-uri>CIMWeb.war</web-uri>
             <context-root>/cimweb</context-root>
         </web>
     </module>
 
-    <module>
-        <connector>CIMConnector.rar</connector>
+    <module id="Spark">
+        <connector id="CIMConnector">CIMConnector.rar</connector>
     </module>
 
 </application>

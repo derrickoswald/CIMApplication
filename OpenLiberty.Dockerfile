@@ -51,7 +51,6 @@ RUN set -x \
 	&& unzip openliberty.zip \
 	&& mv wlp/* /usr/local/openliberty \
 	&& rm --recursive --force wlp \
-	&& rm /usr/local/openliberty/bin/*.bat \
 	&& rm openliberty.zip
 
 # Default web UI
