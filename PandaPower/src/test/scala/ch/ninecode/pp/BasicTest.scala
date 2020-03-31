@@ -15,7 +15,6 @@ class BasicTest extends TestUtil
             val workdir = "simulation/"
             val trafo = "BASIC"
             val _ = new File (s"$workdir$trafo/output_data").mkdirs
-            val triple = "\"\"\""
             val contents = s"""
 import os
 import numpy as np
@@ -47,14 +46,14 @@ def timeseries_example(output_dir):
     run_timeseries(net, time_steps)
 
 def simple_test_net():
-    $triple
+    \"\"\"
     simple net that looks like:
 
     ext_grid b0---b1 trafo(110/20) b2----b3 load
                                     |
                                     |
                                     b4 sgen
-    $triple
+    \"\"\"
     net = pp.create_empty_network()
     pp.set_user_pf_options(net, init_vm_pu = "flat", init_va_degree = "dc", calculate_voltage_angles=True)
 
@@ -134,7 +133,6 @@ timeseries_example(output_dir)
             val workdir = "simulation/"
             val trafo = "BROKEN"
             val _ = new File (s"$workdir$trafo/output_data").mkdirs
-            val triple = "\"\"\""
             val contents = s"""
 import os
 import numpy as np
@@ -166,14 +164,14 @@ def timeseries_example(output_dir):
     run_timeseries(net, time_steps)
 
 def simple_test_net():
-    $triple
+    \"\"\"
     simple net that looks like:
 
     ext_grid b0---b1 trafo(110/20) b2----b3 load
                                     |
                                     |
                                     b4 sgen
-    $triple
+    \"\"\"
     net = pp.create_empty_network()
     pp.set_user_pf_options(net, init_vm_pu = "flat", init_va_degree = "dc", calculate_voltage_angles=True)
 

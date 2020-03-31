@@ -25,11 +25,17 @@ case class MyPandaPowerGenerator (
     override val nodes: Iterable[LoadFlowNode],
     _edges: Iterable[LoadFlowEdge]) extends PandaPowerGenerator
 {
-    override def directory: String = s"$basedir$name"
+    override val directory: String = s"$basedir$name"
     override val lines: Iterable[LineEdge] = _edges.flatMap (_ match { case l: LineEdge => Some (l); case _ => None })
     override val switches: Iterable[SwitchEdge] = _edges.flatMap (_ match { case s: SwitchEdge => Some (s); case _ => None })
     override val transformers: Iterable[TransformerEdge] = _edges.flatMap (_ match { case t: TransformerEdge => Some (t); case _ => None })
-    override val swing_nodes: Iterable[LoadFlowNode] = nodes.filter (_.nominal_voltage > 1000.0)
+    override val swing_nodes: Iterable[LoadFlowNode] = transformers.map (transformer => PandaPowerExternalGridNode (transformer))
+    override val extra: Iterable[String] = Array (
+        """sc.calc_sc(net, case="max", ip=True, ith=True, branch_results=True)""",
+        """table = pd.concat([net.bus["name"],net.res_bus_sc["ip_ka"]*1000], axis=1)""",
+        """table.rename(columns={"name": "Bus", "ip_ka": "Current (A)"}, inplace=True)""",
+        s"""table.to_csv ("output_data/GettingStarted.csv", sep=";", columns=["Bus","Current (A)"], index=False)"""
+    )
 }
 
 class SampleSuite extends TestUtil with BeforeAndAfter
@@ -87,6 +93,7 @@ class SampleSuite extends TestUtil with BeforeAndAfter
                 {
                     val (name, contents) = script
                     pp.writeInputFile (s"$name/", s"$name.py", Some (contents.getBytes ("UTF-8")), None)
+                    pp.writeInputFile (s"$name/", s"output_data/dummy", None, None) // mkdir
                     name
                 }
             )

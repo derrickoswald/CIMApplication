@@ -1,10 +1,13 @@
 package ch.ninecode.pp
 
+import scala.math.tan
+
 import ch.ninecode.net.LineDetails
 import ch.ninecode.net.LineEdge
 import ch.ninecode.net.LoadFlowNode
 import ch.ninecode.net.SwitchEdge
 import ch.ninecode.net.TransformerEdge
+import ch.ninecode.util.Complex
 
 class PandaPowerGenerator extends Serializable
 {
@@ -100,6 +103,7 @@ class PandaPowerGenerator extends Serializable
             |import pandas as pd
             |import tempfile
             |import pandapower as pp
+            |import pandapower.shortcircuit as sc
             |from pandapower.control import ConstControl
             |from pandapower.timeseries import DFData
             |from pandapower.timeseries import OutputWriter
@@ -212,11 +216,31 @@ class PandaPowerGenerator extends Serializable
         // max_vm_pu=nan, min_vm_pu=nan, coords=None, **kwargs)
         s"""pp.create_bus(net, ${node.nominal_voltage / 1000.0}, "${node.id}")"""
 
+    /**
+     * Get the r/x (re/im) ratio of the complex impedance value.
+     *
+     * @param z the impedance to compute
+     * @return the r/x ratio
+     */
+    def rx (z: Complex): Double = if (0.0 == z.im) Double.MaxValue else z.re / z.im
+
     def emitGrid (node: LoadFlowNode): String =
+    {
         //  pandapower.create_ext_grid(net, bus, vm_pu=1.0, va_degree=0.0, name=None,
         //  in_service=True, s_sc_max_mva=nan, s_sc_min_mva=nan, rx_max=nan, rx_min=nan, max_p_mw=nan, min_p_mw=nan,
         //  max_q_mvar=nan, min_q_mvar=nan, index=None, **kwargs)
-        s"""pp.create_ext_grid(net, ${busIndex (node.id)})"""
+        val sc = node match
+        {
+            case grid: PandaPowerExternalGridNode =>
+                // s_sc_max_mva - maximal short circuit apparent power to calculate internal impedance of ext_grid
+                // s_sc_min_mva - minimal short circuit apparent power to calculate internal impedance of ext_grid
+                // rx_max - maximal R/X-ratio to calculate internal impedance of ext_grid
+                // rx_min - minimal R/X-ratio to calculate internal impedance of ext_grid
+                s""", s_sc_max_mva=${grid.pmax}, s_sc_min_mva=${grid.pmin}, rx_max=${rx (grid.zmax)}, rx_min=${rx (grid.zmin)}"""
+            case _: LoadFlowNode => ""
+        }
+        s"""pp.create_ext_grid(net, bus=${busIndex (node.id)}$sc)"""
+    }
 
     def emitTransformer (transformer: TransformerEdge): String =
     {
