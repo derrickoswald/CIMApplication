@@ -129,9 +129,13 @@ class PandaPowerGenerator extends Serializable
         val configurations = transformers.map (_.configurationName).toSet
         val templates = configurations.flatMap (configuration => transformers.find (_.configurationName == configuration))
 
-        def getShortCircuitVoltage: Double = 4.4025
-
-        def getShortCircuitResistance: Double = 0.3143
+        def getShortCircuitVoltage (edge: TransformerEdge): Complex =
+        {
+            val ratio = edge.transformer.v0 / edge.transformer.v1
+            val z = edge.transformer.total_impedance._1 * ratio * ratio
+            val i = edge.transformer.power_rating / edge.transformer.v0
+            z * i
+        }
 
         def getIronLosses: Double = 0.5 // kW
 
@@ -140,15 +144,15 @@ class PandaPowerGenerator extends Serializable
         def getPhaseShift: Double = 0.0
 
         // see https://pandapower.readthedocs.io/en/latest/elements/trafo.html
-        val details = for (transformer <- templates)
+        val details = for (edge <- templates)
             yield
-             s"""    "${transformer.configurationName}":
+             s"""    "${edge.configurationName}":
                 |    {
-                |        "sn_mva":       ${ transformer.transformer.power_rating / 1000000.0 },
-                |        "vn_hv_kv":     ${ transformer.transformer.v0 / 1000.0 },
-                |        "vn_lv_kv":     ${ transformer.transformer.v1 / 1000.0 },
-                |        "vk_percent":   $getShortCircuitVoltage,
-                |        "vkr_percent":  $getShortCircuitResistance,
+                |        "sn_mva":       ${ edge.transformer.power_rating / 1000000.0 },
+                |        "vn_hv_kv":     ${ edge.transformer.v0 / 1000.0 },
+                |        "vn_lv_kv":     ${ edge.transformer.v1 / 1000.0 },
+                |        "vk_percent":   ${ getShortCircuitVoltage (edge).modulus / edge.transformer.v0 * 100.0 },
+                |        "vkr_percent":  ${ getShortCircuitVoltage (edge).re / edge.transformer.v0 * 100.0 },
                 |        "pfe_kw":       $getIronLosses,
                 |        "i0_percent":   $getOpenLoopLosses,
                 |        "shift_degree": $getPhaseShift
@@ -192,9 +196,9 @@ class PandaPowerGenerator extends Serializable
             yield
              s"""    "${line.configurationName}":
                 |    {
-                |        "r_ohm_per_km": ${ z.z1.re / 1000.0 },
-                |        "x_ohm_per_km": ${ z.z1.im / 1000.0 },
-                |        "c_nf_per_km":  ${ getCapacitance (line) * 1e-9 / 1000.0 },
+                |        "r_ohm_per_km": ${ z.z1.re * 1000.0 },
+                |        "x_ohm_per_km": ${ z.z1.im * 1000.0 },
+                |        "c_nf_per_km":  ${ getCapacitance (line) * 1e-9 * 1000.0 },
                 |        "max_i_ka":     ${ getCurrentRating (line) / 1000.0 },
                 |        "type":         "${getType (line)}",
                 |        "q_mm2":        ${getCrossSectionalArea (line)},
