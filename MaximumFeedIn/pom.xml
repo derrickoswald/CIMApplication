@@ -150,7 +150,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.mfi.EinspeiseleistungTestSuite</suites>
+                    <suites>ch.ninecode.mfi.MaximumFeedInTestSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
