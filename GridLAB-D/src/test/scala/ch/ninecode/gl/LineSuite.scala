@@ -19,17 +19,16 @@ import ch.ninecode.net.LineData
 import ch.ninecode.net.LineDetails
 import ch.ninecode.net.Lines
 import ch.ninecode.net.Net
-import ch.ninecode.testutil.Unzip
+import ch.ninecode.testutil.TestUtil
+import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 import ch.ninecode.util.Util
-
 import org.scalactic.source.Position
 import org.scalatest.BeforeAndAfter
 import org.scalatest.Canceled
 import org.scalatest.Outcome
 import org.scalatest.exceptions.StackDepthException
 import org.scalatest.exceptions.TestCanceledException
-import org.scalatest.fixture
 
 case class Probe ()
 {
@@ -43,9 +42,8 @@ case class Probe ()
     }
 }
 
-class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
+class LineSuite extends TestUtil with BeforeAndAfter
 {
-    type FixtureParam = SparkSession
     val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Net.classes, Util.classes)
     val FILE_DEPOT = "data/"
     val FILENAME = "LineTest"
@@ -91,7 +89,7 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
             writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
             writer.close ()
@@ -101,101 +99,56 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
         ret
     }
 
-    def withFixture (test: OneArgTest): Outcome =
+    override def withFixture (test: OneArgTest): Outcome =
     {
-        if (serverListening ("sandbox", 7077))
+        val SERVER = "sandbox"
+        val PORT = 7077
+        if (serverListening (SERVER, PORT))
         {
-            // create the fixture
-            val start = System.nanoTime ()
-
-            // create the configuration
-            val configuration = new SparkConf (false)
-            configuration.setAppName (this.getClass.getSimpleName)
-            configuration.setMaster ("spark://sandbox:7077")
-            configuration.set ("spark.driver.memory", "2g")
-            configuration.set ("spark.executor.memory", "2g")
-            configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
-            configuration.set ("spark.ui.showConsoleProgress", "false")
-            configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-
-            val s1 = jarForObject (new DefaultSource ())
-            val s2 = jarForObject (ThreePhaseComplexDataElement (null, 0L, null, null, null, null))
-            val s3 = jarForObject (Probe ())
-            val s4 = jarForObject (Lines)
-            val s5 = jarForObject (FlowDirection)
-            configuration.setJars (Array (s1, s2, s3, s4, s5))
-
-            // register relevant classes
-            registerDependency (configuration)
-
-            // register GraphX classes
-            GraphXUtils.registerKryoClasses (configuration)
-
-            // create the fixture
-            val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
-            session.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-
-            val end = System.nanoTime ()
-            println ("setup : " + (end - start) / 1e9 + " seconds")
-            try
+            time ("total : %s seconds")
             {
-                withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
-            }
-            finally
-            {
-                session.stop () // clean up the fixture
-                val total = System.nanoTime ()
-                println ("total : " + (total - start) / 1e9 + " seconds")
+                // create the fixture
+                val session = time ("setup : %s seconds")
+                {
+                    // create the configuration
+                    val s1 = jarForObject (new DefaultSource ())
+                    val s2 = jarForObject (ThreePhaseComplexDataElement ("", 0L, Complex.j, Complex.j, Complex.j, ""))
+                    val s3 = jarForObject (Probe ())
+                    val s4 = jarForObject (Lines)
+                    val s5 = jarForObject (FlowDirection)
+                    val configuration = new SparkConf (false)
+                        .setAppName (this.getClass.getSimpleName)
+                        .setMaster (s"spark://$SERVER:$PORT")
+                        .set ("spark.driver.memory", "2g")
+                        .set ("spark.executor.memory", "2g")
+                        .set ("spark.sql.warehouse.dir", "file:///tmp/")
+                        .set ("spark.ui.showConsoleProgress", "false")
+                        .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+                        .setJars (Set (s1, s2, s3, s4, s5).toArray)
+
+                    // register relevant classes
+                    registerDependency (configuration)
+
+                    // register GraphX classes
+                    GraphXUtils.registerKryoClasses (configuration)
+
+                    // create the fixture
+                    val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
+                    session.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+                    session
+                }
+                try
+                {
+                    withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
+                }
+                finally
+                {
+                    session.stop () // clean up the fixture
+                }
             }
         }
         else
             Canceled (new TestCanceledException ((_: StackDepthException) => Some ("sandbox not reachable"), None, Position ("LineSuite.scala", "", 123), None))
-    }
-
-    def registerDependency (configuration: SparkConf): Unit =
-    {
-        classesToRegister.foreach (classToRegister =>
-        {
-            configuration.registerKryoClasses (classToRegister)
-        })
-    }
-
-    def readCIMElements (session: SparkSession,
-        filename: String,
-        options: Map[String, String] = null,
-        files: Array[String] = null)
-    {
-        val start = System.nanoTime
-        var thisFiles = files
-        var thisOptions = options
-        if (thisFiles == null)
-        {
-            thisFiles = filename.split (",")
-        }
-        if (thisOptions == null)
-        {
-            thisOptions = Map[String, String](
-                "path" -> filename,
-                "StorageLevel" -> "MEMORY_AND_DISK_SER"
-            )
-        }
-        val elements = session.sqlContext.read.format ("ch.ninecode.cim")
-            .options (thisOptions)
-            .load (thisFiles: _*)
-            .persist (StorageLevel.MEMORY_AND_DISK_SER)
-        println (elements.count + " elements")
-        val read = System.nanoTime
-        println ("read: " + (read - start) / 1e9 + " seconds")
-    }
-
-    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = null): Unit =
-    {
-        val diff = number - reference
-        assert (Math.abs (diff) <= epsilon,
-            if (null == message)
-                s"""$number vs. reference $reference differs by more than $epsilon ($diff)"""
-            else
-                message)
     }
 
     test ("static")
@@ -208,7 +161,11 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
             source.close
 
             val filename = s"hdfs://sandbox:8020/$FILENAME.rdf"
-            readCIMElements (session, filename)
+            readCIMElements (session, filename, Map[String, String] (
+                    "path" -> filename,
+                    "StorageLevel" -> "MEMORY_AND_DISK_SER"
+                )
+            )
 
             LineDetails.PROPERTIES_ARE_ERRONEOUSLY_PER_KM = true // should be default value anyway
 
@@ -222,7 +179,14 @@ class LineSuite extends fixture.FunSuite with Unzip with BeforeAndAfter
 
             LineDetails.PROPERTIES_ARE_ERRONEOUSLY_PER_KM = true // reset static var
 
-            def pull (id: String, results: Array[(String, String)]): String = results.find (_._1 == id).get._2
+            def pull (id: String, results: Array[(String, String)]): String =
+            {
+                results.find (_._1 == id) match
+                {
+                    case Some (item) => item._2
+                    case _ => fail (s"id '$id' not found")
+                }
+            }
             // cab0001 has a per unit impedance overriding the r,x
             // 85.24045203099396m × (0.842e-3+0.075e-3j), 85.24045203099396m × (2.84e-3+0.3e-3j)
             assert (pull ("CAB0001", lines1) == "(z1=0.071772+0.006393j,z0=0.242083+0.025572j)")

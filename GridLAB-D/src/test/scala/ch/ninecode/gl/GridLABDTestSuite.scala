@@ -42,29 +42,28 @@ with GLMNode
 {
     override def emit (generator: GLMGenerator): String =
     {
-        val load = equipment.head match
+        val load = equipment.headOption.map
         {
             case _: EnergyConsumer =>
-                s"""
+             s"""
                 |        object load
                 |        {
-                |            name "${id}_load";
-                |            parent "${id}";
-                |            phases "${if (generator.isSinglePhase) "AN" else "ABCN"}";
-                |            nominal_voltage ${nominal_voltage}V;
-                |            ${if (generator.isSinglePhase) "constant_power_A" else "constant_power_ABCN"} 1000+0j;
-                |        };
-                """.stripMargin
+                |            name "${ id }_load";
+                |            parent "${ id }";
+                |            phases "${ if (generator.isSinglePhase) "AN" else "ABCN" }";
+                |            nominal_voltage ${ nominal_voltage }V;
+                |            ${ if (generator.isSinglePhase) "constant_power_A" else "constant_power_ABCN" } 1000+0j;
+                |        };""".stripMargin
             case _ => ""
         }
-        super.emit (generator) + load
+        s"${super.emit (generator)}$load"
     }
 }
 
 class TestIsland (session: SparkSession) extends Island (session)
 {
     override def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
-        rdd.map (parts => (parts.head.id, TestNode (parts.head.node.id, parts.head.voltage, parts.map (_.element))))
+        rdd.flatMap (parts => parts.headOption.map (x => (x.id, TestNode (x.node.id, x.voltage, parts.map (_.element)))))
 }
 
 class GridLABDTestSuite extends TestUtil with BeforeAndAfter
@@ -87,8 +86,8 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
     after
     {
-        new File (filename1).delete
-        new File (filename2).delete
+        deleteRecursive (new File (filename1))
+        deleteRecursive (new File (filename2))
     }
 
     test ("Basic")
@@ -387,12 +386,12 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             val glms = for
             {
                 (id, trafo) <- transformers
-                n = nodes.filter (_._1 == id).map (_._2).collect.toIterable.asInstanceOf[Iterable[GLMNode]]
-                e = edges.filter (_._1 == id).map (_._2).filter (notTheTransformer (trafo)).collect.toIterable.asInstanceOf[Iterable[GLMEdge]]
+                n = nodes.filter (_._1 == id).map (_._2).collect.collect ({ case l: GLMNode => l})
+                e = edges.filter (_._1 == id).map (_._2).filter (notTheTransformer (trafo)).collect.collect ({ case e: GLMEdge => e})
             }
             yield
             {
-                gridlabd.export (Generator (id, n, e, List(trafo), List(TestNode (trafo.cn1, trafo.primary.toDouble, null))))
+                gridlabd.export (Generator (id, n, e, List(trafo), List(TestNode (trafo.cn1, trafo.primary.toDouble, trafo.transformer.transformers.map (_.transformer)))))
                 trafo.transformer.transformer_name
             }
 

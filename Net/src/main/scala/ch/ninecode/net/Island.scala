@@ -93,8 +93,13 @@ extends CIMRDD with Serializable
         getOrElse[Terminal]
             .groupBy (_.ConductingEquipment)
             .values
-            .filter (_.size == 1)
-            .map (_.head)
+            .flatMap (
+                _.toList match
+                {
+                    case t :: Nil => Some(t) // only one terminal
+                    case _ => None
+                }
+            )
             .groupBy (_.TopologicalNode)
 
     /**
@@ -104,7 +109,7 @@ extends CIMRDD with Serializable
      * @return an RDD of nodes
      */
     def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
-        rdd.map (parts => (parts.head.id, new LoadFlowNode (parts.head.node.id, parts.head.voltage)))
+        rdd.flatMap (parts => parts.headOption.map (x => (x.id, new LoadFlowNode (x.node.id, x.voltage))))
 
     /**
      * Create edges from ACLineSegment LineData.
@@ -127,12 +132,8 @@ extends CIMRDD with Serializable
             x =>
             {
                 val unique_identifiers = x.map (_._2._1).toSet
-                unique_identifiers.map (
-                    y =>
-                    {
-                        val switch = x.find (_._2._1 == y).get
-                        (switch._2._1, new SwitchEdge (switch._1))
-                    }
+                unique_identifiers.flatMap (
+                    y => x.find (_._2._1 == y).map (switch => (switch._2._1, new SwitchEdge (switch._1)))
                 )
             }
         )
@@ -149,13 +150,9 @@ extends CIMRDD with Serializable
         rdd.flatMap (
             x =>
             {
-                val unique_identifiers = x.map (_._2._1).toList.distinct
-                unique_identifiers.map (
-                    y =>
-                    {
-                        val transformer = x.find (_._2._1 == y).get
-                        (transformer._2._1, new TransformerEdge (transformer._1))
-                    }
+                val unique_identifiers = x.map (_._2._1).toSet
+                unique_identifiers.flatMap (
+                    y => x.find (_._2._1 == y).map (trafo => (trafo._2._1, new TransformerEdge (trafo._1)))
                 )
             }
         )

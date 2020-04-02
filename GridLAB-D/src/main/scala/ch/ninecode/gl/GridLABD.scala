@@ -627,7 +627,7 @@ class GridLABD
         )
     }
 
-    def writeInputFile (directory: String, path: String, bytes: Array[Byte], permissions: String = null): Any =
+    def writeInputFile (directory: String, path: String, bytes: Array[Byte], permissions: String = null): Unit =
     {
         if ((workdir_scheme == "file") || (workdir_scheme == ""))
         {
