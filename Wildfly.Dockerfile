@@ -43,7 +43,6 @@ RUN mkdir -p /usr/local/wildfly
 
 WORKDIR /usr/local/wildfly
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install --yes --quiet execstack
 RUN set -x \
 	&& export WILDFLY_VERSION=19.0.0.Final \
 	&& curl --fail --show-error --location https://download.jboss.org/wildfly/${WILDFLY_VERSION}/wildfly-${WILDFLY_VERSION}.zip --output wildfly.zip \
@@ -72,62 +71,21 @@ COPY CIMEar/simulation_schema.sql /opt/util/bin/simulation_schema.sql
 # set up wildfly manager
 RUN /usr/local/wildfly/bin/add-user.sh wildfly Green1antern
 
-# set up CIMApplication
-# note, this doesn't work for two reasons:
-# 1) The JavaVM will crash trying to fix the stack guard for jars that contain Windows DLLs - WTF?
-#     OpenJDK 64-Bit Server VM warning: You have loaded library <name_of_binary> which might have disabled stack guard. The VM will try to fix the stack guard now.
-#     then crash
-# see https://stackoverflow.com/questions/32841926/loading-rar-which-uses-jffi-causes-jboss-jvm-to-segfault/33151410#33151410
-# and https://developer.jboss.org/thread/274911
-# the jars that do this are the exclusions from these CIMConnector dependencies:
-#        <dependency>
-#            <groupId>ch.ninecode.cim</groupId>
-#            <artifactId>CIMExport</artifactId>
-#            <version>${version.dependency.cimreader}</version>
-#            <scope>compile</scope>
-#            <exclusions>
-#                <exclusion>
-#                    <groupId>com.datastax.spark</groupId>
-#                    <artifactId>spark-cassandra-connector_2.11</artifactId>
-#                </exclusion>
-#            </exclusions>
-#        </dependency>
+# Notes:
+# to change from logging INFO to TRACE:
+# edit standalone/configuration/standalone.xml
 #
-#        <dependency>
-#            <groupId>org.apache.spark</groupId>
-#            <artifactId>spark-core_${version.dependency.scala}</artifactId>
-#            <version>${version.dependency.spark}</version>
-#            <scope>compile</scope>
-#            <exclusions>
-#                <exclusion>
-#                    <groupId>org.apache.hadoop</groupId>
-#                    <artifactId>hadoop-client</artifactId>
-#                </exclusion>
-#                <exclusion>
-#                    <groupId>org.apache.commons</groupId>
-#                    <artifactId>commons-crypto</artifactId>
-#                </exclusion>
-#                <exclusion>
-#                    <groupId>org.fusesource.leveldbjni</groupId>
-#                    <artifactId>leveldbjni-all</artifactId>
-#                </exclusion>
-#            </exclusions>
-#        </dependency>
-#
-#        <dependency>
-#            <groupId>org.apache.hadoop</groupId>
-#            <artifactId>hadoop-client</artifactId>
-#            <version>${version.dependency.hadoop}</version>
-#            <scope>compile</scope>
-#            <exclusions>
-#                <exclusion>
-#                    <groupId>org.fusesource.leveldbjni</groupId>
-#                    <artifactId>leveldbjni-all</artifactId>
-#                </exclusion>
-#            </exclusions>
-#        </dependency>
-#
-# 2) A conflict between JAX-RS providers (I think, call it a working hypothesis):
+# Wildfly tries to load every native library contained in a jar file - WTF? and this crashes:
+#   SIGSEGV in ld-linux-x86-64.so
+# to avoid the crash, remove native libraries for platforms other than x86_64-Linux from:
+# - com.github.jnr.jffi
+# - org.apache.commons.commons-crypto
+
+# ToDo:
+# - raise issue with Wildfly about loading native libraries
+# - why are Net and Util jars sent to the cluster with package prefix names?
+# - set up CIMApplication
+# note, this doesn't work because because there is a conflict between JAX-RS providers (I think, call it a working hypothesis):
 #    JBOSS (Wildfly) comes with RestEasy as a JAX-RS provider
 #    Hadoop uses Jersey (version 1.9 ?) as a JAX-RS provider
 # this leads to the following error in deployment:

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+if [[ $1 == wildfly ]]; then
+    AppServer="Wildfly"
+    Tag="wildfly"
+    shift
+elif [[ $1 == tomee ]]; then
+    AppServer="TomEE"
+    Tag="tomee"
+    shift
+elif [[ $1 == glassfish ]]; then
+    AppServer="Glassfish"
+    Tag="glassfish"
+    shift
+elif [[ $1 == openliberty ]]; then
+    AppServer="OpenLiberty"
+    Tag="openliberty"
+    shift
+else
+    AppServer="TomEE"
+    Tag="tomee"
+fi
+
+set -x
+# mvn clean dependency:purge-local-repository;
+mvn clean -Dmaven.test.skip=true -DskipTests -DskipITs --projects CIMWeb,CIMEar install; docker build --quiet --file ${AppServer}.Dockerfile --tag derrickoswald/cimapplication:${Tag} .;docker tag derrickoswald/cimapplication:${Tag} derrickoswald/cimapplication:latest
