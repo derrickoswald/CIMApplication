@@ -191,22 +191,22 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def get_inital_graph (): Graph[ScNode, ScEdge] =
     {
         // get a map of voltages
-        val voltages = get[BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals in the topology
-        val terminals = get[Terminal].filter (null != _.TopologicalNode)
+        val terminals = getOrElse[Terminal].filter (null != _.TopologicalNode)
 
         // handle transformers specially, by attaching PowerTransformerEnd objects to the terminals
 
         // get the transformer ends keyed by terminal, only one end can reference any one terminal
-        val ends = get[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
+        val ends = getOrElse[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
         // attach the ends to terminals
         val t = terminals.keyBy (_.id).leftOuterJoin (ends).values.map (make_ends_meet)
         // get the terminals keyed by equipment and filter for two (or more) terminals
         val terms = t.groupBy (_._1.ConductingEquipment).filter (_._2.size > 1)
 
         // map the terminal 'pairs' to edges
-        val edges = get[Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
+        val edges = getOrElse[Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
 
         // get the nodes and voltages from the edges
         val nodes = edges.flatMap (
@@ -922,9 +922,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         log.info ("computing results")
         // join results with terminals to get equipment
-        val d = result.keyBy (_.id_seq).join (get[Terminal].keyBy (_.TopologicalNode)).values
+
+        val d = result.keyBy (_.id_seq).join (getOrElse[Terminal].keyBy (_.TopologicalNode)).values
         // join with equipment to get containers
-        val e = d.keyBy (_._2.ConductingEquipment).join (get[ConductingEquipment].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._2))
+        val e = d.keyBy (_._2.ConductingEquipment).join (getOrElse[ConductingEquipment].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._2))
         val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (get[Element]("Elements").keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
 
         // resolve to top level containers
@@ -1047,7 +1048,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def run (): RDD[ScResult] =
     {
         FData.fuse_sizing_table (options.fuse_table)
-        assert (null != get[TopologicalNode], "no topology")
+        assert (null != getOrElse[TopologicalNode], "no topology")
 
         val transformer_data = Transformers (
             spark,
