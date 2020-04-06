@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.GLMSwitchEdge
@@ -28,22 +27,16 @@ import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.Bay
-import ch.ninecode.model.BusbarSection
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
-import ch.ninecode.model.EnergyConsumer
 import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.model.VoltageLevel
-import ch.ninecode.net.Island
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
-import ch.ninecode.net.LoadFlowEdge
-import ch.ninecode.net.LoadFlowNode
-import ch.ninecode.net.TerminalPlus
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
@@ -341,12 +334,20 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
     }
 
-    def read_output_files (one_phase: Boolean, workdir_slash: String): RDD[(String, ThreePhaseComplexDataElement)] =
+    // extract TRAxxx from the path name returned by wholeTextFiles
+    def extract_trafo (k: (String, String)): (String, String) =
+    {
+        val (path, contents) = k
+        val trafo_pattern = ".*/(.*)/output.txt"
+        val trafo = path.replaceAll (trafo_pattern, "$1")
+        (trafo, contents)
+    }
+
+    // convert GridLAB-D output date-time into unix epoch long value
+    val toTimeStamp: String => Long =
     {
         val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-
-        def toTimeStamp (string: String): Long =
-        {
+        string =>
             try
             {
                 date_format.parse (string).getTime
@@ -357,42 +358,34 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     log.warn (pe.getMessage)
                     0L
             }
-        }
+    }
 
+    def toD (string: String): Double =
+    {
+        try
+        {
+            string.toDouble
+        }
+        catch
+        {
+            case _: NumberFormatException =>
+                string match
+                {
+                    case "inf" => Double.PositiveInfinity
+                    case "-inf" => Double.NegativeInfinity
+                    case "nan" => Double.NaN
+                    case "-nan" => Double.NaN
+                    case _ => 0.0
+                }
+            case _: Throwable => 0.0
+        }
+    }
+
+    def read_output_files (one_phase: Boolean, workdir_slash: String): RDD[(String, ThreePhaseComplexDataElement)] =
+    {
         val pattern = java.util.regex.Pattern.compile ("# output_data/([^.]*).csv run at (.*) on (\\d*) nodes")
-        val path = workdir_slash + "*/output.txt"
         val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
-        val files = session.sparkContext.wholeTextFiles (path, executors)
-
-        // extract TRAxxx from the path name
-        def extract_trafo (k: (String, String)): (String, String) =
-        {
-            val path = k._1
-            val trafo_pattern = ".*/(.*)/output.txt"
-            val trafo = path.replaceAll (trafo_pattern, "$1")
-            (trafo, k._2)
-        }
-
-        def ToD (string: String): Double =
-        {
-            try
-            {
-                string.toDouble
-            }
-            catch
-            {
-                case _: NumberFormatException =>
-                    string match
-                    {
-                        case "inf" => Double.PositiveInfinity
-                        case "-inf" => Double.NegativeInfinity
-                        case "nan" => Double.NaN
-                        case "-nan" => Double.NaN
-                        case _ => 0.0
-                    }
-                case _: Throwable => 0.0
-            }
-        }
+        val files = session.sparkContext.wholeTextFiles (s"$workdir_slash*/output.txt", executors)
 
         def read (f: String): TraversableOnce[ThreePhaseComplexDataElement] =
         {
@@ -423,9 +416,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     val c_arr = c.split (",")
                     if (c_arr.length == 7)
                         if (one_phase)
-                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (ToD (c_arr (1)), ToD (c_arr (2))), Complex (0.0), Complex (0.0), units)
+                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (toD (c_arr (1)), toD (c_arr (2))), Complex (0.0), Complex (0.0), units)
                         else
-                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (ToD (c_arr (1)), ToD (c_arr (2))), Complex (ToD (c_arr (3)), ToD (c_arr (4))), Complex (ToD (c_arr (5)), ToD (c_arr (6))), units)
+                            ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (toD (c_arr (1)), toD (c_arr (2))), Complex (toD (c_arr (3)), toD (c_arr (4))), Complex (toD (c_arr (5)), toD (c_arr (6))), units)
                     else
                     {
                         log.error ("""%s voltage dump text "%s" cannot be interpreted as three phase complex %s""".format (experiment, c, units))
@@ -733,11 +726,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      *
      * @param gridlabd    the object to solve the .glm files and read the recorders
      * @param one_phase   if <code>true</code>, create single phase results, otherwise three phase results
-     * @param isMax       If <code>true</code> use maximum currents (lowest impedances) [for motor starting currents], otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
+     * @param isMax       If <code>true</code> use maximum currents (lowest impedances) [for motor starting currents],
+     *                    otherwise minimum currents (highest impedances) [for fuse sizing and specificity].
      * @param simulations the simulations with experiments
-     * @return an RDD of tuples with the transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
+     * @return an RDD of tuples with the transformer id, node mrid, attached equipment mrid,
+     *         nominal node voltage, and impedance at the node
      */
-    def solve_and_analyse (gridlabd: GridLABD, one_phase: Boolean, isMax: Boolean, simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Impedanzen, Branch)] =
+    def solve_and_analyse (
+        gridlabd: GridLABD,
+        one_phase: Boolean,
+        isMax: Boolean,
+        simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Impedanzen, Branch)] =
     {
         val b4_solve = System.nanoTime ()
         val trafos = simulations.map (_.island.island_name)
@@ -757,12 +756,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val read = System.nanoTime ()
         log.info ("read: %s seconds".format ((read - solved) / 1e9))
 
-        val values = output.map (x => (x._1 + "_" + x._2.millis.toString, x._2)).groupByKey
+        val values = output.map (x => (s"${x._1}_${x._2.millis}", x._2)).groupByKey
         val groups = simulations.flatMap (
             (simulation: SimulationTransformerServiceArea) => simulation.experiments.map (
-                (experiment: ScExperiment) => (simulation, experiment))).keyBy (
-                    (pair: (SimulationTransformerServiceArea, ScExperiment)) =>
-                        pair._2.trafo + "_" + pair._2.t1.getTimeInMillis.toString)
+                (experiment: ScExperiment) => (s"${experiment.trafo}_${experiment.t1.getTimeInMillis}", (simulation, experiment))))
         val exp = groups.join (values).values
 
         val z = exp.map (evaluate)
@@ -922,7 +919,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         log.info ("computing results")
         // join results with terminals to get equipment
-
         val d = result.keyBy (_.id_seq).join (getOrElse[Terminal].keyBy (_.TopologicalNode)).values
         // join with equipment to get containers
         val e = d.keyBy (_._2.ConductingEquipment).join (getOrElse[ConductingEquipment].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._2))

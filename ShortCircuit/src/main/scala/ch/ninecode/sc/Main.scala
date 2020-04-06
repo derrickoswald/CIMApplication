@@ -67,9 +67,10 @@ object Main
         quiet: Boolean = false,
         master: String = "",
         opts: Map[String, String] = Map (
-            "spark.graphx.pregel.checkpointInterval" → "8",
-            "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
-            "spark.ui.showConsoleProgress" → "false"
+            "spark.graphx.pregel.checkpointInterval" -> "8",
+            "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
+            "spark.ui.showConsoleProgress" -> "false",
+            "spark.debug.maxToStringFields" -> "250"
         ),
         storage: String = "MEMORY_AND_DISK_SER",
         splitsize: Long = 67108864L,
