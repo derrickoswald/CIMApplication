@@ -147,7 +147,7 @@ class IngestSuiteIT
 
     @Test def MSCONS_Zip ()
     {
-        val FILE_DEPOT = "data/"
+        val FILE_DEPOT = "data" + System.getProperty ("file.separator")
         val MAPPING_FILE = s"${FILE_DEPOT}sample.csv"
         val FILE = s"${FILE_DEPOT}sample.zip"
 

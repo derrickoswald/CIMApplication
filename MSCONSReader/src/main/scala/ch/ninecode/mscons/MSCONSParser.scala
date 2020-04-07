@@ -3,7 +3,6 @@ package ch.ninecode.mscons
 import java.io.File
 import java.net.URI
 import java.nio.ByteBuffer
-import java.nio.file
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.Calendar
@@ -51,8 +50,16 @@ case class MSCONSParser (options: MSCONSOptions)
             }
             configuration
         }
-        val file: Path = new Path (new URI (name))
-        val scheme = file.toUri.getScheme
+
+        val f: File = new File (name)
+        val isLocalFile = f.exists()
+        val uri: URI = if (isLocalFile) {
+            f.toURI
+        } else {
+            new URI(name)
+        }
+        val file: Path = new Path (uri)
+        val scheme: String = uri.getScheme
 
         // read the file
         var buffer: ByteBuffer = null
