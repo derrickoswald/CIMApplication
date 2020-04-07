@@ -19,8 +19,6 @@ import org.slf4j.LoggerFactory
 
 case class MSCONSParser (options: MSCONSOptions)
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
-
     type ID = String
     type Quantity = String
     type Time = Calendar
@@ -28,78 +26,11 @@ case class MSCONSParser (options: MSCONSOptions)
     type Real = Double
     type Imaginary = Double
     type Units = String
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     def parse (name: String): List[(ID, Quantity, Time, Period, Real, Imaginary, Units)] =
     {
-        // build a file system configuration, including core-site.xml
-        def hdfs_configuration: Configuration =
-        {
-            val configuration = new Configuration ()
-            if (null == configuration.getResource ("core-site.xml"))
-            {
-                val hadoop_conf: String = System.getenv ("HADOOP_CONF_DIR")
-                if (null != hadoop_conf)
-                {
-                    val site: Path = new Path (hadoop_conf, "core-site.xml")
-                    val f: File = new File (site.toString)
-                    if (f.exists && !f.isDirectory)
-                        configuration.addResource (site)
-                }
-                else
-                    log.error ("HADOOP_CONF_DIR environment variable not found")
-            }
-            configuration
-        }
-
-        val f: File = new File (name)
-        val isLocalFile = f.exists()
-        val uri: URI = if (isLocalFile) {
-            f.toURI
-        } else {
-            new URI(name)
-        }
-        val file: Path = new Path (uri)
-        val scheme: String = uri.getScheme
-
-        // read the file
-        var buffer: ByteBuffer = null
-        var data: FSDataInputStream = null
-        if ((null == scheme) || ("file" == scheme))
-        {
-            try
-            {
-                val f = Paths.get (file.toUri)
-                val bytes = Files.readAllBytes (f)
-                buffer = ByteBuffer.wrap (bytes)
-            }
-            catch
-            {
-                case e: Exception =>
-                    log.error (s"failed to read file($file) with error:", e)
-            }
-        }
-        else
-            try
-            {
-                val fs = file.getFileSystem (hdfs_configuration)
-                log.info (s"file: $file")
-                data = fs.open (file)
-                // ToDo: handle files bigger than 2GB
-                val size = fs.getFileStatus (file).getLen.toInt
-                val bytes = new Array[Byte] (size)
-                data.readFully (0, bytes)
-                buffer = ByteBuffer.wrap (bytes)
-            }
-            catch
-            {
-                case e: Exception =>
-                    log.error (s"failed to read file($file) with error:", e)
-            }
-            finally {
-                if (data != null)
-                    data.close()
-            }
-
+        val buffer: ByteBuffer = getFileBuffer (name)
         if (null != buffer)
         {
             val scanner = SegmentScanner (buffer)
@@ -113,7 +44,7 @@ case class MSCONSParser (options: MSCONSOptions)
                     x match
                     {
                         case ServiceSegmentParser.Success (r, rest) =>
-                            if (   (r.unh.Type == "MSCONS")
+                            if ((r.unh.Type == "MSCONS")
                                 && (r.unh.Version == "D"))
                             {
                                 r.unh.Release match
@@ -157,5 +88,81 @@ case class MSCONSParser (options: MSCONSOptions)
         }
         else
             List ()
+    }
+
+    def getFileBuffer (name: String): ByteBuffer =
+    {
+        val f: File = new File (name)
+        val isLocalFile = f.exists ()
+        val uri: URI = if (isLocalFile)
+        {
+            f.toURI
+        } else
+        {
+            new URI (name)
+        }
+        val file: Path = new Path (uri)
+        val scheme: String = uri.getScheme
+
+        // read the file
+        var buffer: ByteBuffer = null
+        var data: FSDataInputStream = null
+        if ((null == scheme) || ("file" == scheme))
+        {
+            try
+            {
+                val f = Paths.get (file.toUri)
+                val bytes = Files.readAllBytes (f)
+                buffer = ByteBuffer.wrap (bytes)
+            }
+            catch
+            {
+                case e: Exception =>
+                    log.error (s"failed to read file($file) with error:", e)
+            }
+        }
+        else
+            try
+            {
+                val fs = file.getFileSystem (getHadoopConfiguration)
+                log.info (s"file: $file")
+                data = fs.open (file)
+                // ToDo: handle files bigger than 2GB
+                val size = fs.getFileStatus (file).getLen.toInt
+                val bytes = new Array[Byte](size)
+                data.readFully (0, bytes)
+                buffer = ByteBuffer.wrap (bytes)
+            }
+            catch
+            {
+                case e: Exception =>
+                    log.error (s"failed to read file($file) with error:", e)
+            }
+            finally
+            {
+                if (data != null)
+                    data.close ()
+            }
+        buffer
+    }
+
+    def getHadoopConfiguration: Configuration =
+    {
+        // build a file system configuration, including core-site.xml
+        val configuration = new Configuration ()
+        if (null == configuration.getResource ("core-site.xml"))
+        {
+            val hadoop_conf: String = System.getenv ("HADOOP_CONF_DIR")
+            if (null != hadoop_conf)
+            {
+                val site: Path = new Path (hadoop_conf, "core-site.xml")
+                val f: File = new File (site.toString)
+                if (f.exists && !f.isDirectory)
+                    configuration.addResource (site)
+            }
+            else
+                log.error ("HADOOP_CONF_DIR environment variable not found")
+        }
+        configuration
     }
 }
