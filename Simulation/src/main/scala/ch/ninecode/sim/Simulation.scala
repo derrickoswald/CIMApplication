@@ -14,6 +14,7 @@ import javax.json.JsonArray
 import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.stream.JsonGenerator
+
 import scala.collection.JavaConverters.mapAsScalaMapConverter
 import scala.collection.JavaConverters.asScalaBufferConverter
 
@@ -24,6 +25,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.TTLOption
@@ -32,28 +34,9 @@ import com.datastax.spark.connector.writer.WriteConf
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
-import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GLMNode
-import ch.ninecode.gl.GLMLineEdge
-import ch.ninecode.gl.GLMSwitchEdge
-import ch.ninecode.gl.GLMTransformerEdge
-import ch.ninecode.model.DiagramObject
-import ch.ninecode.model.DiagramObjectPoint
-import ch.ninecode.model.PositionPoint
-import ch.ninecode.model.PowerSystemResource
-import ch.ninecode.model.PowerTransformer
-import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-import ch.ninecode.net.Island
-import ch.ninecode.net.Island.Edges
-import ch.ninecode.net.Island.Nodes
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
-import ch.ninecode.net.LineData
-import ch.ninecode.net.LoadFlowEdge
-import ch.ninecode.net.LoadFlowNode
-import ch.ninecode.net.SwitchData
-import ch.ninecode.net.TerminalPlus
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.net.TransformerSet
@@ -147,7 +130,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def dump (obj: JsonObject): Unit =
     {
         val o = obj.asScala
-        val strings = o.map (x => x._1 + "=" + x._2.toString)
+        val strings = o.map (x => s"${x._1}=${x._2.toString}")
         log.info (strings.mkString (" "))
     }
 
@@ -241,25 +224,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         string.replace ("\n", " ").replaceAll ("[ ]+", " ")
     }
 
-    def make_tasks (job: SimulationJob): RDD[SimulationTask] =
+    def make_tasks (subtransmission_trafos: Array[TransformerData]) (job: SimulationJob): RDD[SimulationTask] =
     {
         log.info ("""preparing simulation job "%s"""".format (job.name))
-
-        // get all transformer set secondary TopologicalIsland names
-        val islands_trafos: RDD[(island_id, identifier)] = get[PowerTransformer]
-            .keyBy (_.id)
-            .join (
-                get[Terminal]
-                    .filter (_.ACDCTerminal.sequenceNumber == 2)
-                    .keyBy (_.ConductingEquipment))
-            .map (x => (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
-            .join (
-                get[TopologicalNode]
-                .keyBy (_.id))
-            .map (x => (x._2._2.TopologicalIsland, x._2._1)) // (islandid, trafoid)
-            .groupByKey.mapValues (_.toArray.sortWith (_ < _).mkString ("_")).persist (options.storage_level).setName (s"${job.id}_island_trafo") // (islandid, trafosetname)
-        val numtrafos = islands_trafos.count
-        log.info ("""%d transformer island%s found""".format (numtrafos, if (1 == numtrafos) "" else "s"))
 
         // transformer area calculations
         val tsa = TransformerServiceArea (session, options.storage_level)
@@ -267,7 +234,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         if (tsa.hasIslands)
         {
             val islands_trafos: RDD[(island_id, identifier)] = tsa.getTransformerServiceAreas
-            val trafos_islands: RDD[(identifier, island_id)] = islands_trafos.map (_.swap)
+            val numareas = islands_trafos.map (_._2).distinct.count
+            log.info (s"""$numareas transformer service area${if (1 == numareas) "" else "s"} found""")
 
             val q = SimulationSparkQuery (session, options.storage_level, options.verbose)
 
@@ -286,11 +254,17 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val start = job.start_time
             val end = job.end_time
 
+            log.info ("""generating simulation tasks""")
+
             // maybe reduce the set of islands
-            val islands_to_do: RDD[(identifier, island_id)] = if (0 != job.transformers.size) trafos_islands.filter (pair => job.transformers.contains (pair._1)) else trafos_islands
+            val islands_to_do: RDD[(island_id, identifier)] =
+                if (0 != job.transformers.size)
+                    islands_trafos.filter (pair => job.transformers.contains (pair._2))
+                else
+                    islands_trafos
 
             val island_helper = new SimulationIsland (session, options.storage_level)
-            val graph_stuff = island_helper.queryNetwork (islands_to_do)
+            val graph_stuff = island_helper.queryNetwork (islands_to_do.map (_.swap))
             val areas: RDD[(identifier, (Iterable[SimulationNode], Iterable[SimulationEdge]))] =
                 graph_stuff
                     ._1.asInstanceOf[RDD[(identifier, SimulationNode)]]
@@ -299,27 +273,46 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         graph_stuff._2.asInstanceOf[RDD[(identifier, SimulationEdge)]]
                         .groupByKey)
 
-            log.info ("""generating simulation tasks""")
-            val islands_network = areas.join (trafos_islands)
-                .map (x => (x._2._2, (x._1, x._2._1._1, x._2._1._2))) // (island, (trafo, [nodes], [edges]))
-            val islands_networks_with_players_and_recorders = islands_network.join (players_recorders)
-                .map (x => (x._2._1._1, x._1, x._2._1._2, x._2._1._3, x._2._2._1, x._2._2._2))  // (trafo, island, [nodes], [edges], [players], [recorders]))
-            val ret = islands_networks_with_players_and_recorders.map (
-                net =>
-                {
-                    val players: Iterable[SimulationPlayer] = net._5.map (generate_player_csv (start.getTimeInMillis, end.getTimeInMillis))
-                    val recorders: Iterable[SimulationRecorder] = net._6.map (generate_recorder_csv)
-                    SimulationTask (
-                        net._1, // trafo
-                        net._2, // island
-                        start.clone.asInstanceOf[Calendar],
-                        end.clone.asInstanceOf[Calendar],
-                        net._3, // nodes
-                        net._4, // edges
-                        players,
-                        recorders)
-                }
-            ).persist (options.storage_level).setName (s"${job.id}_tasks")
+            val players_and_recorders_by_area =
+                islands_trafos
+                .join (players_recorders)
+                .map (
+                    (x: (island_id, (identifier, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])))) =>
+                    {
+                        val (_, (area, (players, recorders))) = x
+                        (area, (players, recorders))
+                    }
+                )
+                .groupByKey
+                .map (
+                    (x: (identifier, Iterable[(Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])])) =>
+                    {
+                        val (area, pla_rec) = x
+                        (area, (pla_rec.flatMap (_._1), pla_rec.flatMap (_._2)))
+                    }
+                )
+            val ret =
+                areas
+                .join (players_and_recorders_by_area)
+                .map (
+                    (x: (identifier, ((Iterable[SimulationNode], Iterable[SimulationEdge]), (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])))) =>
+                    {
+                        val (area, ((nodes, edges), (pla, rec))) = x
+                        val players: Iterable[SimulationPlayer] = pla.map (generate_player_csv (start.getTimeInMillis, end.getTimeInMillis))
+                        val recorders: Iterable[SimulationRecorder] = rec.map (generate_recorder_csv)
+                        SimulationTask (
+                            area, // trafo
+                            area, // island
+                            start.clone.asInstanceOf [Calendar],
+                            end.clone.asInstanceOf [Calendar],
+                            nodes, // nodes
+                            edges, // edges
+                            players,
+                            recorders)
+                    }
+                )
+                .persist (options.storage_level)
+                .setName (s"${job.id}_tasks")
             ret
         }
         else
@@ -435,10 +428,18 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             if (!transformers.forall (_._2 == island))
             // log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, tx.map (_.transformer_name).mkString (",")))
                 log.error ("""not all transformers are members of the same island (%s)""".format (island))
-            (island, TransformerSet (transformers.map (_._1).toArray))
+            val set = TransformerSet (transformers.map (_._1).toArray)
+            (set.transformer_name, set)
         }
+        val transformers: Map[String, TransformerSet] = tx.map (toTransformerSet).collect.toMap
 
-        val transformers = tx.map (toTransformerSet).collect.toMap
+        // pick out the subtransmission transformers
+        def subtransmission (trafo: TransformerData): Boolean =
+        {
+            trafo.ends.length == 2 &&
+            trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) // ToDo: don't hard code these voltage values
+        }
+        val subtransmission_trafos = transformer_data.filter (subtransmission).collect
 
         var batchno = 1
         val ids = batch.map (
@@ -479,7 +480,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         }
                     )
 
-                    val tasks = make_tasks (job)
+                    // create the simulation tasks
+                    val tasks = make_tasks (subtransmission_trafos) (job)
                     job.save (session, job.output_keyspace, job.id, tasks)
 
                     log.info ("""matching tasks to topological islands""")
@@ -497,7 +499,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                                 transformerset,
                                                 job.swing,
                                                 task.nodes,
-                                                task.edges,
+                                                task.edges.filter (edge => edge.id != transformerset.transformer_name),
                                                 task.start,
                                                 task.end,
                                                 task.players,

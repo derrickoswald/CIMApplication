@@ -8,6 +8,7 @@ import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.GLMTransformerEdge
+import ch.ninecode.net.TransformerEdge
 
 case class SimulationDirectionGenerator
 (
@@ -33,6 +34,14 @@ case class SimulationDirectionGenerator
     override def nodes: Iterable[SimulationNode] = kreis.nodes
 
     override def extra: Iterable[String] = List ("")
+
+    override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
+    {
+        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match { case e: GLMTransformerEdge => Some (e) case _ => None })
+        val trafos = transformers ++ subtransmission_trafos
+        val configurations = trafos.groupBy (_.configurationName).values
+        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
+    }
 
     def emit_load (node: SimulationNode): String =
     {

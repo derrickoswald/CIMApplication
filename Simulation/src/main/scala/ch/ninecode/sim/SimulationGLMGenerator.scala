@@ -52,6 +52,14 @@ case class SimulationGLMGenerator (
 
     override def extra: Iterable[String] = List ("")
 
+    override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
+    {
+        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match { case e: GLMTransformerEdge => Some (e) case _ => None })
+        val trafos = transformers ++ subtransmission_trafos
+        val configurations = trafos.groupBy (_.configurationName).values
+        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
+    }
+
     def emit_recorder (recorder: SimulationRecorder): String =
     {
         // ToDo: handle _AB, _BC, _CA for three phase delta connections
