@@ -591,7 +591,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                                     List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, name, rating))
                                         }
                                     case cable: LineEdge =>
-                                        if (Math.abs (v1 - v2) < 1e-6)
+                                        // Adjust this threshold according the chosen "default_maximum_voltage_error" in gridlabd
+                                        if (Math.abs (v1 - v2) < 1e-5)
                                             List ()
                                         else
                                         {
