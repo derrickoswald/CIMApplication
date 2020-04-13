@@ -8,21 +8,7 @@ import java.io.IOException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
-trait Unzip {
-
-    trait Using {
-        def using[T <: AutoCloseable, R] (resource: T)(block: T => R): R =
-        {
-            try
-            {
-                block (resource)
-            }
-            finally
-            {
-                resource.close ()
-            }
-        }
-    }
+trait Unzip extends Using {
 
     /**
      * This utility extracts files and directories of a standard zip file to
