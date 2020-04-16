@@ -18,3 +18,10 @@ case class ThreePhaseComplexDataElement
     value_b: Complex,
     value_c: Complex,
     units:   String)
+
+object ThreePhaseComplexDataElement
+{
+    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+    def apply (element: String, millis: Long, value_a: Complex, units: String): ThreePhaseComplexDataElement =
+        ThreePhaseComplexDataElement (element, millis, value_a, null, null, units)
+}

@@ -42,17 +42,28 @@ class IngestSuiteIT
 
     def checkCount (session: Session, sql: String, count: Long, tag: String): Unit =
     {
-        assert (session.execute (sql).all.asScala.head.getLong ("count") == count, s"number of records for $tag")
+        val records = session.execute (sql).all.asScala
+        assert (1 == records.size, "record doesn't exist")
+        records.headOption match
+        {
+            case Some (record) =>
+                assert (record.getLong ("count") == count, s"number of records for $tag")
+            case _ =>
+        }
     }
 
     def checkValue (session: Session, sql: String, real: Double, imag: Double, units: String): Unit =
     {
-        val values = session.execute (sql).all
-        assert (values.size == 1, "record doesn't exist")
-        val row: Row = values.asScala.head
-        assert (row.getDouble ("real_a") == real, "real value")
-        assert (row.getDouble ("imag_a") == imag, "imaginary value")
-        assert (row.getString ("units") == units, "units")
+        val records = session.execute (sql).all.asScala
+        assert (1 == records.size, "record doesn't exist")
+        records.headOption match
+        {
+            case Some (row) =>
+                assert (row.getDouble ("real_a") == real, "real value")
+                assert (row.getDouble ("imag_a") == imag, "imaginary value")
+                assert (row.getString ("units") == units, "units")
+            case _ =>
+        }
     }
 
     @Test def Help ()
@@ -87,7 +98,7 @@ class IngestSuiteIT
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12348' and type='energy' and time='2017-08-31 22:15:00.000+0000'", 56.0, 0, "Wh")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12348' and type='energy' and time='2017-09-30 22:00:00.000+0000'", 56.0, 0, "Wh")
 
-        session.execute (s"delete from $KEYSPACE.measured_value where mrid in ('HAS12345', 'HAS12346', 'HAS12347', 'HAS12348') and type in ('power', 'energy')")
+        val _ = session.execute (s"delete from $KEYSPACE.measured_value where mrid in ('HAS12345', 'HAS12346', 'HAS12347', 'HAS12348') and type in ('power', 'energy')")
         session.close ()
     }
 
@@ -111,7 +122,7 @@ class IngestSuiteIT
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time>'2018-10-28 23:45:00.000+0000'", 188L, "daylight savings start")
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time<'2018-10-28 23:45:00.000+0000'", 196L, "daylight savings end")
 
-        session.execute (s"delete from $KEYSPACE.measured_value where mrid in ('HAS42', 'HAS43') and type = 'energy'")
+        val _ = session.execute (s"delete from $KEYSPACE.measured_value where mrid in ('HAS42', 'HAS43') and type = 'energy'")
 
         session.close ()
     }
@@ -141,7 +152,7 @@ class IngestSuiteIT
         val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='USR0001' and type='energy'", 96L, "merged records")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time = '2019-12-13 23:15:00.000+0000'", 36300, 10800, "Wh")
-        session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
+        val _ = session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
         session.close ()
     }
 
@@ -163,7 +174,7 @@ class IngestSuiteIT
         val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='USR0001' and type='energy'", 96L, "merged records")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time = '2019-12-13 23:15:00.000+0000'", 36300, 10800, "Wh")
-        session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
+        val _ = session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
         session.close ()
     }
 }

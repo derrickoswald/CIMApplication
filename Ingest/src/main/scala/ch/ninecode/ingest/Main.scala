@@ -42,7 +42,7 @@ object Main
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
             writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
             writer.close ()
@@ -50,6 +50,45 @@ object Main
         }
 
         ret
+    }
+
+    def time[R](template: String)(block: => R): R =
+    {
+        val t0 = System.nanoTime ()
+        val ret = block
+        val t1 = System.nanoTime ()
+        log.info (template.format ((t1 - t0) / 1e9), None)
+        ret
+    }
+
+    def createSession (options: IngestOptions): SparkSession =
+    {
+        // get the necessary jar files to send to the cluster
+        val jars = Set (
+            jarForObject (IngestOptions ()),
+            jarForObject (com.datastax.spark.connector.mapper.ColumnMapper),
+            jarForObject (new com.twitter.jsr166e.LongAdder ())
+        ).toArray
+
+        // create the configuration
+        val configuration =
+            new SparkConf (false)
+                .setAppName (APPLICATION_NAME)
+                .setMaster (options.master)
+                .set ("spark.cassandra.connection.host", options.host)
+                .set ("spark.cassandra.connection.port", options.port.toString)
+                .set ("spark.ui.showConsoleProgress", "false")
+                .setJars (jars)
+        options.options.foreach ((pair: (String, String)) => configuration.set (pair._1, pair._2))
+
+        // make a Spark session
+        val session = SparkSession.builder ().config (configuration).getOrCreate ()
+        session.sparkContext.setLogLevel (options.log_level.toString)
+        val version = session.version
+        log.info (s"Spark $version session established")
+        if (version.take (SPARK.length) != SPARK.take (version.length))
+            log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
+        session
     }
 
     /**
@@ -65,44 +104,15 @@ object Main
             case Some (options) =>
                 if (options.valid)
                 {
-                    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+                    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.INFO)
                     if ("" != options.mapping)
                     {
-                        val begin = System.nanoTime ()
-
-                        // create the configuration
-                        val configuration = new SparkConf (false)
-                        configuration.setAppName (APPLICATION_NAME)
-                        configuration.setMaster (options.master)
-                        if (options.options.nonEmpty)
-                            options.options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
-                        configuration.set ("spark.cassandra.connection.host", options.host)
-                        configuration.set ("spark.cassandra.connection.port", options.port.toString)
-
-                        // get the necessary jar files to send to the cluster
-                        val s1 = jarForObject (IngestOptions ())
-                        val s2 = jarForObject (com.datastax.spark.connector.mapper.ColumnMapper)
-                        val s3 = jarForObject (new com.twitter.jsr166e.LongAdder ())
-                        configuration.setJars (Set (s1, s2, s3).toArray)
-
-                        configuration.set ("spark.ui.showConsoleProgress", "false")
-
-                        // make a Spark session
-                        val session = SparkSession.builder ().config (configuration).getOrCreate ()
-                        session.sparkContext.setLogLevel (options.log_level.toString)
-                        val version = session.version
-                        log.info (s"Spark $version session established")
-                        if (version.take (SPARK.length) != SPARK.take (version.length))
-                            log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-
-                        val setup = System.nanoTime ()
-                        log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
-
-                        val ingest = Ingest (session, options)
-                        ingest.run ()
-
-                        val calculate = System.nanoTime ()
-                        log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
+                        val session = time ("setup: %s seconds") { createSession (options) }
+                        time ("execution: %s seconds")
+                        {
+                            val ingest = Ingest (session, options)
+                            ingest.run ()
+                        }
                     }
                     else
                         log.error ("""mapping file not specified""")

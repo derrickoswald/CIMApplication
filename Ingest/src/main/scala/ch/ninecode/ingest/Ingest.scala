@@ -209,6 +209,14 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         }
     }
 
+    def cleanUp (filename: String) : Unit =
+    {
+        if (!options.nocopy)
+        {
+            val _ = hdfs.delete (new Path (filename), false)
+        }
+    }
+
     /**
      * Put a file on HDFS
      * @param spark the Spark session
@@ -228,7 +236,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             val parent = if (dst.endsWith ("/")) file else file.getParent
             if (!fs.exists (parent))
             {
-                fs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
+                val _ = fs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
                 if (!parent.isRoot)
                     fs.setPermission (parent, new FsPermission ("ugoa-rwx"))
             }
@@ -255,12 +263,12 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                         if (entry.isDirectory)
                         {
                             val path = new Path (parent, entry.getName)
-                            fs.mkdirs (path, new FsPermission ("ugoa-rwx"))
+                            val _ = fs.mkdirs (path, new FsPermission ("ugoa-rwx"))
                             fs.setPermission (path, new FsPermission ("ugoa-rwx"))
                         }
                         else
                         {
-                            val tmp = File.createTempFile ("ingest", null, null)
+                            val tmp = File.createTempFile ("ingest", ".tmp")
                             val stream = new FileOutputStream (tmp)
                             var eof = false
                             do
@@ -318,7 +326,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             {
                 val quantity = matcher.group (5).toInt
                 val what = matcher.group (6).toInt
-                var (typ, real, imag, factor, unit) = quantity match
+                val (typ, real, imag, factor, unit) = quantity match
                 {
                     // active power +
                     case 1 => ("power", true, false, 1.0, "W")
@@ -337,22 +345,22 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                 }
                 if (factor != 0.0)
                 {
-                    what match
+                    val (_type, _unit) = what match
                     {
                         // last average
-                        case 5 =>
+                        case 5 => (typ, unit)
                         // time integral 1
-                        case 8 => typ = "energy"; unit = "Wh"
+                        case 8 => ("energy", "Wh")
                         // time integral
-                        case 29 => typ = "energy"; unit = "Wh"
+                        case 29 => ("energy", "Wh")
                     }
-                    units match
+                    val _factor = units match
                     {
-                        case "kWh" => factor = factor * 1000.0 * scale.toDouble;
-                        case "kvarh" => factor = factor * 1000.0 * scale.toDouble;
-                        case _ =>
+                        case "kWh" => factor * 1000.0 * scale.toDouble;
+                        case "kvarh" => factor * 1000.0 * scale.toDouble;
+                        case _ => factor
                     }
-                    (typ, real, imag, unit, factor)
+                    (_type, real, imag, _unit, _factor)
                 }
                 else
                     ("", false, false, s"OBIS code '$code' has unrecognized quantity type $quantity", 0.0)
@@ -364,10 +372,15 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             ("", false, false, s"'$code' has an OBIS code format error", 0.0)
     }
 
-    def complex (measurements: Iterable[MeasuredValue]): MeasuredValue =
+    def complex (measurements: Iterable[MeasuredValue]): Option[MeasuredValue] =
     {
-        val a = measurements.head
-        (a._1, a._2, a._3, a._4, measurements.map (_._5).sum, measurements.map (_._6).sum, a._7)
+        measurements.headOption match
+        {
+            case Some ((mrid, typ, time, period, _, _, units)) =>
+                Some ((mrid, typ, time, period, measurements.map (_._5).sum, measurements.map (_._6).sum, units))
+            case _ =>
+                None
+        }
     }
 
     /**
@@ -385,28 +398,28 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         if (fields.length > 1)
         {
             val datetime = MeasurementDateTimeFormat2.parse (fields (0))
-            val mrid = join_table.getOrElse (fields (1), null)
-            if (null != mrid)
+            join_table.get (fields (1)) match
             {
-                val (typ, real, imag, units, factor) = decode_obis (fields (2), fields (3), "1.0")
-                val time = datetime.getTime
-                val period = fields (6).toInt
-                val interval = period * ONE_MINUTE_IN_MILLIS
-                val list = for
-                {
-                    i ← 7 until fields.length by 2
-                    reading = fields (i)
-                    value = if ("" != reading) asDouble (reading) * factor else 0.0
-                    slot = (i - 7) / 2
-                    timestamp = time + (interval * slot)
-                    if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
-                }
-                    yield
-                        (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
-                list
+                case Some (mrid) =>
+                    val (typ, real, imag, units, factor) = decode_obis (fields (2), fields (3), "1.0")
+                    val time = datetime.getTime
+                    val period = fields (6).toInt
+                    val interval = period * ONE_MINUTE_IN_MILLIS
+                    val list = for
+                    {
+                        i ← 7 until fields.length by 2
+                        reading = fields (i)
+                        value = if ("" != reading) asDouble (reading) * factor else 0.0
+                        slot = (i - 7) / 2
+                        timestamp = time + (interval * slot)
+                        if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
+                    }
+                        yield
+                            (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
+                    list
+                case _ =>
+                    List ()
             }
-            else
-                List ()
         }
         else
             List ()
@@ -419,7 +432,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val lines = session.sparkContext.textFile (filename)
         val rdd = lines.flatMap (parse_belvis_line (join_table))
         // combine real and imaginary parts
-        val grouped = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+        val grouped = rdd.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
         grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
     }
 
@@ -430,8 +443,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             val start = System.nanoTime ()
             sub_belvis (filename, join_table)
-            if (!options.nocopy)
-                hdfs.delete (new Path (filename), false)
+            cleanUp (filename)
             val end = System.nanoTime ()
             log.info (s"process $filename: ${(end - start) / 1e9} seconds")
         }
@@ -453,33 +465,33 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         if (fields.length > 15 && fields (0) != "Datum")
         {
             val datetime = MeasurementDateTimeFormat.parse (fields (0) + " " + fields (1))
-            val mrid = join_table.getOrElse (fields (10), null)
-            if (null != mrid)
+            join_table.get (fields (10)) match
             {
-                val (typ, real, imag, units, factor) = decode_obis (fields (11), fields (12), fields (13))
-                val time = datetime.getTime
-                val period = fields (14).toInt
-                val interval = period * ONE_MINUTE_IN_MILLIS
-                val list = for
-                {
-                    i ← 15 until fields.length by 2
-                    flags = fields (i + 1)
-                    if flags == "W"
-                    value = asDouble (fields (i)) * factor
-                    slot = (i - 15) / 2
-                    timestamp = time + (interval * slot)
-                    if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
-                }
-                    yield
-                        (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
-                // discard all zero records
-                if (list.exists (x => x._5 != 0.0 || x._6 != 0.0))
-                    list
-                else
+                case Some (mrid) =>
+                    val (typ, real, imag, units, factor) = decode_obis (fields (11), fields (12), fields (13))
+                    val time = datetime.getTime
+                    val period = fields (14).toInt
+                    val interval = period * ONE_MINUTE_IN_MILLIS
+                    val list = for
+                        {
+                        i ← 15 until fields.length by 2
+                        flags = fields (i + 1)
+                        if flags == "W"
+                        value = asDouble (fields (i)) * factor
+                        slot = (i - 15) / 2
+                        timestamp = time + (interval * slot)
+                        if (timestamp >= options.mintime) && (timestamp <= options.maxtime)
+                    }
+                        yield
+                            (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
+                    // discard all zero records
+                    if (list.exists (x => x._5 != 0.0 || x._6 != 0.0))
+                        list
+                    else
+                        List ()
+                case _ =>
                     List ()
             }
-            else
-                List ()
         }
         else
             List ()
@@ -494,7 +506,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             val rdd = lines.flatMap (parse_lpex_line (join_table))
             // combine real and imaginary parts
-            val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+            val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
     }
@@ -506,8 +518,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             val start = System.nanoTime ()
             sub_lpex (filename, join_table)
-            if (!options.nocopy)
-                hdfs.delete (new Path (filename), false)
+            cleanUp (filename)
             val end = System.nanoTime ()
             log.info (s"process $filename: ${(end - start) / 1e9} seconds")
         }
@@ -523,11 +534,13 @@ case class Ingest (session: SparkSession, options: IngestOptions)
          */
         def to_data_element (join_table: Map[String, String])(record: (String, String, Calendar, Int, Double, Double, String)): Option[ThreePhaseComplexDataElement] =
         {
-            val mrid = join_table.getOrElse (record._1, null)
-            if (null != mrid)
-                Some (ThreePhaseComplexDataElement (mrid, record._3.getTimeInMillis, Complex (record._5, record._6), null, null, record._7))
-            else
-                None
+            join_table.get(record._1) match
+            {
+                case Some (mrid) =>
+                    Some (ThreePhaseComplexDataElement (mrid, record._3.getTimeInMillis, Complex (record._5, record._6), record._7))
+                case None =>
+                    None
+            }
         }
 
         /**
@@ -550,11 +563,16 @@ case class Ingest (session: SparkSession, options: IngestOptions)
          * @param m the measurements for an mRID
          * @return the aggregated (sum) of elements
          */
-        def complex2 (m: Iterable[ThreePhaseComplexDataElement]): ThreePhaseComplexDataElement =
+        def complex2 (m: Iterable[ThreePhaseComplexDataElement]): Option[ThreePhaseComplexDataElement] =
         {
-            val head = m.head
-            val sum = Complex (m.map (_.value_a.re).sum, m.map (_.value_a.im).sum)
-            ThreePhaseComplexDataElement (head.element, head.millis, sum, null, null, head.units)
+            m.headOption match
+            {
+                case Some (value) =>
+                    val sum = Complex (m.map (_.value_a.re).sum, m.map (_.value_a.im).sum)
+                    Some (ThreePhaseComplexDataElement (value.element, value.millis, sum, value.units))
+                case _ =>
+                    None
+            }
         }
 
         /**
@@ -576,7 +594,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // read all files into one RDD
         val raw = mscons_files.flatMap (processOneFile)
         // combine real and imaginary parts
-        val grouped = raw.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
+        val grouped = raw.groupBy (x => (x.element, x.millis)).values.flatMap (complex2).map (split)
         grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         val end = System.nanoTime ()
         if (!options.nocopy)
@@ -612,32 +630,32 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // eliminate the header line
         if (isNumber (fields (0)))
         {
-            val mrid = join_table.getOrElse (fields (0), null)
-            if (null != mrid)
+            join_table.get (fields (0)) match
             {
-                val (typ, real, imag, units, factor) = decode_obis (fields (3), fields (5), "1.0")
-                val date = fields (6)
-                if (real || imag)
-                    for (
-                        index <- 7 until fields.length
-                        if 0 == (index - 7) % 3;
-                        start = fields (index);
-                        end = fields (index + 1);
-                        datetime1 = if (start.length == 8) MeasurementDateTimeFormat3.parse (s"$date $start") else MeasurementDateTimeFormat2.parse (start);
-                        timestamp = if (end.length == 8) MeasurementDateTimeFormat3.parse (s"$date $end") else MeasurementDateTimeFormat2.parse (end);
-                        interval = (timestamp.getTime - datetime1.getTime).toInt;
-                        value = asDouble (fields (index + 2)) * factor
-                    )
-                        yield
-                            if (real)
-                                (mrid, typ, timestamp.getTime, interval, value, 0.0, units)
-                            else
-                                (mrid, typ, timestamp.getTime, interval, 0.0, value, units)
-                else
+                case Some (mrid) =>
+                    val (typ, real, imag, units, factor) = decode_obis (fields (3), fields (5), "1.0")
+                    val date = fields (6)
+                    if (real || imag)
+                        for (
+                            index <- 7 until fields.length
+                            if 0 == (index - 7) % 3;
+                            start = fields (index);
+                            end = fields (index + 1);
+                            datetime1 = if (start.length == 8) MeasurementDateTimeFormat3.parse (s"$date $start") else MeasurementDateTimeFormat2.parse (start);
+                            timestamp = if (end.length == 8) MeasurementDateTimeFormat3.parse (s"$date $end") else MeasurementDateTimeFormat2.parse (end);
+                            interval = (timestamp.getTime - datetime1.getTime).toInt;
+                            value = asDouble (fields (index + 2)) * factor
+                        )
+                            yield
+                                if (real)
+                                    (mrid, typ, timestamp.getTime, interval, value, 0.0, units)
+                                else
+                                    (mrid, typ, timestamp.getTime, interval, 0.0, value, units)
+                    else
+                        List ()
+                case _ =>
                     List ()
             }
-            else
-                List ()
         }
         else
             List ()
@@ -649,7 +667,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val lines: RDD[String] = session.sparkContext.textFile (filename)
         val rdd = lines.flatMap (line_custom (join_table))
         // combine real and imaginary parts
-        val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+        val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
         grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
     }
 
@@ -660,8 +678,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             val start = System.nanoTime ()
             sub_custom (filename, join_table)
-            if (!options.nocopy)
-                hdfs.delete (new Path (filename), false)
+            cleanUp (filename)
             val end = System.nanoTime ()
             log.info (s"process $filename: ${(end - start) / 1e9} seconds")
         }
@@ -680,7 +697,7 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             case "long" =>
                 (row: Row, column: Int) => row.getLong (column).toString
             case _ =>
-                throw new Exception (s"unsupported datatype as key value ${datatype.toString}")
+                (_: Row, _: Int) => s"unsupported datatype ${datatype.toString}"
         }
     }
 
@@ -698,32 +715,32 @@ case class Ingest (session: SparkSession, options: IngestOptions)
                     Seq (options.mapping)
                 else
                     putFile (session, base_name (options.mapping), options.mapping, options.mapping.toLowerCase.endsWith (".zip"))
-            if (mapping_files.nonEmpty)
+            mapping_files.headOption match
             {
-                val filename = mapping_files.head
-                val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
+                case Some (filename) =>
+                    val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
-                val read = System.nanoTime ()
-                log.info (s"read $filename: ${(read - db) / 1e9} seconds")
+                    val read = System.nanoTime ()
+                    log.info (s"read $filename: ${(read - db) / 1e9} seconds")
 
-                val ch_number = dataframe.schema.fieldIndex (options.metercol)
-                val nis_number = dataframe.schema.fieldIndex (options.mridcol)
-                val extract = extractor (dataframe.schema.fields (ch_number).dataType)
-                val join_table = dataframe.rdd.map (row => (extract (row, ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
+                    val ch_number = dataframe.schema.fieldIndex (options.metercol)
+                    val nis_number = dataframe.schema.fieldIndex (options.mridcol)
+                    val extract = extractor (dataframe.schema.fields (ch_number).dataType)
+                    val join_table = dataframe.rdd.map (row => (extract (row, ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
 
-                val map = System.nanoTime ()
-                log.info (s"map: ${(map - read) / 1e9} seconds")
+                    val map = System.nanoTime ()
+                    log.info (s"map: ${(map - read) / 1e9} seconds")
 
-                options.format.toString match
-                {
-                    case "Belvis" => options.datafiles.foreach (process_belvis (join_table))
-                    case "LPEx" => options.datafiles.foreach (process_lpex (join_table))
-                    case "MSCONS" => process_mscons (join_table) (options.datafiles)
-                    case "Custom" => options.datafiles.foreach (process_custom (join_table))
-                }
+                    options.format.toString match
+                    {
+                        case "Belvis" => options.datafiles.foreach (process_belvis (join_table))
+                        case "LPEx" => options.datafiles.foreach (process_lpex (join_table))
+                        case "MSCONS" => process_mscons (join_table) (options.datafiles)
+                        case "Custom" => options.datafiles.foreach (process_custom (join_table))
+                    }
 
-                if (!options.nocopy)
-                    hdfs.delete (new Path (filename), false)
+                    cleanUp (filename)
+                case None =>
             }
         }
     }
