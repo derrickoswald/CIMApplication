@@ -46,7 +46,11 @@ import ch.ninecode.util.Graphable
  * @param storage_level The storage level to use in persisting the edges and nodes.
  * @param debug         flag to turn on debug output
  */
-case class TransformerServiceArea (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), debug: Boolean = false) extends CIMRDD with Graphable
+case class TransformerServiceArea (
+    session: SparkSession,
+    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
+    debug: Boolean = false)
+extends CIMRDD with Graphable
 {
     import TransformerServiceArea._
 
@@ -186,6 +190,17 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         islands_trafos.persist (storage_level)
     }
 
+    def toNode (item: (TopologicalIsland, Option[String])): (VertexId, VertexData) =
+    {
+        item match
+        {
+            case (island, Some (trafoset)) =>
+                (vertex_id (island.id), VertexData (trafoset, island.id))
+            case (island, _) =>
+                (vertex_id (island.id), VertexData ("", island.id))
+        }
+    }
+
     /**
      * Get the list of nodes in the transformer service area.
      *
@@ -193,12 +208,44 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      */
     def nodes: RDD[(VertexId, VertexData)] =
     {
-        topological_island_rdd.keyBy (_.id).leftOuterJoin (island_trafoset_rdd).values // (island, trafosetname)
-            .map (x => (vertex_id (x._1.id), VertexData (x._2.orNull, x._1.id)))
+        topological_island_rdd
+            .keyBy (_.id)
+            .leftOuterJoin (island_trafoset_rdd)
+            .values // (island, trafosetname)
+            .map (toNode)
+    }
+
+    def spansIslands (item: Iterable[(Element, (String, Double))]): Boolean =
+    {
+        item.toList match
+        {
+            case _ :: Nil => false // only one terminal
+            case (_, (island1, _)) :: rest =>
+                !rest.forall (
+                    x =>
+                    {
+                        val (_, (island2, _)) = x
+                        island1 == island2
+                    }
+                )
+            case _ => false
+        }
+    }
+
+    def toEdge (item: Iterable[(Element, (String, Double))]): Option[Edge[EdgeData]] =
+    {
+        item.toList match
+        {
+            case (e1, (i1, v1)) :: (_, (i2, v2)) :: _ =>
+                val connected = if (v1 < v2) isSameArea (e1, v2, v1) else isSameArea (e1, v1, v2) // ToDo: not really correct just to sort by magnitude
+                Some (Edge (vertex_id (i1), vertex_id (i2), EdgeData (e1.id, connected))) // ToDo: edge case of three terminal transformer spanning islands
+            case _ =>
+                None
+        }
     }
 
     /**
-     * Get the list of edges in the transformer service area.
+     * Get the list of edges spanning transformer service areas.
      *
      * @return An RDD suitable for GraphX initialization,
      */
@@ -209,21 +256,66 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         // get nodes by TopologicalIsland
         val members = topological_node_rdd.map (node => (node.id, (node.TopologicalIsland, voltages(node.BaseVoltage)))) // (nodeid, (islandid, volts))
         // get terminals by TopologicalIsland
-        val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x => (x._2._2, x._2._1)) // ((islandid, volts), terminal)
+        val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x => (x._2._1.ConductingEquipment, x._2._2)) // (equipment, (islandid, volts))
         // get equipment with terminals in different islands as GraphX Edge objects
-        conducting_equipment_rdd.keyBy (_.id).join (element_rdd.keyBy (_.id)).map (x => (x._1, x._2._2)) // (equipmentid, element)
-            .join (terminals.keyBy (_._2.ConductingEquipment)) // (equipmentid, (equipment, ((islandid, volts), terminal)))
-            .groupByKey.values.filter (x => (x.size > 1) && !x.forall (y => y._2._1 == x.head._2._1)) // Iterable[(equipment, (islandid, terminal))]
-            .map (
-                x =>
+        conducting_equipment_rdd
+            .keyBy (_.id)
+            .join (element_rdd.keyBy (_.id))
+            .map (x => (x._1, x._2._2)) // (equipmentid, element)
+            .join (terminals)
+            .groupByKey
+            .values
+            .filter (spansIslands)
+            .flatMap (toEdge)
+    }
+
+    def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
+    {
+        if (msg.area_label == "" && msg.island_label == "")
+            attr // do nothing initially
+        else
+        {
+            if (debug && log.isDebugEnabled)
+                log.debug (s"$id <-- ${msg.toString}")
+            msg
+        }
+    }
+
+    def send_message (triplet: EdgeTriplet[VertexData, EdgeData]): Iterator[(VertexId, VertexData)] =
+    {
+        if (!triplet.attr.isConnected)
+            Iterator.empty // send no message across an area boundary
+        else
+            if ((null != triplet.srcAttr.area_label) && (null == triplet.dstAttr.area_label))
+            {
+                if (debug && log.isDebugEnabled)
+                    log.debug (s"${triplet.attr.id} ${triplet.srcAttr.toString} ---> ${triplet.dstAttr.toString}")
+                Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
+            }
+            else
+                if ((null == triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label))
                 {
-                    val equipment = x.head._1
-                    val v1 = x.head._2._1._2
-                    val v2 = x.tail.head._2._1._2
-                    val connected = if (v1 > v2) isSameArea (x.head._1, v1, v2) else isSameArea (x.head._1, v2, v1) // ToDo: not really correct just to sort by magnitude
-                    Edge (vertex_id (x.head._2._1._1), vertex_id (x.tail.head._2._1._1), EdgeData (equipment.id, connected))
+                    if (debug && log.isDebugEnabled)
+                        log.debug (s"${triplet.attr.id} ${triplet.dstAttr.toString} ---> ${triplet.srcAttr.toString}")
+                    Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
                 }
-            ) // Edge[EdgeData]
+                else
+                    if ((null != triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
+                    {
+                        log.error (s"""transformer service areas "${triplet.srcAttr.area_label}" and "${triplet.dstAttr.area_label}" are connected""")
+                        Iterator.empty
+                    }
+                    else
+                        Iterator.empty
+    }
+
+    def merge_message (a: VertexData, b: VertexData): VertexData =
+    {
+        if (debug && log.isDebugEnabled)
+            log.debug (s"${a.toString} >-< ${b.toString}")
+        if (a.area_label != b.area_label)
+            log.error (s"""island "${a.island_label}" is serviced by two transformers (${a.area_label}, ${b.area_label}""")
+        a
     }
 
     /**
@@ -239,83 +331,32 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      */
     def identifyTransformerServiceAreas: Graph[VertexData, EdgeData] =
     {
-        def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
-        {
-            if (null == msg) // do nothing initially
-                attr
-            else
-            {
-                if (debug && log.isDebugEnabled)
-                    log.debug ("%s <-- %s".format (id, msg.toString))
-                msg
-            }
-        }
-
-        def send_message (triplet: EdgeTriplet[VertexData, EdgeData]): Iterator[(VertexId, VertexData)] =
-        {
-            if (!triplet.attr.isConnected)
-                Iterator.empty // send no message across an area boundary
-            else
-                if ((null != triplet.srcAttr.area_label) && (null == triplet.dstAttr.area_label))
-                {
-                    if (debug && log.isDebugEnabled)
-                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.toString, triplet.dstAttr.toString))
-                    Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
-                }
-                else
-                    if ((null == triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label))
-                    {
-                        if (debug && log.isDebugEnabled)
-                            log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.toString, triplet.srcAttr.toString))
-                        Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
-                    }
-                    else
-                        if ((null != triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
-                        {
-                            log.error ("""transformer service areas "%s" and "%s" are connected""".format (triplet.srcAttr.area_label, triplet.dstAttr.area_label))
-                            Iterator.empty
-                        }
-                        else
-                            Iterator.empty
-        }
-
-        def merge_message (a: VertexData, b: VertexData): VertexData =
-        {
-            if (debug && log.isDebugEnabled)
-                log.debug ("%s >-< %s".format (a.toString, b.toString))
-            if (a.area_label != b.area_label)
-                log.error ("""island "%s" is serviced by two transformers (%s, %s)""".format (a.island_label, a.area_label, b.area_label))
-            a
-        }
-
-        if (session.sparkContext.getCheckpointDir.isDefined)
-        {
-            edges.checkpoint ()
-            nodes.checkpoint ()
-        }
-
         // workaround for java.lang.ArrayIndexOutOfBoundsException: -1
         //        at org.apache.spark.graphx.util.collection.GraphXPrimitiveKeyOpenHashMap$mcJI$sp.apply$mcJI$sp(GraphXPrimitiveKeyOpenHashMap.scala:64)
         // save nodes and edges to HDFS and use the newly read RDD to make the graph
-        val graph = if (session.sparkContext.getCheckpointDir.isDefined)
-        {
-            var root = session.sparkContext.getCheckpointDir.get
-            if (!root.endsWith ("/"))
-                root = root + "/"
-            val magic = Random.nextInt (99999999)
-            edges.saveAsObjectFile (root + "edges_" + magic)
-            nodes.saveAsObjectFile (root + "nodes_" + magic)
-
-            val _edges: RDD[Edge[EdgeData]] = session.sparkContext.objectFile (root + "edges_" + magic)
-            val _nodes: RDD[(VertexId, VertexData)] = session.sparkContext.objectFile (root + "nodes_" + magic)
-            Graph (_nodes, _edges, VertexData (), storage_level, storage_level)
+        val graph = session.sparkContext.getCheckpointDir match {
+            case Some (directory) =>
+                edges.checkpoint ()
+                nodes.checkpoint ()
+                val root = if (!directory.endsWith ("/")) s"$directory/" else directory
+                val magic = Random.nextInt (99999999)
+                val e = s"${root}edges_$magic"
+                val n = s"${root}nodes_$magic"
+                edges.saveAsObjectFile (e)
+                nodes.saveAsObjectFile (n)
+                val _edges: RDD[Edge[EdgeData]] = session.sparkContext.objectFile (e)
+                val _nodes: RDD[(VertexId, VertexData)] = session.sparkContext.objectFile (n)
+                Graph (_nodes, _edges, VertexData (), storage_level, storage_level)
+            case None =>
+                Graph (nodes, edges, VertexData (), storage_level, storage_level)
         }
-        else
+
         // traverse the graph with the Pregel algorithm
         // assigns the area_label (the source transformer set name) to all "connected" islands (joined by closed switches)
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
-            Graph (nodes, edges, VertexData (), storage_level, storage_level)
-        graph.pregel[VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).persist (storage_level)
+        graph
+            .pregel[VertexData](VertexData (), 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message)
+            .persist (storage_level)
     }
 
     def hasIslands: Boolean = !topological_island_rdd.isEmpty
@@ -364,5 +405,5 @@ object TransformerServiceArea
      * @param area_label   the area label
      * @param island_label the mRID of the island
      */
-    case class VertexData (var area_label: String = "", var island_label: String = "")
+    case class VertexData (area_label: String = "", island_label: String = "")
 }
