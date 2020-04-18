@@ -7,6 +7,8 @@ import java.util.Properties
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
+import org.apache.log4j.Level
+import org.apache.log4j.LogManager
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -104,18 +106,13 @@ object Main
             case Some (options) =>
                 if (options.valid)
                 {
-                    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.INFO)
-                    if ("" != options.mapping)
+                    if (options.verbose) LogManager.getLogger (getClass).setLevel (Level.INFO)
+                    val session = time ("setup: %s seconds") { createSession (options) }
+                    time ("execution: %s seconds")
                     {
-                        val session = time ("setup: %s seconds") { createSession (options) }
-                        time ("execution: %s seconds")
-                        {
-                            val ingest = Ingest (session, options)
-                            ingest.run ()
-                        }
+                        val ingest = new Ingest (session, options)
+                        ingest.run ()
                     }
-                    else
-                        log.error ("""mapping file not specified""")
                 }
                 if (!options.unittest)
                     sys.exit (0)

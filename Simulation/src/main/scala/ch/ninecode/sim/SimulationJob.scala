@@ -15,7 +15,6 @@ import javax.json.JsonValue
 
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
-import scala.collection.mutable
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
@@ -169,15 +168,15 @@ case class SimulationJob
     def optionString: String = cimreaderoptions.map (kv => s"${kv._1}=${kv._2}").mkString (",")
 
     /**
-     * Insert the simulation json into simulation table.
+     * Get the highest run number + 1
      *
-     * @param session the Spark session to use
-     * @param id the id to store this job under
+     * @param session the session to use
+     * @param keyspace the keyspace to query
+     * @return the next run number
      */
-    def save (session: SparkSession, keyspace: String, id: String, tasks: RDD[SimulationTask]): Unit =
+    def nextRun (session: SparkSession, keyspace: String): Int =
     {
-        // get the highest run number + 1
-        val run = CassandraConnector (session.sparkContext.getConf).withSessionDo (
+        CassandraConnector (session.sparkContext.getConf).withSessionDo (
             session =>
             {
                 val resultset = session.execute (s"select max(run) as hi from $keyspace.simulation where id='$id'")
@@ -188,6 +187,17 @@ case class SimulationJob
                     row.getInt (0) + 1
             }
         )
+    }
+
+    /**
+     * Insert the simulation json into simulation table.
+     *
+     * @param session the Spark session to use
+     * @param id the id to store this job under
+     */
+    def save (session: SparkSession, keyspace: String, id: String, tasks: RDD[SimulationTask]): Unit =
+    {
+        val run = nextRun (session, keyspace)
         val current_time = Calendar.getInstance
         val json = session.sparkContext.parallelize (Seq (
             (
@@ -302,14 +312,13 @@ object SimulationJob
                     .flatMap (
                         item =>
                             if (item.getValueType == JsonValue.ValueType.OBJECT)
-                                Some (item.asJsonObject)
+                                parser (name, item.asJsonObject)
                             else
                             {
                                 log.error (s"""unexpected JSON type for $member element ("${typeString (item)}")""")
                                 None
                             }
                     )
-                    .flatMap (parser (name, _))
             }
             else
             {
@@ -331,17 +340,16 @@ object SimulationJob
 
         if (json.containsKey (MEMBERNAME))
         {
-            val value = json.get (MEMBERNAME)
-            if (value.getValueType == JsonValue.ValueType.OBJECT)
+            val value: JsonValue = json.get (MEMBERNAME)
+            value match
             {
-                val cimreaderoptions: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
-                val opt = cimreaderoptions.map (x => (x._1, x._2 match { case s: JsonString => s.getString case _ => x._2.toString }))
-                map ++ opt
-            }
-            else
-            {
-                log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
-                map
+                case obj: JsonObject =>
+                    val cimreaderoptions = obj.asScala
+                    val opt = cimreaderoptions.map (x => (x._1, x._2 match { case s: JsonString => s.getString case _ => x._2.toString }))
+                    map ++ opt
+                case _ =>
+                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
+                    map
             }
         }
         else
@@ -357,21 +365,22 @@ object SimulationJob
 
         if (json.containsKey (MEMBERNAME))
         {
-            val value = json.get (MEMBERNAME)
-            if (value.getValueType == JsonValue.ValueType.OBJECT)
+            val value: JsonValue = json.get (MEMBERNAME)
+            value match
             {
-                val keyspaces: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
-                keyspaces.foreach
-                {
-                    case ("input", v: JsonString) => input = v.getString
-                    case ("output", v: JsonString) => output = v.getString
-                    case ("replication", v: JsonNumber) => replication = v.intValue
-                    case (k: String, v: JsonValue) =>
-                        log.warn (s"""unexpected JSON member or type: $MEMBERNAME["$k"] of type "${typeString (v)}"""")
-                }
+                case obj: JsonObject =>
+                    val keyspaces = obj.asScala
+                    keyspaces.foreach
+                    {
+                        case ("input", v: JsonString) => input = v.getString
+                        case ("output", v: JsonString) => output = v.getString
+                        case ("replication", v: JsonNumber) => replication = v.intValue
+                        case (k: String, v: JsonValue) =>
+                            log.warn (s"""unexpected JSON member or type: $MEMBERNAME["$k"] of type "${typeString (v)}"""")
+                    }
+                case _ =>
+                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
             }
-            else
-                log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
         }
 
         (input, output, replication)
@@ -399,27 +408,27 @@ object SimulationJob
         if (json.containsKey (MEMBERNAME))
         {
             val value = json.get (MEMBERNAME)
-            if (value.getValueType == JsonValue.ValueType.OBJECT)
+            value match
             {
-                val interval: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
-                interval.foreach
-                {
-                    case ("start", v: JsonString) => start = iso_parse (v.getString)
-                    case ("end", v: JsonString) => end = iso_parse (v.getString)
-                    case ("buffer", v: JsonNumber) => buffer = v.intValue
-                    case (k: String, v: JsonValue) =>
-                        log.warn (s"""unexpected JSON member or type: $MEMBERNAME["$k"] of type "${typeString (v)}"""")
-                }
+                case obj: JsonObject =>
+                    val interval = obj.asScala
+                    interval.foreach
+                    {
+                        case ("start", v: JsonString) => start = iso_parse (v.getString)
+                        case ("end", v: JsonString) => end = iso_parse (v.getString)
+                        case ("buffer", v: JsonNumber) => buffer = v.intValue
+                        case (k: String, v: JsonValue) =>
+                            log.warn (s"""unexpected JSON member or type: $MEMBERNAME["$k"] of type "${typeString (v)}"""")
+                    }
+                case _ =>
+                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
             }
-            else
-                log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
         }
         else
             log.warn (s"""JSON member "$MEMBERNAME" not found, using defaults""")
 
         (start, end, buffer)
     }
-
 
     def parseTemperatures (json: JsonObject): (Double, Double) =
     {
@@ -430,22 +439,40 @@ object SimulationJob
         if (json.containsKey (MEMBERNAME))
         {
             val value = json.get (MEMBERNAME)
-            if (value.getValueType == JsonValue.ValueType.OBJECT)
+            value match
             {
-                val keyspaces: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
-                keyspaces.foreach
-                {
-                    case ("cim_temperature", v: JsonNumber) => cim_temperature = v.doubleValue
-                    case ("simulation_temperature", v: JsonNumber) => simulation_temperature = v.doubleValue
-                    case (k: String, v: JsonValue) =>
-                        log.warn (s"""unexpected JSON member or type: $MEMBERNAME["$k"] of type "${typeString (v)}"""")
-                }
+                case obj: JsonObject =>
+                    val temperatures = obj.asScala
+                    temperatures.foreach
+                    {
+                        case ("cim_temperature", v: JsonNumber) => cim_temperature = v.doubleValue
+                        case ("simulation_temperature", v: JsonNumber) => simulation_temperature = v.doubleValue
+                        case (k: String, v: JsonValue) =>
+                            log.warn (s"""unexpected JSON member or type: $MEMBERNAME["$k"] of type "${typeString (v)}"""")
+                    }
+                case _ =>
+                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
             }
-            else
-                log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
         }
 
         (cim_temperature, simulation_temperature)
+    }
+
+    def getStrings (array: JsonArray, member: String): Seq[String] =
+    {
+        array.asScala.flatMap (
+            item =>
+            {
+                item match
+                {
+                    case string: JsonString =>
+                        Some (string.getString)
+                    case _ =>
+                        log.error (s"""unexpected JSON type for $member element ("${typeString (item)}")""")
+                        None
+                }
+            }
+        )
     }
 
     def parseTransformers (json: JsonObject): Seq[String] =
@@ -455,26 +482,13 @@ object SimulationJob
         if (json.containsKey (MEMBERNAME))
         {
             val value = json.get (MEMBERNAME)
-            if (value.getValueType == JsonValue.ValueType.ARRAY)
+            value match
             {
-                value
-                    .asJsonArray
-                    .asScala
-                    .flatMap (
-                        transformer =>
-                            if (transformer.getValueType == JsonValue.ValueType.STRING)
-                                Some (transformer.asInstanceOf[JsonString].getString)
-                            else
-                            {
-                                log.error (s"""unexpected JSON type for $MEMBERNAME element ("${typeString (transformer)}")""")
-                                None
-                            }
-                    )
-            }
-            else
-            {
-                log.error (s"""unexpected JSON type for $MEMBERNAME ("${typeString (value)}")""")
-                Seq[String]()
+                case array: JsonArray =>
+                    getStrings (array, MEMBERNAME)
+                case _ =>
+                    log.error (s"""unexpected JSON type for $MEMBERNAME ("${typeString (value)}")""")
+                    Seq[String]()
             }
         }
         else
@@ -485,62 +499,83 @@ object SimulationJob
     {
         val MEMBERNAME = "query"
 
-        val value = json.getOrDefault (MEMBERNAME, JsonValue.NULL)
-        value.getValueType match
+        if (json.containsKey (MEMBERNAME))
         {
-            case JsonValue.ValueType.ARRAY =>
-                val queries =
-                    for
+            val value = json.get (MEMBERNAME)
+            value match
+            {
+                case array: JsonArray =>
+                    val queries = getStrings (array, MEMBERNAME)
+                    if (queries.nonEmpty)
+                        Some(queries)
+                    else
                     {
-                        query <- value.asInstanceOf[JsonArray].asScala
-                        if query.getValueType == JsonValue.ValueType.STRING
+                        log.error (s""""$name" has no valid queries for "$context"""")
+                        None
                     }
-                    yield
-                        query.asInstanceOf[JsonString].getString
-                if (queries.nonEmpty)
-                    Some(queries)
-                else
-                {
-                    log.error (s""""$name" has no valid queries for "$context"""")
+                case string: JsonString =>
+                    Some (Seq (string.getString))
+                case _ =>
+                    log.error (s"""JSON member "$MEMBERNAME" is not a JSON string or array (type "${typeString (value)}") in $context""")
                     None
-                }
-            case JsonValue.ValueType.STRING =>
-                Some (Seq (value.asInstanceOf[JsonString].getString))
-            case JsonValue.ValueType.NULL =>
-                log.error (s""""$name" does not specify a query for "$context"""")
-                None
-            case _ =>
-                log.error (s"""JSON member "$MEMBERNAME" is not a JSON string or array (type "${typeString (value)}") in $context""")
-                None
+            }
         }
+        else
+        {
+            log.error (s""""$name" does not specify a query for "$context"""")
+            None
+        }
+    }
+
+    def parseTransform (name: String, context: String, json: JsonObject): Option[String] =
+    {
+        val MEMBERNAME = "transform"
+
+        if (json.containsKey (MEMBERNAME))
+        {
+            val value = json.get (MEMBERNAME)
+            value match
+            {
+                case program: JsonString =>
+                    // try it
+                    try
+                    {
+                        val tx = MeasurementTransform.build (program.getString)
+                        val _ = tx.transform (
+                            Array (
+                                SimulationPlayerData (
+                                    "TRA1234",
+                                    "HAS5678",
+                                    "energy",
+                                    Calendar.getInstance.getTimeInMillis,
+                                    900000,
+                                    "Wh",
+                                    Array (1.0, 2.0))))
+                        Some (program.getString)
+                    }
+                    catch
+                    {
+                        case exception: Throwable =>
+                            log.warn (s"""reverting to identity MeasurementTransform: "$name" in $context threw an exception: '${exception.getLocalizedMessage}'"""")
+                            None
+                    }
+                case _ =>
+                    log.error (s"""JSON member "$MEMBERNAME" is not a JSON string (type "${typeString (value)}") in $context""")
+                    None
+            }
+        }
+        else
+            None
     }
 
     def parsePlayer (name: String, player: JsonObject): Option[SimulationPlayerQuery] =
     {
         val title = player.getString ("title", "")
-        val transform =
-        {
-            var program = player.getString ("transform", null)
-            if (null != program)
-            {
-                // try it
-                try
-                {
-                    val tx = MeasurementTransform.build (program)
-                    tx.transform (Array (SimulationPlayerData ("TRA1234", "HAS5678", "energy", Calendar.getInstance.getTimeInMillis, 900000, "Wh", Array (1.0, 2.0))))
-                }
-                catch
-                {
-                    case exception: Throwable => log.warn (s"""reverting to identity MeasurementTransform because transform: "$title" threw an exception: '${exception.getLocalizedMessage}'"""")
-                    program = null
-                }
-            }
-            program
-        }
-        val queries = parseQuery (name, s"player:$title", player)
+        val transform = parseTransform (name, s"player:$title", player)
+        val queries: Option[Seq[String]] = parseQuery (name, s"player:$title", player)
         queries match
         {
-            case Some (set) => Some (SimulationPlayerQuery (title, set.lastOption.orNull, transform))
+            case Some (set) => Some (SimulationPlayerQuery (title, set.lastOption.orNull, transform.orNull))
             case None => None
         }
     }
@@ -610,8 +645,8 @@ object SimulationJob
         val id = json.getString ("id", java.util.UUID.randomUUID.toString)
         val name = json.getString ("name", "*unnamed*")
         val description = json.getString ("description", "")
-        val cim = json.getString ("cim", null)
-        if (null == cim)
+        val cim = json.getString ("cim", "")
+        if ("" == cim)
         {
             log.error (s""""$name" does not specify a CIM file""")
             None

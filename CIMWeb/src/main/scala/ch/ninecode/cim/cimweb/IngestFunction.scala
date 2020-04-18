@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
+import ch.ninecode.ingest.IngestJob
 import ch.ninecode.ingest.IngestOptions
 
 /**
@@ -16,7 +17,7 @@ import ch.ninecode.ingest.IngestOptions
  *
  * @param options the options for ingesting
  */
-case class IngestFunction (options: IngestOptions) extends CIMWebFunction
+case class IngestFunction (options: IngestOptions, job: IngestJob) extends CIMWebFunction
 {
     jars = Array (
         jarForObject (this),
@@ -37,8 +38,8 @@ case class IngestFunction (options: IngestOptions) extends CIMWebFunction
         val cassandra = spark.sparkContext.getConf.get ("spark.cassandra.connection.host", options.host)
         val port = spark.sparkContext.getConf.get ("spark.cassandra.connection.port", options.port.toString).toInt
         val _options = options.copy (host = cassandra, port = port)
-        val ingest = ch.ninecode.ingest.Ingest (spark, _options)
-        ingest.run ()
+        val ingest = new ch.ninecode.ingest.Ingest (spark, _options)
+        ingest.runJob (job)
         LoggerFactory.getLogger (getClass).info ("ingested")
         val result = Json.createObjectBuilder
         result.add ("verbose", _options.verbose)
@@ -46,20 +47,20 @@ case class IngestFunction (options: IngestOptions) extends CIMWebFunction
         result.add ("port", _options.port)
         result.add ("storage", _options.storage)
         result.add ("log_level", _options.log_level.toString)
-        result.add ("nocopy", _options.nocopy)
-        result.add ("mapping", _options.mapping)
-        result.add ("metercol", _options.metercol)
-        result.add ("mridcol", _options.mridcol)
-        result.add ("timezone", _options.timezone)
-        result.add ("mintime", _options.mintime)
-        result.add ("maxtime",_options.maxtime)
-        result.add ("format", _options.format.toString)
-        val files = Json.createArrayBuilder
-        for (f <- _options.datafiles)
-            files.add (f)
-        result.add ("datafiles", files.build)
-        result.add ("keyspace", _options.keyspace)
-        result.add ("replication", _options.replication)
+//        result.add ("nocopy", _options.nocopy)
+//        result.add ("mapping", _options.mapping)
+//        result.add ("metercol", _options.metercol)
+//        result.add ("mridcol", _options.mridcol)
+//        result.add ("timezone", _options.timezone)
+//        result.add ("mintime", _options.mintime)
+//        result.add ("maxtime",_options.maxtime)
+//        result.add ("format", _options.format.toString)
+//        val files = Json.createArrayBuilder
+//        for (f <- _options.datafiles)
+//            files.add (f)
+//        result.add ("datafiles", files.build)
+//        result.add ("keyspace", _options.keyspace)
+//        result.add ("replication", _options.replication)
         RESTfulJSONResult (OK, "ingest successful", result.build).getJSON
     }
 

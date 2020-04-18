@@ -3,12 +3,14 @@ package ch.ninecode.cim.cimweb
 import java.io.PrintWriter
 import java.io.StringReader
 import java.io.StringWriter
-import java.util
+
 import javax.json.Json
 import javax.json.JsonException
 import javax.json.JsonStructure
 import javax.json.JsonWriterFactory
 import javax.json.stream.JsonGenerator
+
+import scala.collection.JavaConversions.mapAsJavaMap
 
 case class RESTfulJSONResult (var status: String, var message: String, var result: JsonStructure)
 {
@@ -18,8 +20,8 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
     {
         if (null == FACTORY_INSTANCE)
         {
-            val properties: util.Map[String, AnyRef] = new util.HashMap[String, AnyRef](1)
-            properties.put (JsonGenerator.PRETTY_PRINTING, "true")
+            val properties = Map[String, AnyRef](
+                JsonGenerator.PRETTY_PRINTING -> "true")
             FACTORY_INSTANCE = Json.createWriterFactory (properties)
         }
         FACTORY_INSTANCE
@@ -59,9 +61,9 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
 
     def setResultException (e: Exception, msg: String): Unit =
     {
-        val string = new StringWriter
-        string.append (msg)
-        string.append ("\n")
+        val string = new StringWriter ()
+            .append (msg)
+            .append ("\n")
         val writer = new PrintWriter (string)
         e.printStackTrace (writer)
         writer.flush ()

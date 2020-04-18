@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
+import org.slf4j.LoggerFactory
 import scopt.OptionParser
 
 /**
@@ -18,7 +19,8 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 {
     head (APPLICATION_NAME, APPLICATION_VERSION)
 
-    val default = new IngestOptions
+    val default: IngestOptions = IngestOptions ()
+    var job: IngestJob = IngestJob ()
     var unittest = false
     var helpout = false
     var versionout = false
@@ -36,9 +38,9 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
             }
     }
 
-    def measurementTimestampFormat (options: IngestOptions): SimpleDateFormat =
+    def measurementTimestampFormat: SimpleDateFormat =
     {
-        val zone = TimeZone.getTimeZone (options.timezone)
+        val zone = TimeZone.getTimeZone (job.timezone)
         val calendar = Calendar.getInstance ()
         calendar.setTimeZone (zone)
         val ret = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss")
@@ -46,15 +48,17 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         ret
     }
 
-    def parseTime (options: IngestOptions, time: String): Long =
+    def parseTime (time: String): Long =
     {
-        measurementTimestampFormat (options).parse (time).getTime
+        measurementTimestampFormat.parse (time).getTime
     }
 
-    def formatTime (options: IngestOptions, time: Long): String =
+    def formatTime (time: Long): String =
     {
-        measurementTimestampFormat (options).format (time)
+        measurementTimestampFormat.format (time)
     }
+
+    def updateJson (options: IngestOptions): IngestOptions = options.copy (ingestions = Seq (job.asJson))
 
     opt[Unit]("unittest")
         .hidden ()
@@ -85,49 +89,49 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         .action ((x, c) => c.copy (storage = x))
         .text (s"storage level for RDD serialization [${default.storage}]")
 
-    opt[Unit]("nocopy")
-        .action ((_, c) => c.copy (nocopy = true))
-        .text (s"use files 'as is' without unzipping and copying to HDFS [${default.nocopy}]")
-
     opt[String]("workdir")
         .action ((x, c) => c.copy (workdir = if (x.endsWith ("/")) x else s"$x/"))
         .text (s"working directory for unzip and copy [${default.workdir}]")
 
     opt[String]("mapping")
-        .action ((x, c) => c.copy (mapping = x))
-        .text (s"file name of mapping CSV [${default.mapping}] (required)")
+        .action ((x, c) => { job = job.copy (mapping = x); updateJson (c) })
+        .text (s"file name of mapping CSV [${job.mapping}] (required)")
 
     opt[String]("metercol")
-        .action ((x, c) => c.copy (metercol = x))
-        .text (s"column name of meter id in mapping CSV [${default.metercol}]")
+        .action ((x, c) => { job = job.copy (metercol = x); updateJson (c) })
+        .text (s"column name of meter id in mapping CSV [${job.metercol}]")
 
     opt[String]("mridcol")
-        .action ((x, c) => c.copy (mridcol = x))
-        .text (s"col.umn name of CIM mRID in mapping CSV [${default.mridcol}]")
+        .action ((x, c) => { job = job.copy (mridcol = x); updateJson (c) })
+        .text (s"column name of CIM mRID in mapping CSV [${job.mridcol}]")
 
     opt[String]("timezone")
-        .action ((x, c) => c.copy (timezone = x))
-        .text (s"measurement time zone for measurements [${default.timezone}]")
+        .action ((x, c) => { job = job.copy (timezone = x); updateJson (c) })
+        .text (s"measurement time zone for measurements [${job.timezone}]")
 
     opt[String]("mintime")
-        .action ((x, c) => c.copy (mintime = parseTime (c, x)))
-        .text (s"minimum time for ingestion timespan [${formatTime (default, default.mintime)}]")
+        .action ((x, c) => { job = job.copy (mintime = parseTime (x)); updateJson (c) })
+        .text (s"minimum time for ingestion timespan [${formatTime (job.mintime)}]")
 
     opt[String]("maxtime")
-        .action ((x, c) => c.copy (maxtime = parseTime (c, x)))
-        .text (s"maximum time for ingestion timespan [${formatTime (default, default.maxtime)}]")
+        .action ((x, c) => { job = job.copy (maxtime = parseTime (x)); updateJson (c) })
+        .text (s"maximum time for ingestion timespan [${formatTime (job.maxtime)}]")
 
     opt[String]("keyspace")
-        .action ((x, c) => c.copy (keyspace = x))
-        .text (s"target Cassandra keyspace [${default.keyspace}]")
+        .action ((x, c) => { job = job.copy (keyspace = x); updateJson (c) })
+        .text (s"target Cassandra keyspace [${job.keyspace}]")
 
     opt[Int]("replication")
-        .action ((x, c) => c.copy (replication = x))
-        .text (s"keyspace replication if the Cassandra keyspace needs creation [${default.replication}]")
+        .action ((x, c) => { job = job.copy (replication = x); updateJson (c) })
+        .text (s"keyspace replication if the Cassandra keyspace needs creation [${job.replication}]")
 
     opt[Formats.Value]("format")
-        .action ((x, c) => c.copy (format = x))
-        .text (s"format of the data files, one of ${Formats.values.iterator.mkString (",")} [${default.format}]")
+        .action ((x, c) => { job = job.copy (format = x); updateJson (c) })
+        .text (s"format of the data files, one of ${Formats.values.iterator.mkString (",")} [${job.format}]")
+
+    opt[Unit]("nocopy")
+        .action ((_, c) => { job = job.copy (nocopy = true); updateJson (c) })
+        .text (s"use files 'as is' without unzipping and copying to HDFS [${job.nocopy}]")
 
     arg[String]("<ZIP> or <CSV>...")
         .optional ()
@@ -138,15 +142,17 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
             {
                 val sep = System.getProperty ("file.separator")
                 val file = if (x.startsWith (sep)) x else new java.io.File (".").getCanonicalPath + sep + x
-                c.copy (datafiles = c.datafiles :+ file)
+                job = job.copy (datafiles = job.datafiles :+ file)
+                updateJson (c)
             }
             catch
             {
                 case e: Exception =>
-                    val log = org.apache.log4j.LogManager.getLogger (getClass.getName)
+                    val log = LoggerFactory.getLogger (getClass.getName)
                     log.error ("bad input file name", e)
                     helpout = true
-                    c.copy (datafiles = Seq ())
+                    job = job.copy (datafiles = Seq ())
+                    updateJson (c)
             }
         })
         .text ("data files to process")

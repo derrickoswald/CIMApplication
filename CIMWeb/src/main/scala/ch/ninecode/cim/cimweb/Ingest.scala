@@ -21,6 +21,7 @@ import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
 import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
+import ch.ninecode.ingest.IngestJob
 import ch.ninecode.ingest.IngestOptions
 import ch.ninecode.ingest.Formats
 import ch.ninecode.ingest.LogLevels
@@ -55,8 +56,14 @@ class Ingest extends RESTful
             host = json.getString ("host", "localhost"),
             port = json.getInt ("port", 9042),
             storage = json.getString ("storage", "MEMORY_AND_DISK_SER"),
-            log_level = getLogLevel (json, "log_level", LogLevels.OFF),
-            nocopy = json.getBoolean ("nocopy", false),
+            log_level = getLogLevel (json, "log_level", LogLevels.OFF)
+//            work_dir = ??
+        )
+    }
+
+    def parseJob (json: JsonObject): IngestJob =
+    {
+        IngestJob (
             mapping = json.getString ("mapping", ""),
             metercol = json.getString ("metercol", "Messpunktbezeichnung"),
             mridcol = json.getString ("mridcol", "NISNr"),
@@ -64,19 +71,20 @@ class Ingest extends RESTful
             mintime = getLong (json, "mintime", 0L), // "1970-01-01 00:00:00.000+0000"
             maxtime = getLong (json, "maxtime", Long.MaxValue), // "292278994-08-17 07:12:55.807+0000"
             format = getFormat (json, "format", Formats.Belvis),
+            nocopy = json.getBoolean ("nocopy", false),
             datafiles = getArray (json, "datafiles", Seq ()),
             keyspace = json.getString ("keyspace", "cimapplication"),
             replication = json.getInt ("replication", 1)
         )
     }
 
-    def readJSON (json: String): Option[IngestOptions] =
+    def readJSON (json: String): Option[(IngestOptions, IngestJob)] =
     {
         try
             try
                 Json.createReader (new StringReader (json)).readObject match
                 {
-                    case obj: JsonObject ⇒ Some (parseOptions (obj))
+                    case obj: JsonObject ⇒ Some ((parseOptions (obj), parseJob (obj)))
                     case _ ⇒
                         Logger.getLogger (getClass.getName).log (Level.SEVERE, """not a JsonObject""")
                         None
@@ -118,9 +126,9 @@ class Ingest extends RESTful
                 val parsed = readJSON (json)
                 parsed match
                 {
-                    case Some (options) ⇒
+                    case Some ((options, job)) ⇒
                         Logger.getLogger (getClass.getName).info ("""ingest options = %s""".format (options))
-                        val ingest = IngestFunction (options)
+                        val ingest = IngestFunction (options, job)
                         input.asInstanceOf[map].put (CIMFunction.FUNCTION, ingest)
                         val interaction = connection.createInteraction
                         val output = interaction.execute (spec, input)

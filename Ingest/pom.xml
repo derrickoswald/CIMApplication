@@ -35,6 +35,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.glassfish</groupId>
+            <artifactId>javax.json</artifactId>
+            <version>${version.dependency.json}</version>
+        </dependency>
+
+        <dependency>
             <groupId>ch.ninecode.mscons</groupId>
             <artifactId>MSCONSReader</artifactId>
             <version>${project.version}</version>
