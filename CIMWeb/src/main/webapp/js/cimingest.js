@@ -401,59 +401,36 @@ define
         }
 
         /**
-         * @summary Execute short circuit calculation.
-         * @description Perform a short circuit calculation on loaded CIM data.
-         * @return a Promise to resolve or reject the analysis
-         * @function analyze
-         * @memberOf module:cimanalysis
+         * @summary Execute ingest.
+         * @description Perform an ingest operation.
+         * @return a Promise to resolve or reject the ingest
+         * @function ingest
+         * @memberOf module:cimingest
          */
-        function analyze ()
+        function ingest ()
         {
             // ToDo: validation
-            const options = {
-                verbose: true,
-                description: "cim analyze",
-                default_short_circuit_power_max: Number (document.getElementById ("network_power_max").value),
-                default_short_circuit_impedance_max: {
-                    re: Number (document.getElementById ("network_resistance_max").value),
-                    im: Number (document.getElementById ("network_reactance_max").value)
+            const job = {
+                mapping: document.getElementById ("mapping_file").value,
+                metercol: document.getElementById ("metercol").value,
+                mridcol: document.getElementById ("mridcol").value,
+                timezone: document.getElementById ("timezone").value,
+                timespan: {
+                    mintime: Number (document.getElementById ("mintime").value),
+                    maxtime: Number (document.getElementById ("maxtime").value)
                 },
-                default_short_circuit_power_min: Number (document.getElementById ("network_power_min").value),
-                default_short_circuit_impedance_min: {
-                    re: Number (document.getElementById ("network_resistance_min").value),
-                    im: Number (document.getElementById ("network_reactance_min").value)
-                },
-                default_transformer_power_rating: Number (document.getElementById ("transformer_power").value),
-                default_transformer_impedance: {
-                    re: Number (document.getElementById ("transformer_resistance").value),
-                    im: Number (document.getElementById ("transformer_reactance").value)
-                },
-                base_temperature: Number (document.getElementById ("tbase").value),
-                low_temperature: Number (document.getElementById ("tlow").value),
-                high_temperature: Number (document.getElementById ("thigh").value),
-                cmax: Number (document.getElementById ("cmax").value),
-                cmin: Number (document.getElementById ("cmin").value),
-                fuse_table: Number (document.getElementById ("fuse_table").value),
-                messagemax: Number (document.getElementById ("messagemax").value),
-                batchsize: Number (document.getElementById ("batchsize").value),
-                trafos: "",
-                workdir: derive_work_dir (cimmap.get_loaded ().files[0])
-            };
-            const pf = document.getElementById ("motor_power_factor").value;
-            if (("" === pf) || isNaN (Number (pf)))
-            {
-                options.worstcasepf = true;
-                options.cosphi = null;
-            }
-            else
-            {
-                options.worstcasepf = false;
-                options.cosphi = Number (pf)
-            }
+                format: document.getElementById ("file_format").value,
+                nocopy: true, // ToDo can we make this an option with uploads?
+                datafiles: [document.getElementById ("data_file").value],
+                keyspace: document.getElementById ("cassandra_keyspace").value,
+                replication: Number (document.getElementById ("cassandra_replication").value)
 
-            const url = util.home () + "cim/short_circuit";
+                // workdir: derive_work_dir (cimmap.get_loaded ().files[0])
+            };
+
+            const url = util.home () + "cim/ingest";
             return (
-                util.makeRequest ("POST", url, JSON.stringify (options, null, 4)).then (
+                util.makeRequest ("POST", url, JSON.stringify (job, null, 4)).then (
                     (xmlhttp) =>
                     {
                         return (
@@ -481,38 +458,31 @@ define
         }
 
         /**
-         * @summary Execute short circuit calculation.
-         * @description Perform a short circuit calculation on loaded CIM data and insert the results in the analysis_results div.
+         * @summary Execute ingest process.
+         * @description Perform an ingest to read smart meter data files into Cassandra.
          * @param {object} event - optional, the click event
-         * @function do_analysis
-         * @memberOf module:cimanalysis
+         * @function do_ingest
+         * @memberOf module:cimingest
          */
-        function do_analysis (event)
+        function do_ingest (event)
         {
-            const info = cimmap.get_loaded ();
-            if (null != info)
+            function successCallback (data)
             {
-                if (!info.options["ch.ninecode.cim.do_topo"])
-                    alert ("WARNING: loaded CIM file was not topological processed");
-
-                function successCallback (data)
-                {
-                    document.getElementById ("analysis_results").innerHTML = "<pre>" + JSON.stringify (data, null, 4) + "</pre>";
-                }
-
-                function failureCallback (message)
-                {
-                    alert ("analysis failed: " + message);
-                }
-
-                analyze ().then (successCallback, failureCallback);
+                document.getElementById ("ingest_results").innerHTML = "<pre>" + JSON.stringify (data, null, 4) + "</pre>";
             }
-            else
-                alert ("no CIM file is loaded");
+
+            function failureCallback (message)
+            {
+                alert ("ingest failed: " + JSON.stringify (message, null, 4));
+            }
+
+            ingest ().then (successCallback, failureCallback);
         }
 
         function setDateRange (start, end)
         {
+            document.getElementById ("mintime").value = start.valueOf ().toString ();
+            document.getElementById ("maxtime").value = end.valueOf ().toString ();
             console.log (
                 JSON.stringify (
                 {
@@ -531,14 +501,6 @@ define
         function initialize ()
         {
             document.getElementById ("ingest").innerHTML = "";
-            // result.add ("verbose", options.verbose)
-            // result.add ("storage", "MEMORY_AND_DISK_SER")
-            // result.add ("log_level", options.log_level.toString)
-            // result.add ("nocopy", false)
-            // val files = Json.createArrayBuilder
-            // for (f <- options.datafiles)
-            //     files.add (f)
-            // result.add ("datafiles", files.build)
             const ingest_template =
                 `
 <div class='container'>
@@ -547,18 +509,6 @@ define
       <form id='analysis_form' role='form' style='width: 100%'>
         <h3>Ingest</h3>
         <h4>Cassandra Configuration</h4>
-        <div class='form-group row'>
-          <label class='col-sm-2 col-form-label' for='cassandra_host'>Cassandra host</label>
-          <div class='col-sm-4'>
-            <input id='cassandra_host' class='form-control' type='text' name='cassandra_host' aria-describedby='cassandra_hostHelp' value='localhost'>
-            <small id='cassandra_hostHelp' class='form-text text-muted'>The Cassandra seed node name.</small>
-          </div>
-          <label class='col-sm-2 col-form-label' for='cassandra_port'>Cassandra port</label>
-          <div class='col-sm-4'>
-            <input id='cassandra_port' class='form-control' type='text' name='cassandra_port' aria-describedby='cassandra_portHelp' value='9042'>
-            <small id='cassandra_portHelp' class='form-text text-muted'>Cassandra native transport port.</small>
-          </div>
-        </div>
         <div class='form-group row'>
           <label class='col-sm-2 col-form-label' for='cassandra_keyspace'>Cassandra keyspace</label>
           <div class='col-sm-4'>
@@ -598,6 +548,7 @@ define
             <select id="file_format" class="form-control custom-select" name='file_format' aria-describedby="file_formatHelp">
               <option value="LPEx" selected>LPEx</option>
               <option value="Belvis">Belvis</option>
+              <option value="MSCONS">MSCONS</option>
             </select>
             <small id='file_formatHelp' class='form-text text-muted'>File format of input files, either Belvis, or LPEx.</small>
           </div>
@@ -617,7 +568,7 @@ define
           </div>
           <label class='col-sm-2 col-form-label' for='maxtime'>Maximum time</label>
           <div class='col-sm-4'>
-            <input id='maxtime' class='form-control' type='text' name='maxtime' aria-describedby='maxtimeHelp' value='${Number.MAX_SAFE_INTEGER.toString()}'>
+            <input id='maxtime' class='form-control' type='text' name='maxtime' aria-describedby='maxtimeHelp' value='2147483647000'>
             <small id='maxtimeHelp' class='form-text text-muted'>Maximum meter data time. Any later will be discarded.</small>
           </div>
         </div>
@@ -626,11 +577,18 @@ define
           <input id="ingest_timerange" type="text" class="form-control" aria-describedby="timerangeHelp" placeholder="Enter a time range for the ingest" value="">
           <small id="timerangeHelp" class="form-text text-muted">Enter the ingest start and end date/time. Any earlier or later will be discarded.</small>
         </div>
+        <div class='form-group row'>
+          <label class='col-sm-2 col-form-label' for='data_file'>Data file</label>
+          <div class='col-sm-10'>
+            <input id='data_file' class='form-control' type='text' name='data_file' aria-describedby='data_fileHelp' value=''>
+            <small id='data_fileHelp' class='form-text text-muted'>Data file to ingest.</small>
+          </div>
+        </div>
         <div class='form-group'>
           <button id='do_ingest' type='button' class='btn btn-primary'>Execute</button>
         </div>
       </form>
-      <div id='analysis_results'>
+      <div id='ingest_results'>
       </div>
     </div>
   </div>

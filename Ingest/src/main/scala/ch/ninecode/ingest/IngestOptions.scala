@@ -6,12 +6,6 @@ object LogLevels extends Enumeration
     val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
 }
 
-object Formats extends Enumeration
-{
-    type Formats = Value
-    val Belvis, LPEx, MSCONS, Custom = Value
-}
-
 /**
  *
  * @param valid False if either help or version requested (i.e. don't proceed with execution).

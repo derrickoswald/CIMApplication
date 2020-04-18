@@ -24,6 +24,12 @@ import org.apache.log4j.LogManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+object Formats extends Enumeration
+{
+    type Formats = Value
+    val Belvis, LPEx, MSCONS, Custom = Value
+}
+
 /**
  *
  * @param mapping Mapping CSV file name.

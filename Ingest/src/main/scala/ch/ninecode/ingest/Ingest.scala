@@ -22,7 +22,11 @@ import ch.ninecode.util.Schema
  */
 class Ingest (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {
-    if (options.verbose) LogManager.getLogger (getClass).setLevel (Level.INFO)
+    if (options.verbose)
+    {
+        LogManager.getLogger (getClass).setLevel (Level.INFO)
+        LogManager.getLogger ("ch.ninecode.util.Schema").setLevel (Level.INFO)
+    }
 
     case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
 
