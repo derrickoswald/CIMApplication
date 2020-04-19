@@ -38,20 +38,20 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
                 val statuses: Array[FileStatus] = hdfs.listStatus (root)
                 for (fs <- statuses)
                 {
-                    val file = Json.createObjectBuilder
                     val name: String = fs.getPath.toString
-                    file.add ("path", if (name.startsWith (prefix)) name.substring (prefix.length) else name)
-                    file.add ("size", fs.getLen)
-                    file.add ("modification_time", fs.getModificationTime)
-                    file.add ("access_time", fs.getAccessTime)
-                    file.add ("group", fs.getGroup)
-                    file.add ("owner", fs.getOwner)
                     val permission: FsPermission = fs.getPermission
-                    file.add ("permission", permission.toString)
-                    file.add ("replication", fs.getReplication)
-                    file.add ("block_size", fs.getBlockSize)
-                    file.add ("is_directory", fs.isDirectory)
-                    file.add ("is_sym_link", fs.isSymlink)
+                    val file = Json.createObjectBuilder
+                        .add ("path", if (name.startsWith (prefix)) name.substring (prefix.length) else name)
+                        .add ("size", fs.getLen)
+                        .add ("modification_time", fs.getModificationTime)
+                        .add ("access_time", fs.getAccessTime)
+                        .add ("group", fs.getGroup)
+                        .add ("owner", fs.getOwner)
+                        .add ("permission", permission.toString)
+                        .add ("replication", fs.getReplication)
+                        .add ("block_size", fs.getBlockSize)
+                        .add ("is_directory", fs.isDirectory)
+                        .add ("is_sym_link", fs.isSymlink)
                     files.add (file)
                 }
             }
@@ -69,12 +69,12 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
 
     override def toString: String =
     {
-        val sb = new StringBuilder (super.toString)
-        sb.append (" (path=")
-        sb.append (path)
-        sb.append (", debug=")
-        sb.append (debug)
-        sb.append (")")
-        sb.toString
+        new StringBuilder (super.toString)
+            .append (" (path=")
+            .append (path)
+            .append (", debug=")
+            .append (debug)
+            .append (")")
+            .toString
     }
 }

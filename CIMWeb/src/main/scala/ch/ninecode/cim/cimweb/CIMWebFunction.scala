@@ -4,8 +4,11 @@ import java.io.File
 import java.io.UnsupportedEncodingException
 import java.net.URI
 import java.net.URLDecoder
+
+import javax.json.Json
 import javax.json.JsonStructure
 
+import scala.collection.JavaConversions.seqAsJavaList
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
@@ -15,6 +18,9 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.types.StructField
+import org.apache.spark.sql.types.StructType
 
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMFunction.Return
@@ -44,7 +50,7 @@ abstract class CIMWebFunction extends CIMFunction
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val name = s"/tmp/${ Random.nextInt (99999999) }.jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
             writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
             writer.close ()
@@ -78,30 +84,28 @@ abstract class CIMWebFunction extends CIMFunction
 
     def hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
 
+    case class Oops (error: String)
+
     override def executeResultSet (spark: SparkSession): Dataset[Row] =
-        throw new UnsupportedOperationException ("execute called on wrong method signature")
+    {
+        val schema = StructType (Seq (StructField (name = "error", dataType = StringType, nullable = false)))
+        spark.sqlContext.createDataFrame (Seq (Row ("execute called on wrong method signature")), schema)
+    }
 
     override def executeString (spark: SparkSession): String =
-        throw new UnsupportedOperationException ("execute called on wrong method signature")
+        "error: execute called on wrong method signature"
 
     override def executeJSON (spark: SparkSession): JsonStructure =
-        throw new UnsupportedOperationException ("execute called on wrong method signature")
+        Json.createObjectBuilder.add ("error", "execute called on wrong method signature").build
 
     override def toString: String =
     {
-        val sb: StringBuilder = new StringBuilder
-        sb.append (getReturnType.toString)
-        sb.append (" ")
-        sb.append (
-            getReturnType match
-            {
-                case Return.Dataset => "executeResultSet"
-                case Return.String => "executeString"
-                case Return.JSON => "executeJSON"
-            })
-        sb.append (" (session) [")
-        sb.append (jars.mkString (","))
-        sb.append ("]")
-        sb.toString
+        val ret = getReturnType match
+        {
+            case Return.Dataset => "executeResultSet"
+            case Return.String => "executeString"
+            case Return.JSON => "executeJSON"
+        }
+        s"${getReturnType.toString} $ret  (session) [${jars.mkString (",")}]"
     }
 }

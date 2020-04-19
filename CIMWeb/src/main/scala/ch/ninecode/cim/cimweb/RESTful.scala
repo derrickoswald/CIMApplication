@@ -1,8 +1,9 @@
 package ch.ninecode.cim.cimweb
 
 import java.net.URLClassLoader
-import java.util
 import java.util.Properties
+import java.util.logging.Level
+import java.util.logging.Logger
 
 import javax.annotation.Resource
 import javax.json.Json
@@ -13,11 +14,17 @@ import javax.naming.NameNotFoundException
 import javax.naming.NamingException
 import javax.resource.ResourceException
 import javax.resource.cci.MappedRecord
-import scala.collection.JavaConversions.collectionAsScalaIterable
+import scala.collection.JavaConversions.mapAsJavaMap
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
 
 import ch.ninecode.cim.connector.CIMConnection
 import ch.ninecode.cim.connector.CIMConnectionFactory
 import ch.ninecode.cim.connector.CIMConnectionSpec
+import ch.ninecode.cim.connector.CIMFunction
+import ch.ninecode.cim.connector.CIMInteractionSpec
+import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 class RESTful ()
@@ -26,30 +33,32 @@ class RESTful ()
 
     type map = java.util.Map[String,Object]
 
-    def getClassLoaders: util.ArrayList[ClassLoader] =
+    def classLoaderFrom (element: StackTraceElement): Option[ClassLoader] =
     {
-        val classLoaders = new util.ArrayList[ClassLoader]
-        classLoaders.add (ClassLoader.getSystemClassLoader)
-        if (!classLoaders.contains (Thread.currentThread.getContextClassLoader))
-            classLoaders.add (Thread.currentThread.getContextClassLoader)
         try
-        throw new Exception
+            Option (Class.forName (element.getClassName).getClassLoader)
         catch
         {
-            case exception: Exception =>
-                for (element: StackTraceElement <- exception.getStackTrace)
-                    try
-                    {
-                        val classloader = Class.forName (element.getClassName).getClassLoader
-                        if ((null != classloader) && !classLoaders.contains (classloader))
-                            classLoaders.add (classloader)
-                    }
-                    catch
-                    {
-                        case _: ClassNotFoundException =>
-                    }
+            case _: ClassNotFoundException =>
+                None
         }
-        classLoaders
+    }
+
+    @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
+    def getClassLoaders: Set[ClassLoader] =
+    {
+        val system = Set[ClassLoader] (
+            ClassLoader.getSystemClassLoader,
+            Thread.currentThread.getContextClassLoader)
+        val trace =
+            try
+                throw new Exception
+            catch
+            {
+                case exception: Exception =>
+                    exception.getStackTrace.flatMap (classLoaderFrom).toSet
+            }
+        system.union (trace)
     }
 
     def getClassPaths: JsonArrayBuilder =
@@ -68,23 +77,26 @@ class RESTful ()
         classpath
     }
 
-    protected def getConnection (result: RESTfulJSONResult, debug: Boolean = false): CIMConnection =
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
+    protected def getConnection (result: RESTfulJSONResult, debug: Boolean = false): Option[CIMConnection] =
     {
-        val out = if (debug) new StringBuffer else null
+        val out = if (debug) Some (new StringBuffer) else None
         val factory = getConnectionFactory (out)
         if (debug)
             result.message = out.toString
         if (null != factory)
         {
             val specification: CIMConnectionSpec = factory.getDefaultConnectionSpec
-            specification.getProperties.put ("spark.driver.memory", "1g")
-            specification.getProperties.put ("spark.executor.memory", "2g")
-            factory.getConnection (specification).asInstanceOf[CIMConnection]
+            val properties = specification.getProperties
+            properties.putAll (Map (
+                "spark.driver.memory" -> "1g",
+                "spark.executor.memory" -> "2g"))
+            Some (factory.getConnection (specification).asInstanceOf[CIMConnection])
         }
         else
         {
             result.status = RESTfulJSONResult.FAIL
-            null
+            None
         }
     }
 
@@ -95,6 +107,18 @@ class RESTful ()
         ret.setRecordShortDescription (description)
         ret
     }
+
+    // set up the function with parameters
+    @throws[ResourceException]
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
+    protected def getFunctionInput (function: CIMWebFunction): (CIMInteractionSpec, MappedRecord) =
+    {
+        val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
+        spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
+        val input = getInputRecord ("input record containing the function to run")
+        val _ = input.asInstanceOf[map].put (CIMFunction.FUNCTION, function)
+        (spec, input)
+    }
 }
 
 object RESTful
@@ -104,6 +128,7 @@ object RESTful
         description = "Connection factory for Spark connection using CIMConnector",
         authenticationType = Resource.AuthenticationType.APPLICATION,
         `type`=classOf[CIMConnectionFactory])
+    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
     var _ConnectionFactory: CIMConnectionFactory = _
 
     /**
@@ -111,16 +136,14 @@ object RESTful
      */
     def print_context_r (out: StringBuffer, context: Context, name: String, depth: Int): Unit =
     {
+        def append (string: String): Unit =
+        {
+            val _ = out.append (string)
+        }
+
         if (null != context && depth < 5)
         {
-            val s = new StringBuilder
-            var i = 0
-            while (i < depth)
-            {
-                s.append ("    ")
-                i += 1
-            }
-            val indent = s.toString
+            val indent = List.fill (depth)("    ").mkString
             try
             {
                 val x = context.list (name)
@@ -130,11 +153,7 @@ object RESTful
                         val pair = x.next
                         if (null != pair)
                         {
-                            out.append (indent)
-                            out.append (pair.getName)
-                            out.append (" : ")
-                            out.append (pair.getClassName)
-                            out.append ("\n")
+                            append (s"${indent}${pair.getName} : ${pair.getClassName}\n")
                             print_context_r (out, context, name + "/" + pair.getName, depth + 1)
                         }
                     }
@@ -142,100 +161,83 @@ object RESTful
             catch
             {
                 case _: NameNotFoundException =>
-                    out.append (indent)
-                    out.append ("NameNotFoundException ")
-                    out.append (name)
-                    out.append ("\n")
+                    append (s"${indent}NameNotFoundException $name\n")
                 case ne: NamingException =>
                     if (!("Name is not bound to a Context" == ne.getMessage))
-                    {
-                        out.append (indent)
-                        out.append ("NamingException ")
-                        out.append (ne.getMessage)
-                        out.append ("\n")
-                    }
+                        append (s"${indent}NamingException ${ne.getMessage}\n")
             }
         }
     }
 
-    protected def print_context (out: StringBuffer, context: Context, name: String): StringBuffer =
+    protected def print_context (out: Option[StringBuffer], context: Context, name: String): Unit =
     {
-        val ret =
-            if (null == out)
-                new StringBuffer
-            else
-                out
-        ret.append (name)
-        ret.append ("\n")
-        print_context_r (ret, context, name, 1)
-        ret
+        val ret = out match
+        {
+            case Some (stringbuffer) => stringbuffer
+            case _ => new StringBuffer
+        }
+        print_context_r (ret.append (s"$name\n"), context, name, 1)
     }
 
-    def getConnectionFactory (debug_out: StringBuffer = null): CIMConnectionFactory =
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
+    def lookupFactory (context: InitialContext, name: String): Try[CIMConnectionFactory] =
     {
-        val debug = null != debug_out
+        try
+        {
+            val factory = context.lookup (name)
+            Success (factory.asInstanceOf[CIMConnectionFactory])
+        }
+        catch
+        {
+            case ne: NamingException =>
+                Logger.getLogger (getClass.getName).log (Level.SEVERE, s"NameNotFoundException: ${ne.getMessage}")
+                Failure (ne)
+        }
+    }
+
+    def append (message: String, out: Option[StringBuffer]): Unit =
+    {
+        out.foreach (_.append (message))
+    }
+
+    def getConnectionFactory (debug_out: Option[StringBuffer] = None): CIMConnectionFactory =
+    {
         try
         {
             if (null == _ConnectionFactory)
             {
-                if (debug)
-                    debug_out.append ("resource injection failed\ntrying alternate lookup:\n")
-                val properties = new Properties
+                append ("resource injection failed\ntrying alternate lookup:\n", debug_out)
                 try
                 {
-                    val context = new InitialContext (properties)
-                    if (debug)
-                        print_context (debug_out, context, "java:openejb")
-                    try
-                        _ConnectionFactory = context.lookup ("java:openejb/Resource/SparkConnectionFactory").asInstanceOf[CIMConnectionFactory]
-                    catch
+                    val context: InitialContext = new InitialContext ()
+                    print_context (debug_out, context, "java:openejb")
+                    lookupFactory (context, "java:openejb/Resource/SparkConnectionFactory") match
                     {
-                        case ne: NamingException =>
-                            debug_out.append ("NameNotFoundException: ")
-                            debug_out.append (ne.getMessage)
-                            debug_out.append ("\n")
-                            if (debug)
-                                print_context (debug_out, context, "java:comp")
-                            try
-                                _ConnectionFactory = context.lookup ("java:comp/env/eis/SparkConnectionFactory").asInstanceOf[CIMConnectionFactory]
-                            catch
+                        case Success (connection) => _ConnectionFactory = connection
+                        case Failure (error) =>
+                            append (error.getLocalizedMessage, debug_out)
+                            print_context (debug_out, context, "java:comp")
+                            lookupFactory (context, "java:comp/env/eis/SparkConnectionFactory") match
                             {
-                                case ne2: NamingException =>
-                                    debug_out.append ("NameNotFoundException: ")
-                                    debug_out.append (ne2.getMessage)
-                                    debug_out.append ("\n")
-                                    System.out.println ("fuck this JNDI shit, I give up")
+                                case Success (connection) => _ConnectionFactory = connection
+                                case Failure (error) =>
+                                    append (error.getLocalizedMessage, debug_out)
                             }
                     }
                 }
                 catch
                 {
                     case nnfe: NameNotFoundException =>
-                        if (debug)
-                        {
-                            debug_out.append ("NameNotFoundException: ")
-                            debug_out.append (nnfe.getMessage)
-                            debug_out.append ("\n")
-                        }
+                        append (s"NameNotFoundException: ${nnfe.getLocalizedMessage}\n", debug_out)
                     case ne: NamingException =>
-                        if (debug)
-                        {
-                            debug_out.append ("NamingException: ")
-                            debug_out.append (ne.getMessage)
-                            debug_out.append ("\n")
-                        }
+                        append (s"NamingException: ${ne.getLocalizedMessage}\n", debug_out)
                 }
             }
         }
         catch
         {
             case re: ResourceException =>
-                if (debug)
-                {
-                    debug_out.append ("ResourceException: ")
-                    debug_out.append (re.getMessage)
-                    debug_out.append ("\n")
-                }
+                append (s"ResourceException: ${re.getLocalizedMessage}\n", debug_out)
         }
         _ConnectionFactory
     }

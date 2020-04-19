@@ -63,67 +63,66 @@ class View extends RESTful
         @DefaultValue ("1.0e-4") @MatrixParam ("resolution") resolution: String): Response =
     {
         val ret = new RESTfulJSONResult
-        val connection = getConnection (ret)
-        val response: Response = if (null != connection)
-            try
-            {
-                val everything = try { all.toBoolean } catch { case _: Throwable => true }
-                val reduce = try { reduceLines.toBoolean } catch { case _: Throwable => false }
-                val doug = try { dougPeuk.toBoolean } catch { case _: Throwable => false }
-                _Logger.info ("View (\"%s\",all=%s [%g,%g],[%g,%g],reduce=%s,maxLines=%d,dougPeuk=%s,dougPeukFactor=%g,resolution=%g)".format (about, all, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble))
-                val function = ViewFunction (about, everything, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble)
-                val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
-                spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
-                val input = getInputRecord ("input record containing the function to run")
-                input.asInstanceOf[map].put (CIMFunction.FUNCTION, function)
-                val interaction = connection.createInteraction
-                val output = interaction.execute (spec, input)
-                if (null == output)
+        val response: Response = getConnection (ret) match
+        {
+            case Some (connection) =>
+                try
                 {
-                    interaction.close ()
-                    Response.serverError ().entity ("null is not a MappedRecord").build
-                }
-                else
-                {
-                    val record = output.asInstanceOf[CIMMappedRecord]
-                    val rdf = record.get (CIMFunction.RESULT).asInstanceOf[String]
-                    interaction.close ()
-                    if (try { zip.toBoolean } catch { case _: Throwable => false })
+                    val everything = try { all.toBoolean } catch { case _: Throwable => true }
+                    val reduce = try { reduceLines.toBoolean } catch { case _: Throwable => false }
+                    val doug = try { dougPeuk.toBoolean } catch { case _: Throwable => false }
+                    _Logger.info ("View (\"%s\",all=%s [%g,%g],[%g,%g],reduce=%s,maxLines=%d,dougPeuk=%s,dougPeukFactor=%g,resolution=%g)".format (about, all, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble))
+                    val function = ViewFunction (about, everything, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble)
+                    val (spec, input) = getFunctionInput (function)
+                    val interaction = connection.createInteraction
+                    val output = interaction.execute (spec, input)
+                    if (null == output)
                     {
-                        val bos = new ByteArrayOutputStream ()
-                        val zos = new ZipOutputStream (bos)
-                        zos.setLevel (9)
-                        val name = "view.rdf"
-                        zos.putNextEntry (new ZipEntry (name))
-                        val data = rdf.getBytes (StandardCharsets.UTF_8)
-                        zos.write (data, 0, data.length)
-                        zos.finish ()
-                        zos.close ()
-                        val zip = "view.zip"
                         interaction.close ()
-                        Response.ok (bos.toByteArray, "application/zip")
-                            .header ("content-disposition", "attachment; filename=%s".format (zip))
-                            .build
+                        Response.serverError ().entity ("null is not a MappedRecord").build
                     }
                     else
-                        Response.ok (rdf, MediaType.APPLICATION_XML).build
+                    {
+                        val record = output.asInstanceOf[CIMMappedRecord]
+                        val rdf = record.get (CIMFunction.RESULT).asInstanceOf[String]
+                        interaction.close ()
+                        if (try { zip.toBoolean } catch { case _: Throwable => false })
+                        {
+                            val bos = new ByteArrayOutputStream ()
+                            val zos = new ZipOutputStream (bos)
+                            zos.setLevel (9)
+                            val name = "view.rdf"
+                            zos.putNextEntry (new ZipEntry (name))
+                            val data = rdf.getBytes (StandardCharsets.UTF_8)
+                            zos.write (data, 0, data.length)
+                            zos.finish ()
+                            zos.close ()
+                            val zip = "view.zip"
+                            interaction.close ()
+                            Response.ok (bos.toByteArray, "application/zip")
+                                .header ("content-disposition", "attachment; filename=%s".format (zip))
+                                .build
+                        }
+                        else
+                            Response.ok (rdf, MediaType.APPLICATION_XML).build
+                    }
                 }
-            }
-            catch
-            {
-                case resourceexception: ResourceException =>
-                    Response.serverError ().entity ("ResourceException on interaction\n" + resourceexception.getMessage).build
-            }
-            finally
-                try
-                    connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        Response.serverError ().entity ("ResourceException on close\n" + resourceexception.getMessage).build
+                        Response.serverError ().entity ("ResourceException on interaction\n" + resourceexception.getMessage).build
                 }
-        else
-            Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection: " + ret.message).build
+                finally
+                    try
+                        connection.close ()
+                    catch
+                    {
+                        case resourceexception: ResourceException =>
+                            Response.serverError ().entity ("ResourceException on close\n" + resourceexception.getMessage).build
+                    }
+            case None =>
+                Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection: " + ret.message).build
+        }
 
         response
     }

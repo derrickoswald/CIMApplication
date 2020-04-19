@@ -37,46 +37,45 @@ class Estimation extends RESTful
         val json = new String (data, "UTF-8")
         _Logger.info ("""estimation verbose=%s, keep=%s, json=%s""".format (verbose, keep, json))
         var ret = new RESTfulJSONResult
-        val connection = getConnection (ret)
-        if (null != connection)
-            try
-            {
-                val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
-                spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
-                val input = getInputRecord ("input record containing the function to run")
-                // set up the function with parameters
-                // Note:
-                // to determine the Cassandra host we need to look in
-                // the SparkContext configuration for spark.cassandra.connection.host, i.e.	"sandbox",
-                // so we do that in the EstimationFunction when we get a SparkSession,
-                // otherwise it defaults to localhost
-                val options = SimulationOptions (verbose = verbose, keep = keep, simulation = Seq (json))
-                val estimator = EstimationFunction (options)
-                input.asInstanceOf[map].put (CIMFunction.FUNCTION, estimator)
-                val interaction = connection.createInteraction
-                val output = interaction.execute (spec, input)
-                if (null == output)
-                    throw new ResourceException ("null is not a MappedRecord")
-                else
-                {
-                    val record = output.asInstanceOf[CIMMappedRecord]
-                    val struct = record.get (CIMFunction.RESULT).asInstanceOf[JsonObject]
-                    ret = RESTfulJSONResult (struct.getString ("status"), struct.getString ("message"), struct.getJsonObject ("result"))
-                }
-            }
-            catch
-            {
-                case resourceexception: ResourceException =>
-                    ret.setResultException (resourceexception, "ResourceException on interaction")
-            }
-            finally
+        getConnection (ret) match
+        {
+            case Some (connection) =>
                 try
-                    connection.close ()
+                {
+                    // set up the function with parameters
+                    // Note:
+                    // to determine the Cassandra host we need to look in
+                    // the SparkContext configuration for spark.cassandra.connection.host, i.e.	"sandbox",
+                    // so we do that in the EstimationFunction when we get a SparkSession,
+                    // otherwise it defaults to localhost
+                    val options = SimulationOptions (verbose = verbose, keep = keep, simulation = Seq (json))
+                    val estimator = EstimationFunction (options)
+                    val (spec, input) = getFunctionInput (estimator)
+                    val interaction = connection.createInteraction
+                    val output = interaction.execute (spec, input)
+                    if (null == output)
+                        throw new ResourceException ("null is not a MappedRecord")
+                    else
+                    {
+                        val record = output.asInstanceOf[CIMMappedRecord]
+                        val struct = record.get (CIMFunction.RESULT).asInstanceOf[JsonObject]
+                        ret = RESTfulJSONResult (struct.getString ("status"), struct.getString ("message"), struct.getJsonObject ("result"))
+                    }
+                }
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        ret.setResultException (resourceexception, "ResourceException on close")
+                        ret.setResultException (resourceexception, "ResourceException on interaction")
                 }
+                finally
+                    try
+                        connection.close ()
+                    catch
+                    {
+                        case resourceexception: ResourceException =>
+                            ret.setResultException (resourceexception, "ResourceException on close")
+                    }
+        }
 
         ret.toString
     }

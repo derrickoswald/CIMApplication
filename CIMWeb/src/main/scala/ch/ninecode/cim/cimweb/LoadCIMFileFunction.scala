@@ -101,22 +101,22 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
 
             // echo options to the response
             val opts = Json.createObjectBuilder
-            opts.add ("StorageLevel", storage_level_tostring (storage))
-            opts.add ("ch.ninecode.cim.do_about", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_about", "false")))
-            opts.add ("ch.ninecode.cim.do_normalize", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_normalize", "false")))
-            opts.add ("ch.ninecode.cim.do_deduplication", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_deduplication", "false")))
-            opts.add ("ch.ninecode.cim.make_edges", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.make_edges", "false")))
-            opts.add ("ch.ninecode.cim.do_join", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_join", "false")))
-            opts.add ("ch.ninecode.cim.do_topo_islands", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_topo_islands", "false")))
-            opts.add ("ch.ninecode.cim.do_topo", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_topo", "false")))
-            opts.add ("ch.ninecode.cim.force_retain_switches", reader_options.getOrElse ("ch.ninecode.cim.force_retain_switches", "Unforced"))
-            opts.add ("ch.ninecode.cim.force_retain_fuses", reader_options.getOrElse ("ch.ninecode.cim.force_retain_fuses", "Unforced"))
-            opts.add ("ch.ninecode.cim.force_switch_separate_islands", reader_options.getOrElse ("ch.ninecode.cim.force_switch_separate_islands", "Unforced"))
-            opts.add ("ch.ninecode.cim.force_fuse_separate_islands", reader_options.getOrElse ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced"))
-            opts.add ("ch.ninecode.cim.default_switch_open_state", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.default_switch_open_state", "false")))
-            opts.add ("ch.ninecode.cim.debug", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.debug", "false")))
-            opts.add ("ch.ninecode.cim.split_maxsize", reader_options.getOrElse ("ch.ninecode.cim.split_maxsize", "67108864").toInt)
-            opts.add ("ch.ninecode.cim.cache", reader_options.getOrElse ("ch.ninecode.cim.cache", ""))
+                .add ("StorageLevel", storage_level_tostring (storage))
+                .add ("ch.ninecode.cim.do_about", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_about", "false")))
+                .add ("ch.ninecode.cim.do_normalize", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_normalize", "false")))
+                .add ("ch.ninecode.cim.do_deduplication", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_deduplication", "false")))
+                .add ("ch.ninecode.cim.make_edges", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.make_edges", "false")))
+                .add ("ch.ninecode.cim.do_join", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_join", "false")))
+                .add ("ch.ninecode.cim.do_topo_islands", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_topo_islands", "false")))
+                .add ("ch.ninecode.cim.do_topo", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.do_topo", "false")))
+                .add ("ch.ninecode.cim.force_retain_switches", reader_options.getOrElse ("ch.ninecode.cim.force_retain_switches", "Unforced"))
+                .add ("ch.ninecode.cim.force_retain_fuses", reader_options.getOrElse ("ch.ninecode.cim.force_retain_fuses", "Unforced"))
+                .add ("ch.ninecode.cim.force_switch_separate_islands", reader_options.getOrElse ("ch.ninecode.cim.force_switch_separate_islands", "Unforced"))
+                .add ("ch.ninecode.cim.force_fuse_separate_islands", reader_options.getOrElse ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced"))
+                .add ("ch.ninecode.cim.default_switch_open_state", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.default_switch_open_state", "false")))
+                .add ("ch.ninecode.cim.debug", asBoolean (reader_options.getOrElse ("ch.ninecode.cim.debug", "false")))
+                .add ("ch.ninecode.cim.split_maxsize", reader_options.getOrElse ("ch.ninecode.cim.split_maxsize", "67108864").toInt)
+                .add ("ch.ninecode.cim.cache", reader_options.getOrElse ("ch.ninecode.cim.cache", ""))
             response.add ("options", opts)
         }
         catch
@@ -129,12 +129,12 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
 
     override def toString: String =
     {
-        val sb = new StringBuilder (super.toString)
-        sb.append (" (paths=")
-        sb.append (paths.mkString (","))
-        sb.append (", options=")
-        sb.append (if (null != options) options.toString else "null")
-        sb.append (")")
-        sb.toString
+        new StringBuilder (super.toString)
+            .append (" (paths=")
+            .append (paths.mkString (","))
+            .append (", options=")
+            .append (if (null != options) options.toString else "null")
+            .append (")")
+            .toString
     }
 }

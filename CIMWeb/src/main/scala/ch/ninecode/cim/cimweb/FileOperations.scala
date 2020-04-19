@@ -61,101 +61,99 @@ class FileOperations extends RESTful
             else
                 ListFilesFunction (file, try { debug.toBoolean } catch { case _: Throwable => false }) // list the files in HDFS.
         val ret = new RESTfulJSONResult
-        val connection = getConnection (ret)
-        val response: Response = if (null != connection)
-            try
-            {
-                val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
-                spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
-                val input = getInputRecord ("input record containing the function to run")
-                input.asInstanceOf[map].put (CIMFunction.FUNCTION, function)
-                val interaction = connection.createInteraction
-                val output = interaction.execute (spec, input)
-                if (null == output)
+        val response: Response = getConnection (ret) match
+        {
+            case Some (connection) =>
+                try
                 {
-                    interaction.close ()
-                    Response.serverError ().entity ("null is not a MappedRecord").build
-                }
-                else
-                {
-                    // if not found use Response.Status.NOT_FOUND
-                    val record = output.asInstanceOf[CIMMappedRecord]
-                    if (fetch)
+                    val (spec, input) = getFunctionInput (function)
+                    val interaction = connection.createInteraction
+                    val output = interaction.execute (spec, input)
+                    if (null == output)
                     {
-                        val xml = record.get (CIMFunction.RESULT).asInstanceOf[String]
                         interaction.close ()
-                        if (xml.startsWith ("File does not exist:"))
-                            Response.status (Response.Status.NOT_FOUND).build
-                        else
-                            if (try { zip.toBoolean } catch { case _: Throwable => false })
-                            {
-                                val bos = new ByteArrayOutputStream ()
-                                val zos = new ZipOutputStream (bos)
-                                zos.setLevel (9)
-                                val name = if (-1 == file.lastIndexOf ("/")) file else file.substring (file.lastIndexOf ("/") + 1)
-                                zos.putNextEntry (new ZipEntry (name))
-                                val data = xml.getBytes (StandardCharsets.UTF_8)
-                                zos.write (data, 0, data.length)
-                                zos.finish ()
-                                zos.close ()
-                                val zip = if (-1 == name.lastIndexOf (".")) name else name.substring (0, name.lastIndexOf (".")) + ".zip"
-                                Response.ok (bos.toByteArray, "application/zip")
-                                    .header ("content-disposition", "attachment; filename=%s".format (zip))
-                                    .build
-                            }
-                            else
-                            {
-                                val extension = file.substring (file.lastIndexOf (".") + 1)
-                                val media = extension match
-                                {
-                                    case "xml" ⇒ MediaType.APPLICATION_XML
-                                    case "rdf" ⇒ MediaType.APPLICATION_XML
-                                    case "json" ⇒ MediaType.APPLICATION_JSON
-                                    case "csv" ⇒ "text/csv"
-                                    case "glm" ⇒ "text/plain"
-                                    case "zip" ⇒ "application/zip"
-                                    case "txt" ⇒ "text/plain"
-                                    case "out" ⇒ "text/plain"
-                                    case _ ⇒ MediaType.APPLICATION_OCTET_STREAM
-                                }
-                                Response.ok (xml, media).build
-                            }
+                        Response.serverError ().entity ("null is not a MappedRecord").build
                     }
                     else
                     {
-                        ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
-                        interaction.close ()
-                        val response = ret.result.asInstanceOf[JsonObject]
-                        if (response.containsKey ("error"))
+                        // if not found use Response.Status.NOT_FOUND
+                        val record = output.asInstanceOf[CIMMappedRecord]
+                        if (fetch)
                         {
-                            ret.status = RESTfulJSONResult.FAIL
-                            ret.message = response.getString ("error")
-                            val result = Json.createObjectBuilder
-                            for (key <- response.keySet)
-                                if (key != "error")
-                                    result.add (key, response.get (key))
-                            ret.setResult (result.build)
+                            val xml = record.get (CIMFunction.RESULT).asInstanceOf[String]
+                            interaction.close ()
+                            if (xml.startsWith ("File does not exist:"))
+                                Response.status (Response.Status.NOT_FOUND).build
+                            else
+                                if (try { zip.toBoolean } catch { case _: Throwable => false })
+                                {
+                                    val bos = new ByteArrayOutputStream ()
+                                    val zos = new ZipOutputStream (bos)
+                                    zos.setLevel (9)
+                                    val name = if (-1 == file.lastIndexOf ("/")) file else file.substring (file.lastIndexOf ("/") + 1)
+                                    zos.putNextEntry (new ZipEntry (name))
+                                    val data = xml.getBytes (StandardCharsets.UTF_8)
+                                    zos.write (data, 0, data.length)
+                                    zos.finish ()
+                                    zos.close ()
+                                    val zip = if (-1 == name.lastIndexOf (".")) name else name.substring (0, name.lastIndexOf (".")) + ".zip"
+                                    Response.ok (bos.toByteArray, "application/zip")
+                                        .header ("content-disposition", "attachment; filename=%s".format (zip))
+                                        .build
+                                }
+                                else
+                                {
+                                    val extension = file.substring (file.lastIndexOf (".") + 1)
+                                    val media = extension match
+                                    {
+                                        case "xml" ⇒ MediaType.APPLICATION_XML
+                                        case "rdf" ⇒ MediaType.APPLICATION_XML
+                                        case "json" ⇒ MediaType.APPLICATION_JSON
+                                        case "csv" ⇒ "text/csv"
+                                        case "glm" ⇒ "text/plain"
+                                        case "zip" ⇒ "application/zip"
+                                        case "txt" ⇒ "text/plain"
+                                        case "out" ⇒ "text/plain"
+                                        case _ ⇒ MediaType.APPLICATION_OCTET_STREAM
+                                    }
+                                    Response.ok (xml, media).build
+                                }
                         }
-                        Response.ok (ret.toString, MediaType.APPLICATION_JSON).build
+                        else
+                        {
+                            ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
+                            interaction.close ()
+                            val response = ret.result.asInstanceOf[JsonObject]
+                            if (response.containsKey ("error"))
+                            {
+                                ret.status = RESTfulJSONResult.FAIL
+                                ret.message = response.getString ("error")
+                                val result = Json.createObjectBuilder
+                                for (key <- response.keySet)
+                                    if (key != "error")
+                                        result.add (key, response.get (key))
+                                ret.setResult (result.build)
+                            }
+                            Response.ok (ret.toString, MediaType.APPLICATION_JSON).build
+                        }
                     }
                 }
-            }
-            catch
-            {
-                case resourceexception: ResourceException =>
-                    Response.serverError ().entity ("ResourceException on interaction\n" + resourceexception.getMessage).build
-            }
-            finally
-                try
-                    connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        Response.serverError ().entity ("ResourceException on close\n" + resourceexception.getMessage).build
+                        Response.serverError ().entity ("ResourceException on interaction\n" + resourceexception.getMessage).build
                 }
-        else
-            Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection: " + ret.message).build
-
+                finally
+                    try
+                        connection.close ()
+                    catch
+                    {
+                        case resourceexception: ResourceException =>
+                            Response.serverError ().entity ("ResourceException on close\n" + resourceexception.getMessage).build
+                    }
+            case None =>
+                Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection: " + ret.message).build
+        }
         response
     }
 
@@ -171,48 +169,47 @@ class FileOperations extends RESTful
         _Logger.info ("file put %s".format (file))
         val function = PutFileFunction (file, data, try { unzip.toBoolean } catch { case _: Throwable => false })
         val ret = new RESTfulJSONResult
-        val connection = getConnection (ret)
-        if (null != connection)
-            try
-            {
-                val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
-                spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
-                val input = getInputRecord ("input record containing the function to run")
-                input.asInstanceOf[map].put (CIMFunction.FUNCTION, function)
-                val interaction = connection.createInteraction
-                val output = interaction.execute (spec, input)
-                if (null == output)
-                    throw new ResourceException ("null is not a MappedRecord")
-                else
+        getConnection (ret) match
+        {
+            case Some (connection) =>
+                try
                 {
-                    val record = output.asInstanceOf[CIMMappedRecord]
-                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
-                    val response = ret.result.asInstanceOf[JsonObject]
-                    if (response.containsKey ("error"))
+                    val (spec, input) = getFunctionInput (function)
+                    val interaction = connection.createInteraction
+                    val output = interaction.execute (spec, input)
+                    if (null == output)
+                        throw new ResourceException ("null is not a MappedRecord")
+                    else
                     {
-                        ret.status = RESTfulJSONResult.FAIL
-                        ret.message = response.getString ("error")
-                        val result = Json.createObjectBuilder
-                        for (key <- response.keySet)
-                            if (key != "error")
-                                result.add (key, response.get (key))
-                        ret.setResult (result.build)
+                        val record = output.asInstanceOf[CIMMappedRecord]
+                        ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
+                        val response = ret.result.asInstanceOf[JsonObject]
+                        if (response.containsKey ("error"))
+                        {
+                            ret.status = RESTfulJSONResult.FAIL
+                            ret.message = response.getString ("error")
+                            val result = Json.createObjectBuilder
+                            for (key <- response.keySet)
+                                if (key != "error")
+                                    result.add (key, response.get (key))
+                            ret.setResult (result.build)
+                        }
                     }
                 }
-            }
-            catch
-            {
-                case resourceexception: ResourceException =>
-                    ret.setResultException (resourceexception, "ResourceException on interaction")
-            }
-            finally
-                try
-                    connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        ret.setResultException (resourceexception, "ResourceException on close")
+                        ret.setResultException (resourceexception, "ResourceException on interaction")
                 }
+                finally
+                    try
+                        connection.close ()
+                    catch
+                    {
+                        case resourceexception: ResourceException =>
+                            ret.setResultException (resourceexception, "ResourceException on close")
+                    }
+        }
 
         ret.toString
     }
@@ -226,48 +223,47 @@ class FileOperations extends RESTful
         _Logger.info ("file delete %s".format (file))
         val function = DeleteFileFunction (file)
         val ret = new RESTfulJSONResult
-        val connection = getConnection (ret)
-        if (null != connection)
-            try
-            {
-                val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
-                spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
-                val input = getInputRecord ("input record containing the function to run")
-                input.asInstanceOf[map].put (CIMFunction.FUNCTION, function)
-                val interaction = connection.createInteraction
-                val output = interaction.execute (spec, input)
-                if (null == output)
-                    throw new ResourceException ("null is not a MappedRecord")
-                else
+        getConnection (ret) match
+        {
+            case Some (connection) =>
+                try
                 {
-                    val record = output.asInstanceOf[CIMMappedRecord]
-                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
-                    val response = ret.result.asInstanceOf[JsonObject]
-                    if (response.containsKey ("error"))
+                    val (spec, input) = getFunctionInput (function)
+                    val interaction = connection.createInteraction
+                    val output = interaction.execute (spec, input)
+                    if (null == output)
+                        throw new ResourceException ("null is not a MappedRecord")
+                    else
                     {
-                        ret.status = RESTfulJSONResult.FAIL
-                        ret.message = response.getString ("error")
-                        val result = Json.createObjectBuilder
-                        for (key <- response.keySet)
-                            if (key != "error")
-                                result.add (key, response.get (key))
-                        ret.setResult (result.build)
+                        val record = output.asInstanceOf[CIMMappedRecord]
+                        ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
+                        val response = ret.result.asInstanceOf[JsonObject]
+                        if (response.containsKey ("error"))
+                        {
+                            ret.status = RESTfulJSONResult.FAIL
+                            ret.message = response.getString ("error")
+                            val result = Json.createObjectBuilder
+                            for (key <- response.keySet)
+                                if (key != "error")
+                                    result.add (key, response.get (key))
+                            ret.setResult (result.build)
+                        }
                     }
                 }
-            }
-            catch
-            {
-                case resourceexception: ResourceException =>
-                    ret.setResultException (resourceexception, "ResourceException on interaction")
-            }
-            finally
-                try
-                    connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        ret.setResultException (resourceexception, "ResourceException on close")
+                        ret.setResultException (resourceexception, "ResourceException on interaction")
                 }
+                finally
+                    try
+                        connection.close ()
+                    catch
+                    {
+                        case resourceexception: ResourceException =>
+                            ret.setResultException (resourceexception, "ResourceException on close")
+                    }
+        }
 
         ret.toString
     }

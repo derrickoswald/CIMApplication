@@ -229,86 +229,85 @@ class ShortCircuitCalculation extends RESTful
         {
             case Some (options) ⇒
                 _Logger.info ("""shortcircuit options = %s""".format (options))
-                val connection = getConnection (ret)
-                if (null != connection)
-                    try
-                    {
-                        val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
-                        spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
-                        val input = getInputRecord ("input record containing the function to run")
-                        input.asInstanceOf[map].put (CIMFunction.FUNCTION, ShortCircuitFunction (options))
-                        val interaction = connection.createInteraction
-                        val output = interaction.execute (spec, input)
+                getConnection (ret) match
+                {
+                    case Some (connection) =>
                         try
                         {
-                            if (null == output)
-                                throw new ResourceException ("null is not a ResultSet")
-                            else
-                                if (!output.getClass.isAssignableFrom (classOf[CIMResultSet]))
-                                    throw new ResourceException ("object of class %s is not a ResultSet".format (output.getClass.toGenericString))
+                            val (spec, input) = getFunctionInput (ShortCircuitFunction (options))
+                            val interaction = connection.createInteraction
+                            val output = interaction.execute (spec, input)
+                            try
+                            {
+                                if (null == output)
+                                    throw new ResourceException ("null is not a ResultSet")
                                 else
-                                {
-                                    val resultset = output.asInstanceOf[CIMResultSet]
-                                    try
+                                    if (!output.getClass.isAssignableFrom (classOf[CIMResultSet]))
+                                        throw new ResourceException ("object of class %s is not a ResultSet".format (output.getClass.toGenericString))
+                                    else
                                     {
-                                        // form the response
-                                        val records = Json.createArrayBuilder
-                                        val meta = resultset.getMetaData
-                                        while (resultset.next)
-                                            records.add (packRow (resultset, meta))
-                                        resultset.close ()
-                                        val result = Json.createObjectBuilder
-                                        val parameters = Json.createObjectBuilder
-                                        parameters.add ("verbose", options.verbose)
-                                        parameters.add ("description", options.description)
-                                        parameters.add ("default_short_circuit_power_max", complexAsJSON (options.default_short_circuit_power_max))
-                                        parameters.add ("default_short_circuit_impedance_max", complexAsJSON (options.default_short_circuit_impedance_max))
-                                        parameters.add ("default_short_circuit_power_min", complexAsJSON (options.default_short_circuit_power_min))
-                                        parameters.add ("default_short_circuit_impedance_min", complexAsJSON (options.default_short_circuit_impedance_min))
-                                        parameters.add ("default_transformer_power_rating", options.default_transformer_power_rating)
-                                        parameters.add ("default_transformer_impedance", complexAsJSON (options.default_transformer_impedance))
-                                        parameters.add ("base_temperature", options.base_temperature)
-                                        parameters.add ("low_temperature", options.low_temperature)
-                                        parameters.add ("high_temperature", options.high_temperature)
-                                        parameters.add ("cmax", options.cmax)
-                                        parameters.add ("cmin", options.cmin)
-                                        parameters.add ("worstcasepf", options.worstcasepf)
-                                        if (!options.worstcasepf)
-                                            parameters.add ("cosphi", options.cosphi)
-                                        parameters.add ("fuse_table", options.fuse_table)
-                                        parameters.add ("messagemax", options.messagemax)
-                                        parameters.add ("batchsize", options.batchsize)
-                                        if (null != options.trafos)
-                                            parameters.add ("trafos", options.trafos)
-                                        if (null == options.workdir)
-                                            parameters.add ("workdir", options.workdir)
-                                        result.add ("parameters", parameters)
-                                        result.add ("records", records)
-                                        ret.setResult (result.build)
+                                        val resultset = output.asInstanceOf[CIMResultSet]
+                                        try
+                                        {
+                                            // form the response
+                                            val records = Json.createArrayBuilder
+                                            val meta = resultset.getMetaData
+                                            while (resultset.next)
+                                                records.add (packRow (resultset, meta))
+                                            resultset.close ()
+                                            val result = Json.createObjectBuilder
+                                            val parameters = Json.createObjectBuilder
+                                            parameters.add ("verbose", options.verbose)
+                                            parameters.add ("description", options.description)
+                                            parameters.add ("default_short_circuit_power_max", complexAsJSON (options.default_short_circuit_power_max))
+                                            parameters.add ("default_short_circuit_impedance_max", complexAsJSON (options.default_short_circuit_impedance_max))
+                                            parameters.add ("default_short_circuit_power_min", complexAsJSON (options.default_short_circuit_power_min))
+                                            parameters.add ("default_short_circuit_impedance_min", complexAsJSON (options.default_short_circuit_impedance_min))
+                                            parameters.add ("default_transformer_power_rating", options.default_transformer_power_rating)
+                                            parameters.add ("default_transformer_impedance", complexAsJSON (options.default_transformer_impedance))
+                                            parameters.add ("base_temperature", options.base_temperature)
+                                            parameters.add ("low_temperature", options.low_temperature)
+                                            parameters.add ("high_temperature", options.high_temperature)
+                                            parameters.add ("cmax", options.cmax)
+                                            parameters.add ("cmin", options.cmin)
+                                            parameters.add ("worstcasepf", options.worstcasepf)
+                                            if (!options.worstcasepf)
+                                                parameters.add ("cosphi", options.cosphi)
+                                            parameters.add ("fuse_table", options.fuse_table)
+                                            parameters.add ("messagemax", options.messagemax)
+                                            parameters.add ("batchsize", options.batchsize)
+                                            if (null != options.trafos)
+                                                parameters.add ("trafos", options.trafos)
+                                            if (null == options.workdir)
+                                                parameters.add ("workdir", options.workdir)
+                                            result.add ("parameters", parameters)
+                                            result.add ("records", records)
+                                            ret.setResult (result.build)
+                                        }
+                                        catch
+                                        {
+                                            case sqlexception: SQLException ⇒
+                                                ret.setResultException (sqlexception, "SQLException on ResultSet")
+                                        }
                                     }
-                                    catch
-                                    {
-                                        case sqlexception: SQLException ⇒
-                                            ret.setResultException (sqlexception, "SQLException on ResultSet")
-                                    }
-                                }
+                            }
+                            finally
+                                interaction.close ()
                         }
-                        finally
-                            interaction.close ()
-                    }
-                    catch
-                    {
-                        case resourceexception: ResourceException ⇒
-                            ret.setResultException (resourceexception, "ResourceException on interaction")
-                    }
-                    finally
-                        try
-                            connection.close ()
                         catch
                         {
                             case resourceexception: ResourceException ⇒
-                                ret.setResultException (resourceexception, "ResourceException on close")
+                                ret.setResultException (resourceexception, "ResourceException on interaction")
                         }
+                        finally
+                            try
+                                connection.close ()
+                            catch
+                            {
+                                case resourceexception: ResourceException ⇒
+                                    ret.setResultException (resourceexception, "ResourceException on close")
+                            }
+                }
             case None ⇒
                 ret.message = "invalid POST json"
         }

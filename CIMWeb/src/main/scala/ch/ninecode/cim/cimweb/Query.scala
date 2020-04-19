@@ -41,39 +41,38 @@ class Query extends RESTful
         val cassandra = try { cass.toBoolean } catch { case _: Throwable => false }
         _Logger.info ("query %ssql=%s%s%s".format (if (cassandra) "cassandra " else "", sql, if ("" != table_name) " table_name=" + table_name else "", if ("" != cassandra_table_name) " cassandra_table_name=" + cassandra_table_name else ""))
         val ret = new RESTfulJSONResult ()
-        val connection = getConnection (ret)
-        if (null != connection)
-            try
-            {
-                val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
-                spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
-                val input = getInputRecord ("input record containing the function to run")
-                val query = QueryFunction (sql, cassandra, table_name, cassandra_table_name)
-                input.asInstanceOf[map].put (CIMFunction.FUNCTION, query)
-                val interaction = connection.createInteraction
-                val output = interaction.execute (spec, input)
-                if (null == output)
-                    throw new ResourceException ("null is not a MappedRecord")
-                else
-                {
-                    val record = output.asInstanceOf[CIMMappedRecord]
-                    ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
-                }
-                interaction.close ()
-            }
-            catch
-            {
-                case resourceexception: ResourceException =>
-                    ret.setResultException (resourceexception, "ResourceException on interaction")
-            }
-            finally
+        getConnection (ret) match
+        {
+            case Some (connection) =>
                 try
-                    connection.close ()
+                {
+                    val query = QueryFunction (sql, cassandra, table_name, cassandra_table_name)
+                    val (spec, input) = getFunctionInput (query)
+                    val interaction = connection.createInteraction
+                    val output = interaction.execute (spec, input)
+                    if (null == output)
+                        throw new ResourceException ("null is not a MappedRecord")
+                    else
+                    {
+                        val record = output.asInstanceOf[CIMMappedRecord]
+                        ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
+                    }
+                    interaction.close ()
+                }
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        ret.setResultException (resourceexception, "ResourceException on close")
+                        ret.setResultException (resourceexception, "ResourceException on interaction")
                 }
+                finally
+                    try
+                        connection.close ()
+                    catch
+                    {
+                        case resourceexception: ResourceException =>
+                            ret.setResultException (resourceexception, "ResourceException on close")
+                    }
+        }
         ret.toString
     }
 }

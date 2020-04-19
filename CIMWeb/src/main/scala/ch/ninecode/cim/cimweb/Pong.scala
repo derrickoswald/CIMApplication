@@ -54,7 +54,7 @@ class Pong extends RESTful
             ret.add ("classpath", getClassPaths)
         }
 
-        val out = if (verbose) new StringBuffer else null
+        val out = if (verbose) Some (new StringBuffer) else None
         val factory = RESTful.getConnectionFactory (out) // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
         if (null != factory)
         {
@@ -106,58 +106,51 @@ class Pong extends RESTful
                 ret.add ("default_connection_spec", default_connection_spec)
             }
 
-            val connection = getConnection (result)  // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
-            if (null != connection)
+            getConnection (result) match  // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
             {
-                if (verbose)
-                {
-                    // add the Connection metadata
-                    val metadata = Json.createObjectBuilder
-                    val meta: CIMConnectionMetaData = connection.getMetaData.asInstanceOf[CIMConnectionMetaData]
-                    if (null != meta)
+                case Some (connection) =>
+                    if (verbose)
                     {
-                        metadata.add ("product", meta.getEISProductName)
-                        metadata.add ("version", meta.getEISProductVersion)
-                        metadata.add ("group", meta.getEISProductGroup)
-                        metadata.add ("user", meta.getUserName)
-                        metadata.add ("scala", meta.getScalaVersion)
-                        metadata.add ("scalalibrary", meta.getScalaLibraryVersion)
-                        metadata.add ("spark", meta.getSparkVersion)
-                        metadata.add ("sparklibrary", meta.getSparkLibraryVersion)
-                        metadata.add ("hadooplibrary", meta.getHadoopLibraryVersion)
-                        metadata.add ("cimreader", meta.getCIMReaderVersion)
+                        // add the Connection metadata
+                        val metadata = Json.createObjectBuilder
+                        val meta: CIMConnectionMetaData = connection.getMetaData.asInstanceOf[CIMConnectionMetaData]
+                        if (null != meta)
+                        {
+                            metadata.add ("product", meta.getEISProductName)
+                            metadata.add ("version", meta.getEISProductVersion)
+                            metadata.add ("group", meta.getEISProductGroup)
+                            metadata.add ("user", meta.getUserName)
+                            metadata.add ("scala", meta.getScalaVersion)
+                            metadata.add ("scalalibrary", meta.getScalaLibraryVersion)
+                            metadata.add ("spark", meta.getSparkVersion)
+                            metadata.add ("sparklibrary", meta.getSparkLibraryVersion)
+                            metadata.add ("hadooplibrary", meta.getHadoopLibraryVersion)
+                            metadata.add ("cimreader", meta.getCIMReaderVersion)
+                        }
+                        ret.add ("connection_metadata", metadata)
                     }
-                    ret.add ("connection_metadata", metadata)
-                }
 
-                val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
-                spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
-                val input = getInputRecord ("input record containing the function to run")
-                val pong = PongFunction ()
-                input.asInstanceOf[map].put (CIMFunction.FUNCTION, pong)
-                val interaction = connection.createInteraction
-                val output = interaction.execute (spec, input)
-                if (null == output)
-                    throw new ResourceException ("null is not a MappedRecord")
-                else
-                {
-                    val record = output.asInstanceOf[CIMMappedRecord]
-                    ret.add ("spark_instance", record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
-                }
-                interaction.close ()
-            }
-            else
-            {
-                result.status = RESTfulJSONResult.FAIL
-                ret.add ("error", "could not get CIMConnection")
+                    val (spec, input) = getFunctionInput (PongFunction ())
+                    val interaction = connection.createInteraction
+                    val output = interaction.execute (spec, input)
+                    if (null == output)
+                        throw new ResourceException ("null is not a MappedRecord")
+                    else
+                    {
+                        val record = output.asInstanceOf[CIMMappedRecord]
+                        ret.add ("spark_instance", record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
+                    }
+                    interaction.close ()
+                case None =>
+                    result.status = RESTfulJSONResult.FAIL
+                    ret.add ("error", "could not get CIMConnection")
             }
         }
         else
         {
             result.status = RESTfulJSONResult.FAIL
             ret.add ("error", "could not get CIMConnectionFactory")
-            if (verbose)
-                ret.add ("tried", out.toString)
+            out.map (sb => ret.add ("tried", sb.toString))
         }
 
         result.setResult (ret.build)

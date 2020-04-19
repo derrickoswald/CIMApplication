@@ -3,12 +3,12 @@ package ch.ninecode.cim.cimweb
 import javax.json.Json
 import javax.json.JsonStructure
 
+import scala.collection.mutable
+
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.StructField
-
-import scala.collection.mutable.HashMap
 
 case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
@@ -26,29 +26,27 @@ case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String,
             for (f <- files)
                 ff.add (f)
             response.add ("files", ff)
-            val reader_options = new HashMap[String, String] ()
+            val reader_options = mutable.Map[String, String] (
+                "header" -> "false",
+                "ignoreLeadingWhiteSpace" -> "false",
+                "ignoreTrailingWhiteSpace" -> "false",
+                "sep" -> ",",
+                "quote" -> "\"",
+                "escape" -> "\\",
+                "mode" -> "PERMISSIVE",
+                "encoding" -> "UTF-8",
+                "delimiter" -> ",",
+                "comment" -> "#",
+                "nullValue" -> "",
+                "nanValue" -> "NaN",
+                "positiveInf" -> "Inf",
+                "negativeInf" -> "-Inf",
+                "dateFormat" -> "yyyy-MM-dd",
+                "timestampFormat" -> "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+                "inferSchema" -> "true"
+            )
             if (null != options)
                 reader_options ++= options
-            else
-            {
-                reader_options.put ("header", "false")
-                reader_options.put ("ignoreLeadingWhiteSpace", "false")
-                reader_options.put ("ignoreTrailingWhiteSpace", "false")
-                reader_options.put ("sep", ",")
-                reader_options.put ("quote", "\"")
-                reader_options.put ("escape", "\\")
-                reader_options.put ("mode", "PERMISSIVE")
-                reader_options.put ("encoding", "UTF-8")
-                reader_options.put ("delimiter", ",")
-                reader_options.put ("comment", "#")
-                reader_options.put ("nullValue", "")
-                reader_options.put ("nanValue", "NaN")
-                reader_options.put ("positiveInf", "Inf")
-                reader_options.put ("negativeInf", "-Inf")
-                reader_options.put ("dateFormat", "yyyy-MM-dd")
-                reader_options.put ("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-                reader_options.put ("inferSchema", "true")
-            }
             val opts = Json.createObjectBuilder
             for (pair <- reader_options)
                 opts.add (pair._1, pair._2)
@@ -86,12 +84,12 @@ case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String,
 
     override def toString: String =
     {
-        val sb = new StringBuilder (super.toString)
-        sb.append (" (paths=")
-        sb.append (paths.mkString (","))
-        sb.append (", options=")
-        sb.append (if (null != options) options.toString else "null")
-        sb.append (")")
-        sb.toString
+        new StringBuilder (super.toString)
+            .append (" (paths=")
+            .append (paths.mkString (","))
+            .append (", options=")
+            .append (if (null != options) options.toString else "null")
+            .append (")")
+            .toString
     }
 }

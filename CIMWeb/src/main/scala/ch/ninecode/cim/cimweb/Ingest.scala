@@ -5,10 +5,13 @@ import java.util.logging.Logger
 import javax.ejb.Stateless
 import javax.json.JsonObject
 import javax.resource.ResourceException
+import javax.resource.cci.MappedRecord
 import javax.ws.rs.POST
 import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
+
+import scala.collection.JavaConversions._
 
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMInteractionSpec
@@ -26,43 +29,42 @@ class Ingest extends RESTful
         val json = new String (data, "UTF-8")
         Logger.getLogger (getClass.getName).info (s"ingest json=$json")
         var ret = new RESTfulJSONResult
-        val connection = getConnection (ret)
-        if (null != connection)
-            try
-            {
-                val spec: CIMInteractionSpec = new CIMInteractionSpecImpl
-                spec.setFunctionName (CIMInteractionSpec.EXECUTE_CIM_FUNCTION)
-                val input = getInputRecord ("input record containing the function to run")
-                // set up the function with parameters
-                val ingest = IngestFunction (json)
-                input.asInstanceOf[map].put (CIMFunction.FUNCTION, ingest)
-                val interaction = connection.createInteraction
-                val output = interaction.execute (spec, input)
-                if (null == output)
-                    throw new ResourceException ("null is not a MappedRecord")
-                else
-                {
-                    val record = output.asInstanceOf[CIMMappedRecord]
-                    val struct = record.get (CIMFunction.RESULT).asInstanceOf[JsonObject]
-                    ret = RESTfulJSONResult (
-                        struct.getString ("status"),
-                        struct.getString ("message"),
-                        struct.getJsonObject ("result"))
-                }
-            }
-            catch
-            {
-                case resourceexception: ResourceException =>
-                    ret.setResultException (resourceexception, "ResourceException on interaction")
-            }
-            finally
+        getConnection (ret) match
+        {
+            case Some (connection) =>
                 try
-                connection.close ()
+                {
+                    // set up the function with parameters
+                    val ingest = IngestFunction (json)
+                    val (spec, input) = getFunctionInput (ingest)
+                    val interaction = connection.createInteraction
+                    val output = interaction.execute (spec, input)
+                    if (null == output)
+                        throw new ResourceException ("null is not a MappedRecord")
+                    else
+                    {
+                        val record = output.asInstanceOf[CIMMappedRecord]
+                        val struct = record.get (CIMFunction.RESULT).asInstanceOf[JsonObject]
+                        ret = RESTfulJSONResult (
+                            struct.getString ("status"),
+                            struct.getString ("message"),
+                            struct.getJsonObject ("result"))
+                    }
+                }
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        ret.setResultException (resourceexception, "ResourceException on close")
+                        ret.setResultException (resourceexception, "ResourceException on interaction")
                 }
+                finally
+                    try
+                    connection.close ()
+                    catch
+                    {
+                        case resourceexception: ResourceException =>
+                            ret.setResultException (resourceexception, "ResourceException on close")
+                    }
+        }
 
         ret.toString
     }
