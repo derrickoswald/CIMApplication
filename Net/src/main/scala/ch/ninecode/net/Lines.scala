@@ -38,10 +38,13 @@ final case class Lines (
                 if (2 == terminals.size)
                 {
                     val (t1 :: t2 :: _) = terminals.toList
-                    if (t1.ACDCTerminal.sequenceNumber < t2.ACDCTerminal.sequenceNumber)
-                        Some (LineTerminals (line, t1, t2))
+                    if ((null != t1.TopologicalNode) && (null != t2.TopologicalNode))
+                        if (t1.ACDCTerminal.sequenceNumber < t2.ACDCTerminal.sequenceNumber)
+                            Some (LineTerminals (line, t1, t2))
+                        else
+                            Some (LineTerminals (line, t2, t1))
                     else
-                        Some (LineTerminals (line, t2, t1))
+                        None
                 }
                 else
                     None
