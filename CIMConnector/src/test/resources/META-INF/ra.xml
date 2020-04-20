@@ -4,11 +4,22 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/connector_1_6.xsd"
     version="1.6">
+    <module-name>CIMConnector</module-name>
     <description>Interface to CIM data in Apache Spark.</description>
-    <display-name>CIMConnector</display-name>
+    <display-name>CIM resource adapter</display-name>
+    <icon>
+        <large-icon>/images/CIMConnector32.jpg</large-icon>
+    </icon>
+    <icon>
+        <small-icon>/images/CIMConnector16.jpg</small-icon>
+    </icon>
     <vendor-name>9code GmbH</vendor-name>
-    <eis-type>CIM Spark Connector</eis-type>
-    <resourceadapter-version>0.1</resourceadapter-version>
+    <eis-type>Spark</eis-type>
+    <resourceadapter-version>0.2</resourceadapter-version>
+    <license>
+        <description>Copyright (c) 2016 9code GmbH</description>
+        <license-required>false</license-required>
+    </license>
     <resourceadapter id="CIMResourceAdapter">
         <resourceadapter-class>ch.ninecode.cim.connector.CIMResourceAdapter</resourceadapter-class>
         <config-property>
@@ -26,8 +37,8 @@
             <config-property-type>java.lang.String</config-property-type>
             <config-property-value>4g</config-property-value>
         </config-property>
-        <outbound-resourceadapter>
-            <connection-definition>
+        <outbound-resourceadapter id="CIMOutbound">
+            <connection-definition id="SparkConnectionFactory">
                 <managedconnectionfactory-class>ch.ninecode.cim.connector.CIMManagedConnectionFactory</managedconnectionfactory-class>
                 <config-property>
                     <config-property-name>ConnectionURL</config-property-name>

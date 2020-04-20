@@ -108,14 +108,14 @@ public class CIMIndexedRecord implements IndexedRecord
         return (_List.containsAll (c));
     }
 
-    @SuppressWarnings ({ "rawtypes" })
+    @SuppressWarnings ({ "rawtypes", "unchecked" })
     @Override
     public boolean addAll (Collection c)
     {
         return (_List.addAll (c));
     }
 
-    @SuppressWarnings ({ "rawtypes" })
+    @SuppressWarnings ({ "rawtypes", "unchecked" })
     @Override
     public boolean addAll (int index, Collection c)
     {

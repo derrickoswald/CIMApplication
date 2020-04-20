@@ -13,12 +13,12 @@ import javax.transaction.xa.XAResource;
 @Connector
 (
     description = "Interface to CIM data in Apache Spark.",
-    displayName = "CIMConnector",
+    displayName = "CIM resource adapter",
     smallIcon = "/images/CIMConnector16.jpg",
     largeIcon = "/images/CIMConnector32.jpg",
     vendorName = "9code GmbH",
-    eisType = "CIM Spark Connector",
-    version = "0.1",
+    eisType = "Spark",
+    version = "0.2",
     licenseDescription =
     {
         "Copyright (c) 2016 9code GmbH\n" +
