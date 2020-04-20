@@ -136,7 +136,7 @@ public class CIMResourceAdapterTest
      */
     ConnectionFactory getConnectionFactory (InitialContext context) throws Exception
     {
-        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/CIMConnector"); // from id of connector element in ra.xml
+        final ConnectionFactory factory = (ConnectionFactory) context.lookup ("java:openejb/Resource/SparkConnectionFactory"); // from id of connection-definition element in ra.xml
         assertNotNull ("connectionFactory", factory);
 
         return (factory);
