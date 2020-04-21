@@ -12,6 +12,12 @@ object Formats extends Enumeration
     val Belvis, LPEx, MSCONS, Custom = Value
 }
 
+object Modes extends Enumeration
+{
+    type Modes = Value
+    val Overwrite, Append = Value
+}
+
 /**
  *
  * @param valid False if either help or version requested (i.e. don't proceed with execution).
@@ -34,6 +40,7 @@ object Formats extends Enumeration
  * @param maxtime Maximum time for ingestion timespan.
  *                The default is the maximum representable time in the Linux epoch.
  * @param format Type of data file, either Belvis, LPEx or MSCONS.
+ * @param mode Ingest Mode: 'Overwrite' or 'Append'. Overwrite: overwrites existing values in database. Append: adds values to existing ones.
  * @param datafiles Source Belvis/LPEx/MSCONS files.
  * @param keyspace Cassandra keyspace.
  * @param replication Cassandra keyspace replication factor only if the keyspace is created.
@@ -58,6 +65,7 @@ case class IngestOptions
     mintime: Long = 0L, // "1970-01-01 00:00:00.000+0000"
     maxtime: Long = Long.MaxValue, // "292278994-08-17 07:12:55.807+0000"
     format: Formats.Value = Formats.Belvis,
+    mode: Modes.Value = Modes.Overwrite,
     datafiles: Seq[String] = Seq (),
     keyspace: String = "cimapplication",
     replication: Int = 1

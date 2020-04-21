@@ -419,8 +419,17 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val lines = session.sparkContext.textFile (filename)
         val rdd = lines.flatMap (parse_belvis_line (join_table))
         // combine real and imaginary parts
-        val grouped = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
-        grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        if (options.mode == Modes.Append) {
+            val df = session.sparkContext.cassandraTable[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)](options.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val unioned = rdd.union(df)
+            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
+            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
+        else
+        {
+            val grouped = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
     }
 
     def process_belvis (join_table: Map[String, String])(file: String): Unit =
@@ -494,8 +503,18 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         {
             val rdd = lines.flatMap (parse_lpex_line (join_table))
             // combine real and imaginary parts
-            val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
-            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            if (options.mode == Modes.Append)
+            {
+                val df = session.sparkContext.cassandraTable[MeasuredValue](options.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+                val unioned = rdd.union(df)
+                val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
+                grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            }
+            else
+            {
+                val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+                grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            }
         }
     }
 
@@ -576,8 +595,24 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // read all files into one RDD
         val raw = mscons_files.flatMap (processOneFile)
         // combine real and imaginary parts
-        val grouped = raw.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
-        grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        if (options.mode == Modes.Append) {
+            val df= session.sparkContext.cassandraTable(options.keyspace, "measured_value").select("mrid", "time", "period", "real_a", "imag_a", "units")
+              .map((row) => {
+                  ThreePhaseComplexDataElement(
+                      row.getString("mrid"),
+                      row.getLong("time"),
+                      Complex(row.getDouble("real_a"),row.getDouble("imag_a")),
+                      null,
+                      null,
+                      row.getString("units"))
+              })
+            val unioned= raw.union(df)
+            val grouped = unioned.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
+            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        } else {
+            val grouped = raw.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
+            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
         val end = System.nanoTime ()
         if (!options.nocopy)
             all_files.foreach (x => hdfs.delete (new Path (x), false))

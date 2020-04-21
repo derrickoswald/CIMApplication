@@ -18,6 +18,7 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
     implicit val FormatsRead: scopt.Read[Formats.Value] = scopt.Read.reads (Formats.withName)
+    implicit val ModesRead: scopt.Read[Modes.Value] = scopt.Read.reads (Modes.withName)
 
     override def terminate (exitState: Either[String, Unit]): Unit =
     {
@@ -121,6 +122,10 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
     opt[Formats.Value]("format").
         action ((x, c) ⇒ c.copy (format = x)).
         text ("format of the data files, one of " + Formats.values.iterator.mkString (",") + " [%s]".format (default.format))
+
+    opt[Modes.Value]("mode").
+      action ((x, c) ⇒ c.copy (mode = x)).
+      text ("ingest mode, one of " + Modes.values.iterator.mkString (",") + " [%s]".format (default.mode))
 
     arg[String]("<ZIP> or <CSV>...").optional ().unbounded ().
         action ((x, c) ⇒
