@@ -684,8 +684,18 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val lines: RDD[String] = session.sparkContext.textFile (filename)
         val rdd = lines.flatMap (line_custom (join_table))
         // combine real and imaginary parts
-        val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
-        grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        if (options.mode == Modes.Append)
+        {
+            val df = session.sparkContext.cassandraTable[MeasuredValue](options.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val unioned = rdd.union(df)
+            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
+            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
+        else
+        {
+            val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
     }
 
     def process_custom (join_table: Map[String, String])(file: String): Unit =
