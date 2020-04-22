@@ -67,14 +67,5 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
         response.build
     }
 
-    override def toString: String =
-    {
-        new StringBuilder (super.toString)
-            .append (" (path=")
-            .append (path)
-            .append (", debug=")
-            .append (debug)
-            .append (")")
-            .toString
-    }
+    override def toString: String = s"${super.toString} (path=$path, debug=$debug)"
 }

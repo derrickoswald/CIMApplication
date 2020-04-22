@@ -1,7 +1,6 @@
 package ch.ninecode.cim.cimweb
 
 import java.net.URLClassLoader
-import java.util.Properties
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -125,11 +124,12 @@ object RESTful
 {
     @Resource(
         name = "SparkConnectionFactory",
-        description = "Connection factory for Spark connection using CIMConnector",
-        authenticationType = Resource.AuthenticationType.APPLICATION,
-        `type`=classOf[CIMConnectionFactory])
+        lookup = "java:comp/env/eis/SparkConnectionFactory",
+        description = "Connection factory for Spark connection using CIMConnector")
     @SuppressWarnings (Array ("org.wartremover.warts.Null"))
     var _ConnectionFactory: CIMConnectionFactory = _
+
+    lazy val log: Logger = Logger.getLogger (getClass.getName)
 
     /**
      * Debugging for JNDI.
@@ -206,6 +206,7 @@ object RESTful
         {
             if (null == _ConnectionFactory)
             {
+                log.severe ("CDI injection for ConnectionFactory failed, trying alternate lookup")
                 append ("resource injection failed\ntrying alternate lookup:\n", debug_out)
                 try
                 {

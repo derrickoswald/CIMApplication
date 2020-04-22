@@ -26,12 +26,5 @@ case class SpatialNearestFunction (var parameters: SpatialOperationParameters) e
         ops.nearest (parameters)
     }
 
-    override def toString: String =
-    {
-        val sb = new StringBuilder (super.toString)
-        sb.append (" is SpatialOperations.nearest (")
-        sb.append (parameters.toString)
-        sb.append (")")
-        sb.toString
-    }
+    override def toString: String = s"${super.toString} is SpatialOperations.nearest (${parameters.toString})"
 }

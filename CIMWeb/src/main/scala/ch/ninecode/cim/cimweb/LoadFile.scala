@@ -17,8 +17,6 @@ import javax.ws.rs.Produces
 import scala.collection.JavaConversions.iterableAsScalaIterable
 
 import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMInteractionSpec
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 /**

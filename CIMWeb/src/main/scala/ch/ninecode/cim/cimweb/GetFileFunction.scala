@@ -30,12 +30,5 @@ case class GetFileFunction (path: String) extends CIMWebFunction
         }
     }
 
-    override def toString: String =
-    {
-        val sb = new StringBuilder (super.toString)
-        sb.append (" (path=")
-        sb.append (path)
-        sb.append (")")
-        sb.toString
-    }
+    override def toString: String = s"${super.toString} (path=$path)"
 }

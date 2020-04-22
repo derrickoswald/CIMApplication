@@ -222,12 +222,5 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
         response.build
     }
 
-    override def toString: String =
-    {
-        val sb = new StringBuilder (super.toString)
-        sb.append (" (sql=")
-        sb.append (sql)
-        sb.append (")")
-        sb.toString
-    }
+    override def toString: String = s"${super.toString} (sql=$sql)"
 }

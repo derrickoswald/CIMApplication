@@ -163,32 +163,5 @@ case class ViewFunction (
         }
     }
 
-    override def toString: String =
-    {
-        new StringBuilder (super.toString)
-            .append (" (\"")
-            .append (about)
-            .append ("\",all=")
-            .append (all)
-            .append (", [")
-            .append (xmin)
-            .append (",")
-            .append (ymin)
-            .append ("],[")
-            .append (xmax)
-            .append (",")
-            .append (ymax)
-            .append ("],reduce=")
-            .append (reduceLines)
-            .append (",maxLines=")
-            .append (maxLines)
-            .append (",dougPeuk=")
-            .append (dougPeuk)
-            .append (",dougPeukFactor=")
-            .append (dougPeukFactor)
-            .append (",resolution=")
-            .append (resolution)
-            .append (")")
-            .toString
-    }
+    override def toString: String = s"""${super.toString} ("$about",all=$all,[$xmin,$ymin],[$xmax,$ymax],reduce=$reduceLines,maxLines=$maxLines,dougPeuk=$dougPeuk,dougPeukFactor=$dougPeukFactor,resolution=$resolution)"""
 }

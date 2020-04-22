@@ -31,12 +31,5 @@ case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFun
         spark.sqlContext.createDataFrame (pseudoresults)
     }
 
-    override def toString: String =
-    {
-        val sb = new StringBuilder (super.toString)
-        sb.append (" (")
-        sb.append (options.toString)
-        sb.append (")")
-        sb.toString
-    }
+    override def toString: String = s"${super.toString} (${options.toString})"
 }

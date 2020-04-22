@@ -91,14 +91,5 @@ case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = fa
         response.build
     }
 
-    override def toString: String =
-    {
-        val sb = new StringBuilder (super.toString)
-        sb.append (" (path=")
-        sb.append (path)
-        sb.append (", unzip=")
-        sb.append (unzip)
-        sb.append (")")
-        sb.toString
-    }
+    override def toString: String = s"${super.toString} (path=$path, unzip=$unzip)"
 }

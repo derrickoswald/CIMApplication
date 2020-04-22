@@ -82,14 +82,5 @@ case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String,
         response.build
     }
 
-    override def toString: String =
-    {
-        new StringBuilder (super.toString)
-            .append (" (paths=")
-            .append (paths.mkString (","))
-            .append (", options=")
-            .append (if (null != options) options.toString else "null")
-            .append (")")
-            .toString
-    }
+    override def toString: String = s"${super.toString} (paths=${paths.mkString (",")}, options=${if (null != options) options.toString else "null"})"
 }

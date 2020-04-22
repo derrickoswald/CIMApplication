@@ -9,8 +9,8 @@ import javax.ws.rs.core.Application
 
 @ConnectionFactoryDefinition (
     description = "Connection factory for Spark connection using CIMConnector",
-    name = "java:env/eis/SparkConnectionFactory",
-    resourceAdapter = "CIMConnector", // reference CIMConnector.rar in application.xml
+    name = "java:comp/env/eis/SparkConnectionFactory",
+    resourceAdapter = "#CIMConnector", // reference CIMConnector.rar in application.xml
     interfaceName = "ch.ninecode.cim.connector.CIMConnectionFactory",
     transactionSupport = TransactionSupportLevel.NoTransaction
 )
