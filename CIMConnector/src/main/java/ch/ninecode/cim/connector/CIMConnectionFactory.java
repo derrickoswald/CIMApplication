@@ -13,7 +13,6 @@ import javax.resource.spi.ManagedConnectionFactory;
 
 public class CIMConnectionFactory implements ConnectionFactory
 {
-
     private static final long serialVersionUID = 1L;
     protected CIMManagedConnectionFactory _ManagedConnectionFactory;
     protected ConnectionManager _ConnectionManager;
@@ -48,6 +47,8 @@ public class CIMConnectionFactory implements ConnectionFactory
     @Override
     public Reference getReference () throws NamingException
     {
+        if (null == _Reference)
+            throw new NamingException ("Reference is null");
         return (_Reference);
     }
 

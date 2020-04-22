@@ -26,7 +26,7 @@
 <!--        <description>Access to the CIMConnector Resource Adapter (RAR)</description>-->
 <!--        <name>java:comp/env/eis/SparkConnectionFactory</name>-->
 <!--        <interface-name>javax.resource.cci.ConnectionFactory</interface-name>-->
-<!--        <resource-adapter>CIMConnector</resource-adapter>-->
+<!--        <resource-adapter>#CIMConnector</resource-adapter>-->
 <!--        <max-pool-size>8</max-pool-size>-->
 <!--        <min-pool-size>1</min-pool-size>-->
 <!--        <transaction-support>NoTransaction</transaction-support>-->

@@ -7,6 +7,7 @@ import javax.resource.spi.ConfigProperty;
 import javax.resource.spi.Connector;
 import javax.resource.spi.ResourceAdapter;
 import javax.resource.spi.ResourceAdapterInternalException;
+import javax.resource.spi.TransactionSupport.TransactionSupportLevel;
 import javax.resource.spi.endpoint.MessageEndpointFactory;
 import javax.transaction.xa.XAResource;
 
@@ -14,39 +15,39 @@ import javax.transaction.xa.XAResource;
 (
     description = "Interface to CIM data in Apache Spark.",
     displayName = "CIM resource adapter",
-    smallIcon = "/images/CIMConnector16.jpg",
-    largeIcon = "/images/CIMConnector32.jpg",
+    smallIcon = { "/images/CIMConnector16.jpg" },
+    largeIcon = { "/images/CIMConnector32.jpg" },
     vendorName = "9code GmbH",
     eisType = "Spark",
     version = "0.2",
     licenseDescription =
     {
-        "Copyright (c) 2016 9code GmbH\n" +
-        "\n" +
-        "Permission is hereby granted, free of charge, to any person\n" +
-        "obtaining a copy of this software and associated documentation\n" +
-        "files (the \"Software\"), to deal in the Software without\n" +
-        "restriction, including without limitation the rights to use,\n" +
-        "copy, modify, merge, publish, distribute, sublicense, and/or\n" +
-        "sell copies of the Software, and to permit persons to whom the\n" +
-        "Software is furnished to do so, subject to the following conditions:\n" +
-        "\n" +
-        "The above copyright notice and this permission notice shall be\n" +
-        "included in all copies or substantial portions of the Software.\n" +
-        "\n" +
-        "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\n" +
-        "EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\n" +
-        "MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\n" +
-        "IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY\n" +
-        "CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,\n" +
-        "TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE\n" +
+        "Copyright (c) 2016 9code GmbH",
+        "",
+        "Permission is hereby granted, free of charge, to any person",
+        "obtaining a copy of this software and associated documentation",
+        "files (the \"Software\"), to deal in the Software without",
+        "restriction, including without limitation the rights to use,",
+        "copy, modify, merge, publish, distribute, sublicense, and/or",
+        "sell copies of the Software, and to permit persons to whom the",
+        "Software is furnished to do so, subject to the following conditions:",
+        "",
+        "The above copyright notice and this permission notice shall be",
+        "included in all copies or substantial portions of the Software.",
+        "",
+        "THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,",
+        "EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF",
+        "MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.",
+        "IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY",
+        "CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,",
+        "TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE",
         "SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
     },
-    licenseRequired = false
+    licenseRequired = false,
+    transactionSupport = TransactionSupportLevel.NoTransaction
 //    AuthenticationMechanism[] authMechanisms() default {};
 //    boolean reauthenticationSupport() default false;
 //    SecurityPermission[] securityPermissions() default {};
-//    TransactionSupport.TransactionSupportLevel transactionSupport() default TransactionSupport.TransactionSupportLevel.NoTransaction;
 //    Class<? extends WorkContext>[] requiredWorkContexts() default {};
 )
 public class CIMResourceAdapter implements ResourceAdapter
@@ -122,10 +123,7 @@ public class CIMResourceAdapter implements ResourceAdapter
     (
         type = String.class,
         description = "Path to Yarn configuration files such as core-site.xml and yarn-site.xml.",
-        defaultValue = "/home/derrick/spark/spark-2.4.-bin-hadoop2.7/conf/",
-        ignore = false,
-        supportsDynamicUpdates = false,
-        confidential = false
+        defaultValue = "/home/derrick/spark/spark-2.4.-bin-hadoop2.7/conf/"
     )
     public void setYarnConfigurationPath (String path)
     {
@@ -141,10 +139,7 @@ public class CIMResourceAdapter implements ResourceAdapter
     (
         type = String.class,
         description = "Setting for spark.driver.memory value.",
-        defaultValue = "1g",
-        ignore = false,
-        supportsDynamicUpdates = false,
-        confidential = false
+        defaultValue = "1g"
     )
     public void setSparkDriverMemory (String memory)
     {
@@ -160,10 +155,7 @@ public class CIMResourceAdapter implements ResourceAdapter
     (
         type = String.class,
         description = "Setting for spark.executor.memory value.",
-        defaultValue = "4g",
-        ignore = false,
-        supportsDynamicUpdates = false,
-        confidential = false
+        defaultValue = "4g"
     )
     public void setSparkExecutorMemory (String memory)
     {
