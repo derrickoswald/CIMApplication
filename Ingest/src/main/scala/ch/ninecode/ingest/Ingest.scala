@@ -13,6 +13,8 @@ import java.util.TimeZone
 import java.util.regex.Pattern
 import java.util.zip.ZipInputStream
 
+import scala.collection._
+
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.ThreePhaseComplexDataElement
 import ch.ninecode.mscons._
@@ -26,10 +28,11 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.DataType
+import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection._
+import com.datastax.spark.connector.rdd.ReadConf
 
 /**
  * Import measured data into Cassandra.
@@ -419,8 +422,18 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         val lines = session.sparkContext.textFile (filename)
         val rdd = lines.flatMap (parse_belvis_line (join_table))
         // combine real and imaginary parts
-        if (options.mode == Modes.Append) {
-            val df = session.sparkContext.cassandraTable[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)](options.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+        if (options.mode == Modes.Append)
+        {
+            val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+            implicit val configuration: ReadConf =
+                ReadConf
+                .fromSparkConf (session.sparkContext.getConf)
+                .copy (splitCount = Some (executors))
+            val df =
+                session
+                .sparkContext
+                .cassandraTable[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)](options.keyspace, "measured_value")
+                .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
             val unioned = rdd.union(df)
             val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
@@ -505,7 +518,16 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             // combine real and imaginary parts
             if (options.mode == Modes.Append)
             {
-                val df = session.sparkContext.cassandraTable[MeasuredValue](options.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+                val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+                implicit val configuration: ReadConf =
+                    ReadConf
+                        .fromSparkConf (session.sparkContext.getConf)
+                        .copy (splitCount = Some (executors))
+                val df =
+                    session
+                    .sparkContext
+                    .cassandraTable[MeasuredValue](options.keyspace, "measured_value")
+                    .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
                 val unioned = rdd.union(df)
                 val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
                 grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
@@ -595,17 +617,27 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // read all files into one RDD
         val raw = mscons_files.flatMap (processOneFile)
         // combine real and imaginary parts
-        if (options.mode == Modes.Append) {
-            val df= session.sparkContext.cassandraTable(options.keyspace, "measured_value").select("mrid", "time", "period", "real_a", "imag_a", "units")
-              .map((row) => {
-                  ThreePhaseComplexDataElement(
-                      row.getString("mrid"),
-                      row.getLong("time"),
-                      Complex(row.getDouble("real_a"),row.getDouble("imag_a")),
-                      null,
-                      null,
-                      row.getString("units"))
-              })
+        if (options.mode == Modes.Append)
+        {
+            val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+            implicit val configuration: ReadConf =
+                ReadConf
+                    .fromSparkConf (session.sparkContext.getConf)
+                    .copy (splitCount = Some (executors))
+            val df =
+                session
+                .sparkContext
+                .cassandraTable(options.keyspace, "measured_value")
+                .select("mrid", "time", "period", "real_a", "imag_a", "units")
+                .map((row) => {
+                    ThreePhaseComplexDataElement(
+                        row.getString("mrid"),
+                        row.getLong("time"),
+                        Complex(row.getDouble("real_a"),row.getDouble("imag_a")),
+                        null,
+                        null,
+                        row.getString("units"))
+                })
             val unioned= raw.union(df)
             val grouped = unioned.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
@@ -686,7 +718,16 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         // combine real and imaginary parts
         if (options.mode == Modes.Append)
         {
-            val df = session.sparkContext.cassandraTable[MeasuredValue](options.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+            implicit val configuration: ReadConf =
+                ReadConf
+                    .fromSparkConf (session.sparkContext.getConf)
+                    .copy (splitCount = Some (executors))
+            val df =
+                session
+                .sparkContext
+                .cassandraTable[MeasuredValue](options.keyspace, "measured_value")
+                .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
             val unioned = rdd.union(df)
             val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
