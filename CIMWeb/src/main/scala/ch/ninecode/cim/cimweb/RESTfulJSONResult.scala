@@ -12,7 +12,7 @@ import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConversions.mapAsJavaMap
 
-case class RESTfulJSONResult (var status: String, var message: String, var result: JsonStructure)
+final case class RESTfulJSONResult (var status: String, var message: String, var result: JsonStructure)
 {
     import RESTfulJSONResult._
 
@@ -53,7 +53,7 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
             result = Json.createReader (new StringReader (string)).readObject
         catch
         {
-            case je: JsonException ⇒
+            case je: JsonException =>
                 status = FAIL
                 message = je.getMessage
         }

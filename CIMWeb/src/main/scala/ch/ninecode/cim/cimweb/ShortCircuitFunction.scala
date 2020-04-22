@@ -12,7 +12,7 @@ import ch.ninecode.sc.ShortCircuitOptions
 import ch.ninecode.sc.ShortCircuit
 import ch.ninecode.util.Complex
 
-case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFunction
+final case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFunction
 {
     jars = Array (
         jarForObject (this),

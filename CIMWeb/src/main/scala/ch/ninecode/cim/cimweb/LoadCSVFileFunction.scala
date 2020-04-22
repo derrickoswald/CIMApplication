@@ -10,7 +10,7 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.StructField
 
-case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
+final case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
     // load the file
     override def executeJSON (spark: SparkSession): JsonStructure =
@@ -21,7 +21,7 @@ case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String,
         {
             // read the file(s)
             val prefix = hdfs.getUri.toString
-            val files = paths.map (s ⇒ { val file = if (s.startsWith ("/")) s else "/" + s; new Path (prefix, file).toString })
+            val files = paths.map (s => { val file = if (s.startsWith ("/")) s else s"/$s"; new Path (prefix, file).toString })
             val ff = Json.createArrayBuilder
             for (f <- files)
                 ff.add (f)
@@ -52,7 +52,7 @@ case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String,
                 opts.add (pair._1, pair._2)
             response.add ("options", opts)
             val tables = Json.createArrayBuilder
-            files.map (filename ⇒
+            files.map (filename =>
                 {
                     val from = if (-1 == filename.lastIndexOf ("/")) 0 else filename.lastIndexOf ("/") + 1
                     val to = if (-1 == filename.lastIndexOf (".")) filename.length else filename.lastIndexOf (".")
@@ -60,12 +60,12 @@ case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String,
                     val df: DataFrame = spark.sqlContext.read.format ("csv").options (reader_options).csv (filename)
                     val schema = Json.createObjectBuilder
                     val fields: Array[StructField] = df.schema.fields
-                    for (column ← fields.indices)
+                    for (column <- fields.indices)
                     {
                         val field = fields(column)
                         schema.add (field.name, field.dataType.json.stripPrefix("\"").stripSuffix("\""))
                     }
-                    df.createOrReplaceTempView ("`" + tablename + "`")
+                    df.createOrReplaceTempView (s"`$tablename`")
                     val table = Json.createObjectBuilder
                     table.add ("tablename", tablename)
                     table.add ("schema", schema)

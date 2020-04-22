@@ -57,7 +57,7 @@ object CIMWebTest
         }
         catch
         {
-            case e: Exception ⇒
+            case e: Exception =>
                 println (e.getMessage)
                 null
         }
@@ -90,7 +90,7 @@ class CIMWebTest
         }
         catch
         {
-            case e: NamingException ⇒
+            case e: NamingException =>
 
         }
     }

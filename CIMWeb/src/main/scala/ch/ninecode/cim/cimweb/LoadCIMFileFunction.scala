@@ -18,35 +18,35 @@ import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.State
 import ch.ninecode.cim.Unforced
 
-case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
+final case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
     def asBoolean (string: String): Boolean = try { string.toBoolean } catch { case _: Throwable => false }
 
     def parseState (text: String): State =
         text match
         {
-            case "ForceTrue" ⇒ ForceTrue
-            case "ForceFalse" ⇒ ForceFalse
-            case _ ⇒ Unforced
+            case "ForceTrue" => ForceTrue
+            case "ForceFalse" => ForceFalse
+            case _ => Unforced
         }
 
     def storage_level_tostring (level: StorageLevel): String =
     {
         level match
         {
-            case StorageLevel.NONE ⇒ "NONE"
-            case StorageLevel.DISK_ONLY ⇒ "DISK_ONLY"
-            case StorageLevel.DISK_ONLY_2 ⇒ "DISK_ONLY_2"
-            case StorageLevel.MEMORY_ONLY ⇒ "MEMORY_ONLY"
-            case StorageLevel.MEMORY_ONLY_2 ⇒ "MEMORY_ONLY_2"
-            case StorageLevel.MEMORY_ONLY_SER ⇒ "MEMORY_ONLY_SER"
-            case StorageLevel.MEMORY_ONLY_SER_2 ⇒ "MEMORY_ONLY_SER_2"
-            case StorageLevel.MEMORY_AND_DISK ⇒ "MEMORY_AND_DISK"
-            case StorageLevel.MEMORY_AND_DISK_2 ⇒ "MEMORY_AND_DISK_2"
-            case StorageLevel.MEMORY_AND_DISK_SER ⇒ "MEMORY_AND_DISK_SER"
-            case StorageLevel.MEMORY_AND_DISK_SER_2 ⇒ "MEMORY_AND_DISK_SER_2"
-            case StorageLevel.OFF_HEAP ⇒ "OFF_HEAP"
-            case _ ⇒ ""
+            case StorageLevel.NONE => "NONE"
+            case StorageLevel.DISK_ONLY => "DISK_ONLY"
+            case StorageLevel.DISK_ONLY_2 => "DISK_ONLY_2"
+            case StorageLevel.MEMORY_ONLY => "MEMORY_ONLY"
+            case StorageLevel.MEMORY_ONLY_2 => "MEMORY_ONLY_2"
+            case StorageLevel.MEMORY_ONLY_SER => "MEMORY_ONLY_SER"
+            case StorageLevel.MEMORY_ONLY_SER_2 => "MEMORY_ONLY_SER_2"
+            case StorageLevel.MEMORY_AND_DISK => "MEMORY_AND_DISK"
+            case StorageLevel.MEMORY_AND_DISK_2 => "MEMORY_AND_DISK_2"
+            case StorageLevel.MEMORY_AND_DISK_SER => "MEMORY_AND_DISK_SER"
+            case StorageLevel.MEMORY_AND_DISK_SER_2 => "MEMORY_AND_DISK_SER_2"
+            case StorageLevel.OFF_HEAP => "OFF_HEAP"
+            case _ => ""
         }
     }
 
@@ -59,7 +59,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
         {
             // read the file(s)
             val prefix = hdfs.getUri.toString
-            val files = paths.map (s ⇒ { val file = if (s.startsWith ("/")) s else "/" + s; new Path (prefix, file).toString })
+            val files = paths.map (s => { val file = if (s.startsWith ("/")) s else s"/$s"; new Path (prefix, file).toString })
             val ff = Json.createArrayBuilder
             for (f <- files)
                 ff.add (f)
@@ -91,7 +91,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
                 options
 
             val reader_options = new HashMap[String, String] ()
-            for (option ← op)
+            for (option <- op)
                 reader_options.put (option._1, option._2)
             reader_options.put ("path", files.mkString (","))
             val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)

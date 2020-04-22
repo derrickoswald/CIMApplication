@@ -44,11 +44,11 @@ class Pong extends RESTful
         if (verbose)
         {
             val environment = Json.createObjectBuilder
-            for (pair ← System.getenv)
+            for (pair <- System.getenv)
                 environment.add (pair._1, pair._2)
             ret.add ("environment", environment)
             val properties = Json.createObjectBuilder
-            for (property ← System.getProperties)
+            for (property <- System.getProperties)
                 properties.add (property._1, property._2)
             ret.add ("properties", properties)
             ret.add ("classpath", getClassPaths)

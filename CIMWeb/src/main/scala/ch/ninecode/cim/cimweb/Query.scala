@@ -39,7 +39,7 @@ class Query extends RESTful
         @DefaultValue ("") @QueryParam ("cassandra_table_name") cassandra_table_name: String): String =
     {
         val cassandra = try { cass.toBoolean } catch { case _: Throwable => false }
-        _Logger.info ("query %ssql=%s%s%s".format (if (cassandra) "cassandra " else "", sql, if ("" != table_name) " table_name=" + table_name else "", if ("" != cassandra_table_name) " cassandra_table_name=" + cassandra_table_name else ""))
+        _Logger.info (s"query ${if (cassandra) "cassandra " else ""}sql=$sql${if ("" != table_name) " table_name=" + table_name else ""}${if ("" != cassandra_table_name) s" cassandra_table_name=$cassandra_table_name" else ""}")
         val ret = new RESTfulJSONResult ()
         getConnection (ret) match
         {

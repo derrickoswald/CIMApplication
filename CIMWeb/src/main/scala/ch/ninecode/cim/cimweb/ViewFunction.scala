@@ -34,7 +34,7 @@ import ch.ninecode.model.PositionPoint
  * @param resolution distance factor for the Ramer–Douglas–Peucker algorithm
  * (the epsilon parameter in the Ramer–Douglas–Peucker algorithm is epsilon = 5 * dougPeukFactor * resolution)
  */
-case class ViewFunction (
+final case class ViewFunction (
     about: String,
     all: Boolean,
     xmin: Double,
@@ -59,7 +59,7 @@ case class ViewFunction (
 
         val epsilon = 5 * dougPeukFactor * resolution
 
-        case class PositionPointPlus (pp: PositionPoint, x: Double, y: Double)
+        final case class PositionPointPlus (pp: PositionPoint, x: Double, y: Double)
 
         def inside (pp: PositionPointPlus): Boolean =
         {
@@ -68,7 +68,7 @@ case class ViewFunction (
 
         def preparePositionPoints: RDD[(String, List[PositionPointPlus])] =
         {
-            val pp: RDD[PositionPointPlus] = get[PositionPoint].map (p ⇒ PositionPointPlus (p, p.xPosition.toDouble, p.yPosition.toDouble))
+            val pp: RDD[PositionPointPlus] = get[PositionPoint].map (p => PositionPointPlus (p, p.xPosition.toDouble, p.yPosition.toDouble))
             pp.filter (inside).groupBy (_.pp.Location).mapValues (_.toList.sortBy (_.pp.sequenceNumber))
         }
 
@@ -90,7 +90,7 @@ case class ViewFunction (
             val firstPoint = list.head
             val lastPoint = list(size - 1)
             // find the point with the maximum distance
-            for (i ← 1 until size - 1)
+            for (i <- 1 until size - 1)
             {
                 val d = calcLotrecht (firstPoint, lastPoint, list (i))
                 if (d > dmax)

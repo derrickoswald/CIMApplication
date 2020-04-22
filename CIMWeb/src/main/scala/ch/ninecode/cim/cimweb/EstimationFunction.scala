@@ -19,7 +19,7 @@ import ch.ninecode.util.Complex
  *
  * @param options the directives and JSON text of the simulation to run
  */
-case class EstimationFunction (options: SimulationOptions) extends CIMWebFunction
+final case class EstimationFunction (options: SimulationOptions) extends CIMWebFunction
 {
     jars = Array (
         jarForObject (this),
@@ -50,7 +50,7 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
         LoggerFactory.getLogger (getClass).info (s"""simulation$plural ${runs.mkString (",")}""")
         val result = Json.createObjectBuilder
         val simulations = Json.createArrayBuilder
-        for (run ← runs)
+        for (run <- runs)
             simulations.add (run)
         result.add ("simulations", simulations)
         RESTfulJSONResult (OK, s"""GridLAB-D simulation$plural successful""", result.build).getJSON

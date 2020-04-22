@@ -154,7 +154,7 @@ object RESTful
                         if (null != pair)
                         {
                             append (s"${indent}${pair.getName} : ${pair.getClassName}\n")
-                            print_context_r (out, context, name + "/" + pair.getName, depth + 1)
+                            print_context_r (out, context, s"$name/${pair.getName}", depth + 1)
                         }
                     }
             }

@@ -11,7 +11,7 @@ import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.hadoop.security.AccessControlException
 import org.apache.spark.sql.SparkSession
 
-case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFunction
+final case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFunction
 {
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
@@ -20,7 +20,7 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
         val response = Json.createObjectBuilder
         response.add ("filesystem", uri.toString)
         val temp: String = root.toString
-        val prefix: String = if (path.endsWith ("/")) if (temp.endsWith ("/")) temp else temp + "/" else temp
+        val prefix: String = if (path.endsWith ("/")) if (temp.endsWith ("/")) temp else s"$temp/" else temp
         response.add ("root", prefix)
         if (debug)
         {

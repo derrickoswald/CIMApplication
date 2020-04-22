@@ -35,24 +35,24 @@ class ShortCircuitCalculation extends RESTful
     def packRow (resultset: CIMResultSet, meta: ResultSetMetaData): JsonObjectBuilder =
     {
         val ret = Json.createObjectBuilder
-        for (column ← 1 to meta.getColumnCount)
+        for (column <- 1 to meta.getColumnCount)
         {
             val name = meta.getColumnName (column)
             meta.getColumnType (column) match
             {
-                case Types.BOOLEAN ⇒
+                case Types.BOOLEAN =>
                     val value = resultset.getBoolean (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value)
-                case Types.TINYINT ⇒
+                case Types.TINYINT =>
                     val value = resultset.getInt (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value)
-                case Types.NVARCHAR ⇒
+                case Types.NVARCHAR =>
                     val value = resultset.getString (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value)
-                case Types.DECIMAL ⇒
+                case Types.DECIMAL =>
                     val value = resultset.getDouble (column)
                     if (!resultset.wasNull ())
                         if (value.isNaN)
@@ -61,7 +61,7 @@ class ShortCircuitCalculation extends RESTful
                             ret.add (name, "∞")
                         else
                             ret.add (name, value)
-                case Types.DOUBLE ⇒
+                case Types.DOUBLE =>
                     val value = resultset.getDouble (column)
                     if (!resultset.wasNull ())
                         if (value.isNaN)
@@ -70,7 +70,7 @@ class ShortCircuitCalculation extends RESTful
                             ret.add (name, "∞")
                         else
                             ret.add (name, value)
-                case Types.FLOAT ⇒
+                case Types.FLOAT =>
                     val value = resultset.getDouble (column)
                     if (!resultset.wasNull ())
                         if (value.isNaN)
@@ -79,31 +79,31 @@ class ShortCircuitCalculation extends RESTful
                             ret.add (name, "∞")
                         else
                             ret.add (name, value)
-                case Types.INTEGER ⇒
+                case Types.INTEGER =>
                     val value = resultset.getInt (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value)
-                case Types.BIGINT ⇒
+                case Types.BIGINT =>
                     val value = resultset.getBigDecimal (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value)
-                case Types.SMALLINT ⇒
+                case Types.SMALLINT =>
                     val value = resultset.getInt (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value)
-                case Types.NCHAR ⇒
+                case Types.NCHAR =>
                     val value = resultset.getString (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value)
-                case Types.STRUCT ⇒
+                case Types.STRUCT =>
                     val value = resultset.getObject (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value.getClass.getName)
-                case Types.TIMESTAMP ⇒
+                case Types.TIMESTAMP =>
                     val value = resultset.getTimestamp (column)
                     if (!resultset.wasNull ())
                         ret.add (name, value.getTime)
-                case Types.OTHER ⇒
+                case Types.OTHER =>
                     val value = resultset.getObject (column)
                     if (!resultset.wasNull ())
                         try
@@ -128,10 +128,10 @@ class ShortCircuitCalculation extends RESTful
                                 catch
                                 {
                                     case x: Throwable =>
-                                        ret.add (name, "class: " + value.getClass.getName + " (" + x.getMessage + ")")
+                                        ret.add (name, s"class: ${value.getClass.getName} (${x.getMessage})")
                                 }
                         }
-                case _ ⇒
+                case _ =>
             }
         }
 
@@ -187,14 +187,14 @@ class ShortCircuitCalculation extends RESTful
             try
                 Json.createReader (new StringReader (json)).readObject match
                 {
-                    case obj: JsonObject ⇒ Some (parseOptions (obj))
-                    case _ ⇒
+                    case obj: JsonObject => Some (parseOptions (obj))
+                    case _ =>
                         _Logger.log (Level.SEVERE, """not a JsonObject""")
                         None
                 }
             catch
             {
-                case je: JsonException ⇒
+                case je: JsonException =>
                     _Logger.log (Level.SEVERE, """unparseable as JSON""", je)
                     None
             }
@@ -227,7 +227,7 @@ class ShortCircuitCalculation extends RESTful
         val parsed = readJSON (json)
         parsed match
         {
-            case Some (options) ⇒
+            case Some (options) =>
                 _Logger.info ("""shortcircuit options = %s""".format (options))
                 getConnection (ret) match
                 {
@@ -286,7 +286,7 @@ class ShortCircuitCalculation extends RESTful
                                         }
                                         catch
                                         {
-                                            case sqlexception: SQLException ⇒
+                                            case sqlexception: SQLException =>
                                                 ret.setResultException (sqlexception, "SQLException on ResultSet")
                                         }
                                     }
@@ -296,7 +296,7 @@ class ShortCircuitCalculation extends RESTful
                         }
                         catch
                         {
-                            case resourceexception: ResourceException ⇒
+                            case resourceexception: ResourceException =>
                                 ret.setResultException (resourceexception, "ResourceException on interaction")
                         }
                         finally
@@ -304,11 +304,11 @@ class ShortCircuitCalculation extends RESTful
                                 connection.close ()
                             catch
                             {
-                                case resourceexception: ResourceException ⇒
+                                case resourceexception: ResourceException =>
                                     ret.setResultException (resourceexception, "ResourceException on close")
                             }
                 }
-            case None ⇒
+            case None =>
                 ret.message = "invalid POST json"
         }
         ret.toString

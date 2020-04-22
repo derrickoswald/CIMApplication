@@ -52,7 +52,7 @@ class FileOperations extends RESTful
         @DefaultValue ("false") @MatrixParam ("zip") zip: String,
         @DefaultValue ("false") @MatrixParam ("debug") debug: String): Response =
     {
-        val file = if (path.startsWith ("/")) path else "/" + path
+        val file = if (path.startsWith ("/")) path else s"/$path"
         _Logger.info ("file get %s".format (file))
         val fetch = !file.endsWith ("/")
         val function =
@@ -96,7 +96,7 @@ class FileOperations extends RESTful
                                     zos.write (data, 0, data.length)
                                     zos.finish ()
                                     zos.close ()
-                                    val zip = if (-1 == name.lastIndexOf (".")) name else name.substring (0, name.lastIndexOf (".")) + ".zip"
+                                    val zip = if (-1 == name.lastIndexOf (".")) name else s"${name.substring (0, name.lastIndexOf ("."))}.zip"
                                     Response.ok (bos.toByteArray, "application/zip")
                                         .header ("content-disposition", "attachment; filename=%s".format (zip))
                                         .build
@@ -106,15 +106,15 @@ class FileOperations extends RESTful
                                     val extension = file.substring (file.lastIndexOf (".") + 1)
                                     val media = extension match
                                     {
-                                        case "xml" ⇒ MediaType.APPLICATION_XML
-                                        case "rdf" ⇒ MediaType.APPLICATION_XML
-                                        case "json" ⇒ MediaType.APPLICATION_JSON
-                                        case "csv" ⇒ "text/csv"
-                                        case "glm" ⇒ "text/plain"
-                                        case "zip" ⇒ "application/zip"
-                                        case "txt" ⇒ "text/plain"
-                                        case "out" ⇒ "text/plain"
-                                        case _ ⇒ MediaType.APPLICATION_OCTET_STREAM
+                                        case "xml" => MediaType.APPLICATION_XML
+                                        case "rdf" => MediaType.APPLICATION_XML
+                                        case "json" => MediaType.APPLICATION_JSON
+                                        case "csv" => "text/csv"
+                                        case "glm" => "text/plain"
+                                        case "zip" => "application/zip"
+                                        case "txt" => "text/plain"
+                                        case "out" => "text/plain"
+                                        case _ => MediaType.APPLICATION_OCTET_STREAM
                                     }
                                     Response.ok (xml, media).build
                                 }
@@ -141,7 +141,7 @@ class FileOperations extends RESTful
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        Response.serverError ().entity ("ResourceException on interaction\n" + resourceexception.getMessage).build
+                        Response.serverError ().entity (s"ResourceException on interaction\n${resourceexception.getMessage}").build
                 }
                 finally
                     try
@@ -149,10 +149,10 @@ class FileOperations extends RESTful
                     catch
                     {
                         case resourceexception: ResourceException =>
-                            Response.serverError ().entity ("ResourceException on close\n" + resourceexception.getMessage).build
+                            Response.serverError ().entity (s"ResourceException on close\n${resourceexception.getMessage}").build
                     }
             case None =>
-                Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection: " + ret.message).build
+                Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection: ${ret.message}").build
         }
         response
     }
@@ -165,7 +165,7 @@ class FileOperations extends RESTful
         @DefaultValue ("false") @MatrixParam ("unzip") unzip: String,
         data: Array[Byte]): String =
     {
-        val file = if (path.startsWith ("/")) path else "/" + path
+        val file = if (path.startsWith ("/")) path else s"/$path"
         _Logger.info ("file put %s".format (file))
         val function = PutFileFunction (file, data, try { unzip.toBoolean } catch { case _: Throwable => false })
         val ret = new RESTfulJSONResult
@@ -219,7 +219,7 @@ class FileOperations extends RESTful
     @Produces (Array (MediaType.APPLICATION_JSON))
     def deleteFile (@PathParam ("path") path: String): String =
     {
-        val file = if (path.startsWith ("/")) path else "/" + path
+        val file = if (path.startsWith ("/")) path else s"/$path"
         _Logger.info ("file delete %s".format (file))
         val function = DeleteFileFunction (file)
         val ret = new RESTfulJSONResult

@@ -52,7 +52,7 @@ abstract class CIMWebFunction extends CIMFunction
             // as an aid to debugging, make jar in tmp and pass that name
             val name = s"/tmp/${ Random.nextInt (99999999) }.jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
-            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
+            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (s"${ret}ch/")), "ch/")
             writer.close ()
             ret = name
         }
@@ -83,8 +83,6 @@ abstract class CIMWebFunction extends CIMFunction
     // or: val uri: URI = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY))
 
     def hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
-
-    case class Oops (error: String)
 
     override def executeResultSet (spark: SparkSession): Dataset[Row] =
     {

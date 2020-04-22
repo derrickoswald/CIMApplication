@@ -110,7 +110,7 @@ class View extends RESTful
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        Response.serverError ().entity ("ResourceException on interaction\n" + resourceexception.getMessage).build
+                        Response.serverError ().entity (s"ResourceException on interaction\n${resourceexception.getMessage}").build
                 }
                 finally
                     try
@@ -118,10 +118,10 @@ class View extends RESTful
                     catch
                     {
                         case resourceexception: ResourceException =>
-                            Response.serverError ().entity ("ResourceException on close\n" + resourceexception.getMessage).build
+                            Response.serverError ().entity (s"ResourceException on close\n${resourceexception.getMessage}").build
                     }
             case None =>
-                Response.status (Response.Status.SERVICE_UNAVAILABLE).entity ("could not get connection: " + ret.message).build
+                Response.status (Response.Status.SERVICE_UNAVAILABLE).entity (s"could not get connection: ${ret.message}").build
         }
 
         response

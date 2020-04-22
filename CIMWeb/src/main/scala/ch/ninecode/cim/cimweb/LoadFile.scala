@@ -69,7 +69,7 @@ class LoadFile extends RESTful
         ): String =
     {
         val ret = new RESTfulJSONResult
-        val files = path.split (',').map (f ⇒ if (f.startsWith ("/")) f else "/" + f)
+        val files = path.split (',').map (f => if (f.startsWith ("/")) f else s"/$f")
         // set the type
         val filetype = if (files(0).endsWith (".rdf") || files(0).endsWith (".xml"))
             "CIM"
@@ -82,7 +82,7 @@ class LoadFile extends RESTful
         }
         val (function, options) = filetype match
         {
-            case "CIM" ⇒ // see https://github.com/derrickoswald/CIMReader#reader-api
+            case "CIM" => // see https://github.com/derrickoswald/CIMReader#reader-api
                 val options = Map[String, String] (
                     "StorageLevel" -> storage,
                     "ch.ninecode.cim.do_about" -> do_about,
@@ -102,7 +102,7 @@ class LoadFile extends RESTful
                     "ch.ninecode.cim.cache" -> cache
                 )
                 (LoadCIMFileFunction (files, options), options)
-            case "CSV" ⇒ // see https://spark.apache.org/docs/2.4.5/api/scala/index.html#org.apache.spark.sql.DataFrameReader
+            case "CSV" => // see https://spark.apache.org/docs/2.4.5/api/scala/index.html#org.apache.spark.sql.DataFrameReader
                 val options = Map[String, String] (
                     "header" -> header,
                     "ignoreLeadingWhiteSpace" -> ignoreLeadingWhiteSpace,

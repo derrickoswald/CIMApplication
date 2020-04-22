@@ -6,7 +6,7 @@ import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.cim.connector.CIMFunction.Return
 
-case class GetFileFunction (path: String) extends CIMWebFunction
+final case class GetFileFunction (path: String) extends CIMWebFunction
 {
     override def getReturnType: Return = Return.String
 
