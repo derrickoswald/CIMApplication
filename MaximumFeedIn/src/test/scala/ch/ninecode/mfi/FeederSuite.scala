@@ -61,11 +61,11 @@ class FeederSuite extends MFITestBase with BeforeAndAfter
             val elements = session.read.format ("ch.ninecode.cim").options (opts).load (filename)
             val count = elements.count
             val read = System.nanoTime ()
-            println (s"read $count elements in ${(read - begin) / 1e9} seconds")
+            info (s"read $count elements in ${(read - begin) / 1e9} seconds")
 
             val feeders = MyFeeders (session).getFeeders ()
             val nfeeders = feeders.collect.length
-            println (s"found $nfeeders feeders in ${(System.nanoTime () - read) / 1e9} seconds")
+            info (s"found $nfeeders feeders in ${(System.nanoTime () - read) / 1e9} seconds")
 
             assert (nfeeders == 62, "feeder count")
             val bad = feeders.filter (_.control == null)
