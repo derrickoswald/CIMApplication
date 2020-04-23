@@ -286,21 +286,21 @@ extends CIMRDD with Graphable
         if (!triplet.attr.isConnected)
             Iterator.empty // send no message across an area boundary
         else
-            if ((null != triplet.srcAttr.area_label) && (null == triplet.dstAttr.area_label))
+            if (("" != triplet.srcAttr.area_label) && ("" == triplet.dstAttr.area_label))
             {
                 if (debug && log.isDebugEnabled)
                     log.debug (s"${triplet.attr.id} ${triplet.srcAttr.toString} ---> ${triplet.dstAttr.toString}")
                 Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
             }
             else
-                if ((null == triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label))
+                if (("" == triplet.srcAttr.area_label) && ("" != triplet.dstAttr.area_label))
                 {
                     if (debug && log.isDebugEnabled)
                         log.debug (s"${triplet.attr.id} ${triplet.dstAttr.toString} ---> ${triplet.srcAttr.toString}")
                     Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
                 }
                 else
-                    if ((null != triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
+                    if (("" != triplet.srcAttr.area_label) && ("" != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
                     {
                         log.error (s"""transformer service areas "${triplet.srcAttr.area_label}" and "${triplet.dstAttr.area_label}" are connected""")
                         Iterator.empty
@@ -371,7 +371,7 @@ extends CIMRDD with Graphable
         log.info ("tracing transformer service areas")
         val graph = identifyTransformerServiceAreas
         log.info ("mapping islands to transformer service areas")
-        val candidates = graph.vertices.filter (null != _._2.area_label)
+        val candidates = graph.vertices.filter ("" != _._2.area_label)
         val pairs = candidates.map (v => (v._2.island_label, v._2.area_label)).distinct // (islandid, areaid)
         val areas = island_trafoset_rdd.join (pairs).values.map (_.swap) // (areaid, trafosetname)
         pairs.map (_.swap).join (areas).values.distinct.persist (storage_level) // (islandid, trafosetname)
