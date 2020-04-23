@@ -1,5 +1,7 @@
 package ch.ninecode.util
 
+import java.util.regex.Pattern
+
 import scala.io.Source
 
 import com.datastax.spark.connector.cql.CassandraConnector
@@ -18,22 +20,51 @@ import org.slf4j.LoggerFactory
  *
  * @param session the Spark session
  * @param resource the schema file (cqlsh commands) to process
- * @param keyspace the target keyspace to create (if it does not exist)
- * @param replication the replication factor for the keyspace (if it does not exist)
  * @param verbose the flag to trigger logging at INFO level
  */
-case class Schema (session: SparkSession, resource: String, keyspace: String = "cimapplication", replication: Int = 2, verbose: Boolean)
+case class Schema (session: SparkSession, resource: String, verbose: Boolean)
 {
     if (verbose)
         org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
+
+    // check if we can get the schema generation script
+    def script: Option[String] =
+    {
+        val schema = this.getClass.getResourceAsStream (resource)
+        if (null != schema)
+        {
+            val source = Source.fromInputStream (schema, "UTF-8")
+            val statements = source.getLines.mkString ("\n")
+            source.close
+            Some (statements)
+        }
+        else
+            None
+    }
+
+    // check if keyspace name is legal, and quote it if necessary
+    def validateKeyspace (name: String): Option[String] =
+    {
+        val regex = Pattern.compile ("""^([a-z][a-z0-9_]{0,47})|([a-zA-Z0-9_]{1,48})$""")
+        val matcher = regex.matcher (name)
+        if (matcher.matches)
+        {
+            if (null != matcher.group (1))
+                Some (matcher.group (1))
+            else
+                Some (s""""${matcher.group (2)}"""")
+        }
+        else
+            None
+    }
 
     /**
      * Generate a function to edit each line of the schema file.
      *
      * @return a function that can transform an input line of the schema file to the correct keyspace and replication factor
      */
-    def editor: String ⇒ String =
+    def editor (keyspace: String, replication: Int): String => String =
     {
         val DEFAULT_KEYSPACE = """cimapplication"""
         val DEFAULT_REPLICATION = 1
@@ -73,43 +104,51 @@ case class Schema (session: SparkSession, resource: String, keyspace: String = "
      *   - the keyspace must be cimapplication - which is changed according to <code>keyspace</code> via simple global substitution
      *   - the replication factor must be 1 - which is changed according to <code>replication</code> via simple global substitution
      *
+     * @param keyspace the target keyspace to create (if it does not exist)
+     * @param replication the replication factor for the keyspace (if it does not exist)
      * @return <code>true</code> if all DDL executed successfully, <code>false</code> if the schema file doesn't exist or there were errors
      */
-    def make (connector: CassandraConnector = CassandraConnector (session.sparkContext.getConf)): Boolean =
+    def make (
+        connector: CassandraConnector = CassandraConnector (session.sparkContext.getConf),
+        keyspace: String = "cimapplication",
+        replication: Int = 2
+        ): Boolean =
     {
-        val schema = this.getClass.getResourceAsStream (resource)
-        if (null != schema)
+        script match
         {
-            log.info ("""ensuring Cassandra keyspace %s exists""".format (keyspace))
-
-            // separate at blank lines and change keyspace
-            val source = Source.fromInputStream (schema, "UTF-8")
-            val statements = source.getLines.mkString ("\n").split ("\n\n").map (editor)
-            source.close
-
-            // need to apply each DDL separately
-            statements.forall (
-                sql ⇒
+            case Some (text) =>
+                validateKeyspace (keyspace) match
                 {
-                    try
-                    {
-                        val _ = connector.withSessionDo (session => session.execute (sql))
-                        true
-                    }
+                    case Some (keyspace) =>
+                        log.info (s"""ensuring Cassandra keyspace $keyspace exists""")
 
-                    catch
-                    {
-                        case exception: Exception ⇒
-                            log.error ("""failed to create schema in Cassandra keyspace %s""".format (keyspace), exception)
-                            false
-                    }
+                        // separate at blank lines and change keyspace
+                        val statements = text.split ("\n\n").map (editor (keyspace, replication))
+
+                        // need to apply each DDL separately
+                        statements.forall (
+                            sql =>
+                            {
+                                try
+                                {
+                                    val _ = connector.withSessionDo (session => session.execute (sql))
+                                    true
+                                }
+                                catch
+                                {
+                                    case exception: Exception =>
+                                        log.error (s"""failed to create schema in Cassandra keyspace $keyspace""", exception)
+                                        false
+                                }
+                            }
+                        )
+                    case None =>
+                        log.error (s"""invalid keyspace name (max 48 alphanumeric or underscore): $keyspace""")
+                        false
                 }
-            )
-        }
-        else
-        {
-            log.error ("""failed to get schema sql resource: %s""".format (resource))
-            false
+            case None =>
+                log.error (s"""failed to get schema sql resource: $resource""")
+                false
         }
     }
 }

@@ -39,8 +39,8 @@ case class Copy (session: SparkSession, options: CopyOptions)
     {
         val source: CassandraConnector = CassandraConnector (cassandra (options.source_host, options.source_port))
         val target: CassandraConnector = CassandraConnector (cassandra (options.target_host, options.target_port))
-        val schema = Schema (session, "/simulation_schema.sql", options.target_keyspace, options.target_replication, true)
-        if (schema.make (target))
+        val schema = Schema (session, "/simulation_schema.sql", true)
+        if (schema.make (target, options.target_keyspace, options.target_replication))
         {
             val tables: Array[String] =
             {

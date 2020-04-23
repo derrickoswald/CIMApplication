@@ -121,7 +121,8 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
                 .options (thisOptions)
                 .load (files: _*)
                 .persist (StorageLevel.MEMORY_AND_DISK_SER)
-            info (s"${elements.count} elements", None)
+            val count = elements.count
+            info (s"$count elements", None)
         }
     }
 

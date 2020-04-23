@@ -89,8 +89,8 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
     {
         val made = time ("schema: %s seconds")
         {
-            val schema = Schema (session, "/simulation_schema.sql", job.keyspace, job.replication, verbose = options.verbose)
-            schema.make ()
+            val schema = Schema (session, "/simulation_schema.sql", verbose = options.verbose)
+            schema.make (keyspace = job.keyspace, replication = job.replication)
         }
         if (made)
         {

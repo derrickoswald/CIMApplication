@@ -447,8 +447,8 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             {
                 log.info ("""starting simulation %s""".format (job.id))
 
-                val schema = Schema (session, "/simulation_schema.sql", job.output_keyspace, job.replication, options.verbose)
-                if (schema.make ())
+                val schema = Schema (session, "/simulation_schema.sql", options.verbose)
+                if (schema.make (keyspace = job.output_keyspace, replication = job.replication))
                 {
                     // perform the extra queries and insert into the key_value table
                     log.info ("""executing %d extra queries""".format (job.extras.length))

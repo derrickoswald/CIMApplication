@@ -203,7 +203,7 @@ object TimeSeriesStatsSuiteIT
             "mode" → "DROPMALFORMED",
             "inferSchema" → "true"
         )
-        Schema (session, "/simulation_schema.sql", KEYSPACE, 1, true).make ()
+        Schema (session, "/simulation_schema.sql", true).make (keyspace = KEYSPACE, replication = 1)
         println (s"reading $FILE_DEPOT$FILENAME0.csv")
         val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (s"$FILE_DEPOT$FILENAME0.csv")
         val ok = df.rdd.map (row ⇒ (row.getString (0), "energy", row.getTimestamp (1), 900000, row.getDouble (2), 0.0, "Wh"))
