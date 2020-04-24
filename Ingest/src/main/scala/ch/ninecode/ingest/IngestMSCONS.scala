@@ -10,8 +10,8 @@ import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 import ch.ninecode.mscons.MSCONSOptions
 import ch.ninecode.mscons.MSCONSParser
-import ch.ninecode.Util.Complex
-import ch.ninecode.Util.ThreePhaseComplexDataElement
+import ch.ninecode.util.Complex
+import ch.ninecode.util.ThreePhaseComplexDataElement
 import com.datastax.spark.connector.rdd.ReadConf
 import org.apache.spark.rdd.RDD
 
@@ -95,7 +95,7 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
             val mscons_files = session.sparkContext.parallelize (all_files)
 
             // read all files into one RDD
-            val raw: RDD[Any] = mscons_files.flatMap (processOneFile (join_table, job))
+            val raw = mscons_files.flatMap (processOneFile (join_table, job))
             // combine real and imaginary parts
             if (job.mode == Modes.Append) {
                 val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
@@ -109,8 +109,6 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
                           row.getString("mrid"),
                           row.getLong("time"),
                           Complex(row.getDouble("real_a"),row.getDouble("imag_a")),
-                          null,
-                          null,
                           row.getString("units"))
                   })
                 val unioned= raw.union(df)
