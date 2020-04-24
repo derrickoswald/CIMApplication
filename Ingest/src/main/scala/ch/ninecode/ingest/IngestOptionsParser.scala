@@ -27,6 +27,7 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
     implicit val FormatsRead: scopt.Read[Formats.Value] = scopt.Read.reads (Formats.withName)
+    implicit val ModesRead: scopt.Read[Modes.Value] = scopt.Read.reads (Modes.withName)
 
     override def terminate (exitState: Either[String, Unit]): Unit =
     {
@@ -128,6 +129,10 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
     opt[Formats.Value]("format")
         .action ((x, c) => { job = job.copy (format = x); updateJson (c) })
         .text (s"format of the data files, one of ${Formats.values.iterator.mkString (",")} [${job.format}]")
+
+    opt[Modes.Value]("mode").
+      action ((x, c) ⇒ {job = job.copy (mode = x); updateJson(c)}).
+      text (s"ingest mode, one of ${Modes.values.iterator.mkString (",")} [${job.mode}]")
 
     opt[Unit]("nocopy")
         .action ((_, c) => { job = job.copy (nocopy = true); updateJson (c) })

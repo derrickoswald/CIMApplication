@@ -30,6 +30,13 @@ object Formats extends Enumeration
     val Belvis, LPEx, MSCONS, Custom = Value
 }
 
+object Modes extends Enumeration
+{
+    type Modes = Value
+    val Overwrite, Append = Value
+}
+
+
 /**
  *
  * @param mapping Mapping CSV file name.
@@ -41,6 +48,7 @@ object Formats extends Enumeration
  * @param maxtime Maximum time for ingestion timespan.
  *                The default is the maximum representable time in the Linux epoch.
  * @param format Type of data file, either Belvis, LPEx or MSCONS.
+ * @param mode Ingest Mode: 'Overwrite' or 'Append'. Overwrite: overwrites existing values in database. Append: adds values to existing ones.
  * @param nocopy If <code>true</code>, use the file names provided directly, without unzipping or transferring them to HDFS.
  * @param datafiles Source Belvis/LPEx/MSCONS files.
  * @param keyspace Cassandra keyspace.
@@ -55,6 +63,7 @@ case class IngestJob
     mintime: Long = 0L, // "1970-01-01 01:00:00"
     maxtime: Long = Int.MaxValue * 1000L, // "2038-01-19 04:14:07"
     format: Formats.Value = Formats.Belvis,
+    mode: Modes.Value = Modes.Overwrite,
     nocopy: Boolean = false,
     datafiles: Seq[String] = Seq (),
     keyspace: String = "cimapplication",

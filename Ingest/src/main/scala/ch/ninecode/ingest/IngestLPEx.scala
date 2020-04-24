@@ -8,9 +8,9 @@ import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import com.datastax.spark.connector._
 import org.apache.spark.rdd.RDD
-
 import org.apache.spark.sql.SparkSession
 import com.datastax.spark.connector.SomeColumns
+import com.datastax.spark.connector.rdd.ReadConf
 
 
 case class IngestLPEx (session: SparkSession, options: IngestOptions) extends IngestProcessor
@@ -81,8 +81,23 @@ case class IngestLPEx (session: SparkSession, options: IngestOptions) extends In
         {
             val rdd = lines.flatMap (parse_lpex_line (join_table, job, measurementDateTimeFormat))
             // combine real and imaginary parts
-            val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
-            grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            if (job.mode == Modes.Append)
+            {
+                val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+                implicit val configuration: ReadConf =
+                    ReadConf
+                        .fromSparkConf (session.sparkContext.getConf)
+                        .copy (splitCount = Some (executors))
+                val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+                val unioned = rdd.union(df)
+                val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
+                grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            }
+            else
+            {
+                val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
+                grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            }
         }
     }
 
