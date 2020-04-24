@@ -179,7 +179,7 @@ case class SimulationJob
         CassandraConnector (session.sparkContext.getConf).withSessionDo (
             session =>
             {
-                val resultset = session.execute (s"select max(run) as hi from $keyspace.simulation where id='$id'")
+                val resultset = session.execute (s"""select max(run) as hi from "$keyspace".simulation where id='$id'""")
                 val row = resultset.one
                 if (row.isNull (0))
                     1
