@@ -6,14 +6,14 @@ import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
-
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
-
 import ch.ninecode.mscons.MSCONSOptions
 import ch.ninecode.mscons.MSCONSParser
-import ch.ninecode.util.Complex
-import ch.ninecode.util.ThreePhaseComplexDataElement
+import ch.ninecode.Util.Complex
+import ch.ninecode.Util.ThreePhaseComplexDataElement
+import com.datastax.spark.connector.rdd.ReadConf
+import org.apache.spark.rdd.RDD
 
 case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {
@@ -95,10 +95,31 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
             val mscons_files = session.sparkContext.parallelize (all_files)
 
             // read all files into one RDD
-            val raw = mscons_files.flatMap (processOneFile (join_table, job))
+            val raw: RDD[Any] = mscons_files.flatMap (processOneFile (join_table, job))
             // combine real and imaginary parts
-            val grouped = raw.groupBy (x => (x.element, x.millis)).values.flatMap (complex2).map (split)
-            grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            if (job.mode == Modes.Append) {
+                val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+                implicit val configuration: ReadConf =
+                    ReadConf
+                        .fromSparkConf (session.sparkContext.getConf)
+                        .copy (splitCount = Some (executors))
+                val df= session.sparkContext.cassandraTable(job.keyspace, "measured_value").select("mrid", "time", "period", "real_a", "imag_a", "units")
+                  .map((row) => {
+                      ThreePhaseComplexDataElement(
+                          row.getString("mrid"),
+                          row.getLong("time"),
+                          Complex(row.getDouble("real_a"),row.getDouble("imag_a")),
+                          null,
+                          null,
+                          row.getString("units"))
+                  })
+                val unioned= raw.union(df)
+                val grouped = unioned.groupBy (x => (x.element, x.millis)).values.flatMap (complex2).map (split)
+                grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            } else {
+                val grouped = raw.groupBy (x => (x.element, x.millis)).values.flatMap (complex2).map (split)
+                grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            }
             if (!job.nocopy)
                 all_files.foreach (x => hdfs.delete (new Path (x), false))
 

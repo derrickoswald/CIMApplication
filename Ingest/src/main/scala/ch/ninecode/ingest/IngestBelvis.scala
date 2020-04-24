@@ -7,9 +7,9 @@ import java.util.TimeZone
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.SparkSession
-
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.rdd.ReadConf
 
 case class IngestBelvis (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {
@@ -71,8 +71,22 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
         val lines = session.sparkContext.textFile (filename)
         val rdd = lines.flatMap (parse_belvis_line (join_table, job, measurementDateTimeFormat))
         // combine real and imaginary parts
-        val grouped = rdd.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
-        grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        if (job.mode == Modes.Append) {
+            val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+            implicit val configuration: ReadConf =
+                ReadConf
+                    .fromSparkConf (session.sparkContext.getConf)
+                    .copy (splitCount = Some (executors))
+            val df = session.sparkContext.cassandraTable[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val unioned = rdd.union(df)
+            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
+            grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
+        else
+        {
+            val grouped = rdd.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
+            grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
     }
 
     def process (join_table: Map[String, String], job: IngestJob): Unit =
