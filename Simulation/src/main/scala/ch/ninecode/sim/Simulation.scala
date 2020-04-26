@@ -23,6 +23,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+import org.apache.spark.sql.Row
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -329,73 +330,92 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         cassandra_date_format.format (disposable.getTime)
     }
 
+    // define a key to group players with the same source, type and start-end
+    def groupingKey (player: SimulationPlayer): String =
+    {
+        s"${if (null == player.synthesis) "measured_value" else "synthesized_value"}:${player.`type`}:${player.start}:${player.end}"
+    }
+
+    def ungroupKey (key: String): (String, String, Long, Long) =
+    {
+        val bits = key.split (":")
+        (bits(0), bits(1), bits(2).toLong, bits(3).toLong)
+    }
+
+    def inClause (players: Iterable[SimulationPlayer]): String =
+    {
+        val ids: Iterable[String] = players.map (player => if (null == player.synthesis) player.mrid else player.synthesis)
+        ids.mkString ("('", "', '", "')") // ('USR0002', 'USR0003')
+    }
+
+    def columns (phases: Int) : Seq[String] =
+    {
+        if (phases == 3)
+            Seq ("mrid", "time", "period", "units", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
+        else
+            Seq ("mrid", "time", "period", "units", "real_a", "imag_a")
+    }
+
+    def toThreePhase (transformer: String, typ: String) (row: Row): SimulationPlayerData =
+    {
+        val id = row.getString (0)
+        val t = row.getTimestamp (1).getTime
+        val period = row.getInt (2)
+        val units = row.getString (3)
+        val rea = row.getDouble (4)
+        val ima = row.getDouble (5)
+        val reb = row.getDouble (6)
+        val imb = row.getDouble (7)
+        val rec = row.getDouble (8)
+        val imc = row.getDouble (9)
+        SimulationPlayerData (transformer, id, typ, t, period, units, Array (rea, ima, reb, imb, rec, imc))
+    }
+
+    def toOnePhase (transformer: String, typ: String) (row: Row): SimulationPlayerData =
+    {
+        val id = row.getString (0)
+        val t = row.getTimestamp (1).getTime
+        val period = row.getInt (2)
+        val units = row.getString (3)
+        val re = row.getDouble (4)
+        val im = row.getDouble (5)
+        SimulationPlayerData (transformer, id, typ, t, period, units, Array (re, im))
+    }
+
     def query_value (keyspace: String, buffer: Int)(set: (Trafo, Iterable[SimulationPlayer])): Iterable[(House, Iterable[SimulationPlayerData])] =
     {
         val (transformer, players) = set
         val phases = if (options.three_phase && !options.fake_three_phase) 3 else 1
-        val data: Iterable[(House, Iterable[SimulationPlayerData])] = players.map (
-            player =>
+        val queries: Map[String, Iterable[SimulationPlayer]] = players.groupBy (groupingKey)
+        val data = queries.flatMap (
+            query =>
             {
-                val (table, id, typ, where) = if (null == player.synthesis)
-                    (
-                        "measured_value",
-                        player.mrid,
-                        player.`type`,
-                        s"mrid = '${player.mrid}' and type = '${player.`type`}' and time >= '${timestamp (player.start, -buffer)}' and time <= '${timestamp (player.end, buffer)}'"
-                    )
-                else
-                    (
-                        "synthesized_value",
-                        player.synthesis,
-                        player.`type`,
-                        // ToDo: avoid this hard-coded period
-                        s"synthesis = '${player.synthesis}' and type = '${player.`type`}' period = 900000 and time >= '${timestamp (player.start, -buffer)}' and time <= '${timestamp (player.end, buffer)}'"
-                    )
-                val columns = if (phases == 3)
-                    Seq ("time", "period", "units", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
-                else
-                    Seq ("time", "period", "units", "real_a", "imag_a")
-                val raw =
+                val (key, players) = query
+                val (table, typ, start, end) = ungroupKey (key)
+                val column = if (table == "measured_value") "mrid" else "synthesis"
+                val where = s"$column in ${inClause (players)} and type = '$typ' and time >= '${timestamp (start, -buffer)}' and time <= '${timestamp (end, buffer)}'"
+                val raw: RDD[Row] =
                     spark
-                    .read
-                    .format ("org.apache.spark.sql.cassandra")
-                    .options (Map ("table" -> table, "keyspace" -> keyspace))
-                    .load
-                    .filter (where)
-                    .selectExpr (columns: _*)
-                    .rdd
-                val transformed: RDD[SimulationPlayerData] =
-                    if (phases == 3)
-                        raw
+                        .read
+                        .format ("org.apache.spark.sql.cassandra")
+                        .options (Map ("table" -> table, "keyspace" -> keyspace))
+                        .load
+                        .filter (where)
+                        .selectExpr (columns (phases): _*)
+                        .rdd
+                val grouped: RDD[(House, Iterable[Row])] = raw.groupBy (_.getString (0))
+                val function = if (phases == 3) toThreePhase (transformer, typ)_ else toOnePhase (transformer, typ)_
+                val transformed: RDD[(House, Iterable[SimulationPlayerData])] =
+                    grouped
                         .map (
-                            row =>
+                            pack =>
                             {
-                                val t = row.getTimestamp (0).getTime
-                                val period = row.getInt (1)
-                                val units = row.getString (2)
-                                val rea = row.getDouble (3)
-                                val ima = row.getDouble (4)
-                                val reb = row.getDouble (5)
-                                val imb = row.getDouble (6)
-                                val rec = row.getDouble (7)
-                                val imc = row.getDouble (8)
-                                SimulationPlayerData (transformer, id, typ, t, period, units, Array (rea, ima, reb, imb, rec, imc))
+                                val (house, rows) = pack
+                                val values = rows.map (function)
+                                (house, values)
                             }
                         )
-                    else
-                        raw
-                        .map (
-                            row =>
-                            {
-                                val t = row.getTimestamp (0).getTime
-                                val period = row.getInt (1)
-                                val units = row.getString (2)
-                                val re = row.getDouble (3)
-                                val im = row.getDouble (4)
-                                SimulationPlayerData (transformer, id, typ, t, period, units, Array (re, im))
-                            }
-                        )
-                (player.mrid, transformed.toLocalIterator.toIterable)
+                transformed.collect.toIterable
             }
         )
         data
