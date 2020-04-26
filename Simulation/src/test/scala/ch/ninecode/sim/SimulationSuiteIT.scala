@@ -153,7 +153,7 @@ class SimulationSuiteIT
                     |        },
                     |        {
                     |            "title": "All BusbarSection node voltages",
-                    |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                    |            "query": "select concat (name_node_island.name, '_voltage_recorder') name, name_node_island.name mrid, name_node_island.node parent, 'voltage' type, 'voltage' property, 'Volts' unit, name_node_island.island from ( select concat_ws ('_', sort_array (collect_set (busbars.mrid))) name, first_value (busbars.node) node, first_value (busbars.island) island from ( select distinct b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t.TopologicalNode node, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ) busbars group by node ) name_node_island",
                     |            "interval": 900,
                     |            "aggregations": [
                     |                {
@@ -176,7 +176,7 @@ class SimulationSuiteIT
                     |        },
                     |        {
                     |            "title": "All BusbarSection output power",
-                    |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'power' type, 'measured_power' property, 'VA' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                    |            "query": "select concat (name_node_island.name, '_power_recorder') name, name_node_island.name mrid, name_node_island.node parent, 'power' type, 'measured_power' property, 'VA' unit, name_node_island.island from ( select concat_ws ('_', sort_array (collect_set (busbars.mrid))) name, first_value (busbars.node) node, first_value (busbars.island) island from ( select distinct b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t.TopologicalNode node, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ) busbars group by node ) name_node_island",
                     |            "interval": 900,
                     |            "aggregations": [
                     |                {
@@ -407,7 +407,7 @@ class SimulationSuiteIT
                       |        },
                       |        {
                       |            "title": "All BusbarSection node voltages",
-                      |            "query": "select    concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'voltage' type,    'voltage' property,    'Volts' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    BusbarSection b where    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                      |            "query": "select concat (name_node_island.name, '_voltage_recorder') name, name_node_island.name mrid, name_node_island.node parent, 'voltage' type, 'voltage' property, 'Volts' unit, name_node_island.island from ( select concat_ws ('_', sort_array (collect_set (busbars.mrid))) name, first_value (busbars.node) node, first_value (busbars.island) island from ( select distinct b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t.TopologicalNode node, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ) busbars group by node ) name_node_island",
                       |            "interval": 900,
                       |            "aggregations": [
                       |                {
@@ -533,8 +533,8 @@ class SimulationSuiteIT
         using (Cluster.builder.addContactPoint ("localhost").withPort (cassandra_port.toInt).build.connect)
         {
             cassandraSession =>
-                val sql1 = s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time='2017-12-31 23:00:00.000+0000'"
-                val sql2 = s"select * from $KEYSPACE.simulated_value where simulation='$ID_SIMULATION' and mrid='USR0001' and type='power' and period=900000 and time='2017-12-31 23:00:00.000+0000'"
+                val sql1 = s"""select * from "$KEYSPACE".measured_value where mrid='USR0001' and type='energy' and time='2017-12-31 23:00:00.000+0000'"""
+                val sql2 = s"""select * from "$KEYSPACE".simulated_value where simulation='$ID_SIMULATION' and mrid='USR0001' and type='power' and period=900000 and time='2017-12-31 23:00:00.000+0000'"""
                 assert (cassandraSession.execute (sql1).all.asScala.head.getDouble ("real_a") * 4 ==
                     cassandraSession.execute (sql2).all.asScala.head.getDouble ("real_a"))
         }
@@ -635,7 +635,7 @@ class SimulationSuiteIT
                        |        },
                        |        {
                        |            "title": "All BusbarSection node voltages",
-                       |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                       |            "query": "select concat (name_node_island.name, '_voltage_recorder') name, name_node_island.name mrid, name_node_island.node parent, 'voltage' type, 'voltage' property, 'Volts' unit, name_node_island.island from ( select concat_ws ('_', sort_array (collect_set (busbars.mrid))) name, first_value (busbars.node) node, first_value (busbars.island) island from ( select distinct b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t.TopologicalNode node, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ) busbars group by node ) name_node_island",
                        |            "interval": 900,
                        |            "aggregations": [
                        |                {
@@ -658,7 +658,7 @@ class SimulationSuiteIT
                        |        },
                        |        {
                        |            "title": "All BusbarSection output power",
-                       |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'power' type, 'measured_power' property, 'VA' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                       |            "query": "select concat (name_node_island.name, '_power_recorder') name, name_node_island.name mrid, name_node_island.node parent, 'power' type, 'measured_power' property, 'VA' unit, name_node_island.island from ( select concat_ws ('_', sort_array (collect_set (busbars.mrid))) name, first_value (busbars.node) node, first_value (busbars.island) island from ( select distinct b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t.TopologicalNode node, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ) busbars group by node ) name_node_island",
                        |            "interval": 900,
                        |            "aggregations": [
                        |                {
@@ -1020,7 +1020,7 @@ class SimulationSuiteIT
                        |        },
                        |        {
                        |            "title": "All BusbarSection node voltages",
-                       |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                       |            "query": "select concat (name_node_island.name, '_voltage_recorder') name, name_node_island.name mrid, name_node_island.node parent, 'voltage' type, 'voltage' property, 'Volts' unit, name_node_island.island from ( select concat_ws ('_', sort_array (collect_set (busbars.mrid))) name, first_value (busbars.node) node, first_value (busbars.island) island from ( select distinct b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t.TopologicalNode node, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ) busbars group by node ) name_node_island",
                        |            "interval": 900,
                        |            "aggregations": [
                        |                {
@@ -1097,7 +1097,7 @@ class SimulationSuiteIT
         using (Cluster.builder.addContactPoint ("localhost").withPort (cassandra_port.toInt).build.connect)
         {
             cassandraSession =>
-                val sql = s"select * from $KEYSPACE.simulated_value where simulation='$ID_SIMULATION' and type='voltage' and period=900000 allow filtering"
+                val sql = s"""select * from "$KEYSPACE".simulated_value where simulation='$ID_SIMULATION' and type='voltage' and period=900000 allow filtering"""
                 def mag (row: Row): Double =
                 {
                     val r = row.getDouble ("real_a")
@@ -1112,7 +1112,7 @@ class SimulationSuiteIT
 
 object SimulationSuiteIT
 {
-    val KEYSPACE = "test"
+    val KEYSPACE = "Test"
     val FILE_DEPOT = "data/"
     val FILENAME0 = "measurement_data"
     val FILENAME1 = "DemoData"
