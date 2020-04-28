@@ -20,6 +20,7 @@ import scala.collection.JavaConverters._
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
@@ -405,76 +406,77 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         cassandra_date_format.format (disposable.getTime)
     }
 
-    def query_value (keyspace: String, buffer: Int)(set: (Trafo, Iterable[SimulationPlayer])): Iterable[(House, Iterable[SimulationPlayerData])] =
+
+    def columns (phases: Int) : Seq[String] =
+    {
+        if (phases == 3)
+            Seq ("mrid", "time", "period", "units", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
+        else
+            Seq ("mrid", "time", "period", "units", "real_a", "imag_a")
+    }
+
+    def toThreePhase (transformer: String, typ: String) (row: Row): SimulationPlayerData =
+    {
+        val id = row.getString (0)
+        val t = row.getTimestamp (1).getTime
+        val period = row.getInt (2)
+        val units = row.getString (3)
+        val rea = row.getDouble (4)
+        val ima = row.getDouble (5)
+        val reb = row.getDouble (6)
+        val imb = row.getDouble (7)
+        val rec = row.getDouble (8)
+        val imc = row.getDouble (9)
+        SimulationPlayerData (transformer, id, typ, t, period, units, Array (rea, ima, reb, imb, rec, imc))
+    }
+
+    def toOnePhase (transformer: String, typ: String) (row: Row): SimulationPlayerData =
+    {
+        val id = row.getString (0)
+        val t = row.getTimestamp (1).getTime
+        val period = row.getInt (2)
+        val units = row.getString (3)
+        val re = row.getDouble (4)
+        val im = row.getDouble (5)
+        SimulationPlayerData (transformer, id, typ, t, period, units, Array (re, im))
+    }
+
+    def query_values (keyspace: String, buffer: Int)(set: (Trafo, Iterable[SimulationPlayer])): RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] =
     {
         val (transformer, players) = set
         val phases = if (options.three_phase && !options.fake_three_phase) 3 else 1
-        val data: Iterable[(House, Iterable[SimulationPlayerData])] = players.map (
+        val data: Iterable[RDD[(String, Iterable[SimulationPlayerData])]] = players.map (
             player =>
             {
-                val (table, id, typ, where) = if (null == player.synthesis)
+                val (table, typ, where) = if (null == player.synthesis)
                     (
                         "measured_value",
-                        player.mrid,
                         player.`type`,
                         s"mrid = '${player.mrid}' and type = '${player.`type`}' and time >= '${timestamp (player.start, -buffer)}' and time <= '${timestamp (player.end, buffer)}'"
                     )
                 else
                     (
                         "synthesized_value",
-                        player.synthesis,
                         player.`type`,
                         // ToDo: avoid this hard-coded period
-                        s"synthesis = '${player.synthesis}' and type = '${player.`type`}' period = 900000 and time >= '${timestamp (player.start, -buffer)}' and time <= '${timestamp (player.end, buffer)}'"
+                        s"synthesis = '${player.synthesis}' and type = '${player.`type`}' and period = 900000 and time >= '${timestamp (player.start, -buffer)}' and time <= '${timestamp (player.end, buffer)}'"
                     )
-                val columns = if (phases == 3)
-                    Seq ("time", "period", "units", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
-                else
-                    Seq ("time", "period", "units", "real_a", "imag_a")
-                val raw =
+                val raw: RDD[Row] =
                     spark
-                    .read
-                    .format ("org.apache.spark.sql.cassandra")
-                    .options (Map ("table" -> table, "keyspace" -> keyspace))
-                    .load
-                    .filter (where)
-                    .selectExpr (columns: _*)
-                    .rdd
-                val transformed: RDD[SimulationPlayerData] =
-                    if (phases == 3)
-                        raw
-                        .map (
-                            row =>
-                            {
-                                val t = row.getTimestamp (0).getTime
-                                val period = row.getInt (1)
-                                val units = row.getString (2)
-                                val rea = row.getDouble (3)
-                                val ima = row.getDouble (4)
-                                val reb = row.getDouble (5)
-                                val imb = row.getDouble (6)
-                                val rec = row.getDouble (7)
-                                val imc = row.getDouble (8)
-                                SimulationPlayerData (transformer, id, typ, t, period, units, Array (rea, ima, reb, imb, rec, imc))
-                            }
-                        )
-                    else
-                        raw
-                        .map (
-                            row =>
-                            {
-                                val t = row.getTimestamp (0).getTime
-                                val period = row.getInt (1)
-                                val units = row.getString (2)
-                                val re = row.getDouble (3)
-                                val im = row.getDouble (4)
-                                SimulationPlayerData (transformer, id, typ, t, period, units, Array (re, im))
-                            }
-                        )
-                (player.mrid, transformed.toLocalIterator.toIterable)
+                        .read
+                        .format ("org.apache.spark.sql.cassandra")
+                        .options (Map ("table" -> table, "keyspace" -> keyspace))
+                        .load
+                        .filter (where)
+                        .selectExpr (columns (phases): _*)
+                        .rdd
+                val function = if (phases == 3) toThreePhase (transformer, typ)_ else toOnePhase (transformer, typ)_
+                val transformed: RDD[SimulationPlayerData] = raw.map (function)
+                transformed.groupBy (_.mrid)
             }
         )
-        data
+        val trafo_data = spark.sparkContext.union (data.toSeq)
+        trafo_data.map (x => (transformer, x)).groupByKey // one element RDD
     }
 
     def simulate (batch: Seq[SimulationJob]): Seq[String] =
@@ -604,12 +606,17 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         geo.storeGeometry (job.id, simulations)
 
                         log.info ("""querying player data""")
-                        val query = query_value (job.input_keyspace, job.buffer)_
-                        val player_data = simulations
-                            .map (simulation => (simulation.transformer.transformer_name, simulation.players))
-                            .collect
-                            .map (x => (x._1, query (x)))
-                        val player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] = spark.sparkContext.parallelize (player_data).persist (options.storage_level)
+                        val query = query_values (job.input_keyspace, job.buffer)_
+                        val player_rdd =
+                            spark.sparkContext.union (
+                                simulations
+                                    .map (simulation => (simulation.name, simulation.players))
+                                    .collect
+                                    .map (query)
+                                    .toSeq)
+                                .persist (options.storage_level)
+                                .setName (s"${job.id}_player_data")
+                        log.info (s"""${player_rdd.count} player data results""")
 
                         log.info ("""performing %d GridLAB-D simulation%s""".format (numsimulations, if (numsimulations == 1) "" else "s"))
                         val runner = SimulationRunner (
