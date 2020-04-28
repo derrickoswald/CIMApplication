@@ -534,8 +534,11 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     if (0 != numsimulations)
                     {
                         val direction = SimulationDirection (options.workdir, options.verbose)
-                        val simulations: RDD[SimulationTrafoKreis] = _simulations.map (x => x.copy (directions = direction.execute (x)))
-                            .persist (options.storage_level).setName (s"${job.id}_simulations")
+                        val simulations: RDD[SimulationTrafoKreis] =
+                            _simulations
+                                .map (x => x.copy (directions = direction.execute (x)))
+                                .persist (options.storage_level)
+                                .setName (s"${job.id}_simulations")
                         vanishRDD (_simulations)
 
                         log.info ("""storing GeoJSON data""")
@@ -551,6 +554,9 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                                 .collect
                                 .map (query)
                                 .toSeq)
+                            .persist (options.storage_level)
+                            .setName (s"${job.id}_player_data")
+                        log.info (s"""${player_rdd.count} player data results""")
 
                         log.info (s"""performing $numsimulations GridLAB-D simulation${plural (numsimulations)}""")
                         val runner = SimulationRunner (
