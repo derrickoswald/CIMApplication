@@ -106,6 +106,7 @@ case class IngestJob
             .add ("timezone", timezone)
             .add ("timespan", Json.createObjectBuilder.add ("mintime", mintime).add ("maxtime", maxtime))
             .add ("format", format.toString)
+            .add ("mode", mode.toString)
             .add ("nocopy", nocopy)
             .add ("datafiles", files)
             .add ("keyspace", keyspace)
@@ -224,6 +225,26 @@ object IngestJob
             Formats.Belvis
     }
 
+    def parseMode (json: JsonObject): Modes.Value =
+    {
+        val MEMBERNAME = "mode"
+
+        if (json.containsKey (MEMBERNAME))
+        {
+            val value = json.get (MEMBERNAME)
+            value match
+            {
+                case string: JsonString =>
+                    Modes.withName (string.getString)
+                case _ =>
+                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON string (type "${typeString (value)}")""")
+                    Modes.Overwrite
+            }
+        }
+        else
+            Modes.Overwrite
+    }
+
     def parseArrayOfString (member: String, json: JsonObject): Seq[String] =
     {
         if (json.containsKey (member))
@@ -270,6 +291,7 @@ object IngestJob
             val timezone = json.getString ("timezone", "Europe/Berlin")
             val (mintime, maxtime) = parseTimespan (json)
             val format = parseFormat (json)
+            val mode = parseMode (json)
             val nocopy = json.getBoolean ("nocopy", false)
             val datafiles = parseArrayOfString ("datafiles", json)
             val keyspace = json.getString ("keyspace", "cimapplication")
@@ -283,6 +305,7 @@ object IngestJob
                 mintime = mintime.getTimeInMillis,
                 maxtime = maxtime.getTimeInMillis,
                 format = format,
+                mode = mode,
                 nocopy = nocopy,
                 datafiles = datafiles,
                 keyspace = keyspace,

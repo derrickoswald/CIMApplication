@@ -86,8 +86,8 @@ case class IngestCustom (session: SparkSession, options: IngestOptions) extends 
                     .fromSparkConf (session.sparkContext.getConf)
                     .copy (splitCount = Some (executors))
             val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-            val unioned = rdd.union(df)
-            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
+            val unioned = rdd.union (df)
+            val grouped = unioned.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
             grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
         else

@@ -10,6 +10,7 @@ import org.apache.spark.sql.SparkSession
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.rdd.ReadConf
+import org.apache.spark.rdd.RDD
 
 case class IngestBelvis (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {
@@ -77,9 +78,9 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
                 ReadConf
                     .fromSparkConf (session.sparkContext.getConf)
                     .copy (splitCount = Some (executors))
-            val df = session.sparkContext.cassandraTable[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-            val unioned = rdd.union(df)
-            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
+            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val unioned = rdd.union (df)
+            val grouped = unioned.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
             grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
         else

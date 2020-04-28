@@ -103,14 +103,19 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
                     ReadConf
                         .fromSparkConf (session.sparkContext.getConf)
                         .copy (splitCount = Some (executors))
-                val df= session.sparkContext.cassandraTable(job.keyspace, "measured_value").select("mrid", "time", "period", "real_a", "imag_a", "units")
-                  .map((row) => {
-                      ThreePhaseComplexDataElement(
-                          row.getString("mrid"),
-                          row.getLong("time"),
-                          Complex(row.getDouble("real_a"),row.getDouble("imag_a")),
-                          row.getString("units"))
-                  })
+                val df= session
+                    .sparkContext
+                    .cassandraTable (job.keyspace, "measured_value")
+                    .select("mrid", "time", "period", "real_a", "imag_a", "units")
+                    .map (
+                        row => {
+                            ThreePhaseComplexDataElement(
+                                row.getString ("mrid"),
+                                row.getLong ("time"),
+                                Complex (row.getDouble ("real_a"),row.getDouble ("imag_a")),
+                                row.getString ("units"))
+                        }
+                    )
                 val unioned= raw.union(df)
                 val grouped = unioned.groupBy (x => (x.element, x.millis)).values.flatMap (complex2).map (split)
                 grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
