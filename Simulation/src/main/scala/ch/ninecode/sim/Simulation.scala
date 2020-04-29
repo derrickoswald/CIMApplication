@@ -161,14 +161,14 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def destringify (string: String): Seq[JsonObject] =
     {
         try
-            Json.createReader (new StringReader (string)).readArray match
-            {
-                case obj: JsonArray =>
-                    obj.getValuesAs (classOf [JsonObject]).asScala
-                case _ =>
-                    log.error ("""not a JsonArray""")
-                    Seq ()
-            }
+        Json.createReader (new StringReader (string)).readArray match
+        {
+            case obj: JsonArray =>
+                obj.getValuesAs (classOf [JsonObject]).asScala
+            case _ =>
+                log.error ("""not a JsonArray""")
+                Seq ()
+        }
         catch
         {
             case je: JsonException =>
@@ -189,7 +189,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def generate_player_csv (begin: Long, end: Long) (player: SimulationPlayerResult): SimulationPlayer =
+    def generate_player_csv (begin: Long, end: Long)(player: SimulationPlayerResult): SimulationPlayer =
     {
         val start = if (begin > end)
         {
@@ -262,19 +262,19 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val with_psr: RDD[((node_id, (identifier, (Terminal, Element, BaseVoltage))), PowerSystemResource)] = just_one.keyBy (_._2._2._2.id).join (get [PowerSystemResource].keyBy (_.id)).values
 
         val world_points = get [PositionPoint].groupBy (_.Location)
-        val schematic_points = getOrElse[DiagramObject].keyBy (_.id).join (getOrElse[DiagramObjectPoint].groupBy (_.DiagramObject)).values.map (x => (x._1.IdentifiedObject_attr, x._2))
+        val schematic_points = getOrElse [DiagramObject].keyBy (_.id).join (getOrElse [DiagramObjectPoint].groupBy (_.DiagramObject)).values.map (x => (x._1.IdentifiedObject_attr, x._2))
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates: RDD[((node_id, (identifier, (Terminal, Element, BaseVoltage))), Array[(Double, Double)], Array[(Double, Double)])] =
             with_world.map (x => (x._1._2._2._2.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
-        with_coordinates.map (x => (x._1._2._1, SimulationNode (x._1._2._2._1.TopologicalNode, x._1._2._2._3.nominalVoltage * 1000.0, x._1._2._2._2.id, if (null != x._2) x._2(0) else null, if (null != x._3) x._3(0) else null)))
+        with_coordinates.map (x => (x._1._2._1, SimulationNode (x._1._2._2._1.TopologicalNode, x._1._2._2._3.nominalVoltage * 1000.0, x._1._2._2._2.id, if (null != x._2) x._2 (0) else null, if (null != x._3) x._3 (0) else null)))
     }
 
-    def edge_maker (subtransmission_trafos: Array[TransformerData]) (rdd: RDD[Iterable[(Iterable[(identifier, Terminal)], Element)]]): RDD[(identifier, GLMEdge)] =
+    def edge_maker (subtransmission_trafos: Array[TransformerData])(rdd: RDD[Iterable[(Iterable[(identifier, Terminal)], Element)]]): RDD[(identifier, GLMEdge)] =
     {
         // the terminals may be different for each element, but their TopologicalNode values are the same, and the geometry should be similar, so use the head
         val with_psr: RDD[(Iterable[(Iterable[(identifier, Terminal)], Element)], PowerSystemResource)] = rdd.keyBy (_.head._2.id).join (get [PowerSystemResource].keyBy (_.id)).values
         val world_points = get [PositionPoint].groupBy (_.Location)
-        val schematic_points = getOrElse[DiagramObject].keyBy (_.id).join (getOrElse[DiagramObjectPoint].groupBy (_.DiagramObject)).values.map (x => (x._1.IdentifiedObject_attr, x._2))
+        val schematic_points = getOrElse [DiagramObject].keyBy (_.id).join (getOrElse [DiagramObjectPoint].groupBy (_.DiagramObject)).values.map (x => (x._1.IdentifiedObject_attr, x._2))
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates: RDD[(Iterable[(Iterable[(identifier, Terminal)], Element)], Array[(Double, Double)], Array[(Double, Double)])] =
             with_world.map (x => (x._1.head._2.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
@@ -294,6 +294,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                             Some (GLMEdge.toGLMEdge (elements, cn1, cn2))
                     }
                 }
+
                 val id_cn_1 = x._1.head._1.head._2.TopologicalNode
                 val id_cn_2 = x._1.head._1.tail.head._2.TopologicalNode
                 val elements = x._1.map (_._2).toArray.sortWith (_.id < _.id)
@@ -307,7 +308,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         )
     }
 
-    def make_tasks (subtransmission_trafos: Array[TransformerData]) (job: SimulationJob): RDD[SimulationTask] =
+    def make_tasks (subtransmission_trafos: Array[TransformerData])(job: SimulationJob): RDD[SimulationTask] =
     {
         log.info ("""preparing simulation job "%s"""".format (job.name))
 
@@ -352,44 +353,44 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
             val players_and_recorders_by_area =
                 islands_trafos
-                .join (players_recorders)
-                .map (
-                    (x: (island_id, (identifier, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])))) =>
-                    {
-                        val (_, (area, (players, recorders))) = x
-                        (area, (players, recorders))
-                    }
-                )
-                .groupByKey
-                .map (
-                    (x: (identifier, Iterable[(Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])])) =>
-                    {
-                        val (area, pla_rec) = x
-                        (area, (pla_rec.flatMap (_._1), pla_rec.flatMap (_._2)))
-                    }
-                )
+                    .join (players_recorders)
+                    .map (
+                        (x: (island_id, (identifier, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])))) =>
+                        {
+                            val (_, (area, (players, recorders))) = x
+                            (area, (players, recorders))
+                        }
+                    )
+                    .groupByKey
+                    .map (
+                        (x: (identifier, Iterable[(Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])])) =>
+                        {
+                            val (area, pla_rec) = x
+                            (area, (pla_rec.flatMap (_._1), pla_rec.flatMap (_._2)))
+                        }
+                    )
             val ret =
                 areas
-                .join (players_and_recorders_by_area)
-                .map (
-                    (x: (identifier, ((Iterable[GLMNode], Iterable[GLMEdge]), (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])))) =>
-                    {
-                        val (area, ((nodes, edges), (pla, rec))) = x
-                        val players: Iterable[SimulationPlayer] = pla.map (generate_player_csv (start.getTimeInMillis, end.getTimeInMillis))
-                        val recorders: Iterable[SimulationRecorder] = rec.map (generate_recorder_csv)
-                        SimulationTask (
-                            area, // trafo
-                            area, // island
-                            start.clone.asInstanceOf [Calendar],
-                            end.clone.asInstanceOf [Calendar],
-                            nodes, // nodes
-                            edges, // edges
-                            players,
-                            recorders)
-                    }
-                )
-                .persist (options.storage_level)
-                .setName (s"${job.id}_tasks")
+                    .join (players_and_recorders_by_area)
+                    .map (
+                        (x: (identifier, ((Iterable[GLMNode], Iterable[GLMEdge]), (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])))) =>
+                        {
+                            val (area, ((nodes, edges), (pla, rec))) = x
+                            val players: Iterable[SimulationPlayer] = pla.map (generate_player_csv (start.getTimeInMillis, end.getTimeInMillis))
+                            val recorders: Iterable[SimulationRecorder] = rec.map (generate_recorder_csv)
+                            SimulationTask (
+                                area, // trafo
+                                area, // island
+                                start.clone.asInstanceOf [Calendar],
+                                end.clone.asInstanceOf [Calendar],
+                                nodes, // nodes
+                                edges, // edges
+                                players,
+                                recorders)
+                        }
+                    )
+                    .persist (options.storage_level)
+                    .setName (s"${job.id}_tasks")
             ret
         }
         else
@@ -401,13 +402,13 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
 
     def timestamp (time: Long, buffer: Int): String =
     {
-        val disposable = calendar.clone.asInstanceOf[Calendar]
+        val disposable = calendar.clone.asInstanceOf [Calendar]
         disposable.setTimeInMillis (time + buffer)
         cassandra_date_format.format (disposable.getTime)
     }
 
 
-    def columns (phases: Int) : Seq[String] =
+    def columns (phases: Int): Seq[String] =
     {
         if (phases == 3)
             Seq ("mrid", "time", "period", "units", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
@@ -415,7 +416,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             Seq ("mrid", "time", "period", "units", "real_a", "imag_a")
     }
 
-    def toThreePhase (transformer: String, typ: String) (row: Row): SimulationPlayerData =
+    def toThreePhase (transformer: String, typ: String)(row: Row): SimulationPlayerData =
     {
         val id = row.getString (0)
         val t = row.getTimestamp (1).getTime
@@ -430,7 +431,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         SimulationPlayerData (transformer, id, typ, t, period, units, Array (rea, ima, reb, imb, rec, imc))
     }
 
-    def toOnePhase (transformer: String, typ: String) (row: Row): SimulationPlayerData =
+    def toOnePhase (transformer: String, typ: String)(row: Row): SimulationPlayerData =
     {
         val id = row.getString (0)
         val t = row.getTimestamp (1).getTime
@@ -470,7 +471,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         .filter (where)
                         .selectExpr (columns (phases): _*)
                         .rdd
-                val function = if (phases == 3) toThreePhase (transformer, typ)_ else toOnePhase (transformer, typ)_
+                val function = if (phases == 3) toThreePhase (transformer, typ) _ else toOnePhase (transformer, typ) _
                 val transformed: RDD[SimulationPlayerData] = raw.map (function)
                 transformed.groupBy (_.mrid)
             }
@@ -486,6 +487,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             .join (get [TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
             .map (x => (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
             .groupByKey.values
+
         def toTransformerSet (transformers: Iterable[(TransformerData, String)]): (String, TransformerSet) =
         {
             val island = transformers.head._2
@@ -495,6 +497,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val set = TransformerSet (transformers.map (_._1).toArray)
             (set.transformer_name, set)
         }
+
         val transformers: Map[String, TransformerSet] = tx.map (toTransformerSet).collect.toMap
 
         // pick out the subtransmission transformers
@@ -503,11 +506,12 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             trafo.ends.length == 2 &&
                 trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) // ToDo: don't hard code these voltage values
         }
+
         val subtransmission_trafos: Array[TransformerData] = transformer_data.filter (subtransmission).collect
         (transformers, subtransmission_trafos)
     }
 
-    def performExtraQueries(job: SimulationJob): Unit =
+    def performExtraQueries (job: SimulationJob): Unit =
     {
         log.info ("""executing %d extra queries""".format (job.extras.length))
         job.extras.foreach (
@@ -539,10 +543,10 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         )
     }
 
-    def createSimulationTasks(job: SimulationJob, batchno: Int): RDD[SimulationTrafoKreis] =
+    def createSimulationTasks (job: SimulationJob, batchno: Int): RDD[SimulationTrafoKreis] =
     {
         val (transformers, subtransmission_trafos) = getTransformers
-        val tasks = make_tasks (subtransmission_trafos) (job)
+        val tasks = make_tasks (subtransmission_trafos)(job)
         job.save (session, job.output_keyspace, job.id, tasks)
 
         log.info ("""matching tasks to topological islands""")
@@ -588,9 +592,9 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         simulations
     }
 
-    def performGridlabSimulations(job: SimulationJob, simulations: RDD[SimulationTrafoKreis], player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])]): RDD[SimulationResult] =
+    def performGridlabSimulations (job: SimulationJob, simulations: RDD[SimulationTrafoKreis], player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])]): RDD[SimulationResult] =
     {
-        log.info ("""performing %d GridLAB-D simulation%s""".format (simulations.count(), if (simulations.count() == 1) "" else "s"))
+        log.info ("""performing %d GridLAB-D simulation%s""".format (simulations.count (), if (simulations.count () == 1) "" else "s"))
         val runner = SimulationRunner (
             options.host, job.output_keyspace, options.workdir,
             options.three_phase, options.fake_three_phase,
@@ -616,7 +620,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
 
         // clean up in case there was a file already loaded
-        cleanupRdd()
+        cleanupRdd ()
 
         read (ajob.cim, ajob.cimreaderoptions, options.storage_level)
 
@@ -630,18 +634,18 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                 if (schema.make)
                 {
                     // perform the extra queries and insert into the key_value table
-                    performExtraQueries(job)
+                    performExtraQueries (job)
 
-                    val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job, batchno)
+                    val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks (job, batchno)
 
-                    if (!simulations.isEmpty())
+                    if (!simulations.isEmpty ())
                     {
                         log.info ("""storing GeoJSON data""")
                         val geo = SimulationGeometry (session, job.output_keyspace)
                         geo.storeGeometry (job.id, simulations)
 
                         log.info ("""querying player data""")
-                        val query = query_values (job.input_keyspace, job.buffer)_
+                        val query = query_values (job.input_keyspace, job.buffer) _
                         val player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] =
                             spark.sparkContext.union (
                                 simulations
@@ -653,7 +657,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                                 .setName (s"${job.id}_player_data")
                         log.info (s"""${player_rdd.count} player data results""")
 
-                        val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd)
+                        val simulationResults: RDD[SimulationResult] = performGridlabSimulations (job, simulations, player_rdd)
 
                         // save the results
                         log.info ("""saving GridLAB-D simulation results""")
@@ -661,7 +665,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
                         log.info ("""saved GridLAB-D simulation results""")
                     }
 
-                    cleanupRdd()
+                    cleanupRdd ()
                     batchno = batchno + 1
                 }
                 job.id
@@ -753,7 +757,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         ids
     }
 
-    def cleanupRdd(): Unit =
+    def cleanupRdd (): Unit =
     {
         session.sparkContext.getPersistentRDDs.foreach (
             named =>
