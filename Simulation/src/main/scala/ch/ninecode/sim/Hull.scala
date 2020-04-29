@@ -60,7 +60,7 @@ object Hull extends Serializable
     {
         // perform a secondary sort by minimum x in case two points have the same minimum y
         val pp = points.sortBy (_._1)
-        val min = pp.minBy (_._2)
+        val min = pp.foldLeft ((Double.NaN, Double.MaxValue)) ((min, x) => if (x._2 < min._2) x else min) // minBy (_._2)
 
         def angle (point: Point): Double = atan2 (point._2 - min._2, point._1 - min._1)
 

@@ -15,10 +15,10 @@ import ch.ninecode.net.LoadFlowEdge
 case class SimulationEdge
 (
     rawedge: GLMEdge,
-    world_position: Iterable[(Double, Double)],
-    schematic_position: Iterable[(Double, Double)],
-    players: Iterable[SimulationPlayer],
-    recorders: Iterable[SimulationRecorder]
+    world_position: Iterable[(Double, Double)] = Seq (),
+    schematic_position: Iterable[(Double, Double)] = Seq (),
+    players: Iterable[SimulationPlayer] = Iterable (),
+    recorders: Iterable[SimulationRecorder] = Iterable ()
 )
 extends LoadFlowEdge (
     rawedge.id,

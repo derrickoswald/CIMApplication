@@ -139,6 +139,7 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
      * {{{val elements: RDD[Element] = get[Element]("Elements")}}}.
      *
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     def get[T : ClassTag](name: String)(implicit spark: SparkSession): RDD[T] =
     {
         spark.sparkContext.getPersistentRDDs.find (_._2.name == name) match
@@ -175,11 +176,11 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
      * @param epsilon the difference limit
      * @param message a message to display if the assert fails
      */
-    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = null): Unit =
+    def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = ""): Unit =
     {
         val diff = number - reference
         assert (Math.abs (diff) <= epsilon,
-            if (null == message)
+            if ("" == message)
                 s"""$number vs. reference $reference differs by more than $epsilon ($diff)"""
             else
                 message
