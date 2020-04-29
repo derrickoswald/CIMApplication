@@ -52,13 +52,26 @@ case class Trafokreis
         // only do houses where we know it's more than a kilowatt or it's zero because of a three winding transformer
         (h.max_power_feeding > 1000.0 || 0 != h.reason.indexOf ("transformer windings for edge"))
 
-    def gen_exp (h: (MaxPowerFeedingNodeEEA, Int)): Experiment =
+    def best (nodes: Iterable[MaxPowerFeedingNodeEEA], topo: String): String =
     {
-        val feeder = h._1.feeder
-        val node = h._1.id_seq // the node under test
-        val house = h._1.mrid // the house under test (could be multiple houses per node)
-        val index = h._2 // experiment #
-        val max = limit (h._1) // upper kilowatt limit to test
+        // heuristic that node name starts with the mRID of the element
+        nodes.find (x => x.id_seq.startsWith (x.mrid)) match
+        {
+            case Some (x) =>
+                x.mrid
+            case None =>
+                nodes.head.mrid
+        }
+    }
+
+    def gen_exp (h: (Iterable[MaxPowerFeedingNodeEEA], Int)): Experiment =
+    {
+        val (nodes, index) = h // (precalc_nodes, experiment #)
+        val a_node = nodes.head
+        val feeder = a_node.feeder
+        val node = a_node.id_seq // the node under test
+        val house = best (nodes, node) // the house under test (could be multiple houses per node)
+        val max = nodes.map (limit).max // upper kilowatt limit to test
         val interval = 5 // seconds per step
         val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
         val riser = if (steps * step >= max) step else math.ceil (max / steps / step) * step // limit as ceiling(minimum step size) in thousands
@@ -66,7 +79,7 @@ case class Trafokreis
     }
 
     // generate experiments
-    val experiments: Array[Experiment] = houses.filter (significant).zipWithIndex.map (gen_exp).toArray
+    val experiments: Array[Experiment] = houses.filter (significant).groupBy (_.id_seq).values.zipWithIndex.map (gen_exp).toArray
 
     def name: String = trafo
 
