@@ -79,7 +79,29 @@ class EventAndFactorSuiteIT
 
 object EventAndFactorSuiteIT
 {
-    var _Spark: SparkSession = _
+    lazy val _Spark: SparkSession =
+    {
+        // create the configuration
+        val configuration = new SparkConf (false)
+            .setAppName ("SummarySuiteIT")
+            .setMaster ("local[*]")
+            .set ("spark.driver.memory", "2g")
+            .set ("spark.executor.memory", "2g")
+            .set ("spark.ui.port", "4041")
+            .set ("spark.graphx.pregel.checkpointInterval", "8")
+            .set ("spark.ui.showConsoleProgress", "false")
+            .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+            .set ("spark.sql.warehouse.dir", "file:///tmp/")
+            .set ("spark.cassandra.connection.host", "localhost")
+            .set ("spark.cassandra.connection.port", PORT)
+            // register CIMReader classes
+            .registerKryoClasses (CIMClasses.list)
+        // register GraphX classes
+        GraphXUtils.registerKryoClasses (configuration)
+
+        // create the session
+        SparkSession.builder.config (configuration).getOrCreate
+    }
 
     val properties: Properties =
     {
@@ -93,29 +115,7 @@ object EventAndFactorSuiteIT
 
     @BeforeClass def before (): Unit =
     {
-        // create the configuration
-        val configuration = new SparkConf (false)
-        configuration.setAppName ("SummarySuiteIT")
-        configuration.setMaster ("local[*]")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "2g")
-        configuration.set ("spark.ui.port", "4041")
-        configuration.set ("spark.graphx.pregel.checkpointInterval", "8")
-        configuration.set ("spark.ui.showConsoleProgress", "false")
-        configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
-        configuration.set ("spark.cassandra.connection.host", "localhost")
-        configuration.set ("spark.cassandra.connection.port", PORT)
-
-        // register CIMReader classes
-        configuration.registerKryoClasses (CIMClasses.list)
-        // register GraphX classes
-        GraphXUtils.registerKryoClasses (configuration)
-
-        // create the session
-        val session = SparkSession.builder.config (configuration).getOrCreate
-        session.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
-        _Spark = session
+        _Spark.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
     }
 
     @AfterClass def after ()

@@ -19,8 +19,8 @@ case class SimulationNode
     override val id: String,
     override val nominal_voltage: Double,
     equipment: String,
-    world_position: (Double, Double),
-    schematic_position: (Double, Double),
+    world_position: (Double, Double) = null,
+    schematic_position: (Double, Double) = null,
     players: Iterable[SimulationPlayer] = null,
     recorders: Iterable[SimulationRecorder] = null
 )

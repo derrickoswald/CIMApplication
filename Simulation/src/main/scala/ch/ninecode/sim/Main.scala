@@ -47,7 +47,7 @@ object Main
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
             writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
             writer.close ()
@@ -81,16 +81,6 @@ object Main
                     {
                         val begin = System.nanoTime ()
 
-                        // create the configuration
-                        val configuration = new SparkConf (false)
-                        configuration.setAppName (APPLICATION_NAME)
-                        if ("" != options.master)
-                            configuration.setMaster (options.master)
-                        if (options.options.nonEmpty)
-                            options.options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
-                        configuration.set ("spark.cassandra.connection.host", options.host)
-                        configuration.set ("spark.cassandra.connection.port", options.port.toString)
-
                         // get the necessary jar files to send to the cluster
                         val sim = jarForClass (SimulationOptions ().getClass)
                         val glm = jarForClass (Class.forName ("ch.ninecode.gl.GLMEdge"))
@@ -99,18 +89,30 @@ object Main
                         val json = jarForClass (Class.forName ("javax.json.JsonStructure"))
                         val json_impl = jarForClass (Class.forName ("org.glassfish.json.JsonProviderImpl"))
                         val datastax = jarForClass (Class.forName ("com.datastax.driver.core.Cluster"))
-                        configuration.setJars (Set (sim, glm, reader, util, json, json_impl, datastax).toArray)
 
-                        // register CIMReader classes
-                        configuration.registerKryoClasses (CIMClasses.list)
-                        // register GridLAB-D classes
-                        configuration.registerKryoClasses (GridLABD.classes)
-                        // register Net classes
-                        configuration.registerKryoClasses (Net.classes)
-                        // register Simulation analysis classes
-                        configuration.registerKryoClasses (Simulation.classes)
-                        // register Util classes
-                        configuration.registerKryoClasses (Util.classes)
+                        // create the configuration
+                        val configuration = new SparkConf (false)
+                            .setAppName (APPLICATION_NAME)
+                            .set ("spark.cassandra.connection.host", options.host)
+                            .set ("spark.cassandra.connection.port", options.port.toString)
+                            .setJars (Set (sim, glm, reader, util, json, json_impl, datastax).toArray)
+
+                            // register CIMReader classes
+                            .registerKryoClasses (CIMClasses.list)
+                            // register GridLAB-D classes
+                            .registerKryoClasses (GridLABD.classes)
+                            // register Net classes
+                            .registerKryoClasses (Net.classes)
+                            // register Simulation analysis classes
+                            .registerKryoClasses (Simulation.classes)
+                            // register Util classes
+                            .registerKryoClasses (Util.classes)
+
+                        if ("" != options.master)
+                        {
+                            val _ = configuration.setMaster (options.master)
+                        }
+                        options.options.foreach ((pair: (String, String)) => configuration.set (pair._1, pair._2))
 
                         // make a Spark session
                         val session = SparkSession.builder ().config (configuration).getOrCreate ()
@@ -123,15 +125,18 @@ object Main
                             log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
 
                         val setup = System.nanoTime ()
-                        log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
+                        log.info (s"setup: ${(setup - begin) / 1e9} seconds")
 
                         if (options.simulation.nonEmpty)
-                            Simulation (session, options).run ()
+                        {
+                            val ids = Simulation (session, options).run ()
+                            log.info (s"simulated ${ids.mkString (",")}")
+                        }
                         else
-                            log.error ("""no simulation JSON files specified""")
+                            log.error ("no simulation JSON files specified")
 
                         val calculate = System.nanoTime ()
-                        log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
+                        log.info (s"execution: ${(calculate - setup) / 1e9} seconds")
                     }
                 }
                 if (!options.unittest)

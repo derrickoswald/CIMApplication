@@ -132,6 +132,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.testutil</groupId>
+            <artifactId>TestUtil</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${version.dependency.junit}</version>

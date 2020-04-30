@@ -91,7 +91,13 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         .text (s"storage level for RDD serialization [${default.storage}]")
 
     opt[String]("workdir")
-        .action ((x, c) => c.copy (workdir = if (x.endsWith ("/")) x else s"$x/"))
+        .action (
+            (x, c) =>
+            {
+                val sep = System.getProperty ("file.separator")
+                c.copy (workdir = if (x.endsWith (sep)) x else s"$x$sep")
+            }
+        )
         .text (s"working directory for unzip and copy [${default.workdir}]")
 
     opt[String]("mapping")
@@ -130,9 +136,9 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         .action ((x, c) => { job = job.copy (format = x); updateJson (c) })
         .text (s"format of the data files, one of ${Formats.values.iterator.mkString (",")} [${job.format}]")
 
-    opt[Modes.Value]("mode").
-      action ((x, c) ⇒ {job = job.copy (mode = x); updateJson(c)}).
-      text (s"ingest mode, one of ${Modes.values.iterator.mkString (",")} [${job.mode}]")
+    opt[Modes.Value]("mode")
+        .action ((x, c) ⇒ {job = job.copy (mode = x); updateJson(c)})
+        .text (s"ingest mode, one of ${Modes.values.iterator.mkString (",")} [${job.mode}]")
 
     opt[Unit]("nocopy")
         .action ((_, c) => { job = job.copy (nocopy = true); updateJson (c) })
@@ -146,7 +152,7 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
             try
             {
                 val sep = System.getProperty ("file.separator")
-                val file = if (x.startsWith (sep)) x else new java.io.File (".").getCanonicalPath + sep + x
+                val file = if (x.startsWith (sep)) x else s"${new java.io.File (".").getCanonicalPath}$sep$x"
                 job = job.copy (datafiles = job.datafiles :+ file)
                 updateJson (c)
             }

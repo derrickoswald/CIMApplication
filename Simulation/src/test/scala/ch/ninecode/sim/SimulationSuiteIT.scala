@@ -1,14 +1,8 @@
 package ch.ninecode.sim
 
-import java.io.BufferedOutputStream
-import java.io.Closeable
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
 import java.io.PrintWriter
 import java.util.Properties
-import java.util.zip.ZipInputStream
 
 import scala.collection.JavaConverters.asScalaBufferConverter
 
@@ -25,11 +19,19 @@ import org.junit.Test
 import org.junit.runners.MethodSorters
 
 import ch.ninecode.util.Schema
+import ch.ninecode.testutil.Unzip
+import ch.ninecode.testutil.Using
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class SimulationSuiteIT
 {
-    import SimulationSuiteIT._
+    import SimulationSuiteIT.FILE_DEPOT
+    import SimulationSuiteIT.FILENAME1
+    import SimulationSuiteIT.FILENAME2
+    import SimulationSuiteIT.KEYSPACE
+    import SimulationSuiteIT.cassandra_port
+    import SimulationSuiteIT.delete
+    import SimulationSuiteIT.using
 
     @Test def Help ()
     {
@@ -331,7 +333,7 @@ class SimulationSuiteIT
                 "--host", "localhost",
                 "--port", cassandra_port,
                 json))
-        new File (json).delete
+        delete (json)
     }
 
     @Test def SimulationDemoDataReinforced ()
@@ -535,10 +537,10 @@ class SimulationSuiteIT
             cassandraSession =>
                 val sql1 = s"""select * from "$KEYSPACE".measured_value where mrid='USR0001' and type='energy' and time='2017-12-31 23:00:00.000+0000'"""
                 val sql2 = s"""select * from "$KEYSPACE".simulated_value where simulation='$ID_SIMULATION' and mrid='USR0001' and type='power' and period=900000 and time='2017-12-31 23:00:00.000+0000'"""
-                assert (cassandraSession.execute (sql1).all.asScala.head.getDouble ("real_a") * 4 ==
-                    cassandraSession.execute (sql2).all.asScala.head.getDouble ("real_a"))
+                assert (cassandraSession.execute (sql1).all.asScala.headOption.fold (Double.NaN) (_.getDouble ("real_a")) * 4 ==
+                    cassandraSession.execute (sql2).all.asScala.headOption.fold (Double.NaN) (_.getDouble ("real_a")))
         }
-        new File (json).delete
+        delete (json)
     }
 
     @Test def ThreePhase ()
@@ -945,7 +947,7 @@ class SimulationSuiteIT
                 json
             )
         )
-        new File (json).delete
+        delete (json)
     }
 
     @Test def VoltageFactor ()
@@ -1106,11 +1108,11 @@ class SimulationSuiteIT
                 }
                 assert (cassandraSession.execute (sql).all.asScala.forall (row => mag (row) > 403.0)) // min is 403.97855
         }
-        new File (json).delete
+        delete (json)
     }
 }
 
-object SimulationSuiteIT
+object SimulationSuiteIT extends Unzip with Using
 {
     val KEYSPACE = "Test"
     val FILE_DEPOT = "data/"
@@ -1119,81 +1121,9 @@ object SimulationSuiteIT
     val FILENAME2 = "DemoDataReinforced"
     lazy val wd: String = "%s%s".format (new java.io.File (".").getCanonicalPath, System.getProperty ("file.separator"))
 
-    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
+    def delete (filename: String): Unit =
     {
-        try
-        {
-            block (resource)
-        }
-        finally
-        {
-            resource.close ()
-        }
-    }
-
-    /**
-     * This utility extracts files and directories of a standard zip file to a destination directory.
-     *
-     * @author www.codejava.net
-     *
-     */
-    class Unzip
-    {
-        /**
-         * Extracts a zip file specified by the file to a directory.
-         *
-         * The directory will be created if does not exist.
-         *
-         * @param file the zip file
-         * @param directory the directory to extract it to
-         * @throws IOException if there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        def unzip (file: String, directory: String): Unit =
-        {
-            val dir = new File (directory)
-            if (!dir.exists)
-                dir.mkdir
-            using (new ZipInputStream (new FileInputStream (file)))
-            {
-                zip =>
-                    var entry = zip.getNextEntry
-                    // iterates over entries in the zip file
-                    while (null != entry)
-                    {
-                        val path = directory + entry.getName
-                        if (!entry.isDirectory)
-                        // if the entry is a file, extracts it
-                            extractFile (zip, path)
-                        else
-                        // if the entry is a directory, make the directory
-                            new File (path).mkdir
-                        zip.closeEntry ()
-                        entry = zip.getNextEntry
-                    }
-            }
-
-        }
-
-        /**
-         * Extracts a zip entry (file entry).
-         *
-         * @param zip  The Zip input stream for the file.
-         * @param path The path to extract he file to.
-         * @throws IOException If there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        private def extractFile (zip: ZipInputStream, path: String): Unit =
-        {
-            using (new BufferedOutputStream (new FileOutputStream (path)))
-            {
-                bos =>
-                    val bytes = new Array[Byte](4096)
-                    var read = -1
-                    while ({ read = zip.read (bytes); read != -1 })
-                        bos.write (bytes, 0, read)
-            }
-        }
+        val _ = new File (filename).delete
     }
 
     def cassandra_port: String =
@@ -1219,15 +1149,15 @@ object SimulationSuiteIT
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName ("SummarySuiteIT")
-        configuration.setMaster ("local[*]")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "2g")
-        configuration.set ("spark.ui.port", "4041")
-        configuration.set ("spark.ui.showConsoleProgress", "false")
-        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
-        configuration.set ("spark.cassandra.connection.host", "localhost")
-        configuration.set ("spark.cassandra.connection.port", cassandra_port)
+            .setAppName ("SummarySuiteIT")
+            .setMaster ("local[*]")
+            .set ("spark.driver.memory", "2g")
+            .set ("spark.executor.memory", "2g")
+            .set ("spark.ui.port", "4041")
+            .set ("spark.ui.showConsoleProgress", "false")
+            .set ("spark.sql.warehouse.dir", "file:///tmp/")
+            .set ("spark.cassandra.connection.host", "localhost")
+            .set ("spark.cassandra.connection.port", cassandra_port)
 
         val session = SparkSession.builder.config (configuration).getOrCreate
         session.sparkContext.setLogLevel ("WARN")
@@ -1276,8 +1206,8 @@ object SimulationSuiteIT
     @AfterClass def after ()
     {
         // erase the unpacked file
-        new File (s"$FILE_DEPOT$FILENAME0.csv").delete
-        new File (s"$FILE_DEPOT$FILENAME1.rdf").delete
-        new File (s"$FILE_DEPOT$FILENAME2.rdf").delete
+        delete (s"$FILE_DEPOT$FILENAME0.csv")
+        delete (s"$FILE_DEPOT$FILENAME1.rdf")
+        delete (s"$FILE_DEPOT$FILENAME2.rdf")
     }
 }

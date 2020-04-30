@@ -1,7 +1,16 @@
 package ch.ninecode.sim
 
+import org.slf4j.LoggerFactory
+
 import scopt.OptionParser
 
+/**
+ * Parser for command line operation.
+ *
+ * @param APPLICATION_NAME the name of the program
+ * @param APPLICATION_VERSION the version of the program.
+ */
+@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
 class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
     extends OptionParser[SimulationOptions](APPLICATION_NAME)
 {
@@ -36,99 +45,108 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
             }
     }
 
-    opt[Unit]("unittest").
-        hidden ().
-        action ((_, c) => { unittest = true; c.copy (unittest = true) }).
-        text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
+    opt[Unit]("unittest")
+        .hidden ()
+        .action ((_, c) => { unittest = true; c.copy (unittest = true) })
+        .text (s"unit testing - don't call sys.exit() [${default.unittest}]")
 
-    version ("version").
-        validate (Unit => { versionout = true; Right (Unit) }).
-            text ("Scala: %s, Spark: %s, %s: %s".format (
-                APPLICATION_VERSION.split ("-")(0),
-                APPLICATION_VERSION.split ("-")(1),
-                APPLICATION_NAME,
-                APPLICATION_VERSION.split ("-")(2)
-            )
+    version ("version")
+        .validate (Unit => { versionout = true; Right (Unit) })
+        .text (
+            {
+                val version = APPLICATION_VERSION.split ("-")
+                s"Scala: ${version(0)}, Spark: ${version(1)}, $APPLICATION_NAME: ${version(2)}"
+            }
         )
 
-    opt[Unit]("verbose").
-        action ((_, c) ⇒ c.copy (verbose = true)).
-        text ("emit progress messages [%s]".format (default.verbose))
+    opt[Unit]("verbose")
+        .action ((_, c) => c.copy (verbose = true))
+        .text (s"emit progress messages [${default.verbose}]")
 
-    opt[String]("master").valueName ("MASTER_URL").
-        action ((x, c) ⇒ c.copy (master = x)).
-        text ("local[*], spark://host:port, mesos://host:port or yarn [%s]".format (default.master))
+    opt[String]("master").valueName ("MASTER_URL")
+        .action ((x, c) => c.copy (master = x))
+        .text (s"local[*], spark://host:port, mesos://host:port or yarn [${default.master}]")
 
-    opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
-        action ((x, c) => c.copy (options = c.options ++ x)).
-        text ("Spark options [%s]".format (default.options.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
+    opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2")
+        .action ((x, c) => c.copy (options = c.options ++ x))
+        .text (s"Spark options [${default.options.map (x => s"${x._1}=${x._2}").mkString (",")}]")
 
-    opt[String]("host").valueName ("<cassandra>").
-        action ((x, c) ⇒ c.copy (host = x)).
-        text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
+    opt[String]("host").valueName ("Cassandra")
+        .action ((x, c) => c.copy (host = x))
+        .text (s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${default.host}]")
 
-    opt[Int]("port").valueName ("<port_number>").
-        action ((x, c) ⇒ c.copy (port = x)).
-        text ("Cassandra connection port [%s]".format (default.port))
+    opt[Int]("port").valueName ("<port_number>")
+        .action ((x, c) => c.copy (port = x))
+        .text (s"Cassandra connection port [${default.port}]")
 
-    opt[LogLevels.Value]("log").
-        action ((x, c) => c.copy (log_level = x)).
-        text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
+    opt[LogLevels.Value]("log")
+        .action ((x, c) => c.copy (log_level = x))
+        .text (s"log level, one of ${LogLevels.values.mkString (",")} [${default.log_level}]")
 
-    opt[String]("checkpoint").valueName ("<dir>").
-        action ((x, c) ⇒ c.copy (checkpoint = x)).
-        text ("checkpoint directory on HDFS, e.g. hdfs://... [\"%s\"]".format (default.checkpoint))
+    opt[String]("checkpoint").valueName ("<dir>")
+        .action ((x, c) => c.copy (checkpoint = x))
+        .text (s"checkpoint directory on HDFS, e.g. hdfs://... [${default.checkpoint}]")
 
-    opt[String]("workdir").valueName ("<dir>").
-        action ((x, c) ⇒
-        {
-            val sep = System.getProperty ("file.separator"); c.copy (workdir = if (x.endsWith (sep)) x else x + sep)
-        }).
-        text ("directory for work files on each executor [\"%s\"]".format (default.workdir))
-
-    opt[Unit]("three").
-        action ((_, c) ⇒ c.copy (three_phase = true)).
-        text ("perform simulation using three phase load-flow [%s]".format (default.three_phase))
-
-    opt[Unit]("fake").
-        action ((_, c) ⇒ c.copy (fake_three_phase = true)).
-        text ("convert single phase measurements into three phase [%s]".format (default.fake_three_phase))
-
-    opt[Unit]("keep").
-        action ((_, c) ⇒ c.copy (keep = true)).
-        text ("keep intermediate glm and input/output files in workdir [%s]".format (default.keep))
-
-    opt[Unit]("simulationonly").
-        action ((_, c) ⇒ c.copy (simulationonly = true)).
-        text ("perform simulation operations only [%s]".format (default.simulationonly))
-
-    opt[Unit]("postprocessonly").
-        action ((_, c) ⇒ c.copy (postprocessonly = true)).
-        text ("perform postprocessing operations only [%s]".format (default.postprocessonly))
-
-    arg[String]("<JSON> <JSON>...").optional ().unbounded ().
-        action ((x, c) ⇒
-        {
-            try
+    opt[String]("workdir").valueName ("<dir>")
+        .action (
+            (x, c) =>
             {
                 val sep = System.getProperty ("file.separator")
-                val file = if (x.startsWith (sep)) x else new java.io.File (".").getCanonicalPath + sep + x
-                val source = scala.io.Source.fromFile (file, "UTF-8")
-                val text = source.mkString
-                source.close
-                c.copy (simulation = c.simulation :+ text)
+                c.copy (workdir = if (x.endsWith (sep)) x else s"$x$sep")
             }
-            catch
-            {
-                case e: Exception =>
-                    throw new Exception ("bad input file name", e)
-            }
-        }).
-        text ("simulation files to process")
+        )
+        .text (s"directory for work files on each executor [${default.workdir}]")
 
-    help ("help").
-        hidden ().
-        validate (Unit => { helpout = true; Right (Unit) })
+    opt[Unit]("three")
+        .action ((_, c) => c.copy (three_phase = true))
+        .text (s"perform simulation using three phase load-flow [${default.three_phase}]")
+
+    opt[Unit]("fake")
+        .action ((_, c) => c.copy (fake_three_phase = true))
+        .text (s"convert single phase measurements into three phase [${default.fake_three_phase}]")
+
+    opt[Unit]("keep")
+        .action ((_, c) => c.copy (keep = true))
+        .text (s"keep intermediate glm and input/output files in workdir [${default.keep}]")
+
+    opt[Unit]("simulationonly")
+        .action ((_, c) => c.copy (simulationonly = true))
+        .text (s"perform simulation operations only [${default.simulationonly}]")
+
+    opt[Unit]("postprocessonly")
+        .action ((_, c) => c.copy (postprocessonly = true))
+        .text (s"perform postprocessing operations only [${default.postprocessonly}]")
+
+    arg[String]("<JSON> <JSON>...")
+        .optional ()
+        .unbounded ()
+        .action (
+            (x, c) =>
+            {
+                try
+                {
+                    val sep = System.getProperty ("file.separator")
+                    val file = if (x.startsWith (sep)) x else s"${new java.io.File (".").getCanonicalPath}$sep$x"
+                    val source = scala.io.Source.fromFile (file, "UTF-8")
+                    val text = source.mkString
+                    source.close
+                    c.copy (simulation = c.simulation :+ text)
+                }
+                catch
+                {
+                    case e: Exception =>
+                        val log = LoggerFactory.getLogger (getClass.getName)
+                        log.error ("bad input file name", e)
+                        helpout = true
+                        c
+                }
+            }
+        )
+        .text ("simulation files to process")
+
+    help ("help")
+        .hidden ()
+        .validate (Unit => { helpout = true; Right (Unit) })
 
     checkConfig (o => { o.valid = !(helpout || versionout); Right (Unit) })
 
