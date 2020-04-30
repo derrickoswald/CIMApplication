@@ -423,16 +423,40 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         session.sparkContext.getPersistentRDDs.foreach (x => vanishRDD (x._2))
     }
 
-    def simulate (batch: Seq[SimulationJob]): Seq[String] =
+    def performExtraQueries (job: SimulationJob): Unit =
     {
-        log.info ("""starting simulations""")
-        val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
+        log.info (s"executing ${job.extras.length} extra queries")
+        job.extras.foreach (
+            extra =>
+            {
+                log.info (s"""executing "${extra.title}" as ${extra.query}""")
+                val df: DataFrame = session.sql (extra.query).persist ()
+                if (df.count > 0)
+                {
+                    val fields = df.schema.fieldNames
+                    if (!fields.contains ("key") || !fields.contains ("value"))
+                        log.error (s"""extra query "${extra.title}" schema either does not contain a "key" or a "value" field: ${fields.mkString}""")
+                    else
+                    {
+                        val keyindex = df.schema.fieldIndex ("key")
+                        val valueindex = df.schema.fieldIndex ("value")
+                        val keytype = df.schema.fields (keyindex).dataType.simpleString
+                        val valuetype = df.schema.fields (valueindex).dataType.simpleString
+                        if ((keytype != "string") || (valuetype != "string"))
+                            log.error (s"""extra query "${extra.title}" schema fields key and value are not both strings (key=$keytype, value=$valuetype)""")
+                        else
+                            df.rdd.map (row => (job.id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (job.output_keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
+                    }
+                }
+                else
+                    log.warn (s"""extra query "${extra.title}" returned no rows""")
+                df.unpersist (false)
+            }
+        )
+    }
 
-        // clean up in case there was a file already loaded
-        cleanRDDs ()
-        read (ajob.cim, ajob.cimreaderoptions, options.storage_level)
-
-        // get the transformer(s)
+    def getTransformers: (Map[String, TransformerSet], Array[TransformerData]) =
+    {
         val transformer_data = new Transformers (session, options.storage_level).getTransformers ()
         val tx = transformer_data.keyBy (_.node1.id) // (low_voltage_node_name, TransformerData)
             .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
@@ -452,9 +476,90 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         def subtransmission (trafo: TransformerData): Boolean =
         {
             trafo.ends.length == 2 &&
-            trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) // ToDo: don't hard code these voltage values
+                trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) // ToDo: don't hard code these voltage values
         }
         val subtransmission_trafos = transformer_data.filter (subtransmission).collect
+        (transformers, subtransmission_trafos)
+    }
+
+    def performGridlabSimulations (job: SimulationJob, simulations: RDD[SimulationTrafoKreis], player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])]): RDD[SimulationResult] =
+    {
+        val numSimulations = simulations.count ().toInt
+        log.info (s"""performing ${numSimulations} GridLAB-D simulation${plural (numSimulations)}""")
+        val runner = SimulationRunner (
+            options.host, job.output_keyspace, options.workdir,
+            options.three_phase, options.fake_three_phase,
+            job.cim_temperature, job.simulation_temperature, job.swing_voltage_factor,
+            options.keep, options.verbose)
+        val raw_results =
+            simulations
+                .keyBy (_.name)
+                .join (player_rdd)
+                .values
+                .map (x => runner.execute (x._1, x._2.toMap))
+                .persist (options.storage_level)
+        raw_results.flatMap (_._1).collect.foreach (log.error)
+        val results = raw_results.flatMap (_._2).persist (options.storage_level).setName (s"${job.id}_results")
+        results
+    }
+
+    def createSimulationTasks (job: SimulationJob, batchno: Int): RDD[SimulationTrafoKreis] =
+    {
+        val (transformers, subtransmission_trafos) = getTransformers
+        val tasks = make_tasks (subtransmission_trafos)(job)
+        job.save (session, job.output_keyspace, job.id, tasks)
+
+        log.info ("""matching tasks to topological islands""")
+        val _simulations =
+            tasks.flatMap (
+                task =>
+                {
+                    transformers.get (task.island) match
+                    {
+                        case Some (transformerset) =>
+                            List (
+                                SimulationTrafoKreis (
+                                    job.id,
+                                    task.island,
+                                    transformerset,
+                                    job.swing,
+                                    task.nodes,
+                                    task.edges.filter (edge => edge.id != transformerset.transformer_name),
+                                    task.start,
+                                    task.end,
+                                    task.players,
+                                    task.recorders,
+                                    s"${transformerset.transformer_name}${System.getProperty ("file.separator")}"
+                                )
+                            )
+                        case None =>
+                            log.error (s"no transformer sets for island ${task.island}")
+                            List ()
+                    }
+                }
+            ).persist (options.storage_level).setName (s"${job.id}_simulations")
+        val numsimulations = _simulations.count.toInt
+        log.info (s"${numsimulations} GridLAB-D simulation${plural (numsimulations)} to do for simulation ${job.id} batch $batchno")
+
+        var simulations: RDD[SimulationTrafoKreis] = spark.sparkContext.emptyRDD
+        if (0 != numsimulations)
+        {
+            val direction = SimulationDirection (options.workdir, options.verbose)
+            simulations = _simulations.map (x => x.copy (directions = direction.execute (x)))
+                .persist (options.storage_level).setName (s"${job.id}_simulations")
+            _simulations.unpersist (false)
+        }
+        simulations
+    }
+
+    def simulate (batch: Seq[SimulationJob]): Seq[String] =
+    {
+        log.info ("""starting simulations""")
+        val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
+
+        // clean up in case there was a file already loaded
+        cleanRDDs ()
+        read (ajob.cim, ajob.cimreaderoptions, options.storage_level)
 
         var batchno = 1
         val ids = batch.map (
@@ -466,124 +571,38 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 if (schema.make (keyspace = job.output_keyspace, replication = job.replication))
                 {
                     // perform the extra queries and insert into the key_value table
-                    log.info (s"executing ${job.extras.length} extra queries")
-                    job.extras.foreach (
-                        extra =>
-                        {
-                            log.info (s"""executing "${extra.title}" as ${extra.query}""")
-                            val df: DataFrame = session.sql (extra.query).persist ()
-                            if (df.count > 0)
-                            {
-                                val fields = df.schema.fieldNames
-                                if (!fields.contains ("key") || !fields.contains ("value"))
-                                    log.error (s"""extra query "${extra.title}" schema either does not contain a "key" or a "value" field: ${fields.mkString}""")
-                                else
-                                {
-                                    val keyindex = df.schema.fieldIndex ("key")
-                                    val valueindex = df.schema.fieldIndex ("value")
-                                    val keytype = df.schema.fields (keyindex).dataType.simpleString
-                                    val valuetype = df.schema.fields (valueindex).dataType.simpleString
-                                    if ((keytype != "string") || (valuetype != "string"))
-                                        log.error (s"""extra query "${extra.title}" schema fields key and value are not both strings (key=$keytype, value=$valuetype)""")
-                                    else
-                                        df.rdd.map (row => (job.id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (job.output_keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
-                                }
-                            }
-                            else
-                                log.warn (s"""extra query "${extra.title}" returned no rows""")
-                            df.unpersist (false)
-                        }
-                    )
+                    performExtraQueries (job)
 
-                    // create the simulation tasks
-                    val tasks = make_tasks (subtransmission_trafos) (job)
-                    job.save (session, job.output_keyspace, job.id, tasks)
+                    val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks (job, batchno)
 
-                    log.info ("""matching tasks to topological islands""")
-                    val _simulations =
-                        tasks.flatMap (
-                            task =>
-                            {
-                                transformers.get (task.island) match
-                                {
-                                    case Some (transformerset) =>
-                                        List (
-                                            SimulationTrafoKreis (
-                                                job.id,
-                                                task.island,
-                                                transformerset,
-                                                job.swing,
-                                                task.nodes,
-                                                task.edges.filter (edge => edge.id != transformerset.transformer_name),
-                                                task.start,
-                                                task.end,
-                                                task.players,
-                                                task.recorders,
-                                                s"${transformerset.transformer_name}${System.getProperty ("file.separator")}"
-                                            )
-                                        )
-                                    case None =>
-                                        log.error (s"no transformer sets for island ${task.island}")
-                                        List ()
-                                }
-                            }
-                        ).persist (options.storage_level).setName (s"${job.id}_simulations")
-                    val numsimulations = _simulations.count.toInt
-                    log.info (s"${numsimulations} GridLAB-D simulation${plural (numsimulations)} to do for simulation ${job.id} batch $batchno")
-
-                    if (0 != numsimulations)
+                    if (!simulations.isEmpty())
                     {
-                        val direction = SimulationDirection (options.workdir, options.verbose)
-                        val simulations: RDD[SimulationTrafoKreis] =
-                            _simulations
-                                .map (x => x.copy (directions = direction.execute (x)))
-                                .persist (options.storage_level)
-                                .setName (s"${job.id}_simulations")
-                        vanishRDD (_simulations)
-
                         log.info ("""storing GeoJSON data""")
                         val geo = SimulationGeometry (session, job.output_keyspace)
                         geo.storeGeometry (job.id, simulations)
 
                         log.info ("""querying player data""")
-                        val query = query_values (job.input_keyspace, job.buffer)_
+                        val query = query_values (job.input_keyspace, job.buffer) _
                         val player_rdd =
                             spark.sparkContext.union (
                                 simulations
-                                .map (simulation => (simulation.name, simulation.players))
-                                .collect
-                                .map (query)
-                                .toSeq)
-                            .persist (options.storage_level)
-                            .setName (s"${job.id}_player_data")
+                                    .map (simulation => (simulation.name, simulation.players))
+                                    .collect
+                                    .map (query)
+                                    .toSeq)
+                                .persist (options.storage_level)
+                                .setName (s"${job.id}_player_data")
                         log.info (s"""${player_rdd.count} player data results""")
 
-                        log.info (s"""performing $numsimulations GridLAB-D simulation${plural (numsimulations)}""")
-                        val runner = SimulationRunner (
-                            options.host, job.output_keyspace, options.workdir,
-                            options.three_phase, options.fake_three_phase,
-                            job.cim_temperature, job.simulation_temperature, job.swing_voltage_factor,
-                            options.keep, options.verbose)
-                        val raw_results =
-                            simulations
-                            .keyBy (_.name)
-                            .join (player_rdd)
-                            .values
-                            .map (x => runner.execute (x._1, x._2.toMap))
-                            .persist (options.storage_level)
-                        raw_results.flatMap (_._1).collect.foreach (log.error)
-                        val results = raw_results.flatMap (_._2).persist (options.storage_level).setName (s"${job.id}_results")
+                        val simulationResults: RDD[SimulationResult] = performGridlabSimulations (job, simulations, player_rdd)
 
                         // save the results
                         log.info ("""saving GridLAB-D simulation results""")
-                        results.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl"), consistencyLevel = ConsistencyLevel.ANY))
+                        simulationResults.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl"), consistencyLevel = ConsistencyLevel.ANY))
                         log.info ("""saved GridLAB-D simulation results""")
-                        vanishRDD (results)
-                        vanishRDD (raw_results)
                         vanishRDD (player_rdd)
                     }
 
-                    // clean up
                     cleanRDDs ()
                     batchno = batchno + 1
                 }
@@ -684,26 +703,26 @@ object Simulation
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf[ch.ninecode.sim.Simulation],
-            classOf[ch.ninecode.sim.SimulationAggregate],
-            classOf[ch.ninecode.sim.SimulationDirectionGenerator],
-            classOf[ch.ninecode.sim.SimulationEdge],
-            classOf[ch.ninecode.sim.SimulationExtraQuery],
-            classOf[ch.ninecode.sim.SimulationGLMGenerator],
-            classOf[ch.ninecode.sim.SimulationJob],
-            classOf[ch.ninecode.sim.SimulationNode],
-            classOf[ch.ninecode.sim.SimulationOptions],
-            classOf[ch.ninecode.sim.SimulationPlayer],
-            classOf[ch.ninecode.sim.SimulationPlayerData],
-            classOf[ch.ninecode.sim.SimulationPlayerQuery],
-            classOf[ch.ninecode.sim.SimulationPlayerResult],
-            classOf[ch.ninecode.sim.SimulationRecorder],
-            classOf[ch.ninecode.sim.SimulationRecorderQuery],
-            classOf[ch.ninecode.sim.SimulationRecorderResult],
-            classOf[ch.ninecode.sim.SimulationResult],
-            classOf[ch.ninecode.sim.SimulationSparkQuery],
-            classOf[ch.ninecode.sim.SimulationTask],
-            classOf[ch.ninecode.sim.SimulationTrafoKreis]
+            classOf [ch.ninecode.sim.Simulation],
+            classOf [ch.ninecode.sim.SimulationAggregate],
+            classOf [ch.ninecode.sim.SimulationDirectionGenerator],
+            classOf [ch.ninecode.sim.SimulationEdge],
+            classOf [ch.ninecode.sim.SimulationExtraQuery],
+            classOf [ch.ninecode.sim.SimulationGLMGenerator],
+            classOf [ch.ninecode.sim.SimulationJob],
+            classOf [ch.ninecode.sim.SimulationNode],
+            classOf [ch.ninecode.sim.SimulationOptions],
+            classOf [ch.ninecode.sim.SimulationPlayer],
+            classOf [ch.ninecode.sim.SimulationPlayerData],
+            classOf [ch.ninecode.sim.SimulationPlayerQuery],
+            classOf [ch.ninecode.sim.SimulationPlayerResult],
+            classOf [ch.ninecode.sim.SimulationRecorder],
+            classOf [ch.ninecode.sim.SimulationRecorderQuery],
+            classOf [ch.ninecode.sim.SimulationRecorderResult],
+            classOf [ch.ninecode.sim.SimulationResult],
+            classOf [ch.ninecode.sim.SimulationSparkQuery],
+            classOf [ch.ninecode.sim.SimulationTask],
+            classOf [ch.ninecode.sim.SimulationTrafoKreis]
         )
     }
 }
