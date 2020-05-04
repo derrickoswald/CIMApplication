@@ -71,11 +71,12 @@ case class Trafokreis
         val feeder = a_node.feeder
         val node = a_node.id_seq // the node under test
         val house = best (nodes, node) // the house under test (could be multiple houses per node)
+        val houses = nodes.map (_.mrid).toList // all the houses attached to the node
         val max = nodes.map (limit).max // upper kilowatt limit to test
         val interval = 5 // seconds per step
         val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
         val riser = if (steps * step >= max) step else math.ceil (max / steps / step) * step // limit as ceiling(minimum step size) in thousands
-        Experiment (trafo, feeder, node, house, start_time, index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
+        Experiment (trafo, feeder, node, house, houses, start_time, index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
     }
 
     // generate experiments
