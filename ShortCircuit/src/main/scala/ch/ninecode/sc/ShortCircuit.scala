@@ -326,7 +326,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
     }
 
-    def read_output_files (one_phase: Boolean, workdir_slash: String): RDD[(String, ThreePhaseComplexDataElement)] =
+    def read_output_files (one_phase: Boolean, workdir_slash: String, filenames: Array[String]): RDD[(String, ThreePhaseComplexDataElement)] =
     {
         val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
 
@@ -345,7 +345,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
 
         val pattern = java.util.regex.Pattern.compile ("# output_data/([^.]*).csv run at (.*) on (\\d*) nodes")
-        val path = workdir_slash + "*/output.txt"
+        val path = filenames.map (file => s"$workdir_slash$file/output.txt").mkString (",")
         val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
         val files = session.sparkContext.wholeTextFiles (path, executors)
 
@@ -726,7 +726,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 failure.errorMessages.foreach(log.error)
             })
         }
-        val output = read_output_files (one_phase, gridlabd.workdir_slash)
+        val output = read_output_files (one_phase, gridlabd.workdir_slash, trafos.collect)
         val read = System.nanoTime ()
         log.info ("read: %s seconds".format ((read - solved) / 1e9))
 

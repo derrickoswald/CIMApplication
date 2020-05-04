@@ -468,7 +468,7 @@ class GridLABD
                                      |done""".stripMargin
                     new PrintWriter(pipeFileName) {
                         write(pipeContent)
-                        close
+                        close ()
                     }
                     Array [String](
                         "bash",
@@ -538,6 +538,7 @@ class GridLABD
     def read_output_files
     (
         one_phase: Boolean,
+        filenames: Array[String],
         filenameparser: String ⇒ (String, String) = default_filenameparser): RDD[(String, ThreePhaseComplexDataElement)] =
     {
         val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
@@ -563,7 +564,7 @@ class GridLABD
             }
         }
 
-        val path = workdir_slash + "*/output.txt"
+        val path = filenames.map (file => s"$workdir_slash$file/output.txt").mkString (",")
         val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
         val files = session.sparkContext.wholeTextFiles (path, executors)
 
