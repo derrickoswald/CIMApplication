@@ -10,6 +10,7 @@ import java.util.Calendar
  * @param feeder   CIM mRID of the connector in the substation feeding the house.
  * @param node     CIM mRID of the topological node being experimented on
  * @param house    CIM mRID of house being experimented on.
+ * @param houses   CIM mRID of all houses attached to the same node.
  * @param t0       Origin for all experiments.
  * @param slot     Unique experiment number (slot in windowed time).
  * @param window   Duration of the experiment (seconds).
@@ -24,6 +25,7 @@ case class Experiment
     feeder: String,
     node: String,
     house: String,
+    houses: List[String],
     t0: Calendar,
     slot: Int,
     window: Int,
