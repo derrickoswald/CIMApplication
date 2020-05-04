@@ -312,7 +312,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     def solve_and_analyse (gridlabd: GridLABD, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)], Iterable[(String, String)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
     {
         val b4_solve = System.nanoTime ()
-        val gridlabFailures = gridlabd.solve (reduced_trafos.map (_._1))
+        val trafos = reduced_trafos.map (_._1)
+        val gridlabFailures = gridlabd.solve (trafos)
         val solved = System.nanoTime ()
         if (gridlabFailures.isEmpty)
             log.info ("solve: %s seconds successful".format ((solved - b4_solve) / 1e9))
@@ -324,7 +325,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 failure.errorMessages.foreach(log.error)
             })
         }
-        val output = gridlabd.read_output_files (!options.three)
+        val output = gridlabd.read_output_files (!options.three, trafos.collect)
         val read = System.nanoTime ()
         log.info ("read: " + (read - solved) / 1e9 + " seconds")
         val prepared_results = reduced_trafos.join (output.cogroup (experiments.keyBy (_.trafo)))
