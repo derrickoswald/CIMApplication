@@ -198,7 +198,7 @@
                             <goal>test-jar</goal>
                         </goals>
                         <configuration>
-                            <includes>**/MFITestBase.*</includes>
+                            <includes>**/MFITestBase*.*</includes>
                         </configuration>
                     </execution>
                 </executions>
