@@ -24,6 +24,7 @@ import scala.collection.mutable
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
+@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
 object MainCustomer2
 {
     val properties: Properties =
@@ -176,7 +177,7 @@ object MainCustomer2
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
             writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
             writer.close ()
@@ -209,10 +210,10 @@ object MainCustomer2
         reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
         reader_options.put ("StorageLevel", arguments.storage)
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (arguments.files: _*).persist (storage)
-        log.info (elements.count () + " elements")
+        log.info (s"${elements.count ()} elements")
 
         val read = System.nanoTime ()
-        log.info ("read: " + (read - start) / 1e9 + " seconds")
+        log.info (s"read: ${(read - start) / 1e9} seconds")
 
         // identify topological nodes
         val ntp = CIMNetworkTopologyProcessor (session)
@@ -224,7 +225,7 @@ object MainCustomer2
                 debug = true,
                 storage = storage))
         val topo = System.nanoTime ()
-        log.info ("topology: " + (topo - read) / 1e9 + " seconds")
+        log.info (s"topology: ${(topo - read) / 1e9} seconds")
         ele.name = "Elements"
         ele.persist (storage)
         ele
@@ -281,17 +282,17 @@ object MainCustomer2
                         log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
                     val export = new CIMExport (session)
                     val setup = System.nanoTime ()
-                    log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
+                    log.info (s"setup: ${(setup - begin) / 1e9} seconds")
 
                     val elements = read_cim (session, arguments)
                     val initialization = System.nanoTime ()
-                    log.info ("initialization: " + (initialization - setup) / 1e9 + " seconds")
+                    log.info (s"initialization: ${(initialization - setup) / 1e9} seconds")
 
                     if (arguments.export != "")
                     {
                         export.export (elements, arguments.export)
                         val save = System.nanoTime ()
-                        log.info ("export: " + (save - initialization) / 1e9 + " seconds")
+                        log.info (s"export: ${(save - initialization) / 1e9} seconds")
                     }
 
                     // if a csv file was supplied, create EquivalentInjections and merge them into the superclass RDDs
@@ -308,7 +309,7 @@ object MainCustomer2
                 }
 
                 val calculate = System.nanoTime ()
-                log.info ("total: " + (calculate - begin) / 1e9 + " seconds")
+                log.info (s"total: ${(calculate - begin) / 1e9} seconds")
 
                 if (do_exit)
                     sys.exit (0)
