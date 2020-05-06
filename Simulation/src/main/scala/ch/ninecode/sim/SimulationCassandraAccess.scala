@@ -53,7 +53,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
         val values = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" → "simulated_value", "keyspace" → output_keyspace))
+            .options (Map ("table" -> "simulated_value", "keyspace" -> output_keyspace))
             .load
             // push down partition key = (simulation, mrid, type, period)
             .filter ("simulation = '%s' and type = '%s' and period = %s".format (simulation, `type`, period))

@@ -16,8 +16,8 @@ class EventAndFactorSuiteIT
 {
     import EventAndFactorSuiteIT._
 
-    val INPUT_KEYSPACE = "test"
-    val OUTPUT_KEYSPACE = "test"
+    val INPUT_KEYSPACE = "Test"
+    val OUTPUT_KEYSPACE = "Test"
     val ID = "Basic" // note: EventAndFactorSuiteIT must run after SimulationSuiteIT
 
     @Test def events ()
