@@ -52,7 +52,7 @@ case class Trafokreis
         // only do houses where we know it's more than a kilowatt or it's zero because of a three winding transformer
         (h.max_power_feeding > 1000.0 || 0 != h.reason.indexOf ("transformer windings for edge"))
 
-    def best (nodes: Iterable[MaxPowerFeedingNodeEEA], topo: String): String =
+    def best (nodes: Iterable[MaxPowerFeedingNodeEEA]): String =
     {
         // heuristic that node name starts with the mRID of the element
         nodes.find (x => x.id_seq.startsWith (x.mrid)) match
@@ -70,7 +70,7 @@ case class Trafokreis
         val a_node = nodes.head
         val feeder = a_node.feeder
         val node = a_node.id_seq // the node under test
-        val house = best (nodes, node) // the house under test (could be multiple houses per node)
+        val house = best (nodes) // the house under test (could be multiple houses per node)
         val houses = nodes.map (_.mrid).toList // all the houses attached to the node
         val max = nodes.map (limit).max // upper kilowatt limit to test
         val interval = 5 // seconds per step
