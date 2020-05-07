@@ -1,29 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <web-app
-  xmlns="http://java.sun.com/xml/ns/javaee"
+  xmlns="http://xmlns.jcp.org/xml/ns/javaee"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://www.oracle.com/webfolder/technetwork/jsc/xml/ns/javaee/web-app_2_5.xsd"
+  xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
   metadata-complete="false"
-  version="2.5">
-
+  version="3.1">
     <display-name>Sample application to access CIMConnector</display-name>
     <description>End-to-end demonstration program for reading and computing with CIM files in Spark.</description>
-    <resource-ref>
-        <description>
-            Resource reference to a factory for the CIMConnnector.
-        </description>
-        <res-ref-name>
-            eis/SparkConnectionFactory
-        </res-ref-name>
-        <res-type>
-            javax.resource.cci.ConnectionFactory
-        </res-type>
-        <res-auth>
-            Container
-        </res-auth>
-        <res-sharing-scope>
-            Shareable
-        </res-sharing-scope>
+
+<!--    <resource-ref>-->
+<!--        <description>-->
+<!--            Resource reference to a factory for the CIMConnnector.-->
+<!--        </description>-->
+<!--        <res-ref-name>-->
+<!--            eis/SparkConnectionFactory-->
+<!--        </res-ref-name>-->
+<!--        <res-type>-->
+<!--            javax.resource.cci.ConnectionFactory-->
+<!--        </res-type>-->
+<!--        <res-auth>-->
+<!--            Container-->
+<!--        </res-auth>-->
+<!--        <res-sharing-scope>-->
+<!--            Shareable-->
+<!--        </res-sharing-scope>-->
+<!--    </resource-ref>-->
+
+    <resource-ref id="SparkConnection">
+        <res-ref-name>eis/Spark</res-ref-name>
+        <res-type>ch.ninecode.cim.connector.CIMConnectionFactory</res-type>
+        <lookup-name>eis/SparkConnectionFactory</lookup-name>
     </resource-ref>
 
 </web-app>

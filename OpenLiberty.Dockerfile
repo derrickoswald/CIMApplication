@@ -66,4 +66,5 @@ COPY CIMEar/start-openliberty /opt/util/bin/start-openliberty
 RUN bin/server create cimapplication
 RUN sed --in-place "s|<httpEndpoint|<httpEndpoint host=\"*\"|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
 RUN sed --in-place "s|<\!-- <user name=\"yourUserName\" password=\"\" />  -->|<user name=\"admin\" password=\"Green1antern\" />|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
+RUN sed --in-place "s|</server>|  <connectionFactory jndiName=\"eis/SparkConnectionFactory\">\n    <interface-name>ch.ninecode.cim.connector.CIMConnectionFactory</interface-name>\n    <resource-adapter>#CIMConnector</resource-adapter>\n    <properties.CIMApplication.CIMConnector ConnectionURL=\"spark://sandbox:7077\"/>\n  </connectionFactory>\n\n</server>|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
 ADD CIMEar/target/CIMApplication.ear /usr/local/openliberty/usr/servers/cimapplication/dropins/

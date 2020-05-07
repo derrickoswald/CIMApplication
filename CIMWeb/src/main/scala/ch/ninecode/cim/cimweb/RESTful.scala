@@ -124,7 +124,7 @@ object RESTful
 {
     @Resource(
         name = "SparkConnectionFactory",
-        lookup = "java:comp/env/eis/SparkConnectionFactory",
+        lookup = "java:comp/env/eis/Spark",
         description = "Connection factory for Spark connection using CIMConnector")
     @SuppressWarnings (Array ("org.wartremover.warts.Null"))
     var _ConnectionFactory: CIMConnectionFactory = _
@@ -217,8 +217,8 @@ object RESTful
                         case Success (connection) => _ConnectionFactory = connection
                         case Failure (error) =>
                             append (error.getLocalizedMessage, debug_out)
-                            print_context (debug_out, context, "java:comp")
-                            lookupFactory (context, "java:comp/env/eis/SparkConnectionFactory") match
+                            print_context (debug_out, context, "eis")
+                            lookupFactory (context, "eis/SparkConnectionFactory") match
                             {
                                 case Success (connection) => _ConnectionFactory = connection
                                 case Failure (error) =>
