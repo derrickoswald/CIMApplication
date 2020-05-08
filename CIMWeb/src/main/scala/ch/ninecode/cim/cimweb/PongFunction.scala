@@ -12,7 +12,7 @@ import scala.collection.JavaConversions.iterableAsScalaIterable
 
 import org.apache.spark.sql.SparkSession
 
-final case class PongFunction () extends CIMWebFunction
+case class PongFunction () extends CIMWebFunction
 {
     // get the HDFS properties
     def filesystemConfiguration: JsonObjectBuilder =

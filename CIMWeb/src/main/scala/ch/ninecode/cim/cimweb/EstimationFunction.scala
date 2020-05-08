@@ -19,7 +19,7 @@ import ch.ninecode.util.Complex
  *
  * @param options the directives and JSON text of the simulation to run
  */
-final case class EstimationFunction (options: SimulationOptions) extends CIMWebFunction
+case class EstimationFunction (options: SimulationOptions) extends CIMWebFunction
 {
     jars = Array (
         jarForObject (this),

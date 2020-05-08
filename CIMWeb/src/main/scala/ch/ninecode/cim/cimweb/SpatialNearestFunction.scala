@@ -8,7 +8,7 @@ import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.sp.SpatialOperations
 import ch.ninecode.sp.SpatialOperationParameters
 
-final case class SpatialNearestFunction (var parameters: SpatialOperationParameters) extends CIMWebFunction
+case class SpatialNearestFunction (var parameters: SpatialOperationParameters) extends CIMWebFunction
 {
     jars = Array (jarForObject (parameters))
 

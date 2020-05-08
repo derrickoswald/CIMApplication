@@ -12,7 +12,7 @@ import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConversions.mapAsJavaMap
 
-final case class RESTfulJSONResult (var status: String, var message: String, var result: JsonStructure)
+case class RESTfulJSONResult (var status: String, var message: String, var result: JsonStructure)
 {
     import RESTfulJSONResult._
 

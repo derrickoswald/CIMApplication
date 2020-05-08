@@ -10,7 +10,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.sql.SparkSession
 
-final case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = false) extends CIMWebFunction
+case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = false) extends CIMWebFunction
 {
     override def executeJSON (spark: SparkSession): JsonStructure =
     {

@@ -18,7 +18,7 @@ import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.State
 import ch.ninecode.cim.Unforced
 
-final case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
+case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
     def asBoolean (string: String): Boolean = try { string.toBoolean } catch { case _: Throwable => false }
 

@@ -23,7 +23,7 @@ import ch.ninecode.ingest.LogLevels
  *
  * @param job the details of the job for ingesting
  */
-final case class IngestFunction (job: String) extends CIMWebFunction
+case class IngestFunction (job: String) extends CIMWebFunction
 {
     jars = Array (
         jarForObject (this),

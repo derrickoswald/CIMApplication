@@ -10,7 +10,7 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.StructField
 
-final case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
+case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
     // load the file
     override def executeJSON (spark: SparkSession): JsonStructure =

@@ -34,7 +34,7 @@ import ch.ninecode.model.PositionPoint
  * @param resolution distance factor for the Ramer–Douglas–Peucker algorithm
  * (the epsilon parameter in the Ramer–Douglas–Peucker algorithm is epsilon = 5 * dougPeukFactor * resolution)
  */
-final case class ViewFunction (
+case class ViewFunction (
     about: String,
     all: Boolean,
     xmin: Double,

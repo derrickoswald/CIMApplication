@@ -6,7 +6,7 @@ import javax.json.JsonStructure
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
 
-final case class DeleteFileFunction (path: String) extends CIMWebFunction
+case class DeleteFileFunction (path: String) extends CIMWebFunction
 {
     override def executeJSON (spark: SparkSession): JsonStructure =
     {

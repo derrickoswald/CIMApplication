@@ -11,7 +11,7 @@ import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.hadoop.security.AccessControlException
 import org.apache.spark.sql.SparkSession
 
-final case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFunction
+case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFunction
 {
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
