@@ -16,22 +16,22 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
         val root: Path = new Path (hdfs.getUri.toString, path)
-        // form the response
-        val response = Json.createObjectBuilder
-        response.add ("filesystem", uri.toString)
         val temp: String = root.toString
         val prefix: String = if (path.endsWith ("/")) if (temp.endsWith ("/")) temp else s"$temp/" else temp
-        response.add ("root", prefix)
+        // form the response
+        val files = Json.createArrayBuilder
+        val response = Json.createObjectBuilder
+            .add ("filesystem", uri.toString)
+            .add ("root", prefix)
         if (debug)
         {
             val configuration = Json.createObjectBuilder
             for (pair <- hdfs_configuration)
                 configuration.add (pair.getKey, pair.getValue)
-            response.add ("configuration", configuration)
+            val _ = response.add ("configuration", configuration)
         }
         // read the list of files
-        val files = Json.createArrayBuilder
-        try
+        val _ = try
         {
             if (hdfs.exists (root))
             {

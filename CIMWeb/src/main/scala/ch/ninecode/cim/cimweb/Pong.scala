@@ -2,9 +2,11 @@ package ch.ninecode.cim.cimweb
 
 import java.util
 import java.util.logging.Logger
+
 import javax.ejb.Stateless
 import javax.json.Json
 import javax.json.JsonStructure
+import javax.json.JsonObjectBuilder
 import javax.resource.ResourceException
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.DefaultValue
@@ -15,27 +17,63 @@ import javax.ws.rs.Produces
 
 import scala.collection.JavaConversions.collectionAsScalaIterable
 import scala.collection.JavaConversions.mapAsScalaMap
-import scala.collection.JavaConversions.propertiesAsScalaMap
 
 import ch.ninecode.cim.connector.CIMConnectionMetaData
+import ch.ninecode.cim.connector.CIMConnectionSpec
 import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMInteractionSpec
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
+import ch.ninecode.cim.connector.CIMResourceAdapter
 import ch.ninecode.cim.connector.CIMResourceAdapterMetaData
 
 @Stateless
 @Path ("/pong")
-class Pong extends RESTful
+class Pong extends PingPong
 {
     lazy val LOGGER_NAME: String = getClass.getName
     lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
+
+    def getMetaData (meta: CIMResourceAdapterMetaData): JsonObjectBuilder =
+    {
+        Json.createObjectBuilder
+            .add ("name", meta.getAdapterName)
+            .add ("description", meta.getAdapterShortDescription)
+            .add ("vendor", meta.getAdapterVendorName)
+            .add ("version", meta.getAdapterVersion)
+            .add ("specification_version", meta.getSpecVersion)
+            .add ("execute_with_input_and_output_records", meta.supportsExecuteWithInputAndOutputRecord)
+            .add ("execute_with_input_record_only", meta.supportsExecuteWithInputRecordOnly)
+            .add ("supports_local_transaction_demarcation", meta.supportsLocalTransactionDemarcation)
+            .add ("interaction_specifications_supported", meta.getInteractionSpecsSupported.mkString (","))
+    }
+
+    def getResourceAdapterProperties (resource_adapter: CIMResourceAdapter): JsonObjectBuilder =
+    {
+        Json.createObjectBuilder
+            .add ("YarnConfigurationPath", resource_adapter.getYarnConfigurationPath)
+            .add ("SparkDriverMemory", resource_adapter.getSparkDriverMemory)
+            .add ("SparkExecutorMemory", resource_adapter.getSparkExecutorMemory)
+    }
+
+    def getConnectionmetaData (meta: CIMConnectionMetaData): JsonObjectBuilder =
+    {
+        Json.createObjectBuilder
+            .add ("product", meta.getEISProductName)
+            .add ("version", meta.getEISProductVersion)
+            .add ("group", meta.getEISProductGroup)
+            .add ("user", meta.getUserName)
+            .add ("scala", meta.getScalaVersion)
+            .add ("scalalibrary", meta.getScalaLibraryVersion)
+            .add ("spark", meta.getSparkVersion)
+            .add ("sparklibrary", meta.getSparkLibraryVersion)
+            .add ("hadooplibrary", meta.getHadoopLibraryVersion)
+            .add ("cimreader", meta.getCIMReaderVersion)
+    }
 
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
     def pong (@DefaultValue ("false") @MatrixParam ("debug") debug: String): String =
     {
-        val verbose = try { debug.toBoolean } catch { case _: Throwable => false }
+        val verbose = asBoolean (debug)
         _Logger.info ("pong (debug=%s)".format (verbose))
 
         val result = new RESTfulJSONResult (RESTfulJSONResult.OK, new util.Date ().toString)
@@ -43,67 +81,43 @@ class Pong extends RESTful
 
         if (verbose)
         {
-            val environment = Json.createObjectBuilder
-            for (pair <- System.getenv)
-                environment.add (pair._1, pair._2)
-            ret.add ("environment", environment)
-            val properties = Json.createObjectBuilder
-            for (property <- System.getProperties)
-                properties.add (property._1, property._2)
-            ret.add ("properties", properties)
-            ret.add ("classpath", getClassPaths)
+            val _ = ret.add ("environment", getEnvironment)
+                .add ("properties", getProperties)
+                .add ("classpath", getClassPaths)
         }
 
         val out = if (verbose) Some (new StringBuffer) else None
         val factory = RESTful.getConnectionFactory (out) // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
         if (null != factory)
         {
-            if (verbose)
+            val _ = if (verbose)
             {
                 // add the Resource Adapter metadata
-                val metadata = Json.createObjectBuilder
-                val meta: CIMResourceAdapterMetaData = factory.getMetaData.asInstanceOf[CIMResourceAdapterMetaData]
-                if (null != meta)
+                factory.getMetaData match
                 {
-                    metadata.add ("name", meta.getAdapterName)
-                    metadata.add ("description", meta.getAdapterShortDescription)
-                    metadata.add ("vendor", meta.getAdapterVendorName)
-                    metadata.add ("version", meta.getAdapterVersion)
-                    metadata.add ("specification_version", meta.getSpecVersion)
-                    metadata.add ("execute_with_input_and_output_records", meta.supportsExecuteWithInputAndOutputRecord)
-                    metadata.add ("execute_with_input_record_only", meta.supportsExecuteWithInputRecordOnly)
-                    metadata.add ("supports_local_transaction_demarcation", meta.supportsLocalTransactionDemarcation)
-                    metadata.add ("interaction_specifications_supported", meta.getInteractionSpecsSupported.mkString (","))
+                    case meta: CIMResourceAdapterMetaData =>
+                        val _ = ret.add ("resource_adapter_metadata", getMetaData (meta))
                 }
-                ret.add ("resource_adapter_metadata", metadata)
 
                 // add the Resource Adapter properties
-                val resource_adapter_properties = Json.createObjectBuilder
-                val resource_adapter = factory.getResourceAdapter
-                if (null != resource_adapter)
+                factory.getResourceAdapter match
                 {
-                    resource_adapter_properties.add ("YarnConfigurationPath", resource_adapter.getYarnConfigurationPath)
-                    resource_adapter_properties.add ("SparkDriverMemory", resource_adapter.getSparkDriverMemory)
-                    resource_adapter_properties.add ("SparkExecutorMemory", resource_adapter.getSparkExecutorMemory)
+                    case resource_adapter: CIMResourceAdapter =>
+                        val _ = ret.add ("resource_adapter_properties", getResourceAdapterProperties (resource_adapter))
                 }
-                ret.add ("resource_adapter_properties", resource_adapter_properties)
 
-                val default_connection_spec = Json.createObjectBuilder
-                val connection_spec = factory.getDefaultConnectionSpec
-                if (null != connection_spec)
+                factory.getDefaultConnectionSpec match
                 {
-                    default_connection_spec.add ("username", connection_spec.getUserName)
-                    default_connection_spec.add ("password", connection_spec.getPassword)
-                    val properties = Json.createObjectBuilder
-                    for (property <- connection_spec.getProperties)
-                        properties.add (property._1, property._2)
-                    default_connection_spec.add ("properties", properties)
-                    val jars = Json.createArrayBuilder
-                    for (jar <- connection_spec.getJars)
-                        jars.add (jar)
-                    default_connection_spec.add ("jars", jars)
+                    case connection_spec: CIMConnectionSpec =>
+                        val properties = connection_spec.getProperties.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2))
+                        val jars = connection_spec.getJars.foldLeft (Json.createArrayBuilder)((b, j) => b.add (j))
+                        val default_connection_spec = Json.createObjectBuilder
+                            .add ("username", connection_spec.getUserName)
+                            .add ("password", connection_spec.getPassword)
+                            .add ("properties", properties)
+                            .add ("jars", jars)
+                        val _ = ret.add ("default_connection_spec", default_connection_spec)
                 }
-                ret.add ("default_connection_spec", default_connection_spec)
             }
 
             getConnection (result) match  // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
@@ -112,45 +126,40 @@ class Pong extends RESTful
                     if (verbose)
                     {
                         // add the Connection metadata
-                        val metadata = Json.createObjectBuilder
-                        val meta: CIMConnectionMetaData = connection.getMetaData.asInstanceOf[CIMConnectionMetaData]
-                        if (null != meta)
+                        connection.getMetaData match
                         {
-                            metadata.add ("product", meta.getEISProductName)
-                            metadata.add ("version", meta.getEISProductVersion)
-                            metadata.add ("group", meta.getEISProductGroup)
-                            metadata.add ("user", meta.getUserName)
-                            metadata.add ("scala", meta.getScalaVersion)
-                            metadata.add ("scalalibrary", meta.getScalaLibraryVersion)
-                            metadata.add ("spark", meta.getSparkVersion)
-                            metadata.add ("sparklibrary", meta.getSparkLibraryVersion)
-                            metadata.add ("hadooplibrary", meta.getHadoopLibraryVersion)
-                            metadata.add ("cimreader", meta.getCIMReaderVersion)
+                            case meta: CIMConnectionMetaData =>
+                               val _ = ret.add ("connection_metadata", getConnectionmetaData (meta))
                         }
-                        ret.add ("connection_metadata", metadata)
                     }
 
                     val (spec, input) = getFunctionInput (PongFunction ())
                     val interaction = connection.createInteraction
                     val output = interaction.execute (spec, input)
-                    if (null == output)
-                        throw new ResourceException ("null is not a MappedRecord")
-                    else
+                    val _ = output match
                     {
-                        val record = output.asInstanceOf[CIMMappedRecord]
-                        ret.add ("spark_instance", record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
+                        case record: CIMMappedRecord =>
+                            record.get (CIMFunction.RESULT) match
+                            {
+                                case json: JsonStructure =>
+                                    ret.add ("spark_instance", json)
+                                case _ =>
+                                    result.setResultException (new ResourceException ("Pong result is not a JsonStructure"), "unhandled result")
+                            }
+                        case _ =>
+                            result.setResultException (new ResourceException ("Pong interaction result is not a MappedRecord"), "unhandled interaction result")
                     }
                     interaction.close ()
                 case None =>
                     result.status = RESTfulJSONResult.FAIL
-                    ret.add ("error", "could not get CIMConnection")
+                    val _ = ret.add ("error", "could not get CIMConnection")
             }
         }
         else
         {
             result.status = RESTfulJSONResult.FAIL
-            ret.add ("error", "could not get CIMConnectionFactory")
-            out.map (sb => ret.add ("tried", sb.toString))
+            val r = ret.add ("error", "could not get CIMConnectionFactory")
+            val _ = out.map (sb => r.add ("tried", sb.toString))
         }
 
         result.setResult (ret.build)

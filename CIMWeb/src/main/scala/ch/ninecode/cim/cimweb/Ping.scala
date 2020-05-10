@@ -12,12 +12,9 @@ import javax.ws.rs.MatrixParam
 import javax.ws.rs.Path
 import javax.ws.rs.Produces
 
-import scala.collection.JavaConversions.mapAsScalaMap
-import scala.collection.JavaConversions.propertiesAsScalaMap
-
 @Stateless
 @Path ("/ping")
-class Ping extends RESTful
+class Ping extends PingPong
 {
     lazy val LOGGER_NAME: String = getClass.getName
     lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
@@ -26,20 +23,14 @@ class Ping extends RESTful
     @Produces (Array (MediaType.APPLICATION_JSON))
     def ping (@DefaultValue ("false") @MatrixParam ("debug") debug: String): String =
     {
-        val verbose = try { debug.toBoolean } catch { case _: Throwable => false }
+        val verbose = asBoolean (debug)
         _Logger.info ("ping (debug=%s)".format (verbose))
         val result = new RESTfulJSONResult (RESTfulJSONResult.OK, new util.Date ().toString)
-        if (try { debug.toBoolean } catch { case _: Throwable => false })
+        if (verbose)
         {
-            val environment = Json.createObjectBuilder
-            for (pair <- System.getenv)
-                environment.add (pair._1, pair._2)
-            val properties = Json.createObjectBuilder
-            for (property <- System.getProperties)
-                properties.add (property._1, property._2)
             val ret = Json.createObjectBuilder
-                .add ("environment", environment)
-                .add ("properties", properties)
+                .add ("environment", getEnvironment)
+                .add ("properties", getProperties)
                 .add ("classpath", getClassPaths)
             result.setResult (ret.build)
         }

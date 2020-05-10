@@ -5,17 +5,12 @@ import java.util.logging.Logger
 import javax.ejb.Stateless
 import javax.json.JsonObject
 import javax.resource.ResourceException
-import javax.resource.cci.MappedRecord
 import javax.ws.rs.POST
 import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
 
-import scala.collection.JavaConversions._
-
 import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMInteractionSpec
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 @Stateless
@@ -39,16 +34,21 @@ class Ingest extends RESTful
                     val (spec, input) = getFunctionInput (ingest)
                     val interaction = connection.createInteraction
                     val output = interaction.execute (spec, input)
-                    if (null == output)
-                        throw new ResourceException ("null is not a MappedRecord")
-                    else
+                    output match
                     {
-                        val record = output.asInstanceOf[CIMMappedRecord]
-                        val struct = record.get (CIMFunction.RESULT).asInstanceOf[JsonObject]
-                        ret = RESTfulJSONResult (
-                            struct.getString ("status"),
-                            struct.getString ("message"),
-                            struct.getJsonObject ("result"))
+                        case record: CIMMappedRecord =>
+                            record.get (CIMFunction.RESULT) match
+                            {
+                                case struct: JsonObject =>
+                                    ret = RESTfulJSONResult (
+                                        struct.getString ("status"),
+                                        struct.getString ("message"),
+                                        struct.getJsonObject ("result"))
+                                case _ =>
+                                    ret.setResultException (new ResourceException ("IngestFunction result is not a JsonObject"), "unhandled result type")
+                            }
+                        case _  =>
+                            ret.setResultException (new ResourceException ("IngestFunction interaction result is not a MappedRecord"), "unhandled interaction result")
                     }
                 }
                 catch
@@ -64,6 +64,8 @@ class Ingest extends RESTful
                         case resourceexception: ResourceException =>
                             ret.setResultException (resourceexception, "ResourceException on close")
                     }
+            case None =>
+                ret.setResultException (new ResourceException ("no Spark connection"), "could not get Connection")
         }
 
         ret.toString

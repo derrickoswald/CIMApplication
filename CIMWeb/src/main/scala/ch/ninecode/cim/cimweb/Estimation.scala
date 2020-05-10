@@ -13,8 +13,6 @@ import javax.ws.rs.DefaultValue
 import javax.ws.rs.MatrixParam
 
 import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMInteractionSpec
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
 import ch.ninecode.sim.SimulationOptions
 
@@ -32,8 +30,8 @@ class Estimation extends RESTful
          @DefaultValue ("false") @MatrixParam ("keep") _keep: String,
          data: Array[Byte]): String =
     {
-        val verbose = try { _verbose.toBoolean } catch { case _: Throwable => false }
-        val keep = try { _keep.toBoolean } catch { case _: Throwable => false }
+        val verbose = asBoolean ( _verbose)
+        val keep = asBoolean (_keep)
         val json = new String (data, "UTF-8")
         _Logger.info ("""estimation verbose=%s, keep=%s, json=%s""".format (verbose, keep, json))
         var ret = new RESTfulJSONResult
@@ -53,13 +51,18 @@ class Estimation extends RESTful
                     val (spec, input) = getFunctionInput (estimator)
                     val interaction = connection.createInteraction
                     val output = interaction.execute (spec, input)
-                    if (null == output)
-                        throw new ResourceException ("null is not a MappedRecord")
-                    else
+                    output match
                     {
-                        val record = output.asInstanceOf[CIMMappedRecord]
-                        val struct = record.get (CIMFunction.RESULT).asInstanceOf[JsonObject]
-                        ret = RESTfulJSONResult (struct.getString ("status"), struct.getString ("message"), struct.getJsonObject ("result"))
+                        case record: CIMMappedRecord =>
+                            record.get (CIMFunction.RESULT) match
+                            {
+                                case struct: JsonObject =>
+                                    ret = RESTfulJSONResult (struct.getString ("status"), struct.getString ("message"), struct.getJsonObject ("result"))
+                                case _ =>
+                                    ret.setResultException (new ResourceException ("EstimationFunction result is not a JsonObject"), "unhandled result type")
+                            }
+                        case _ =>
+                            ret.setResultException (new ResourceException ("EstimationFunction interaction result is not a MappedRecord"), "unhandled interaction result")
                     }
                 }
                 catch
@@ -75,6 +78,8 @@ class Estimation extends RESTful
                         case resourceexception: ResourceException =>
                             ret.setResultException (resourceexception, "ResourceException on close")
                     }
+            case None =>
+                ret.setResultException (new ResourceException ("no Spark connection"), "could not get Connection")
         }
 
         ret.toString

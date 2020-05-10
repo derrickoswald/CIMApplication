@@ -74,7 +74,7 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                 case "long" => if (!row.isNullAt (column)) ret.add (name, row.getLong (column))
                 case "short" => if (!row.isNullAt (column)) ret.add (name, row.getShort (column))
                 case "string" => if (!row.isNullAt (column)) ret.add (name, row.getString (column))
-                case "struct" => if (!row.isNullAt (column)) ret.add (name, packRow (row.get (column).asInstanceOf[Row]))
+                case "struct" => if (!row.isNullAt (column)) ret.add (name, packRow (row.getAs[Row] (column)))
                 case "timestamp" => if (!row.isNullAt (column)) ret.add (name, row.getTimestamp (column).getTime)
                 case _ => if (!row.isNullAt (column)) ret.add (name, row.get (column).toString)
             }
@@ -161,12 +161,13 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                 case SET => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: set?
                 case MAP => if (!row.isNull (index))
                 {
-                    val types: util.List[DataType] = typ.getTypeArguments
-                    val c1 = getDataTypeClass (types.head)
-                    val c2 = getDataTypeClass (types.tail.head)
-                    val map = row.getMap (index, c1, c2)
-                    val obj = Json.createObjectBuilder ()
-                    map.entrySet.map (x => obj.add (x.getKey.toString, x.getValue.toString)) // ToDo: pick correctly overloaded add() method
+                    val types: List[DataType] = typ.getTypeArguments.toList
+                    val map = types match
+                    {
+                        case c1 :: c2 :: Nil => row.getMap (index, getDataTypeClass (c1), getDataTypeClass (c2))
+                        case _ => new util.HashMap[Any, Any] ()
+                    }
+                    val obj = map.entrySet.foldLeft (Json.createObjectBuilder)((b, x) => b.add (x.getKey.toString, x.getValue.toString))
                     ret.add (name, obj)
                 }
                 case CUSTOM => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: custom?
@@ -197,8 +198,9 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
             val df: DataFrame = spark.sql (sql)
             if ("" != table_name)
             {
-                df.cache ()
-                df.createOrReplaceTempView (table_name)
+                val _ = df
+                    .cache ()
+                    .createOrReplaceTempView (table_name)
             }
             if ("" != cassandra_table_name)
             {

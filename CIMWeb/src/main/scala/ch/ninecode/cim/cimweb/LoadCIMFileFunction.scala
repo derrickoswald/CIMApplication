@@ -3,16 +3,10 @@ package ch.ninecode.cim.cimweb
 import javax.json.Json
 import javax.json.JsonStructure
 
-import scala.collection.mutable.HashMap
-
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
-import ch.ninecode.cim.CIMEdges
-import ch.ninecode.cim.CIMJoin
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceFalse
 import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.State
@@ -20,7 +14,15 @@ import ch.ninecode.cim.Unforced
 
 case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
-    def asBoolean (string: String): Boolean = try { string.toBoolean } catch { case _: Throwable => false }
+    def asBoolean (string: String): Boolean =
+    {
+        string match
+        {
+            case "true" => true
+            case "false" => false
+            case _ => false
+        }
+    }
 
     def parseState (text: String): State =
         text match
@@ -60,10 +62,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
             // read the file(s)
             val prefix = hdfs.getUri.toString
             val files = paths.map (s => { val file = if (s.startsWith ("/")) s else s"/$s"; new Path (prefix, file).toString })
-            val ff = Json.createArrayBuilder
-            for (f <- files)
-                ff.add (f)
-            response.add ("files", ff)
+            response.add ("files", files.foldLeft (Json.createArrayBuilder)((b, f) => b.add (f)))
 
             // establish default options if needed
             val op = if (null == options)
@@ -90,10 +89,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
             else
                 options
 
-            val reader_options = new HashMap[String, String] ()
-            for (option <- op)
-                reader_options.put (option._1, option._2)
-            reader_options.put ("path", files.mkString (","))
+            val reader_options = Map[String, String] ("path" -> files.mkString (",")) ++ op
             val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)
             val count = elements.count
             val storage = StorageLevel.fromString (reader_options.getOrElse ("StorageLevel", "MEMORY_AND_DISK_SER"))

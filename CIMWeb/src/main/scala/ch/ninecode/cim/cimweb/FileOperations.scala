@@ -3,13 +3,13 @@ package ch.ninecode.cim.cimweb
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.util.logging.Logger
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+
 import javax.ejb.Stateless
 import javax.json.Json
 import javax.json.JsonObject
-import javax.json.JsonStructure
 import javax.resource.ResourceException
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 import javax.ws.rs.DELETE
 import javax.ws.rs.DefaultValue
 import javax.ws.rs.core.MediaType
@@ -24,8 +24,6 @@ import javax.ws.rs.core.Response
 import scala.collection.JavaConversions.iterableAsScalaIterable
 
 import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMInteractionSpec
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 /**
@@ -37,16 +35,6 @@ class FileOperations extends RESTful
 {
     lazy val LOGGER_NAME: String = getClass.getName
     lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
-
-    def asBoolean (string: String): Boolean =
-    {
-        string match
-        {
-            case "true" => true
-            case "false" => false
-            case _ => false
-        }
-    }
 
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
@@ -150,7 +138,7 @@ class FileOperations extends RESTful
                                         Response.ok (ret.toString, MediaType.APPLICATION_JSON).build
                                     case _ =>
                                         interaction.close ()
-                                        Response.serverError ().entity ("ListFiles interaction result is not a JsonObject").build
+                                        Response.serverError ().entity ("ListFiles result is not a JsonObject").build
                                 }
                             }
                         case _ =>

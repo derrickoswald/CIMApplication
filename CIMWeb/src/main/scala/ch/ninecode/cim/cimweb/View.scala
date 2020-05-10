@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 import java.util.logging.Logger
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
+
 import javax.ejb.Stateless
 import javax.resource.ResourceException
 import javax.ws.rs.GET
@@ -17,8 +18,6 @@ import javax.ws.rs.PathParam
 import javax.ws.rs.core.Response
 
 import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMInteractionSpec
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 @Stateless
@@ -68,44 +67,50 @@ class View extends RESTful
             case Some (connection) =>
                 try
                 {
-                    val everything = try { all.toBoolean } catch { case _: Throwable => true }
-                    val reduce = try { reduceLines.toBoolean } catch { case _: Throwable => false }
-                    val doug = try { dougPeuk.toBoolean } catch { case _: Throwable => false }
+                    val everything = asBoolean (all)
+                    val reduce = asBoolean (reduceLines)
+                    val doug = asBoolean (dougPeuk)
                     _Logger.info ("View (\"%s\",all=%s [%g,%g],[%g,%g],reduce=%s,maxLines=%d,dougPeuk=%s,dougPeukFactor=%g,resolution=%g)".format (about, all, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble))
                     val function = ViewFunction (about, everything, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble)
                     val (spec, input) = getFunctionInput (function)
                     val interaction = connection.createInteraction
                     val output = interaction.execute (spec, input)
-                    if (null == output)
+                    val response = output match
                     {
-                        interaction.close ()
-                        Response.serverError ().entity ("null is not a MappedRecord").build
+                        case record: CIMMappedRecord =>
+                            record.get (CIMFunction.RESULT) match
+                            {
+                                case rdf: String =>
+                                    if (asBoolean (zip))
+                                    {
+                                        val bos = new ByteArrayOutputStream ()
+                                        val zos = new ZipOutputStream (bos)
+                                        zos.setLevel (9)
+                                        val name = "view.rdf"
+                                        zos.putNextEntry (new ZipEntry (name))
+                                        val data = rdf.getBytes (StandardCharsets.UTF_8)
+                                        zos.write (data, 0, data.length)
+                                        zos.finish ()
+                                        zos.close ()
+                                        val zip = "view.zip"
+                                        interaction.close ()
+                                        Response.ok (bos.toByteArray, "application/zip")
+                                            .header ("content-disposition", "attachment; filename=%s".format (zip))
+                                            .build
+                                    }
+                                    else
+                                    {
+                                        interaction.close ()
+                                        Response.ok (rdf, MediaType.APPLICATION_XML).build
+                                    }
+                                case _ =>
+                                    Response.serverError ().entity ("ViewFunction result is not a String").build
+                            }
+                        case _ =>
+                            Response.serverError ().entity ("ViewFunction interaction result is not a MappedRecord").build
                     }
-                    else
-                    {
-                        val record = output.asInstanceOf[CIMMappedRecord]
-                        val rdf = record.get (CIMFunction.RESULT).asInstanceOf[String]
-                        interaction.close ()
-                        if (try { zip.toBoolean } catch { case _: Throwable => false })
-                        {
-                            val bos = new ByteArrayOutputStream ()
-                            val zos = new ZipOutputStream (bos)
-                            zos.setLevel (9)
-                            val name = "view.rdf"
-                            zos.putNextEntry (new ZipEntry (name))
-                            val data = rdf.getBytes (StandardCharsets.UTF_8)
-                            zos.write (data, 0, data.length)
-                            zos.finish ()
-                            zos.close ()
-                            val zip = "view.zip"
-                            interaction.close ()
-                            Response.ok (bos.toByteArray, "application/zip")
-                                .header ("content-disposition", "attachment; filename=%s".format (zip))
-                                .build
-                        }
-                        else
-                            Response.ok (rdf, MediaType.APPLICATION_XML).build
-                    }
+                    interaction.close ()
+                    response
                 }
                 catch
                 {

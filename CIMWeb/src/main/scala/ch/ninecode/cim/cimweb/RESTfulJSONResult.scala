@@ -88,6 +88,7 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
     }
 }
 
+@SuppressWarnings (Array ("org.wartremover.warts.Null"))
 object RESTfulJSONResult
 {
     var FACTORY_INSTANCE: JsonWriterFactory = _

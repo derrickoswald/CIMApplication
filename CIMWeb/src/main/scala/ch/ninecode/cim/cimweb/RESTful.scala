@@ -1,18 +1,16 @@
 package ch.ninecode.cim.cimweb
 
-import java.net.URLClassLoader
 import java.util.logging.Level
 import java.util.logging.Logger
 
 import javax.annotation.Resource
-import javax.json.Json
-import javax.json.JsonArrayBuilder
 import javax.naming.Context
 import javax.naming.InitialContext
 import javax.naming.NameNotFoundException
 import javax.naming.NamingException
 import javax.resource.ResourceException
 import javax.resource.cci.MappedRecord
+
 import scala.collection.JavaConversions.mapAsJavaMap
 import scala.util.Failure
 import scala.util.Success
@@ -32,48 +30,14 @@ class RESTful ()
 
     type map = java.util.Map[String,Object]
 
-    def classLoaderFrom (element: StackTraceElement): Option[ClassLoader] =
+    def asBoolean (string: String): Boolean =
     {
-        try
-            Option (Class.forName (element.getClassName).getClassLoader)
-        catch
+        string match
         {
-            case _: ClassNotFoundException =>
-                None
+            case "true" => true
+            case "false" => false
+            case _ => false
         }
-    }
-
-    @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
-    def getClassLoaders: Set[ClassLoader] =
-    {
-        val system = Set[ClassLoader] (
-            ClassLoader.getSystemClassLoader,
-            Thread.currentThread.getContextClassLoader)
-        val trace =
-            try
-                throw new Exception
-            catch
-            {
-                case exception: Exception =>
-                    exception.getStackTrace.flatMap (classLoaderFrom).toSet
-            }
-        system.union (trace)
-    }
-
-    def getClassPaths: JsonArrayBuilder =
-    {
-        val classpath = Json.createArrayBuilder
-
-        for (cl <- getClassLoaders)
-            cl match
-            {
-                case url_loader: URLClassLoader =>
-                    for (url <- url_loader.getURLs)
-                        if ("file" == url.getProtocol)
-                            classpath.add (url.getFile)
-                case _ =>
-            }
-        classpath
     }
 
     @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))

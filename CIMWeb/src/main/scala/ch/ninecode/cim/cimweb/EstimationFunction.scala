@@ -2,6 +2,7 @@ package ch.ninecode.cim.cimweb
 
 import javax.json.Json
 import javax.json.JsonStructure
+
 import com.datastax.driver.core.Cluster
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
@@ -52,7 +53,7 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
         val simulations = Json.createArrayBuilder
         for (run <- runs)
             simulations.add (run)
-        result.add ("simulations", simulations)
+        val _ = result.add ("simulations", simulations)
         RESTfulJSONResult (OK, s"""GridLAB-D simulation$plural successful""", result.build).getJSON
     }
 

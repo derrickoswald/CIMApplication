@@ -1,8 +1,6 @@
 package ch.ninecode.cim.cimweb
 
 import java.sql.SQLException
-import java.util.logging.Level
-import java.util.logging.Logger
 
 import scala.util.Failure
 import scala.util.Success
@@ -10,7 +8,6 @@ import scala.util.Try
 
 import javax.ejb.Stateless
 import javax.json.Json
-import javax.naming.NamingException
 import javax.ws.rs.DefaultValue
 import javax.ws.rs.GET
 import javax.ws.rs.MatrixParam
@@ -20,11 +17,6 @@ import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
 import javax.resource.ResourceException
 
-import ch.ninecode.cim.cimweb.RESTful.getClass
-import ch.ninecode.cim.connector.CIMConnectionFactory
-import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMInteractionSpec
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMResultSet
 import ch.ninecode.sp.SpatialOperationParameters
 
@@ -71,14 +63,9 @@ class Spatial extends RESTful
                             val (spec, input) = getFunctionInput (near)
                             val interaction = connection.createInteraction
                             val output = interaction.execute (spec, input)
-                            if (null == output)
-                                throw new ResourceException ("null is not a ResultSet")
-                            else
-                                if (!output.getClass.isAssignableFrom (classOf[CIMResultSet]))
-                                    throw new ResourceException ("object of class %s is not a ResultSet".format (output.getClass.toGenericString))
-                                else
-                                {
-                                    val resultset = output.asInstanceOf[CIMResultSet]
+                            output match
+                            {
+                                case resultset: CIMResultSet =>
                                     try
                                     {
                                         // form the response
@@ -115,9 +102,13 @@ class Spatial extends RESTful
                                         case sqlexception: SQLException =>
                                             ret.setResultException (sqlexception, "SQLException on ResultSet")
                                     }
-                                }
+                                case _ =>
+                                    ret.setResultException (new ResourceException (s"SpatialFunction interaction result is not a ResultSet"), "unhandled interaction result")
+                            }
                             interaction.close ()
                             connection.close ()
+                        case Failure (_) =>
+                            ret.setResultException (new ResourceException (s"SpatialFunction interaction failed"), "interaction")
                     }
                 }
                 catch
@@ -133,6 +124,8 @@ class Spatial extends RESTful
                         case resourceexception: ResourceException =>
                             ret.setResultException (resourceexception, "ResourceException on close")
                     }
+            case None =>
+                ret.setResultException (new ResourceException ("no Spark connection"), "could not get Connection")
         }
         ret.toString
     }

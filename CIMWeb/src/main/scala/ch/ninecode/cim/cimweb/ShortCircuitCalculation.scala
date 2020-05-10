@@ -11,6 +11,7 @@ import javax.ejb.Stateless
 import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.Json
+import javax.json.JsonArrayBuilder
 import javax.json.JsonObjectBuilder
 import javax.resource.ResourceException
 import javax.ws.rs.POST
@@ -18,9 +19,6 @@ import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
 
-import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMInteractionSpec
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMResultSet
 import ch.ninecode.sc.ShortCircuitOptions
 import ch.ninecode.util.Complex
@@ -104,32 +102,28 @@ class ShortCircuitCalculation extends RESTful
                     if (!resultset.wasNull ())
                         ret.add (name, value.getTime)
                 case Types.OTHER =>
-                    val value = resultset.getObject (column)
+                    val value: AnyRef = resultset.getObject (column)
                     if (!resultset.wasNull ())
-                        try
+                        value match
                         {
-                            val array = value.asInstanceOf[scala.collection.mutable.WrappedArray[Double]]
-                            val doubles: Array[Double] = array.toArray[Double]
-                            val json = Json.createArrayBuilder
-                            doubles.map (json.add)
-                            ret.add (name, json)
-                        }
-                        catch
-                        {
-                            case _: Throwable =>
-                                try
+//                            doesn't work because of type erasure
+//                            case doubles: scala.collection.mutable.WrappedArray[Double] =>
+//                                ret.add (name, doubles.foldLeft (Json.createArrayBuilder)((b, d) => b.add (d)))
+//                            case strings: scala.collection.mutable.WrappedArray[String] =>
+//                                ret.add (name, strings.foldLeft (Json.createArrayBuilder)((b, d) => b.add (d)))
+                            case array: scala.collection.mutable.WrappedArray[_] =>
+                                array.headOption match
                                 {
-                                    val array = value.asInstanceOf[scala.collection.mutable.WrappedArray[String]]
-                                    val strings: Array[String] = array.toArray[String]
-                                    val json = Json.createArrayBuilder
-                                    strings.map (json.add)
-                                    ret.add (name, json)
+                                    case Some (_: Double) =>
+                                        val aa = array.collect ({ case d: Double => d })
+                                        ret.add (name, aa.foldLeft (Json.createArrayBuilder)((b, d) => b.add (d)))
+                                    case Some (_: String) =>
+                                        val aa = array.collect ({ case s: String => s })
+                                        ret.add (name, aa.foldLeft (Json.createArrayBuilder)((b, s) => b.add (s)))
+                                    case Some (_) | None =>
                                 }
-                                catch
-                                {
-                                    case x: Throwable =>
-                                        ret.add (name, s"class: ${value.getClass.getName} (${x.getMessage})")
-                                }
+                            case _ =>
+                                ret.add (name, s"unhandled class: ${value.getClass.getName}")
                         }
                 case _ =>
             }
@@ -209,10 +203,47 @@ class ShortCircuitCalculation extends RESTful
 
     def complexAsJSON (value: Complex): JsonObject =
     {
-        val c = Json.createObjectBuilder
-        c.add ("re", value.re)
-        c.add ("im", value.im)
-        c.build
+        Json.createObjectBuilder
+            .add ("re", value.re)
+            .add ("im", value.im)
+            .build
+    }
+
+    def getParameters (options: ShortCircuitOptions): JsonObjectBuilder =
+    {
+        Json.createObjectBuilder
+            .add ("verbose", options.verbose)
+            .add ("description", options.description)
+            .add ("default_short_circuit_power_max", complexAsJSON (options.default_short_circuit_power_max))
+            .add ("default_short_circuit_impedance_max", complexAsJSON (options.default_short_circuit_impedance_max))
+            .add ("default_short_circuit_power_min", complexAsJSON (options.default_short_circuit_power_min))
+            .add ("default_short_circuit_impedance_min", complexAsJSON (options.default_short_circuit_impedance_min))
+            .add ("default_transformer_power_rating", options.default_transformer_power_rating)
+            .add ("default_transformer_impedance", complexAsJSON (options.default_transformer_impedance))
+            .add ("base_temperature", options.base_temperature)
+            .add ("low_temperature", options.low_temperature)
+            .add ("high_temperature", options.high_temperature)
+            .add ("cmax", options.cmax)
+            .add ("cmin", options.cmin)
+            .add ("worstcasepf", options.worstcasepf)
+            .add ("cosphi", options.cosphi)
+            .add ("fuse_table", options.fuse_table)
+            .add ("messagemax", options.messagemax)
+            .add ("batchsize", options.batchsize)
+            .add ("trafos", options.trafos)
+            .add ("workdir", options.workdir)
+    }
+
+    def getRecords (resultset: CIMResultSet): JsonArrayBuilder =
+    {
+        val records = Json.createArrayBuilder
+        val meta = resultset.getMetaData
+        while (resultset.next)
+        {
+            val _ = records.add (packRow (resultset, meta))
+        }
+        resultset.close ()
+        records
     }
 
     @POST
@@ -237,62 +268,26 @@ class ShortCircuitCalculation extends RESTful
                             val (spec, input) = getFunctionInput (ShortCircuitFunction (options))
                             val interaction = connection.createInteraction
                             val output = interaction.execute (spec, input)
-                            try
+                            output match
                             {
-                                if (null == output)
-                                    throw new ResourceException ("null is not a ResultSet")
-                                else
-                                    if (!output.getClass.isAssignableFrom (classOf[CIMResultSet]))
-                                        throw new ResourceException ("object of class %s is not a ResultSet".format (output.getClass.toGenericString))
-                                    else
+                                case resultset: CIMResultSet =>
+                                    try
                                     {
-                                        val resultset = output.asInstanceOf[CIMResultSet]
-                                        try
-                                        {
-                                            // form the response
-                                            val records = Json.createArrayBuilder
-                                            val meta = resultset.getMetaData
-                                            while (resultset.next)
-                                                records.add (packRow (resultset, meta))
-                                            resultset.close ()
-                                            val result = Json.createObjectBuilder
-                                            val parameters = Json.createObjectBuilder
-                                            parameters.add ("verbose", options.verbose)
-                                            parameters.add ("description", options.description)
-                                            parameters.add ("default_short_circuit_power_max", complexAsJSON (options.default_short_circuit_power_max))
-                                            parameters.add ("default_short_circuit_impedance_max", complexAsJSON (options.default_short_circuit_impedance_max))
-                                            parameters.add ("default_short_circuit_power_min", complexAsJSON (options.default_short_circuit_power_min))
-                                            parameters.add ("default_short_circuit_impedance_min", complexAsJSON (options.default_short_circuit_impedance_min))
-                                            parameters.add ("default_transformer_power_rating", options.default_transformer_power_rating)
-                                            parameters.add ("default_transformer_impedance", complexAsJSON (options.default_transformer_impedance))
-                                            parameters.add ("base_temperature", options.base_temperature)
-                                            parameters.add ("low_temperature", options.low_temperature)
-                                            parameters.add ("high_temperature", options.high_temperature)
-                                            parameters.add ("cmax", options.cmax)
-                                            parameters.add ("cmin", options.cmin)
-                                            parameters.add ("worstcasepf", options.worstcasepf)
-                                            if (!options.worstcasepf)
-                                                parameters.add ("cosphi", options.cosphi)
-                                            parameters.add ("fuse_table", options.fuse_table)
-                                            parameters.add ("messagemax", options.messagemax)
-                                            parameters.add ("batchsize", options.batchsize)
-                                            if (null != options.trafos)
-                                                parameters.add ("trafos", options.trafos)
-                                            if (null == options.workdir)
-                                                parameters.add ("workdir", options.workdir)
-                                            result.add ("parameters", parameters)
-                                            result.add ("records", records)
-                                            ret.setResult (result.build)
-                                        }
-                                        catch
-                                        {
-                                            case sqlexception: SQLException =>
-                                                ret.setResultException (sqlexception, "SQLException on ResultSet")
-                                        }
+                                        // form the response
+                                        val result = Json.createObjectBuilder
+                                            .add ("parameters", getParameters (options))
+                                            .add ("records", getRecords (resultset))
+                                        ret.setResult (result.build)
                                     }
+                                    catch
+                                    {
+                                        case sqlexception: SQLException =>
+                                            ret.setResultException (sqlexception, "SQLException on ResultSet")
+                                    }
+                                case _ =>
+                                    ret.setResultException (new ResourceException ("ShortCircuitFunction interaction result is not a ResultSet"), "unhandled interaction result")
                             }
-                            finally
-                                interaction.close ()
+                            interaction.close ()
                         }
                         catch
                         {
@@ -307,6 +302,8 @@ class ShortCircuitCalculation extends RESTful
                                 case resourceexception: ResourceException =>
                                     ret.setResultException (resourceexception, "ResourceException on close")
                             }
+                    case None =>
+                        ret.setResultException (new ResourceException ("no Spark connection"), "could not get Connection")
                 }
             case None =>
                 ret.message = "invalid POST json"

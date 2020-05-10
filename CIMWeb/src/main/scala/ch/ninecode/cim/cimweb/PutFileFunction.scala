@@ -3,6 +3,7 @@ package ch.ninecode.cim.cimweb
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.zip.ZipInputStream
+
 import javax.json.Json
 import javax.json.JsonStructure
 
@@ -16,11 +17,11 @@ case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = fa
     {
         // form the response
         val response = Json.createObjectBuilder
-        response.add ("filesystem", uri.toString)
-        val file: Path = new Path (hdfs.getUri.toString, path)
-        response.add ("path", path)
-        response.add ("size", data.length)
+            .add ("filesystem", uri.toString)
+            .add ("path", path)
+            .add ("size", data.length)
         // write the file
+        val file: Path = new Path (hdfs.getUri.toString, path)
         try
         {
             val parent = if (path.endsWith ("/")) file else file.getParent

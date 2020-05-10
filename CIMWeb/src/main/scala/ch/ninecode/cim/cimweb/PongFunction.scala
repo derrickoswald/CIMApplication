@@ -26,7 +26,7 @@ case class PongFunction () extends CIMWebFunction
     // get the capacity and remaining
     def filesystemStatus: JsonObjectBuilder =
     {
-        val status = hdfs.getStatus (null)
+        val status = hdfs.getStatus ()
         Json.createObjectBuilder
             .add ("capacity", status.getCapacity)
             .add ("used", status.getUsed)

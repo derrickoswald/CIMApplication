@@ -12,8 +12,6 @@ import javax.ws.rs.DefaultValue
 import javax.ws.rs.QueryParam
 
 import ch.ninecode.cim.connector.CIMFunction
-import ch.ninecode.cim.connector.CIMInteractionSpec
-import ch.ninecode.cim.connector.CIMInteractionSpecImpl
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 @Stateless
@@ -38,7 +36,7 @@ class Query extends RESTful
         @DefaultValue ("") @QueryParam ("table_name") table_name: String,
         @DefaultValue ("") @QueryParam ("cassandra_table_name") cassandra_table_name: String): String =
     {
-        val cassandra = try { cass.toBoolean } catch { case _: Throwable => false }
+        val cassandra = asBoolean (cass)
         _Logger.info (s"query ${if (cassandra) "cassandra " else ""}sql=$sql${if ("" != table_name) " table_name=" + table_name else ""}${if ("" != cassandra_table_name) s" cassandra_table_name=$cassandra_table_name" else ""}")
         val ret = new RESTfulJSONResult ()
         getConnection (ret) match
@@ -50,12 +48,18 @@ class Query extends RESTful
                     val (spec, input) = getFunctionInput (query)
                     val interaction = connection.createInteraction
                     val output = interaction.execute (spec, input)
-                    if (null == output)
-                        throw new ResourceException ("null is not a MappedRecord")
-                    else
+                    output match
                     {
-                        val record = output.asInstanceOf[CIMMappedRecord]
-                        ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
+                        case record: CIMMappedRecord =>
+                            record.get (CIMFunction.RESULT) match
+                            {
+                                case json: JsonStructure =>
+                                    ret.setResult (json)
+                                case _ =>
+                                    ret.setResultException (new ResourceException ("QueryFunction result is not a JsonObject"), "unhandled result type")
+                            }
+                        case _  =>
+                            ret.setResultException (new ResourceException ("QueryFunction interaction result is not a MappedRecord"), "unhandled interaction result")
                     }
                     interaction.close ()
                 }
@@ -72,6 +76,8 @@ class Query extends RESTful
                         case resourceexception: ResourceException =>
                             ret.setResultException (resourceexception, "ResourceException on close")
                     }
+            case None =>
+                ret.setResultException (new ResourceException ("no Spark connection"), "could not get Connection")
         }
         ret.toString
     }

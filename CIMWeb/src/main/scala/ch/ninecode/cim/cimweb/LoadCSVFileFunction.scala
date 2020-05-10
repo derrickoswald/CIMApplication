@@ -3,14 +3,12 @@ package ch.ninecode.cim.cimweb
 import javax.json.Json
 import javax.json.JsonStructure
 
-import scala.collection.mutable
-
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.StructField
 
-case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
+case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String, String)] = Iterable()) extends CIMWebFunction
 {
     // load the file
     override def executeJSON (spark: SparkSession): JsonStructure =
@@ -22,11 +20,8 @@ case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String,
             // read the file(s)
             val prefix = hdfs.getUri.toString
             val files = paths.map (s => { val file = if (s.startsWith ("/")) s else s"/$s"; new Path (prefix, file).toString })
-            val ff = Json.createArrayBuilder
-            for (f <- files)
-                ff.add (f)
-            response.add ("files", ff)
-            val reader_options = mutable.Map[String, String] (
+            response.add ("files", files.foldLeft (Json.createArrayBuilder)((b, f) => b.add (f)))
+            val reader_options = Map[String, String] (
                 "header" -> "false",
                 "ignoreLeadingWhiteSpace" -> "false",
                 "ignoreTrailingWhiteSpace" -> "false",
@@ -44,13 +39,8 @@ case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String,
                 "dateFormat" -> "yyyy-MM-dd",
                 "timestampFormat" -> "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
                 "inferSchema" -> "true"
-            )
-            if (null != options)
-                reader_options ++= options
-            val opts = Json.createObjectBuilder
-            for (pair <- reader_options)
-                opts.add (pair._1, pair._2)
-            response.add ("options", opts)
+            ) ++ options
+            response.add ("options", reader_options.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2)))
             val tables = Json.createArrayBuilder
             files.map (filename =>
                 {

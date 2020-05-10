@@ -1,10 +1,10 @@
 package ch.ninecode.cim.cimweb
 
 import java.util.logging.Logger
+
 import javax.ejb.Stateless
 import javax.json.Json
 import javax.json.JsonObject
-import javax.json.JsonStructure
 import javax.resource.ResourceException
 import javax.ws.rs.DefaultValue
 import javax.ws.rs.core.MediaType
@@ -28,6 +28,61 @@ class LoadFile extends RESTful
 {
     lazy val LOGGER_NAME: String = getClass.getName
     lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
+
+    def load (ret: RESTfulJSONResult, function: CIMWebFunction): Unit =
+    {
+        getConnection (ret) match
+        {
+            case Some (connection) =>
+                try
+                {
+                    val (spec, input) = getFunctionInput (function)
+                    val interaction = connection.createInteraction
+                    val output = interaction.execute (spec, input)
+                    output match
+                    {
+                        case record: CIMMappedRecord =>
+                            record.get (CIMFunction.RESULT) match
+                            {
+                                case json: JsonObject =>
+                                    ret.setResult (json)
+                                    // if not found use Response.Status.NOT_FOUND
+                                    if (json.containsKey ("error"))
+                                    {
+                                        ret.status = RESTfulJSONResult.FAIL
+                                        ret.message = json.getString ("error")
+                                        val result = Json.createObjectBuilder
+                                        for (key <- json.keySet)
+                                            if (key != "error")
+                                                result.add (key, json.get (key))
+                                        ret.setResult (result.build)
+                                    }
+                                    else
+                                        ret.message = ""
+                                case _ =>
+                                    ret.setResultException (new ResourceException ("LoadFileFunction result is not a JsonObject"), "unhandled result")
+                            }
+                        case _ =>
+                            ret.setResultException (new ResourceException ("LoadFileFunction interaction result is not a MappedRecord"), "unhandled interaction result")
+                    }
+                }
+                catch
+                {
+                    case resourceexception: ResourceException =>
+                        ret.setResultException (resourceexception, "ResourceException on interaction")
+                }
+                finally
+                    try
+                    connection.close ()
+                    catch
+                    {
+                        case resourceexception: ResourceException =>
+                            ret.setResultException (resourceexception, "ResourceException on close")
+                    }
+            case None =>
+                ret.setResultException (new ResourceException ("no Spark connection"), "could not get Connection")
+        }
+    }
 
     @GET
     @Path ("{path:[^;]*}")
@@ -70,103 +125,58 @@ class LoadFile extends RESTful
     {
         val ret = new RESTfulJSONResult
         val files = path.split (',').map (f => if (f.startsWith ("/")) f else s"/$f")
-        // set the type
-        val filetype = if (files(0).endsWith (".rdf") || files(0).endsWith (".xml"))
-            "CIM"
+        // based on the type execute load
+        if (files(0).endsWith (".rdf") || files(0).endsWith (".xml"))
+        {
+            // see https://github.com/derrickoswald/CIMReader#reader-api
+            val options = Map[String, String] (
+                "StorageLevel" -> storage,
+                "ch.ninecode.cim.do_about" -> do_about,
+                "ch.ninecode.cim.do_normalize" -> do_normalize,
+                "ch.ninecode.cim.do_deduplication" -> do_deduplication,
+                "ch.ninecode.cim.make_edges" -> make_edges,
+                "ch.ninecode.cim.do_join" -> do_join,
+                "ch.ninecode.cim.do_topo_islands" -> do_topo_islands,
+                "ch.ninecode.cim.do_topo" -> do_topo,
+                "ch.ninecode.cim.force_retain_switches" -> force_retain_switches,
+                "ch.ninecode.cim.force_retain_fuses" -> force_retain_fuses,
+                "ch.ninecode.cim.force_switch_separate_islands" -> force_switch_separate_islands,
+                "ch.ninecode.cim.force_fuse_separate_islands" -> force_fuse_separate_islands,
+                "ch.ninecode.cim.default_switch_open_state" -> default_switch_open_state,
+                "ch.ninecode.cim.debug" -> debug,
+                "ch.ninecode.cim.split_maxsize" -> split_maxsize,
+                "ch.ninecode.cim.cache" -> cache
+            )
+            _Logger.info (s"load CIM ${files.mkString (",")} ${options.toString}")
+            load (ret, LoadCIMFileFunction (files, options))
+        }
         else if (files(0).endsWith (".csv"))
-            "CSV"
+        {
+            // see https://spark.apache.org/docs/2.4.5/api/scala/index.html#org.apache.spark.sql.DataFrameReader
+            val options = Map[String, String] (
+                "header" -> header,
+                "ignoreLeadingWhiteSpace" -> ignoreLeadingWhiteSpace,
+                "ignoreTrailingWhiteSpace" -> ignoreTrailingWhiteSpace,
+                "sep" -> sep,
+                "quote" -> quote,
+                "escape" -> escape,
+                "encoding" -> encoding,
+                "comment" -> comment,
+                "nullValue" -> nullValue,
+                "nanValue" -> nanValue,
+                "positiveInf" -> positiveInf,
+                "negativeInf" -> negativeInf,
+                "dateFormat" -> dateFormat,
+                "timestampFormat" -> timestampFormat,
+                "mode" -> mode,
+                "inferSchema" -> inferSchema
+            )
+            _Logger.info (s"load CSV ${files.mkString (",")} ${options.toString}")
+            load (ret, LoadCSVFileFunction (files, options))
+        }
         else
         {
             ret.setResultException (new ResourceException ("unrecognized file format (%s)".format (files(0))), "ResourceException on input")
-            return (ret.toString)
-        }
-        val (function, options) = filetype match
-        {
-            case "CIM" => // see https://github.com/derrickoswald/CIMReader#reader-api
-                val options = Map[String, String] (
-                    "StorageLevel" -> storage,
-                    "ch.ninecode.cim.do_about" -> do_about,
-                    "ch.ninecode.cim.do_normalize" -> do_normalize,
-                    "ch.ninecode.cim.do_deduplication" -> do_deduplication,
-                    "ch.ninecode.cim.make_edges" -> make_edges,
-                    "ch.ninecode.cim.do_join" -> do_join,
-                    "ch.ninecode.cim.do_topo_islands" -> do_topo_islands,
-                    "ch.ninecode.cim.do_topo" -> do_topo,
-                    "ch.ninecode.cim.force_retain_switches" -> force_retain_switches,
-                    "ch.ninecode.cim.force_retain_fuses" -> force_retain_fuses,
-                    "ch.ninecode.cim.force_switch_separate_islands" -> force_switch_separate_islands,
-                    "ch.ninecode.cim.force_fuse_separate_islands" -> force_fuse_separate_islands,
-                    "ch.ninecode.cim.default_switch_open_state" -> default_switch_open_state,
-                    "ch.ninecode.cim.debug" -> debug,
-                    "ch.ninecode.cim.split_maxsize" -> split_maxsize,
-                    "ch.ninecode.cim.cache" -> cache
-                )
-                (LoadCIMFileFunction (files, options), options)
-            case "CSV" => // see https://spark.apache.org/docs/2.4.5/api/scala/index.html#org.apache.spark.sql.DataFrameReader
-                val options = Map[String, String] (
-                    "header" -> header,
-                    "ignoreLeadingWhiteSpace" -> ignoreLeadingWhiteSpace,
-                    "ignoreTrailingWhiteSpace" -> ignoreTrailingWhiteSpace,
-                    "sep" -> sep,
-                    "quote" -> quote,
-                    "escape" -> escape,
-                    "encoding" -> encoding,
-                    "comment" -> comment,
-                    "nullValue" -> nullValue,
-                    "nanValue" -> nanValue,
-                    "positiveInf" -> positiveInf,
-                    "negativeInf" -> negativeInf,
-                    "dateFormat" -> dateFormat,
-                    "timestampFormat" -> timestampFormat,
-                    "mode" -> mode,
-                    "inferSchema" -> inferSchema
-                )
-                (LoadCSVFileFunction (files, options), options)
-        }
-        _Logger.info ("load %s %s %s".format (filetype, files.mkString (","), options.toString))
-        getConnection (ret) match
-        {
-            case Some (connection) =>
-                try
-                {
-                    val (spec, input) = getFunctionInput (function)
-                    val interaction = connection.createInteraction
-                    val output = interaction.execute (spec, input)
-                    if (null == output)
-                        throw new ResourceException ("null is not a MappedRecord")
-                    else
-                    {
-                        // if not found use Response.Status.NOT_FOUND
-                        val record = output.asInstanceOf[CIMMappedRecord]
-                        ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf[JsonStructure])
-                        val response = ret.result.asInstanceOf[JsonObject]
-                        if (response.containsKey ("error"))
-                        {
-                            ret.status = RESTfulJSONResult.FAIL
-                            ret.message = response.getString ("error")
-                            val result = Json.createObjectBuilder
-                            for (key <- response.keySet)
-                                if (key != "error")
-                                    result.add (key, response.get (key))
-                            ret.setResult (result.build)
-                        }
-                        else
-                            ret.message = ""
-                    }
-                }
-                catch
-                {
-                    case resourceexception: ResourceException =>
-                        ret.setResultException (resourceexception, "ResourceException on interaction")
-                }
-                finally
-                    try
-                        connection.close ()
-                    catch
-                    {
-                        case resourceexception: ResourceException =>
-                            ret.setResultException (resourceexception, "ResourceException on close")
-                    }
         }
 
         ret.toString
