@@ -371,7 +371,20 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         val transfomer_join: RDD[((identifier, (Terminal, ConductingEquipment)), Option[PowerTransformerEnd])] = m.keyBy (_._2._1.id).leftOuterJoin (transformer_end).values
 
         val base_voltage: Array[(String, BaseVoltage)] = get [BaseVoltage].keyBy (_.id).collect
-
+        val unknown_voltage = BaseVoltage (
+            sup = IdentifiedObject (
+                sup=BasicElement (mRID="unknown"),
+                aliasName="fake voltage",
+                description="non-null voltage",
+                mRID="unknown",
+                name="unknown",
+                DiagramObjects=List(),
+                Names=List()),
+            nominalVoltage=0.0,
+            ConductingEquipment=List(),
+            TopologicalNode=List(),
+            TransformerEnds=List(),
+            VoltageLevel=List())
         val n: RDD[(identifier, (Terminal, ConductingEquipment, BaseVoltage))] = transfomer_join.map (t =>
         {
             val ((identifier, (terminal, conductingEquipment)), trafo_end_option) = t
@@ -379,7 +392,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
                 case Some(end) ⇒ end.TransformerEnd.BaseVoltage
                 case None ⇒ conductingEquipment.BaseVoltage
             }
-            val current_base_voltage = base_voltage.find(_._1 == voltage_string).get._2
+            val current_base_voltage = if (null == voltage_string) unknown_voltage else base_voltage.find(_._1 == voltage_string).map(_._2).getOrElse(unknown_voltage)
             (identifier, (terminal, conductingEquipment, current_base_voltage))
         })
 
