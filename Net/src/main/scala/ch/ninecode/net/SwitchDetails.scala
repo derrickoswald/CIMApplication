@@ -86,7 +86,7 @@ final case class SwitchDetails (
      * @param mask single bit mask to check.
      * @return <code>true</code> if the bit is set, <code>false</code> otherwise.
      */
-    def isSet (mask: Int): Boolean = 0 != (element.bitfields (mask / 32) & (1 << (mask % 32)))
+    def isSet (mask: Int): Boolean = 0 != (asSwitch.bitfields (mask / 32) & (1 << (mask % 32)))
 
     /**
      * Get the normalOpen state from the switch.
