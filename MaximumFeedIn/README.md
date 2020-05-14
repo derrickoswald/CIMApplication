@@ -126,8 +126,9 @@ MaximumFeedIn 2.11-2.4.5-2.7.1
 Usage: MaximumFeedIn [options] [<CIM> <CIM> ...]
 
   --master MASTER_URL      spark://host:port, mesos://host:port, yarn, or local[*]
-  --opts k1=v1,k2=v2       Spark options [spark.graphx.pregel.checkpointInterval=8,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.ui.showConsoleProgress=false]
+  --sparkopts k1=v1,k2=v2  Spark options [spark.graphx.pregel.checkpointInterval=8,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.ui.showConsoleProgress=false]
   --storage_level <value>  storage level for RDD serialization [MEMORY_AND_DISK_SER]
+  --cimopts k1=v1,k2=v2    CIMReader options [ch.ninecode.cim.do_topo=true,ch.ninecode.cim.default_switch_open_state=false,ch.ninecode.cim.force_retain_fuses=ForceTrue,ch.ninecode.cim.force_switch_separate_islands=Unforced,ch.ninecode.cim.do_topo_islands=true,ch.ninecode.cim.force_fuse_separate_islands=Unforced,ch.ninecode.cim.force_retain_switches=ForceTrue,StorageLevel=MEMORY_AND_DISK_SER]
   --deduplicate            de-duplicate input (striped) files [false]
   --logging <value>        log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN [OFF]
   --checkpoint <dir>       checkpoint directory on HDFS, e.g. hdfs://... []

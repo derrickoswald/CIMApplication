@@ -60,16 +60,25 @@ case class EinspeiseleistungOptions
     unittest: Boolean = false,
     master: String = "",
     spark_options: Map[String, String] = Map (
-        "spark.graphx.pregel.checkpointInterval" → "8",
-        "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
-        "spark.ui.showConsoleProgress" → "false"
+        "spark.graphx.pregel.checkpointInterval" -> "8",
+        "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
+        "spark.ui.showConsoleProgress" -> "false"
     ),
     storage: String = "MEMORY_AND_DISK_SER",
     dedup: Boolean = false,
     log_level: LogLevels.Value = LogLevels.OFF,
     checkpoint_dir: String = "",
     verbose: Boolean = false,
-    cim_reader_options: Iterable[(String, String)] = Map[String, String](),
+    cim_reader_options: Map[String, String] = Map[String, String](
+        "ch.ninecode.cim.do_topo" -> "true",
+        "ch.ninecode.cim.do_topo_islands" -> "true",
+        "ch.ninecode.cim.force_retain_switches" -> "ForceTrue",
+        "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+        "ch.ninecode.cim.force_switch_separate_islands" -> "Unforced",
+        "ch.ninecode.cim.force_fuse_separate_islands" -> "Unforced",
+        "ch.ninecode.cim.default_switch_open_state" -> "false",
+        "StorageLevel" -> "MEMORY_AND_DISK_SER"
+    ),
     three: Boolean = false,
     precalculation: Boolean = false,
     trafos: String = "",
