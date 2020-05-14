@@ -89,5 +89,6 @@ class Feeders (
             .values
             .map (x => Feeder (x._1._1.id, x._1._2.TopologicalNode, x._2.orNull))
         put (feeders, "Feeders")
+        feeders
     }
 }
