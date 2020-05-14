@@ -4,10 +4,11 @@ import java.util.regex.Pattern
 
 import scala.io.Source
 
-import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import com.datastax.spark.connector.cql.CassandraConnector
 
 /**
  * Create the schema in Cassandra.
@@ -22,11 +23,11 @@ import org.slf4j.LoggerFactory
  * @param resource the schema file (cqlsh commands) to process
  * @param verbose the flag to trigger logging at INFO level
  */
-case class Schema (session: SparkSession, resource: String, verbose: Boolean)
+final case class Schema (session: SparkSession, resource: String, verbose: Boolean)
 {
     if (verbose)
-        org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+        org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.INFO)
+    val log: Logger = LoggerFactory.getLogger (getClass)
 
     // check if we can get the schema generation script
     def script: Option[String] =
@@ -70,10 +71,10 @@ case class Schema (session: SparkSession, resource: String, verbose: Boolean)
         val DEFAULT_REPLICATION = 1
         val REPLICATION_TRIGGER = """'replication_factor': """
 
-        val old_replication_string = REPLICATION_TRIGGER + DEFAULT_REPLICATION.toString
-        val new_replication_string = REPLICATION_TRIGGER + replication.toString
+        val old_replication_string = s"$REPLICATION_TRIGGER$DEFAULT_REPLICATION"
+        val new_replication_string = s"$REPLICATION_TRIGGER$replication"
 
-        /**
+        /*
          * The edit function.
          *
          * @param line the string to transform.
@@ -112,7 +113,7 @@ case class Schema (session: SparkSession, resource: String, verbose: Boolean)
         connector: CassandraConnector = CassandraConnector (session.sparkContext.getConf),
         keyspace: String = "cimapplication",
         replication: Int = 2
-        ): Boolean =
+    ): Boolean =
     {
         script match
         {

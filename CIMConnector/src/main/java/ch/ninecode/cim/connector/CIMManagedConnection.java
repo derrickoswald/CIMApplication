@@ -18,13 +18,12 @@ import javax.resource.spi.ManagedConnectionMetaData;
 import javax.security.auth.Subject;
 import javax.transaction.xa.XAResource;
 
-import org.apache.log4j.Level;
 import org.apache.spark.SparkConf;
 import org.apache.spark.sql.SparkSession;
 
 import ch.ninecode.cim.CIMClasses;
 import ch.ninecode.cim.DefaultSource;
-import ch.ninecode.cim.Schema;
+import ch.ninecode.cim.CIMExportOptionsParser;
 
 /**
  * Connection to Apache Spark (http://spark.apache.org).
@@ -128,7 +127,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
     {
         // arbitrarily pick a class to instantiate
         // ToDo: find a better way to find the CIMExport jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMExport-2.11-2.4.5-4.1.3.jar)
-        return (jarForObject (new Schema (null, "", 1, Level.OFF)));
+        return (jarForObject (new CIMExportOptionsParser ("", "")));
     }
 
     protected String CIMConnectorLibJarPath ()
