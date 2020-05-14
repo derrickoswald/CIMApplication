@@ -131,11 +131,6 @@ object MaximumFeedIn
                         log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
 
                         val options = arguments.copy (
-                            cim_reader_options =
-                                Map (
-                                    "StorageLevel" → arguments.storage,
-                                    "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString
-                                ),
                             workdir =
                                 if ("" == arguments.workdir)
                                     derive_work_dir (arguments.files)

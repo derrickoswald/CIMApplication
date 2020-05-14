@@ -47,15 +47,19 @@ class EinspeiseleistungOptionsParser (APPLICATION_NAME: String, APPLICATION_VERS
         action ((x, c) => c.copy (master = x)).
         text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
-    opt [Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
-        action ((x, c) => c.copy (spark_options = c.spark_options ++ x)).
+    opt[Map[String, String]]("sparkopts").valueName ("k1=v1,k2=v2").
+        action ((x, c) => c.copy (spark_options = x)).
         text (s"Spark options [${default.spark_options.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
 
     opt [String]("storage_level").
         action ((x, c) => c.copy (storage = x)).
         text (s"storage level for RDD serialization [${default.storage}]")
 
-    opt [Unit]("deduplicate").
+    opt[Map[String, String]]("cimopts").valueName ("k1=v1,k2=v2").
+        action ((x, c) => c.copy (cim_reader_options = x)).
+        text (s"CIMReader options [${default.cim_reader_options.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
+
+    opt[Unit]("deduplicate").
         action ((_, c) => c.copy (dedup = true)).
         text (s"de-duplicate input (striped) files [${default.dedup}]")
 

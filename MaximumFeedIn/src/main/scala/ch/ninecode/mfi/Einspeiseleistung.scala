@@ -49,8 +49,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     }
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
-    var storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK
-    val workdir = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
+    var storage_level: StorageLevel = StorageLevel.fromString (options.storage)
+    val workdir: String = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
     var gridlabd: GridLABD = new GridLABD (session, topological_nodes = true, !options.three, storage_level, workdir, options.cable_impedance_limit)
 
     // for dates without time zones, the timezone of the machine is used:
@@ -593,23 +593,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val start = System.nanoTime ()
 
         // read the file
-        val reader_options = new mutable.HashMap[String, String]()
-        reader_options ++= options.cim_reader_options
-        reader_options.put ("path", options.files.mkString (","))
-        reader_options.put ("ch.ninecode.cim.do_topo", "true")
-        reader_options.put ("ch.ninecode.cim.do_topo_islands", "true")
-        reader_options.put ("ch.ninecode.cim.force_retain_switches", "ForceTrue")
-        reader_options.put ("ch.ninecode.cim.force_retain_fuses", "ForceTrue")
-        reader_options.put ("ch.ninecode.cim.force_switch_separate_islands", "Unforced")
-        reader_options.put ("ch.ninecode.cim.force_fuse_separate_islands", "Unforced")
-        reader_options.put ("ch.ninecode.cim.default_switch_open_state", "false")
-
-        storage_level = options.cim_reader_options.find (_._1 == "StorageLevel") match
-        {
-            case Some ((_, storage)) => StorageLevel.fromString (storage)
-            case _ => StorageLevel.fromString ("MEMORY_AND_DISK_SER")
-        }
-
+        val reader_options = Map[String, String] (
+            "path" -> options.files.mkString (","),
+            "ch.ninecode.cim.do_deduplication" -> options.dedup.toString) ++
+            options.cim_reader_options
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files: _*)
         log.info (s"${elements.count ()} elements")
 
