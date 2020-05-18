@@ -332,13 +332,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         }
     }
 
-    def timestamp (time: Long, buffer: Int): String =
-    {
-        val disposable = dupTime (calendar)
-        disposable.setTimeInMillis (time + buffer)
-        cassandra_date_format.format (disposable.getTime)
-    }
-
     def columns (primaryKey: String) (phases: Int): Seq[String] =
     {
         if (phases == 3)
