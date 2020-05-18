@@ -1,7 +1,7 @@
 package ch.ninecode.gl
 
-import scala.collection.Map
-
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.model._
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
@@ -10,8 +10,7 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model._
+import scala.collection.Map
 
 /**
  * A topological island utility class to get edges and nodes.
@@ -346,6 +345,14 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         // get equipment attached to each terminal
         val terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)] = transformers_terminals.groupBy (_._2.ConductingEquipment).join (get [ConductingEquipment].keyBy (_.id)).values.cache
 
+        val edges: RDD[(identifier, GLMEdge)] = getEdges(edge_maker, terminals_equipment)
+        val nodes: RDD[(identifier, GLMNode)] = getNodes(node_maker, terminals_equipment)
+        (nodes, edges)
+    }
+
+    def getNodes(node_maker: RDD[NodeParts] ⇒ RDD[(identifier, GLMNode)],
+                 terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)]): RDD[(identifier, GLMNode)] =
+    {
         // where two or more pieces of equipment connect to the same topological node, we would like the equipment that only has one terminal, e.g. EnergyConsumer, rather than the ACLineSegment
         val one_terminal_equipment: RDD[(String, ((identifier, Terminal), ConductingEquipment))] = terminals_equipment.filter (1 == _._1.size).map (x ⇒ (x._1.head, x._2)).keyBy (_._1._2.TopologicalNode)
         val all_equipment: RDD[(String, ((identifier, Terminal), ConductingEquipment))] = terminals_equipment.flatMap (x ⇒ x._1.map (y ⇒ (y, x._2))).keyBy (_._1._2.TopologicalNode)
@@ -360,20 +367,46 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         // make nodes
         val m: RDD[(identifier, (Terminal, ConductingEquipment))] = t_e.map (x ⇒ (x._1._1, (x._1._2, x._2)))
         // key by BaseVoltage - handle PowerTransformer specially, otherwise it could be just .keyBy (_._2._2.BaseVoltage)
-        val m_key_by_BaseVoltage = m.keyBy (_._2._1.id).leftOuterJoin (get [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)).values
-            .map (
-                {
-                    case (x, Some (end)) ⇒ (end.TransformerEnd.BaseVoltage, x)
-                    case (x, None) ⇒ (x._2._2.BaseVoltage, x)
-                }
-            )
+        val transformer_end: RDD[(String, PowerTransformerEnd)] = get [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
+        val transfomer_join: RDD[((identifier, (Terminal, ConductingEquipment)), Option[PowerTransformerEnd])] = m.keyBy (_._2._1.id).leftOuterJoin (transformer_end).values
 
-        val n: RDD[(identifier, (Terminal, ConductingEquipment, BaseVoltage))] = m_key_by_BaseVoltage.join (get [BaseVoltage].keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._1._2._2, x._2)))
-        val nn: RDD[(identifier, (Terminal, Element, BaseVoltage))] = n.keyBy (_._2._2.id).join (get [Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, (x._1._2._1, x._2, x._1._2._3)))
+        val base_voltage: Array[(String, BaseVoltage)] = get [BaseVoltage].keyBy (_.id).collect
+        val unknown_voltage = BaseVoltage (
+            sup = IdentifiedObject (
+                sup=BasicElement (mRID="unknown"),
+                aliasName="fake voltage",
+                description="non-null voltage",
+                mRID="unknown",
+                name="unknown",
+                DiagramObjects=List(),
+                Names=List()),
+            nominalVoltage=0.0,
+            ConductingEquipment=List(),
+            TopologicalNode=List(),
+            TransformerEnds=List(),
+            VoltageLevel=List())
+        val n: RDD[(identifier, (Terminal, ConductingEquipment, BaseVoltage))] = transfomer_join.map (t =>
+        {
+            val ((identifier, (terminal, conductingEquipment)), trafo_end_option) = t
+            val voltage_string = trafo_end_option match {
+                case Some(end) ⇒ end.TransformerEnd.BaseVoltage
+                case None ⇒ conductingEquipment.BaseVoltage
+            }
+            val current_base_voltage = if (null == voltage_string) unknown_voltage else base_voltage.find(_._1 == voltage_string).map(_._2).getOrElse(unknown_voltage)
+            (identifier, (terminal, conductingEquipment, current_base_voltage))
+        })
+
+        val elements: RDD[(String, Element)] = get [Element]("Elements").keyBy (_.id)
+        val nn: RDD[(identifier, (Terminal, Element, BaseVoltage))] = n.keyBy (_._2._2.id).join (elements).values.map (x ⇒ (x._1._1, (x._1._2._1, x._2, x._1._2._3)))
 
         val o: RDD[NodeParts] = nn.groupBy (_._2._1.TopologicalNode)
         val nodes: RDD[(identifier, GLMNode)] = node_maker (o).cache
+        nodes
+    }
 
+    def getEdges(edge_maker: RDD[EdgeParts] ⇒ RDD[(identifier, GLMEdge)],
+                 terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)]): RDD[(identifier, GLMEdge)] =
+    {
         // get all equipment with two nodes in the transformer service area that separate different TopologicalNode (these are the edges)
         val ff: RDD[(Iterable[(identifier, Terminal)], Element)] = terminals_equipment.keyBy (_._2.id).join (get [Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, x._2)).cache
         val tte: RDD[(Iterable[(identifier, Terminal)], Element)] = ff.filter (x ⇒ x._1.size > 1 && (x._1.head._1 == x._1.tail.head._1) && (x._1.head._2.TopologicalNode != x._1.tail.head._2.TopologicalNode))
@@ -381,8 +414,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         val eq: RDD[EdgeParts] = tte.keyBy (_._1.map (_._2.TopologicalNode).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values
         // make edges
         val edges: RDD[(identifier, GLMEdge)] = edge_maker (eq).cache
-
-        (nodes, edges)
+        edges
     }
 }
 
