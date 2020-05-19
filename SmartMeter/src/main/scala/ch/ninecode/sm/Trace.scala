@@ -120,11 +120,11 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
 
             if (shouldContinue (triplet.attr.element))
             {
-                val length = triplet.attr.element.length
+                val length = triplet.attr.length
 
                 if (triplet.srcAttr.total_distance < triplet.dstAttr.total_distance)
                 {
-                    val new_total_distance = triplet.srcAttr.total_distance + triplet.attr.length
+                    val new_total_distance = triplet.srcAttr.total_distance + length
                     if (new_total_distance < triplet.dstAttr.total_distance)
                     {
                         var neighbor = triplet.dstAttr.neighbor
@@ -139,7 +139,7 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
                 } else
                     if (triplet.dstAttr.total_distance < triplet.srcAttr.total_distance)
                     {
-                        val new_total_distance = triplet.dstAttr.total_distance + triplet.attr.length
+                        val new_total_distance = triplet.dstAttr.total_distance + length
                         if (new_total_distance < triplet.srcAttr.total_distance)
                         {
                             var neighbor = triplet.srcAttr.neighbor
