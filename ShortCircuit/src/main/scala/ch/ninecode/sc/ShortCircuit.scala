@@ -970,7 +970,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         if (!trafo_island_mapping.filter (_._2 != "").isEmpty)
         {
-            val island_helper = new ShortCircuitIsland (session, storage_level)
+            val island_helper = new ShortCircuitIsland (session, storage_level, options)
             val graph_stuff = island_helper.queryNetwork (trafo_island_mapping) // ([nodes], [edges])
             val areas = graph_stuff._1.groupByKey.join (graph_stuff._2.groupByKey).persist (storage_level)
 

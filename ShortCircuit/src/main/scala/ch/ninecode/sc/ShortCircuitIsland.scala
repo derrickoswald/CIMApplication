@@ -15,15 +15,44 @@ import ch.ninecode.model.EnergyConsumer
 import ch.ninecode.net.Island
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.LineData
+import ch.ninecode.net.Lines
+import ch.ninecode.net.Lines.in_use
+import ch.ninecode.net.Lines.topological_edge
 import ch.ninecode.net.LoadFlowEdge
 import ch.ninecode.net.LoadFlowNode
 import ch.ninecode.net.SwitchData
 import ch.ninecode.net.TerminalPlus
 import ch.ninecode.net.TransformerSet
 
-class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel) extends Island (session, storageLevel)
+class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, options: ShortCircuitOptions)
+extends
+    Island (session, storageLevel)
 {
     override implicit val log: Logger = LoggerFactory.getLogger (getClass)
+
+    /**
+     * Checks that the line segment impedance is not too large.
+     *
+     * @note The use of high impedance cables in GridLAB-D leads to long convergence times and
+     *       often failures to converge. We use a rule of thumb that drops these cables from consideration.
+     *
+     * @param data the ACLineSegment data to check
+     * @return <code>true</code> if all cable per length impedances are less than the limit
+     */
+    def impedance_limit (data: LineData): Boolean =
+    {
+        data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.modulus < options.cable_impedance_limit)
+    }
+
+    /**
+     * Predicate to eliminate invalid ACLineSegments.
+     *
+     * @param data the ACLineSegment data to check
+     * @return <code>true</code> if this is a valid line segment
+     */
+    def filter (data: LineData): Boolean = topological_edge (data) && in_use (data) && impedance_limit (data)
+
+    override lazy val lines: RDD[LineData] = Lines (session, storageLevel).getLines (filter)
 
     override def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
     {
