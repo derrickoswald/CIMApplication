@@ -163,7 +163,7 @@ class LineSuite extends TestUtil with BeforeAndAfter
             val filename = s"hdfs://sandbox:8020/$FILENAME.rdf"
             readCIMElements (session, filename, Map[String, String] (
                     "path" -> filename,
-                    "StorageLevel" -> "MEMORY_AND_DISK_SER"
+                    "ch.ninecode.cim.do_topo" -> "true"
                 )
             )
 
