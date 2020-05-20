@@ -53,7 +53,7 @@ extends CIMRDD with Serializable
     lazy val all_nodes: RDD[(node_id, node_id)] = session.sparkContext
         .union (line_nodes, switch_nodes, transformer_nodes)
         .distinct
-        .keyBy (x => x)
+        .keyBy (identity)
 
     /**
      * The composite terminal objects.

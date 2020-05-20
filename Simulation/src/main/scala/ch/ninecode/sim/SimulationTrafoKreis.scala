@@ -204,7 +204,7 @@ case class SimulationTrafoKreis
             recorder =>
             {
                 val directed = attached (recorder.parent).map (e => (e, minitrace_incoming (recorder.parent, e)))
-                val incoming = directed.filter (_._2.fold (false) (x => x)).map (_._1)
+                val incoming = directed.filter (_._2.fold (false) (identity)).map (_._1)
                 incoming.toList match
                 {
                     case Nil =>
