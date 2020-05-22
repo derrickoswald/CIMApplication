@@ -1,8 +1,7 @@
 package ch.ninecode.mscons
 
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.PrintStream
+import java.util.Locale
 
 import scala.io.Source
 
@@ -25,6 +24,26 @@ class MSCONSSuiteIT
 
     @Test def Read ()
     {
+        Locale.setDefault (new Locale ("en", "US"))
+        main (Array ("--unittest", "--verbose", "--log", "WARN",
+            "--output_file", s"${FILE_DEPOT}test.out",
+            s"${FILE_DEPOT}${MSCONS_FILE1}"))
+
+        val file = new File (s"${FILE_DEPOT}test.out")
+        val source = Source.fromFile (file, "UTF-8")
+        val text = source.getLines.toArray
+        source.close
+        file.delete
+
+        assert (text.length == 96, text)
+        assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 CET 900000 36300.0+0.0j Wh")
+        assert (text(95) == "CH1008801234500000000000000113813 energy 2019-12-15 00:00:00 CET 900000 51600.0+0.0j Wh")
+    }
+
+
+    @Test def GermanRead ()
+    {
+        Locale.setDefault (new Locale ("de", "CH"))
         main (Array ("--unittest", "--verbose", "--log", "WARN",
             "--output_file", s"${FILE_DEPOT}test.out",
             s"${FILE_DEPOT}${MSCONS_FILE1}"))
@@ -59,6 +78,7 @@ class MSCONSSuiteIT
 
     @Test def ReadMultiple ()
     {
+        Locale.setDefault (new Locale ("en", "US"))
         main (Array ("--unittest", "--verbose", "--log", "WARN",
             "--output_file", s"${FILE_DEPOT}test.out",
             s"${FILE_DEPOT}${MSCONS_FILE1}",
@@ -75,7 +95,7 @@ class MSCONSSuiteIT
         file.delete
 
         assert (text.length == 96 * 6)
-        assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 MEZ 900000 36300.0+0.0j Wh")
-        assert (text(96 * 6 - 1) == "CH1008801234500000000000000113813 energy 2019-12-15 00:00:00 MEZ 900000 0.0+0.0j Wh")
+        assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 CET 900000 36300.0+0.0j Wh")
+        assert (text(96 * 6 - 1) == "CH1008801234500000000000000113813 energy 2019-12-15 00:00:00 CET 900000 0.0+0.0j Wh")
     }
 }
