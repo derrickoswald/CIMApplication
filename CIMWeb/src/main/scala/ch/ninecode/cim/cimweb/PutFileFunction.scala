@@ -16,17 +16,17 @@ case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = fa
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
         // form the response
-        val response = Json.createObjectBuilder
+        val header = Json.createObjectBuilder
             .add ("filesystem", uri.toString)
             .add ("path", path)
             .add ("size", data.length)
         // write the file
         val file: Path = new Path (hdfs.getUri.toString, path)
-        try
+        val response = try
         {
             val parent = if (path.endsWith ("/")) file else file.getParent
-            hdfs.mkdirs (parent, new FsPermission("ugoa-rwx"))
-            hdfs.setPermission (parent, new FsPermission("ugoa-rwx"))
+            if (hdfs.mkdirs (parent, new FsPermission("ugoa-rwx")))
+                hdfs.setPermission (parent, new FsPermission("ugoa-rwx"))
 
             if (0 != data.length && !path.endsWith ("/"))
             {
@@ -44,8 +44,8 @@ case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = fa
                             if (entry.isDirectory)
                             {
                                 val path = new Path (parent, entry.getName)
-                                hdfs.mkdirs (path, new FsPermission("ugoa-rwx"))
-                                hdfs.setPermission (path, new FsPermission("ugoa-rwx"))
+                                if (hdfs.mkdirs (path, new FsPermission("ugoa-rwx")))
+                                    hdfs.setPermission (path, new FsPermission("ugoa-rwx"))
                             }
                             else
                             {
@@ -65,7 +65,7 @@ case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = fa
                                 val out = hdfs.create (f)
                                 out.write (baos.toByteArray)
                                 out.close ()
-                                files.add (f.toString)
+                                val _ = files.add (f.toString)
                             }
                             zip.closeEntry ()
                         }
@@ -74,20 +74,23 @@ case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = fa
                     }
                     while (more)
                     zip.close ()
-                    response.add ("files", files)
+                    header.add ("files", files)
                 }
                 else
                 {
                     val out = hdfs.create (file)
                     out.write (data)
                     out.close ()
+                    header
                 }
             }
+            else
+                header
         }
         catch
         {
             case e: Exception =>
-                response.add ("error", e.getMessage)
+                header.add ("error", e.getMessage)
         }
         response.build
     }

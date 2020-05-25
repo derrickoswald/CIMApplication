@@ -123,7 +123,7 @@ class View extends RESTful
                     catch
                     {
                         case resourceexception: ResourceException =>
-                            Response.serverError ().entity (s"ResourceException on close\n${resourceexception.getMessage}").build
+                            val _ = Response.serverError ().entity (s"ResourceException on close\n${resourceexception.getMessage}").build
                     }
             case None =>
                 Response.status (Response.Status.SERVICE_UNAVAILABLE).entity (s"could not get connection: ${ret.message}").build

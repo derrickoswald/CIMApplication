@@ -148,7 +148,7 @@ class LoadFile extends RESTful
                 "ch.ninecode.cim.cache" -> cache
             )
             _Logger.info (s"load CIM ${files.mkString (",")} ${options.toString}")
-            load (ret, LoadCIMFileFunction (files, options))
+            load (ret, LoadCIMFileFunction (files, Some (options)))
         }
         else if (files(0).endsWith (".csv"))
         {

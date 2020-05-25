@@ -63,8 +63,7 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
             case access: AccessControlException =>
                 response.add ("error", access.getMessage) // Permission denied: user=root, access=READ_EXECUTE, inode=\"/tmp\":derrick:derrick:drwx-wx-wx
         }
-        response.add ("files", files)
-        response.build
+        response.add ("files", files).build
     }
 
     override def toString: String = s"${super.toString} (path=$path, debug=$debug)"

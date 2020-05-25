@@ -84,26 +84,29 @@ case class ViewFunction (
         // see https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
         def douglasPeuker (list: List[PositionPointPlus]): (List[PositionPointPlus]) =
         {
-            var dmax = 0.0
-            var index = 0
-            val size = list.size
-            val firstPoint = list.head
-            val lastPoint = list(size - 1)
-            // find the point with the maximum distance
-            for (i <- 1 until size - 1)
+            list match
             {
-                val d = calcLotrecht (firstPoint, lastPoint, list (i))
-                if (d > dmax)
-                {
-                    index = i
-                    dmax = d
-                }
+                case head +: middle :+ last =>
+                    val (dmax, index) = middle.zipWithIndex.foldLeft  ((Double.MinPositiveValue, 0))(
+                        (current: (Double, Int), next: (PositionPointPlus, Int)) =>
+                        {
+                            val (dmax, _) = current
+                            val (p, i) = next
+                            val d = calcLotrecht (head, last, p)
+                            if (d > dmax)
+                                (d, i + 1) // the head is removed, so +1
+                            else
+                                current
+                        }
+                    )
+                    // if max distance is greater than epsilon, recursively simplify
+                    if (dmax >= epsilon)
+                        douglasPeuker (list.take (index + 1)) ++ douglasPeuker (list.drop (index))
+                    else
+                        List (head, last)
+                case _ =>
+                    list // lists of less than three points
             }
-            // if max distance is greater than epsilon, recursively simplify
-            if (dmax >= epsilon)
-                douglasPeuker (list.take (index + 1)) ++ douglasPeuker (list.drop (index))
-            else
-                List (list.head, list.last)
         }
 
         def to_elements (arg: ((ACLineSegment, List[PositionPointPlus]), Location)): List[Element] =
@@ -140,7 +143,7 @@ case class ViewFunction (
         // write the reduced RDF
         val file: Path = new Path ("/tmp/view.rdf")
         val f: Path = new Path (hdfs.getUri.toString, file)
-        hdfs.delete (f, false)
+        val _ = hdfs.delete (f, false)
         log.info ("exporting %s".format (file.toString))
         val export = new CIMExport (spark)
         export.export (elements, file.toString, about)

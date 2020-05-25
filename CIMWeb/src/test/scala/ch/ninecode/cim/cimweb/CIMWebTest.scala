@@ -17,6 +17,7 @@ import org.jboss.shrinkwrap.api.spec.EnterpriseArchive
 import org.jboss.shrinkwrap.api.spec.WebArchive
 
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -31,35 +32,35 @@ object CIMWebTest
     println (WEBAPP_SRC)
 
     @Deployment
-    def createDeployment: EnterpriseArchive =
+    def createDeployment: Option[EnterpriseArchive] =
     {
         try
         {
             val war = ShrinkWrap.create (classOf[WebArchive], "CIMWeb.war")
-            war.setWebXML (new File (WEBAPP_SRC, "WEB-INF/web.xml"))
-            war.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb")) // getClass().getPackage()
-            war.deleteClass (classOf[CIMWebTest])
-            war.addAsWebResource (new File (WEBAPP_SRC, "index.html"))
-            war.addManifest ()
+                .setWebXML (new File (WEBAPP_SRC, "WEB-INF/web.xml"))
+                .addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb")) // getClass().getPackage()
+                .deleteClass (classOf[CIMWebTest])
+                .addAsWebResource (new File (WEBAPP_SRC, "index.html"))
+                .addManifest ()
             println (war.toString (true))
             war.as (classOf[ZipExporter]).exportTo (new File ("./target/CIMWeb.war"), true)
             val ear = ShrinkWrap.create (classOf[EnterpriseArchive], "CIMWeb.ear")
-            ear.addAsModules (war)
-            ear.add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-2.11-2.4.5-2.7.1.rar")), "CIMConnector.rar")
-            ear.addManifest ()
-            ear.addAsManifestResource (new File (WEBEAR_SRC, "application.xml"))
+                .addAsModules (war)
+                .add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-2.11-2.4.5-2.7.1.rar")), "CIMConnector.rar")
+                .addManifest ()
+                .addAsManifestResource (new File (WEBEAR_SRC, "application.xml"))
             println (ear.toString (true))
             ear.as (classOf[ZipExporter]).exportTo (new File ("./target/CIMWeb.ear"), true)
             //        final EnterpriseArchive ear = ShrinkWrap.createFromZipFile (EnterpriseArchive.class, new File ("../CIMEar/target/CIMApplication.ear"));
             //        println (ear.toString (true));
             //        ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
-            ear
+            Some (ear)
         }
         catch
         {
             case e: Exception =>
                 println (e.getMessage)
-                null
+                None
         }
     }
 }
@@ -67,9 +68,7 @@ object CIMWebTest
 @RunWith (classOf[Arquillian])
 class CIMWebTest
 {
-    var context: InitialContext = _
-
-    def print_context_r (name: String, depth: Int): Unit =
+    def print_context_r (context: InitialContext, name: String, depth: Int): Unit =
     {
         try
         {
@@ -85,35 +84,47 @@ class CIMWebTest
                 }
                 println (pair.getName + " : " + pair.getClassName)
                 if ("org.apache.openejb.core.ivm.naming.IvmContext" eq pair.getClassName)
-                    print_context_r (name + "/" + pair.getName, depth + 1)
+                    print_context_r (context, name + "/" + pair.getName, depth + 1)
             }
         }
         catch
         {
-            case e: NamingException =>
-
+            case _: NamingException =>
         }
     }
 
-    def print_context (name: String): Unit =
+    def print_context (context: InitialContext, name: String): Unit =
     {
         println (name)
-        print_context_r (name, 1)
+        print_context_r (context, name, 1)
     }
+
+    def propertiesFromMap (properties: Map[String, String]): Properties =
+        properties.foldLeft (new Properties)
+        {
+            case (p, (k, v)) =>
+                val _ = p.put (k,v)
+                p
+        }
 
     @Test
     def testResourceAdapter (): Unit =
     {
-        val properties = new Properties
-        properties.setProperty (Context.INITIAL_CONTEXT_FACTORY, "org.apache.openejb.client.LocalInitialContextFactory")
-        properties.setProperty ("openejb.deployments.classpath.include", ".*resource-injection.*")
-        val initialContext = new InitialContext (properties)
-        context = initialContext
-        print_context ("java:")
-        print_context ("openejb:")
-        val connectionFactory = initialContext.lookup ("openejb:Resource/CIMConnector.rar").asInstanceOf[ConnectionFactory]
-        val connection = connectionFactory.getConnection
-        assertNotNull (connection)
-        connection.close ()
+        val properties = Map[String, String] (
+            Context.INITIAL_CONTEXT_FACTORY -> "org.apache.openejb.client.LocalInitialContextFactory",
+            "openejb.deployments.classpath.include" -> ".*resource-injection.*"
+        )
+        val initialContext = new InitialContext (propertiesFromMap (properties))
+        print_context (initialContext, "java:")
+        print_context (initialContext, "openejb:")
+        initialContext.lookup ("openejb:Resource/CIMConnector.rar") match
+        {
+            case connectionFactory: ConnectionFactory =>
+                val connection = connectionFactory.getConnection
+                assertNotNull (connection)
+                connection.close ()
+            case _ =>
+                fail ("could not get a ConnectionFactory")
+        }
     }
 }
