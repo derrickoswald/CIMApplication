@@ -16,6 +16,7 @@ import ch.ninecode.model.Element
 import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.SolarGeneratingUnit
+import ch.ninecode.net.TransformerEdge
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.util.Complex
 
@@ -48,7 +49,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         {
             case _: TransformerEdge => true
             case _ => false
-        }).asInstanceOf [Iterable[TransformerEdge]]
+        }).asInstanceOf [Iterable[GLMTransformerEdge]]
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
