@@ -21,33 +21,11 @@ with GLMEdge
         val phase = if (generator.isSinglePhase) "AN" else "ABCN"
         if (multiwinding)
         {
-            val intermediate = s"${transformer.node0}_intermediate"
-            val int =
-                s"""
-                  |        object meter
-                  |        {
-                  |            name "$intermediate";
-                  |            phases $phase;
-                  |            bustype PQ;
-                  |            nominal_voltage ${transformer.transformers(0).voltages(0)._2}V;
-                  |        };
-                  |""".stripMargin
-            val prim =
-            s"""
-                |        object transformer
-                |        {
-                |            name "${transformer.transformer_name}";
-                |            phases $phase;
-                |            from "${transformer.node0}";
-                |            to "$intermediate";
-                |            configuration "$configurationName";
-                |        };
-                |""".stripMargin
-            val sec = for (winding <- lv_windings)
+            val sec = for (index <- lv_windings.indices)
                 yield
                 {
                     val config = configurationName
-                    val number = winding.TransformerEnd.endNumber - 1
+                    val number = lv_windings(index).TransformerEnd.endNumber - 1
                     val conf = s"${config}_winding_$number"
 
                     s"""
@@ -55,13 +33,13 @@ with GLMEdge
                         |        {
                         |            name "${transformer.transformer_name}_$number";
                         |            phases $phase;
-                        |            from "$intermediate";
-                        |            to "${transformer.transformers(0).terminals(number).TopologicalNode}";
+                        |            from "${transformer.node0}";
+                        |            to "${transformer.transformers(0).nodes(index+1).id}";
                         |            configuration "$conf";
                         |        };
                         |""".stripMargin
                 }
-            int + prim + sec.mkString
+            sec.mkString
         }
         else
         s"""
@@ -95,7 +73,8 @@ with GLMEdge
             if (n < 1e-7) 1e-7 else n
         }
 
-        val ret =
+        if (!multiwinding)
+        {
         s"""$warn
             |        object transformer_configuration
             |        {
@@ -110,37 +89,35 @@ with GLMEdge
             |            reactance ${nonNegative (total_impedance.im)};
             |        };
             |""".stripMargin
+        }  else {
 
-        val w = if (multiwinding)
-        {
-            // we need to emit pseudo configurations
-            val c = for (winding <- lv_windings)
-                yield
-                {
-                    val number = winding.TransformerEnd.endNumber - 1
-                    val comment = s"\n            // multi-winding transformer low voltage winding $number"
-                    val conf = s"${config}_winding_$number"
-                    val v = transformer.transformers(0).voltages(number)._2
-
-                    s"""
-                        |        object transformer_configuration
-                        |        {
-                        |$comment
-                        |            name "$conf";
-                        |            connect_type $connect;
-                        |            power_rating ${transformer.power_rating / 1000.0};
-                        |            primary_voltage ${transformer.v0};
-                        |            secondary_voltage $v;
-                        |            resistance 1e-9;
-                        |            reactance 1e-9;
-                        |        };
-                        |""".stripMargin
-                }
-            c.mkString
+            val array = for ( index <- lv_windings.indices)
+               yield {
+                   val number = lv_windings(index).TransformerEnd.endNumber - 1
+                   val power = lv_windings(index).ratedS
+                   val voltsPrimary = transformer.v0
+                   val voltsSecondary = transformer.transformers(0).voltages(index+1)._2
+                   //Zohms = Zpu * Zbase
+                   //Zbase = Vll^2 / Sbase
+                   val Zbase = voltsSecondary*voltsSecondary / power
+                   val Rpu = lv_windings(index).r / Zbase
+                   val Xpu = lv_windings(index).x / Zbase
+                       s"""$warn
+                      |        object transformer_configuration
+                      |        {
+                      |$comment
+                      |            name ${config}_winding_$number;
+                      |            connect_type $connect;
+                      |            install_type PADMOUNT;
+                      |            power_rating ${power / 1000.0};
+                      |            primary_voltage ${voltsPrimary};
+                      |            secondary_voltage ${voltsSecondary};
+                      |            resistance ${nonNegative (Rpu)};
+                      |            reactance ${nonNegative (Xpu)};
+                      |        };
+                      |""".stripMargin
+               }
+            array.mkString
         }
-        else
-            ""
-
-        ret + w
     }
 }
