@@ -24,7 +24,7 @@ import ch.ninecode.util.Schema
  */
 case class Copy (session: SparkSession, options: CopyOptions)
 {
-    org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
+    org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.INFO)
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
     val HOST = "spark.cassandra.connection.host"
     val PORT = "spark.cassandra.connection.port"

@@ -5,7 +5,6 @@ import java.util.Properties
 import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 
 import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.Row
 import com.datastax.driver.core.Session
 
 import org.junit.Test

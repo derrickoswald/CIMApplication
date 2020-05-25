@@ -41,6 +41,22 @@ create or replace function cimapplication.concat (s1 text, s2 text)
     language java
     as $$ return (s1 + s2); $$;
 
+create table if not exists cimapplication.version (
+    program text,
+    build text,
+    version text,
+    time timestamp,
+    primary key ((program), version)
+) with clustering order by (version asc) and comment = '
+Schema version.
+    program - the name and version of the program that created the schema
+    build   - the git commit hash when the program was built
+    version - the schema version, increment for each schema script change
+    time    - schema creation time
+';
+
+insert into cimapplication.version (program, build, version, time) values ('${artifactId} ${version}', '${buildNumber}', '35', toTimestamp(now())) if not exists;
+
 create table if not exists cimapplication.measured_value (
     mrid text,
     type text,
@@ -111,6 +127,8 @@ Auxiliary properties of measurement_value table entries.
     lon     - the longitude of the location (°)
     lat     - the latitude of the location (°)
 ';
+
+create index if not exists meta_idx on cimapplication.measured_value_meta (ENTRIES(classes));
 
 create table if not exists cimapplication.simulated_value (
     simulation text,
@@ -232,6 +250,10 @@ create table if not exists cimapplication.simulation (
     run_time timestamp,
     start_time timestamp,
     end_time timestamp,
+    cim_temperature double,
+    simulation_temperature double,
+    swing text,
+    swing_voltage_factor double,
     input_keyspace text,
     output_keyspace text,
     transformers list<text>,
@@ -248,6 +270,10 @@ Describes each run of the Simulate code.
     run_time - the time at which the simulation was executed
     start_time - the simulation start time in GMT
     end_time - the simulation end time in GMT
+    cim_temperature - the assumed temperature of the CIM file(s) (°C)
+    simulation_temperature - the temperature of the simulation (°C)
+    swing - if "hi" the slack bus is on the primary, if "lo" on the secondary, of the transformer
+    swing_voltage_factor - multiplicative factor to apply to the nominal slack voltage
     input_keyspace - the Cassandra keyspace for measurement data
     output_keyspace - The Cassandra keyspace for simulated results data
     transformers - the list of PowerTransformer mRID used to determine topological islands, an empty list indicates all
