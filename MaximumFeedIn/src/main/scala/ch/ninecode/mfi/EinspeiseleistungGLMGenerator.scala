@@ -47,7 +47,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
     {
         val subtransmission_trafos = edges.filter (edge => edge match
         {
-            case _: TransformerEdge => true
+            case _: GLMTransformerEdge => true
             case _ => false
         }).asInstanceOf [Iterable[GLMTransformerEdge]]
         val trafos = transformers ++ subtransmission_trafos
