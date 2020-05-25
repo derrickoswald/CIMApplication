@@ -1,6 +1,5 @@
 package ch.ninecode.mscons
 
-import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
 import java.io.PrintStream
 import java.text.SimpleDateFormat
