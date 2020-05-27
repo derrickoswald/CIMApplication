@@ -52,7 +52,7 @@ case class Header
     scenarioTime: Calendar,
     version: String)
 
-case class LowVoltage (session: SparkSession, storage_level: StorageLevel, options: LowVoltageOptions)
+case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
 {
     if (options.verbose)
     {
@@ -181,13 +181,13 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
             1
         }
 
-        log.info ("exporting: " + trafokreise.count () + " transformer service areas")
+        log.info (s"exporting: ${trafokreise.count} transformer service areas")
         val files = trafokreise.map (doit).cache
         val fc = files.fold (0)(_ + _)
-        log.info ("exported: " + fc + " transformer service areas")
+        log.info (s"exported: $fc transformer service areas")
 
         val write = System.nanoTime ()
-        log.info ("export: " + (write - start) / 1e9 + " seconds")
+        log.info (s"export: ${(write - start) / 1e9} seconds")
     }
 
     def run (): Long =
@@ -207,39 +207,22 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         }
 
         // read the file
-        val reader_options = new mutable.HashMap[String, String]()
-        reader_options ++= options.cim_reader_options
-        reader_options.put ("path", options.files.mkString (","))
-        reader_options.put ("ch.ninecode.cim.make_edges", "false")
-        reader_options.put ("ch.ninecode.cim.do_join", "false")
-        reader_options.put ("ch.ninecode.cim.do_topo", "false") // use the topological processor after reading
-        reader_options.put ("ch.ninecode.cim.do_topo_islands", "false")
+        val reader_options = Map[String, String] (
+            "path" -> options.files.mkString (","),
+            "StorageLevel"-> options.storage,
+            "ch.ninecode.cim.do_deduplication" -> options.dedup.toString) ++
+            options.cim_reader_options
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files: _*)
         val count = elements.count ()
-        log.info (count + " elements")
+        log.info (s"$count elements")
 
         val read = System.nanoTime ()
-        log.info ("read: " + (read - start) / 1e9 + " seconds")
+        log.info (s"read: ${(read - start) / 1e9} seconds")
 
         val storage_level = options.cim_reader_options.find (_._1 == "StorageLevel") match
         {
             case Some ((_, storage)) => StorageLevel.fromString (storage)
             case _ => StorageLevel.fromString ("MEMORY_AND_DISK_SER")
-        }
-
-        // identify topological nodes if necessary
-        var topo = System.nanoTime ()
-        val tns = session.sparkContext.getPersistentRDDs.filter (_._2.name == "TopologicalNode")
-        if (tns.isEmpty || tns.head._2.isEmpty)
-        {
-            val ntp = CIMNetworkTopologyProcessor (session)
-            val ele = ntp.process (
-                CIMTopologyOptions (
-                    identify_islands = false,
-                    storage = storage_level))
-            log.info (ele.count () + " elements")
-            topo = System.nanoTime ()
-            log.info ("topology: " + (topo - read) / 1e9 + " seconds")
         }
 
         // prepare for precalculation
@@ -273,7 +256,7 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         transformers.name = "Transformers"
 
         val prepare = System.nanoTime ()
-        log.info ("prepare: " + (prepare - topo) / 1e9 + " seconds")
+        log.info ("prepare: " + (prepare - read) / 1e9 + " seconds")
 
         // do the pre-calculation
         val precalc_results =
