@@ -151,15 +151,15 @@ final case class Transformers (
         val description = "default equivalent generation injection"
         val element = BasicElement (mRID = mRID)
         element.bitfields = Array (Integer.parseInt ("1", 2))
-        val obj = IdentifiedObject (sup = element, description = description, mRID = mRID)
+        val obj = IdentifiedObject (element, description = description, mRID = mRID)
         obj.bitfields = Array (Integer.parseInt ("110", 2))
-        val psr = PowerSystemResource (sup = obj)
+        val psr = PowerSystemResource (obj)
         psr.bitfields = Array (0)
-        val equipment = Equipment (sup = psr, inService = true, normallyInService = true, EquipmentContainer = station)
+        val equipment = Equipment (psr, inService = true, normallyInService = true, EquipmentContainer = station)
         equipment.bitfields = Array (Integer.parseInt ("10001010", 2))
-        val conducting = ConductingEquipment (sup = equipment, BaseVoltage = voltage._1)
+        val conducting = ConductingEquipment (equipment, BaseVoltage = voltage._1)
         conducting.bitfields = Array (Integer.parseInt ("1", 2))
-        val equivalent = EquivalentEquipment (sup = conducting)
+        val equivalent = EquivalentEquipment (conducting)
         equivalent.bitfields = Array (0)
 
         // if there is only one supplied angle, apply it to both max and min conditions

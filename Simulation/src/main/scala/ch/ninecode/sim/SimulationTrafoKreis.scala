@@ -79,18 +79,18 @@ case class SimulationTrafoKreis
     def newSwitch (id: String): Switch =
     {
         val basic = BasicElement (mRID = id)
-        val obj = IdentifiedObject (sup = basic, mRID = id)
-        val psr = PowerSystemResource (sup = obj)
-        val equipment = Equipment (sup = psr)
-        val conducting = ConductingEquipment (sup = equipment)
-        Switch (sup = conducting)
+        val obj = IdentifiedObject (basic, mRID = id)
+        val psr = PowerSystemResource (obj)
+        val equipment = Equipment (psr)
+        val conducting = ConductingEquipment (equipment)
+        Switch (conducting)
     }
 
     def alterTerminal (terminal: Terminal, original_node: String, new_node: String): Terminal =
     {
         if (terminal.TopologicalNode == original_node)
             Terminal (
-                sup = terminal.ACDCTerminal,
+                terminal.ACDCTerminal,
                 phases = terminal.phases,
                 ConductingEquipment = terminal.ConductingEquipment,
                 ConnectivityNode = terminal.ConnectivityNode,
@@ -103,8 +103,8 @@ case class SimulationTrafoKreis
     {
         if (node.id == original_node)
             TopologicalNode (
-                sup = IdentifiedObject (
-                    sup = BasicElement (mRID = new_node),
+                IdentifiedObject (
+                    BasicElement (mRID = new_node),
                     aliasName = node.IdentifiedObject.aliasName,
                     description = node.IdentifiedObject.description,
                     mRID = new_node,
