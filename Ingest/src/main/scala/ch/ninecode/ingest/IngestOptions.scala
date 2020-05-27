@@ -7,6 +7,7 @@ object LogLevels extends Enumeration
 }
 
 /**
+ * Ingest meter readings options.
  *
  * @param valid False if either help or version requested (i.e. don't proceed with execution).
  * @param unittest If <code>true</code>, don't call sys.exit().
