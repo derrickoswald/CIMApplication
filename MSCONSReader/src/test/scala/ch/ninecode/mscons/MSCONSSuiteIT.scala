@@ -36,8 +36,8 @@ class MSCONSSuiteIT
         file.delete
 
         assert (text.length == 96, text)
-        assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 CET 900000 36300.0+0.0j Wh")
-        assert (text(95) == "CH1008801234500000000000000113813 energy 2019-12-15 00:00:00 CET 900000 51600.0+0.0j Wh")
+        assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 MEZ 900000 36300.0+0.0j Wh")
+        assert (text(95) == "CH1008801234500000000000000113813 energy 2019-12-15 00:00:00 MEZ 900000 51600.0+0.0j Wh")
     }
 
     // this test works in IntelliJ but doesn't work in failsafe because stderr is captured by failsafe
@@ -75,7 +75,7 @@ class MSCONSSuiteIT
         file.delete
 
         assert (text.length == 96 * 6)
-        assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 CET 900000 36300.0+0.0j Wh")
-        assert (text(96 * 6 - 1) == "CH1008801234500000000000000113813 energy 2019-12-15 00:00:00 CET 900000 0.0+0.0j Wh")
+        assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 MEZ 900000 36300.0+0.0j Wh")
+        assert (text(96 * 6 - 1) == "CH1008801234500000000000000113813 energy 2019-12-15 00:00:00 MEZ 900000 0.0+0.0j Wh")
     }
 }

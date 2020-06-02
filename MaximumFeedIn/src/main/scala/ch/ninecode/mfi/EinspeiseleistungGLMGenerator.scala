@@ -7,6 +7,7 @@ import scala.math._
 import ch.ninecode.gl._
 import ch.ninecode.model.Element
 import ch.ninecode.model.GeneratingUnit
+import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.SolarGeneratingUnit
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
@@ -37,7 +38,11 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.filter (edge => edge match { case _: TransformerEdge => true case _ => false }).asInstanceOf[Iterable[TransformerEdge]]
+        val subtransmission_trafos = edges.filter (edge => edge match
+        {
+            case _: TransformerEdge => true
+            case _ => false
+        }).asInstanceOf [Iterable[TransformerEdge]]
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
@@ -48,10 +53,10 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             transformers =>
                 SwingNode (transformers.node0, transformers.v0, transformers.transformer_name)
         )
-        // distinct
-        .map (node => (node.id, node))
-        .toMap
-        .values
+            // distinct
+            .map (node => (node.id, node))
+            .toMap
+            .values
 
     override def nodes: Iterable[GLMNode] = trafokreis.nodes
 
@@ -131,8 +136,34 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
     {
         val name = transformer.transformer.transformer_name
 
-        super.emit_transformer (transformer) +
-            "\n" +
+        lazy val lv_windings: Array[PowerTransformerEnd] =
+            for (winding <- transformer.transformer.transformers (0).ends
+                 if winding.TransformerEnd.endNumber > 1)
+                yield winding
+        lazy val multiwinding: Boolean = lv_windings.length > 1
+
+
+        val recorders = if (!multiwinding)
+        {
+            addTrafoRecorders (name)
+        }
+        else
+        {
+            val recs: Seq[String] = for (index <- lv_windings.indices)
+                yield
+                    {
+                        val number = lv_windings (index).TransformerEnd.endNumber - 1
+                        val newName = s"${name}_$number"
+                        addTrafoRecorders (newName)
+                    }
+            recs.mkString
+        }
+        super.emit_transformer (transformer) + recorders
+    }
+
+    def addTrafoRecorders (name: String): String =
+    {
+        "\n" +
             "        object recorder\n" +
             "        {\n" +
             "            name \"" + name + "_current_recorder\";\n" +
@@ -221,7 +252,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                 // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
                 // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
                 // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-                val phi = - math.signum (cosPhi) * acos (math.abs (cosPhi))
+                val phi = -math.signum (cosPhi) * acos (math.abs (cosPhi))
                 new Complex (-maxp * math.cos (phi), -maxp * math.sin (phi)).asString (6)
             }
 
@@ -239,16 +270,16 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                 }
                 load +=
                     s"""
-                    |        object load
-                    |        {
-                    |            name "${parent}_pv_$index";
-                    |            parent "$parent";
-                    |            phases $phase;
-                    |            nominal_voltage ${voltage}V;
-                    |            load_class R;
-                    |$power
-                    |        }
-                    |""".stripMargin
+                       |        object load
+                       |        {
+                       |            name "${parent}_pv_$index";
+                       |            parent "$parent";
+                       |            phases $phase;
+                       |            nominal_voltage ${voltage}V;
+                       |            load_class R;
+                       |$power
+                       |        }
+                       |""".stripMargin
                 index += 1
             }
         }
