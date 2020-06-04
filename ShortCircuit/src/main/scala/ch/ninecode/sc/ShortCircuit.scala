@@ -432,24 +432,48 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      * @param trafo_nodes the list of starting trafo nodes
      * @return the reduced network with one pair of series elements converted to a series branch
      */
-    def reduce_series (network: Iterable[Branch], trafo_nodes: Array[String]): (Boolean, Iterable[Branch]) = // (reduced?, network)
+    def reduce_series (network: Iterable[Branch], trafo_nodes: Array[String], mrid: String): (Boolean, Iterable[Branch]) = // (reduced?, network)
     {
-        // check for series elements
-        val series = for
+        // check for series elements, eliminate making a series connection across the house or trafo
+        val prepend =
+            for
             {
                 branch <- network
-                buddies = network.filter (x ⇒ (branch.from == x.to) || (branch.from == x.from && branch != x && !trafo_nodes.contains (branch.from)))
+                house = branch.from == mrid
+                if !house
+                trafo = trafo_nodes.contains (branch.from)
+                if !trafo
+                buddies = network.filter (x ⇒ (branch.from == x.to) || (branch.from == x.from && branch != x))
                 if buddies.size == 1
                 buddy = buddies.head
             }
             yield (branch, buddy)
+
+        val append =
+            for
+            {
+                branch <- network
+                house = branch.to == mrid
+                if !house
+                trafo = trafo_nodes.contains (branch.to)
+                if !trafo
+                buddies = network.filter (x ⇒ (branch.to == x.from) || (branch.to == x.to && branch != x))
+                if buddies.size == 1
+                buddy = buddies.head
+            }
+            yield (branch, buddy)
+
+        val series = prepend ++ append
+
         if (series.nonEmpty)
         {
             // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
             val (branch, buddy) = series.head
             val rest = network.filter (x => branch != x && buddy != x)
-            val new_series = if (branch.from == buddy.to)
+            val new_series = if (buddy.to == branch.from)
                 buddy.add_in_series (branch)
+            else if (branch.to == buddy.from)
+                branch.add_in_series (buddy)
             else
                 // choose the simplest element to reverse
                 branch match
@@ -500,7 +524,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         var network: Iterable[Branch] = branches
         do
         {
-            val (modified, net) = reduce_series (network, trafo_nodes)
+            val (modified, net) = reduce_series (network, trafo_nodes, mrid)
             network = net
             done = !modified
             if (done)
