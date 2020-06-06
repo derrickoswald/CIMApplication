@@ -46,7 +46,7 @@ object CIMWebTest
             war.as (classOf[ZipExporter]).exportTo (new File ("./target/CIMWeb.war"), true)
             val ear = ShrinkWrap.create (classOf[EnterpriseArchive], "CIMWeb.ear")
                 .addAsModules (war)
-                .add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-2.11-2.4.5-2.7.1.rar")), "CIMConnector.rar")
+                .add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-2.11-2.4.5-2.7.2.rar")), "CIMConnector.rar")
                 .addManifest ()
                 .addAsManifestResource (new File (WEBEAR_SRC, "application.xml"))
             println (ear.toString (true))

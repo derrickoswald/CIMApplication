@@ -352,7 +352,7 @@ extends CIMRDD
         {
             implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T] (subsetter.runtime_class)
             implicit val tag: universe.TypeTag[T] = subsetter.tag
-            val subrdd: RDD[T] = elements.collect[T] (subsetter.pf)
+            val subrdd: RDD[T] = elements.flatMap (subsetter.asThisClass)
             val existing: RDD[T] = getOrElse[subsetter.basetype] (subsetter.cls)
             val _ = put[T] (subrdd.union (existing))
         }

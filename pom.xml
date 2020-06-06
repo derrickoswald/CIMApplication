@@ -6,7 +6,7 @@
     <groupId>ch.ninecode.cim</groupId>
     <artifactId>CIMApplication</artifactId>
     <!-- version>${version.dependency.scala}-${version.dependency.spark}-CIMAPPLICATION_VERSION</version -->
-    <version>2.11-2.4.5-2.7.1</version>
+    <version>2.11-2.4.5-2.7.2</version>
     <packaging>pom</packaging>
     <name>CIM Application Multimodule</name>
     <scm>
@@ -32,7 +32,7 @@
         <version.dependency.hadoop>2.7.6</version.dependency.hadoop>
         <version.dependency.spark>2.4.5</version.dependency.spark>
         <version.dependency.cassandra_spark>2.4.1</version.dependency.cassandra_spark>
-        <version.dependency.cimreader>2.11-2.4.5-4.1.4</version.dependency.cimreader>
+        <version.dependency.cimreader>2.11-2.4.5-4.2.0</version.dependency.cimreader>
 
         <!-- Component versions -->
         <version.dependency.javaee>8.0.1</version.dependency.javaee>

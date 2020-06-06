@@ -19,7 +19,7 @@ It thus provides a proof of principle for End-To-End access from a web browser t
 
 # Presentation
 
-An overview of the current release 2.11-2.4.5-2.7.1:
+An overview of the current release:
 
 <a href="https://derrickoswald.gitlab.io/cimapplication_presentation">N7 Grid Simulation using Smart Meter Data</a>
 

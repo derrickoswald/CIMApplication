@@ -121,8 +121,8 @@ The program is submitted to the cluster with the [spark-submit command](https://
 Of the many arguments to spark-submit, the crucial one to execute the MaximumFeedIn program is the correct full path to the `.jar` file.
 A bit of help text is available if you use the `--help` switch:
 ```
-spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-2.11-2.4.5-2.7.1-jar-with-dependencies.jar --help
-MaximumFeedIn 2.11-2.4.5-2.7.1
+spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=2g /opt/code/MaximumFeedIn-*-jar-with-dependencies.jar --help
+MaximumFeedIn 2.11-2.4.5-2.7.2
 Usage: MaximumFeedIn [options] [<CIM> <CIM> ...]
 
   --master MASTER_URL      spark://host:port, mesos://host:port, yarn, or local[*]
@@ -151,7 +151,7 @@ Usage: MaximumFeedIn [options] [<CIM> <CIM> ...]
   --workdir <dir>          shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files []
   --outputfile <file>      name of the SQLite database results file [simulation/results.db]
   <CIM> <CIM> ...          CIM rdf files to process
-  --version                Scala: 2.11, Spark: 2.4.5, MaximumFeedIn: 2.7.1
+  --version                Scala: 2.11, Spark: 2.4.5, MaximumFeedIn: 2.7.2
 
 Calculate maximum feed-in power without reinforcement or exceeding voltage, current or power constraints.
 ```
@@ -284,10 +284,10 @@ This allows the processing to proceed in two phases separated by an arbitrary am
 or to re-execute a failed job.
 A typical use-case is `--precalculation` followed by `--simulation` after some pause:
 ```
-$ spark-submit /opt/code/MaximumFeedIn-2.11-2.4.5-2.7.1-jar-with-dependencies.jar --precalculation hdfs://...
+$ spark-submit /opt/code/MaximumFeedIn-*-jar-with-dependencies.jar --precalculation hdfs://...
 **the simulation number is 42**
 _some time later_
-$ spark-submit /opt/code/MaximumFeedIn-2.11-2.4.5-2.7.1-jar-with-dependencies.jar --simulation 42 hdfs://...
+$ spark-submit /opt/code/MaximumFeedIn-*-jar-with-dependencies.jar --simulation 42 hdfs://...
 ```
 
 ### reference
