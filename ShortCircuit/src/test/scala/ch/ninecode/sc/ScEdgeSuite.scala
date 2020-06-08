@@ -1,8 +1,7 @@
 package ch.ninecode.sc
 
-import org.scalatest.FunSuite
-
 import ch.ninecode.cim.CHIM
+import org.scalatest.FunSuite
 
 class ScEdgeSuite extends FunSuite
 {
@@ -30,6 +29,6 @@ class ScEdgeSuite extends FunSuite
 
         val scEdgeMock = ScEdge ("ID121", 400.0, "ID123", 230.0, 2, "", transformerMock, null)
         val scNodeMock = ScNode ("ID123", 230.0, "", null, "", null, null, null)
-        assert (!scEdgeMock.shouldContinueTo (scNodeMock), "should not continue on transformer with 230V")
+        assert (!scEdgeMock.shouldContinueTo (scNodeMock, false), "should not continue on transformer with 230V")
     }
 }

@@ -1,18 +1,5 @@
 package ch.ninecode.net
 
-import scala.util.Random
-
-import org.apache.spark.graphx.Edge
-import org.apache.spark.graphx.EdgeDirection
-import org.apache.spark.graphx.EdgeTriplet
-import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.VertexId
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.Breaker
@@ -34,6 +21,18 @@ import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalIsland
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.util.Graphable
+import org.apache.spark.graphx.Edge
+import org.apache.spark.graphx.EdgeDirection
+import org.apache.spark.graphx.EdgeTriplet
+import org.apache.spark.graphx.Graph
+import org.apache.spark.graphx.VertexId
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+import scala.util.Random
 
 /**
  * Identify the islands in each transformer service area.
@@ -47,29 +46,31 @@ import ch.ninecode.util.Graphable
  * @param debug         flag to turn on debug output
  */
 case class TransformerServiceArea (
-    session: SparkSession,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
-    debug: Boolean = false)
-extends CIMRDD with Graphable
+                                      session: SparkSession,
+                                      storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
+                                      debug: Boolean = false,
+                                      calculate_public_lighting: Boolean = false)
+    extends CIMRDD with Graphable
 {
+
     import TransformerServiceArea._
 
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val voltage_rdd: RDD[BaseVoltage] = getOrElse[BaseVoltage]
-    val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse[ConductingEquipment]
-    val element_rdd: RDD[Element] = getOrElse[Element]("Elements")
-    val power_transformer_rdd: RDD[PowerTransformer] = getOrElse[PowerTransformer]
-    val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse[PowerTransformerEnd]
-    val terminal_rdd: RDD[Terminal] = getOrElse[Terminal]
-    val topological_island_rdd: RDD[TopologicalIsland] = getOrElse[TopologicalIsland]
-    val topological_node_rdd: RDD[TopologicalNode] = getOrElse[TopologicalNode]
+    val voltage_rdd: RDD[BaseVoltage] = getOrElse [BaseVoltage]
+    val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse [ConductingEquipment]
+    val element_rdd: RDD[Element] = getOrElse [Element]("Elements")
+    val power_transformer_rdd: RDD[PowerTransformer] = getOrElse [PowerTransformer]
+    val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse [PowerTransformerEnd]
+    val terminal_rdd: RDD[Terminal] = getOrElse [Terminal]
+    val topological_island_rdd: RDD[TopologicalIsland] = getOrElse [TopologicalIsland]
+    val topological_node_rdd: RDD[TopologicalNode] = getOrElse [TopologicalNode]
 
     /**
      * Determine if the bitfield is set for the given mask.
      *
-     * @param mask single bit mask to check
+     * @param mask   single bit mask to check
      * @param switch element with bitfields to check
      * @return <code>true</code> if the bit is set, <code>false</code> otherwise.
      */
@@ -90,10 +91,10 @@ extends CIMRDD with Graphable
         if (isSet (openMask, switch))
             !switch.open // open valid
         else
-            if (isSet (normalOpenMask, switch))
-                !switch.normalOpen // normalOpen valid
-            else
-                true
+        if (isSet (normalOpenMask, switch))
+            !switch.normalOpen // normalOpen valid
+        else
+        true
     }
 
     /**
@@ -106,33 +107,33 @@ extends CIMRDD with Graphable
     {
         element match
         {
-            case s: Switch             => switchClosed (s)
-            case c: Cut                => switchClosed (c.Switch)
-            case d: Disconnector       => switchClosed (d.Switch)
-            case f: Fuse               => switchClosed (f.Switch)
+            case s: Switch => switchClosed (s)
+            case c: Cut => switchClosed (c.Switch)
+            case d: Disconnector => switchClosed (d.Switch)
+            case f: Fuse => switchClosed (f.Switch)
             case g: GroundDisconnector => switchClosed (g.Switch)
-            case j: Jumper             => switchClosed (j.Switch)
-            case p: ProtectedSwitch    => switchClosed (p.Switch)
-            case s: Sectionaliser      => switchClosed (s.Switch)
-            case b: Breaker            => switchClosed (b.ProtectedSwitch.Switch)
-            case l: LoadBreakSwitch    => switchClosed (l.ProtectedSwitch.Switch)
-            case r: Recloser           => switchClosed (r.ProtectedSwitch.Switch)
-            case _: PowerTransformer   => v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
+            case j: Jumper => switchClosed (j.Switch)
+            case p: ProtectedSwitch => switchClosed (p.Switch)
+            case s: Sectionaliser => switchClosed (s.Switch)
+            case b: Breaker => switchClosed (b.ProtectedSwitch.Switch)
+            case l: LoadBreakSwitch => switchClosed (l.ProtectedSwitch.Switch)
+            case r: Recloser => switchClosed (r.ProtectedSwitch.Switch)
+            case _: PowerTransformer => v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
             case _ =>
                 log.warn (s"transformer service area processor encountered edge with unhandled class '${element.getClass.getName}', assumed same transformer service area")
                 true
         }
     }
 
-    def heavy (voltages: collection.Map[String, Double]) (arg: (String, (PowerTransformer, Option[Iterable[PowerTransformerEnd]]))): Boolean =
+    def heavy (voltages: collection.Map[String, Double])(arg: (String, (PowerTransformer, Option[Iterable[PowerTransformerEnd]]))): Boolean =
     {
         val (_, (_, e)) = arg
-        val ends = e.getOrElse (Iterable()).toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+        val ends = e.getOrElse (Iterable ()).toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
         val v = ends.map (t => voltages.getOrElse (t.TransformerEnd.BaseVoltage, 0.0))
         if (v.length < 2)
             false
         else
-            v.head > 1000.0 && v.tail.forall (v => v <= 1000.0 && v > 230.0) // ToDo: don't hard code these voltage values
+            v.head > 1000.0 || (calculate_public_lighting && v.head == 400.0) && v.tail.forall (v => v <= 1000.0 && v > 230.0 || calculate_public_lighting && v == 230.0) // ToDo: don't hard code these voltage values
     }
 
     /**
@@ -155,7 +156,7 @@ extends CIMRDD with Graphable
     {
         // get a map of voltages
         // ToDo: fix this 1kV multiplier on the voltages
-        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
+        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
 
         // get all power transformers for transformer service areas
         val power_transformers = power_transformer_rdd
@@ -177,7 +178,7 @@ extends CIMRDD with Graphable
             .map (x => (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
                 topological_node_rdd
-                .keyBy (_.id))
+                    .keyBy (_.id))
             .map (x => (x._1, (x._2._2.TopologicalIsland, x._2._1))) // (nodeid, (islandid, trafoid))
             .groupByKey.values // (islandid, trafoid)
             .flatMap (
@@ -254,7 +255,7 @@ extends CIMRDD with Graphable
         // get voltages
         val voltages = voltage_rdd.map (v => (v.id, v.nominalVoltage * 1000.0)).collect.toMap // ToDo: fix this 1000V multiplier
         // get nodes by TopologicalIsland
-        val members = topological_node_rdd.map (node => (node.id, (node.TopologicalIsland, voltages(node.BaseVoltage)))) // (nodeid, (islandid, volts))
+        val members = topological_node_rdd.map (node => (node.id, (node.TopologicalIsland, voltages (node.BaseVoltage)))) // (nodeid, (islandid, volts))
         // get terminals by TopologicalIsland
         val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x => (x._2._1.ConductingEquipment, x._2._2)) // (equipment, (islandid, volts))
         // get equipment with terminals in different islands as GraphX Edge objects
@@ -286,27 +287,27 @@ extends CIMRDD with Graphable
         if (!triplet.attr.isConnected)
             Iterator.empty // send no message across an area boundary
         else
-            if (("" != triplet.srcAttr.area_label) && ("" == triplet.dstAttr.area_label))
+        if (("" != triplet.srcAttr.area_label) && ("" == triplet.dstAttr.area_label))
+        {
+            if (debug && log.isDebugEnabled)
+                log.debug (s"${triplet.attr.id} ${triplet.srcAttr.toString} ---> ${triplet.dstAttr.toString}")
+            Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
+        }
+        else
+            if (("" == triplet.srcAttr.area_label) && ("" != triplet.dstAttr.area_label))
             {
                 if (debug && log.isDebugEnabled)
-                    log.debug (s"${triplet.attr.id} ${triplet.srcAttr.toString} ---> ${triplet.dstAttr.toString}")
-                Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
+                    log.debug (s"${triplet.attr.id} ${triplet.dstAttr.toString} ---> ${triplet.srcAttr.toString}")
+                Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
             }
             else
-                if (("" == triplet.srcAttr.area_label) && ("" != triplet.dstAttr.area_label))
+                if (("" != triplet.srcAttr.area_label) && ("" != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
                 {
-                    if (debug && log.isDebugEnabled)
-                        log.debug (s"${triplet.attr.id} ${triplet.dstAttr.toString} ---> ${triplet.srcAttr.toString}")
-                    Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
+                    log.error (s"""transformer service areas "${triplet.srcAttr.area_label}" and "${triplet.dstAttr.area_label}" are connected""")
+                    Iterator.empty
                 }
                 else
-                    if (("" != triplet.srcAttr.area_label) && ("" != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
-                    {
-                        log.error (s"""transformer service areas "${triplet.srcAttr.area_label}" and "${triplet.dstAttr.area_label}" are connected""")
-                        Iterator.empty
-                    }
-                    else
-                        Iterator.empty
+                    Iterator.empty
     }
 
     def merge_message (a: VertexData, b: VertexData): VertexData =
@@ -334,7 +335,8 @@ extends CIMRDD with Graphable
         // workaround for java.lang.ArrayIndexOutOfBoundsException: -1
         //        at org.apache.spark.graphx.util.collection.GraphXPrimitiveKeyOpenHashMap$mcJI$sp.apply$mcJI$sp(GraphXPrimitiveKeyOpenHashMap.scala:64)
         // save nodes and edges to HDFS and use the newly read RDD to make the graph
-        val graph = session.sparkContext.getCheckpointDir match {
+        val graph = session.sparkContext.getCheckpointDir match
+        {
             case Some (directory) =>
                 edges.checkpoint ()
                 nodes.checkpoint ()
@@ -406,4 +408,5 @@ object TransformerServiceArea
      * @param island_label the mRID of the island
      */
     case class VertexData (area_label: String = "", island_label: String = "")
+
 }

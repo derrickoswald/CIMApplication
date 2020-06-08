@@ -1,15 +1,14 @@
 package ch.ninecode.sc
 
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.model.ACLineSegment
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
 import org.apache.spark.graphx.VertexId
 import org.apache.spark.sql.SparkSession
-
-import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model.ACLineSegment
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * Short circuit calculation tracing.
@@ -33,7 +32,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
     def vprog (id: VertexId, v: ScNode, message: ScMessage): ScNode =
     {
         if (null == message.source_id) // handle the initial message by keeping the same vertex node
-            v
+        v
         else
         {
             val errors = ScError.combine_errors (v.errors, message.errors, options.messagemax)
@@ -71,7 +70,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
         val src = triplet.srcAttr
         val dst = triplet.dstAttr
         if ((src.id_prev == dst.id_seq) || (dst.id_prev == src.id_seq)) // reinforcement
-            Iterator.empty
+        Iterator.empty
         else
         {
             // check if the non-null impedance difference matches what we expect for this cable
@@ -106,7 +105,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                 handleMesh (triplet)
             else
                 if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance == null)
-                    if (triplet.attr.shouldContinueTo (triplet.dstAttr))
+                    if (triplet.attr.shouldContinueTo (triplet.dstAttr, options.calculate_public_lighting))
                     {
                         val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
                         val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
@@ -121,7 +120,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         Iterator.empty
                 else
                     if (triplet.dstAttr.impedance != null && triplet.srcAttr.impedance == null)
-                        if (triplet.attr.shouldContinueTo (triplet.srcAttr))
+                        if (triplet.attr.shouldContinueTo (triplet.srcAttr, options.calculate_public_lighting))
                         {
                             val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
                             val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)
