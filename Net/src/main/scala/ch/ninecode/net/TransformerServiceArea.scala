@@ -118,7 +118,7 @@ case class TransformerServiceArea (
             case b: Breaker => switchClosed (b.ProtectedSwitch.Switch)
             case l: LoadBreakSwitch => switchClosed (l.ProtectedSwitch.Switch)
             case r: Recloser => switchClosed (r.ProtectedSwitch.Switch)
-            case _: PowerTransformer => v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
+            case _: PowerTransformer ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && (v2 > 230.0 || calculate_public_lighting && v2 == 230.0)) // ToDo: don't hard code these voltage values
             case _ =>
                 log.warn (s"transformer service area processor encountered edge with unhandled class '${element.getClass.getName}', assumed same transformer service area")
                 true
