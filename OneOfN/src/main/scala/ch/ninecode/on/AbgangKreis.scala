@@ -2,6 +2,9 @@ package ch.ninecode.on
 
 import java.util.Calendar
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.PreEdge
@@ -25,7 +28,10 @@ import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser
 import ch.ninecode.model.Switch
 import ch.ninecode.model.Terminal
-import ch.ninecode.net._
+import ch.ninecode.net.LineData
+import ch.ninecode.net.LineDetails
+import ch.ninecode.net.LoadFlowEdge
+import ch.ninecode.net.TransformerSet
 
 case class AbgangKreis
 (
@@ -40,56 +46,55 @@ case class AbgangKreis
 
 object AbgangKreis
 {
-    def multiconductor (element: Element): ACLineSegment =
+    val log: Logger = LoggerFactory.getLogger (getClass)
+
+    def multiconductor (element: Element): Option[ACLineSegment] =
     {
         element match
         {
-            case acline: ACLineSegment ⇒ acline
-            case conductor: Conductor ⇒
-                new ACLineSegment (conductor, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, List (), List (), List (), List (), null, null, null)
-            case _ ⇒
-                println ("unexpected class in edge elements (%s)".format (element.getClass))
-                null
+            case acline: ACLineSegment => Some(acline)
+            case conductor: Conductor =>
+                Some (ACLineSegment (conductor))
+            case _ =>
+                log.error (s"unexpected class in edge elements (${element.getClass})")
+                None
         }
     }
 
-    def toSwitch (element: Element): Switch =
+    def toSwitch (element: Element): Option[Switch] =
     {
         element match
         {
-            case s: Switch ⇒ s.asInstanceOf[Switch]
-            case c: Cut ⇒ c.asInstanceOf[Cut].Switch
-            case d: Disconnector ⇒ d.asInstanceOf[Disconnector].Switch
-            case f: Fuse ⇒ f.asInstanceOf[Fuse].Switch
-            case g: GroundDisconnector ⇒ g.asInstanceOf[GroundDisconnector].Switch
-            case j: Jumper ⇒ j.asInstanceOf[Jumper].Switch
-            case m: MktSwitch ⇒ m.asInstanceOf[MktSwitch].Switch
-            case p: ProtectedSwitch ⇒ p.asInstanceOf[ProtectedSwitch].Switch
-            case b: Breaker ⇒ b.asInstanceOf[Breaker].ProtectedSwitch.Switch
-            case l: LoadBreakSwitch ⇒ l.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch
-            case r: Recloser ⇒ r.asInstanceOf[Recloser].ProtectedSwitch.Switch
-            case s: Sectionaliser ⇒ s.asInstanceOf[Sectionaliser].Switch
-            case _ ⇒
-                println ("non-switch (%s:%s)".format (element.getClass, element.id))
-                null.asInstanceOf[Switch]
+            case s: Switch => Some (s)
+            case c: Cut => Some (c.Switch)
+            case d: Disconnector => Some (d.Switch)
+            case f: Fuse => Some (f.Switch)
+            case g: GroundDisconnector => Some (g.Switch)
+            case j: Jumper => Some (j.Switch)
+            case m: MktSwitch => Some (m.Switch)
+            case p: ProtectedSwitch => Some (p.Switch)
+            case b: Breaker => Some (b.ProtectedSwitch.Switch)
+            case l: LoadBreakSwitch => Some (l.ProtectedSwitch.Switch)
+            case r: Recloser => Some (r.ProtectedSwitch.Switch)
+            case s: Sectionaliser => Some (s.Switch)
+            case _ =>
+                log.error (s"non-switch (${element.getClass}:${element.id})")
+                None
         }
     }
 
-    def pickSwitch (elements: Iterable[Element]): Switch =
+    def pickSwitch (elements: Iterable[Element]): Option[Switch] =
     {
-        var ret: Switch = null
-        // try for (the first) closed switch
-        for (element ← elements)
-        {
-            val switch = toSwitch (element)
-            if (!switch.normalOpen)
-                if (null == ret)
-                    ret = switch
-        }
+        // try for a closed switch
+        val switches = for (
+            element <- elements;
+            switch = toSwitch (element)
+            )
+            yield
+                switch
         // otherwise fall back to just the first switch
-        if (null == ret)
-            ret = toSwitch (elements.head)
-        ret
+        val none: Option[Switch] = None
+        switches.foldLeft (none) ((f, switch) => switch match { case Some (s) if !s.normalOpen => Some (s) case _ => f })
     }
 
     /**
@@ -111,27 +116,27 @@ object AbgangKreis
         val element = elements.head
         element match
         {
-            case _: Switch | _: Cut | _: Disconnector | _: Fuse | _: GroundDisconnector | _: Jumper | _: MktSwitch | _: ProtectedSwitch | _: Breaker | _: LoadBreakSwitch | _: Recloser | _: Sectionaliser ⇒
-                PlayerSwitchEdge (cn1, cn2, pickSwitch (elements), fuse = false)
-            case _: Conductor | _: ACLineSegment ⇒
+            case _: Switch | _: Cut | _: Disconnector | _: Fuse | _: GroundDisconnector | _: Jumper | _: MktSwitch | _: ProtectedSwitch | _: Breaker | _: LoadBreakSwitch | _: Recloser | _: Sectionaliser =>
+                PlayerSwitchEdge (cn1, cn2, pickSwitch (elements).get, fuse = false)
+            case _: Conductor | _: ACLineSegment =>
                 val t1 = Terminal (TopologicalNode = cn1)
                 val t2 = Terminal (TopologicalNode = cn2)
                 implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
-                GLMLineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
+                GLMLineEdge (LineData (elements.flatMap (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
             //                DEFAULT_R: Double = 0.225,
             //                DEFAULT_X: Double = 0.068
-            case _: PowerTransformer ⇒
+            case _: PowerTransformer =>
                 // find the transformer in the list
-                val t = transformers.find (_.transformers.map (_.transformer.id).contains (element.id)).orNull
-                if (null == t)
+                transformers.find (_.transformers.map (_.transformer.id).contains (element.id)) match
                 {
-                    println ("""no transformer found for %s""".format (element.id)) // ToDo: log somehow
-                    fakeEdge (element.id, cn1, cn2)
+                    case Some (t) =>
+                        GLMTransformerEdge (t)
+                    case _ =>
+                        log.error (s"no transformer found for ${element.id}") // ToDo: log somehow
+                        fakeEdge (element.id, cn1, cn2)
                 }
-                else
-                    GLMTransformerEdge (t)
-            case _ ⇒
-                println ("""edge %s has unhandled class '%s'""".format (element.id, element.getClass.getName)) // ToDo: log somehow
+            case _ =>
+                log.error (s"edge ${element.id} has unhandled class '${element.getClass.getName}'") // ToDo: log somehow
                 fakeEdge (element.id, cn1, cn2)
         }
     }

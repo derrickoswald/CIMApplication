@@ -4,7 +4,6 @@ import ch.ninecode.gl.GLMNode
 import ch.ninecode.model.Element
 import ch.ninecode.net.LoadFlowNode
 
-
 /**
  * Vertex data.
  *
@@ -27,12 +26,12 @@ object FeederNode
     /**
      * Create a GLMNode.
      *
-     * @param elements        the elements attached to this node
+     * @param element         the element attached to this node
      * @param id              the id of the TopologicalNode
      * @param nominal_voltage the nominal voltage of the node (V)
      * @return a type of node
      */
-    def apply (elements: Iterable[Element], id: String, nominal_voltage: Double): FeederNode =
-        FeederNode (id, if (null == elements) null else elements.headOption.orNull, nominal_voltage)
+    def apply (element: Option[Element], id: String, nominal_voltage: Double): FeederNode =
+        FeederNode (id, element.orNull, nominal_voltage)
 }
 
