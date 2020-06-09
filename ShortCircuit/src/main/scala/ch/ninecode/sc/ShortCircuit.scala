@@ -1140,8 +1140,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // find transformers where there are non-radial networks and fix them
         def need_load_flow (error: String): Boolean =
             error.startsWith ("FATAL: non-radial network detected") ||
-            error.startsWith ("INVALID: 3 transformer windings") ||
-            error.startsWith ("INVALID: low voltage")
+                error.startsWith ("INVALID: low voltage")
 
         val problem_trafos = results
             .filter (result => result.errors.exists (need_load_flow))
@@ -1153,9 +1152,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // but not the ones that have another error
         def other_error (s: String): Boolean =
             !(s.startsWith ("FATAL: non-radial network detected") ||
-              s.startsWith ("INVALID: 3 transformer windings") || // ToDo: Remove when 3W transformer test for SC is available
-              s.startsWith ("INVALID: low voltage")) &&
-              s.startsWith ("INVALID")
+                s.startsWith ("INVALID: low voltage")) &&
+                s.startsWith ("INVALID")
 
         val verboten_trafos = results
             .filter (result => result.errors.exists (other_error))
