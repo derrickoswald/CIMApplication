@@ -175,7 +175,8 @@ class ShortCircuitCalculation extends RESTful
             messagemax = json.getInt ("messagemax", 5),
             batchsize = getLong (json, "batchsize", 10000),
             trafos = json.getString ("trafos", ""),
-            workdir = json.getString ("workdir", "")
+            workdir = json.getString ("workdir", ""),
+            calculate_public_lighting = json.getBoolean("calculate_public_lighting", false)
         )
     }
 
@@ -283,6 +284,8 @@ class ShortCircuitCalculation extends RESTful
                                             parameters.add ("workdir", options.workdir)
                                         result.add ("parameters", parameters)
                                         result.add ("records", records)
+                                        if (null != options.calculate_public_lighting)
+                                            parameters.add ("calculate_public_lighting", options.calculate_public_lighting)
                                         ret.setResult (result.build)
                                     }
                                     catch
