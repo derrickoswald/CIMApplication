@@ -7,21 +7,20 @@ import java.sql.Types
 import java.util.logging.Level
 import java.util.logging.Logger
 
+import ch.ninecode.cim.connector.CIMResultSet
+import ch.ninecode.sc.ShortCircuitOptions
+import ch.ninecode.util.Complex
 import javax.ejb.Stateless
-import javax.json.JsonException
-import javax.json.JsonObject
 import javax.json.Json
 import javax.json.JsonArrayBuilder
+import javax.json.JsonException
+import javax.json.JsonObject
 import javax.json.JsonObjectBuilder
 import javax.resource.ResourceException
 import javax.ws.rs.POST
 import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
-
-import ch.ninecode.cim.connector.CIMResultSet
-import ch.ninecode.sc.ShortCircuitOptions
-import ch.ninecode.util.Complex
 
 @Stateless
 @Path ("short_circuit")
@@ -170,7 +169,8 @@ class ShortCircuitCalculation extends RESTful
             messagemax = json.getInt ("messagemax", 5),
             batchsize = getLong (json, "batchsize", 10000),
             trafos = json.getString ("trafos", ""),
-            workdir = json.getString ("workdir", "")
+            workdir = json.getString ("workdir", ""),
+            calculate_public_lighting = json.getBoolean("calculate_public_lighting", false)
         )
     }
 
@@ -232,6 +232,8 @@ class ShortCircuitCalculation extends RESTful
             .add ("batchsize", options.batchsize)
             .add ("trafos", options.trafos)
             .add ("workdir", options.workdir)
+            .add ("calculate_public_lighting", options.calculate_public_lighting)
+
     }
 
     def getRecords (resultset: CIMResultSet): JsonArrayBuilder =

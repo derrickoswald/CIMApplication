@@ -99,7 +99,9 @@ object Main
         batchsize: Long = 10000L,
         cable_impedance_limit: Double = 5.0,
         workdir: String = "",
-        files: Seq[String] = Seq ())
+        files: Seq[String] = Seq (),
+        calculate_public_lighting: Boolean = false
+    )
 
     val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments](APPLICATION_NAME)
     {
@@ -222,6 +224,10 @@ object Main
         opt[String]("workdir").valueName ("<dir>").
             action ((x, c) ⇒ c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
+
+        opt [Boolean]("calculate_public_lighting").
+            action ((x, c) ⇒ c.copy (calculate_public_lighting = x)).
+            text ("calculate public lighting [%s]".format(default.calculate_public_lighting))
 
         help ("help").text ("prints this usage text")
 
@@ -388,7 +394,8 @@ object Main
                     batchsize = arguments.batchsize,
                     trafos = arguments.trafos,
                     cable_impedance_limit = arguments.cable_impedance_limit,
-                    workdir = workdir
+                    workdir = workdir,
+                    calculate_public_lighting =  arguments.calculate_public_lighting
                 )
                 val shortcircuit = ShortCircuit (session, storage, options)
                 val results = shortcircuit.run ()
