@@ -53,4 +53,6 @@ case class ShortCircuitOptions
     batchsize: Long = 10000,
     trafos: String = "",
     cable_impedance_limit: Double = 5.0,
-    workdir: String = "")
+    workdir: String = "",
+    calculate_public_lighting: Boolean = false
+)

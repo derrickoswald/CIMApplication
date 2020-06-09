@@ -58,10 +58,10 @@ case class ScEdge
         if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
             !switch.open // open valid
         else
-            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
-                !switch.normalOpen
-            else
-                true
+        if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+            !switch.normalOpen
+        else
+            true
     }
 
     /**
@@ -70,7 +70,7 @@ case class ScEdge
      * @param node TopologicalNode to test
      * @return <code>false</code> for open Switch objects and higher voltage transformer nodes, <code>true</code> otherwise
      */
-    def shouldContinueTo (node: ScNode): Boolean =
+    def shouldContinueTo (node: ScNode, calculate_public_lighting: Boolean): Boolean =
     {
         if (node.id_prev == "network")
             false
@@ -90,7 +90,9 @@ case class ScEdge
                 case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
                 case line: ACLineSegment ⇒ true
                 case trafo: PowerTransformer ⇒
-                    if (v1 <= 230.0 || v2 <= 230.0) // do not trace 230V
+                    // do not trace 230V
+                    if (v1 < 230.0 || v2 < 230.0 || ( !calculate_public_lighting && (v1 == 230.0 || v2 == 230.0) )
+                    )
                         return false
                     val id_cn = node.id_seq // continue if voltage decreases or it stays below 1000.0
                     if (id_cn == id_cn_1)
@@ -108,7 +110,7 @@ case class ScEdge
     /**
      * Warn of special cases of cables and transformers that preclude accurate short-circuit calculation.
      *
-     * @param errors current list of errors in the trace
+     * @param errors  current list of errors in the trace
      * @param options the options for this run
      * @return a new list of errors with additional information about validity.
      */

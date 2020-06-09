@@ -1,7 +1,7 @@
 package ch.ninecode.gl
 
-import scala.util.Random
-
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.model._
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
@@ -13,8 +13,7 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model._
+import scala.util.Random
 
 /**
  * Identify the islands in each transformer service area.
@@ -27,7 +26,7 @@ import ch.ninecode.model._
  * @param storage_level The storage level to use in persisting the edges and nodes.
  * @param debug         flag to turn on debug output
  */
-case class TransformerServiceArea (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), debug: Boolean = false) extends CIMRDD
+case class TransformerServiceArea (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), debug: Boolean = false, calculate_public_lighting: Boolean = false) extends CIMRDD
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -80,10 +79,10 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
             !switch.open // open valid
         else
-            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
-                !switch.normalOpen
-            else
-                true
+        if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+            !switch.normalOpen
+        else
+            true
     }
 
     /**
@@ -107,22 +106,22 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
             case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch)
             case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch)
             case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
-            case _: PowerTransformer ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
+            case _: PowerTransformer ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && (v2 > 230.0 || calculate_public_lighting && v2 == 230.0)) // ToDo: don't hard code these voltage values
             case _ ⇒
                 log.warn ("transformer service area processor encountered edge with unhandled class '" + element.getClass.getName + "', assumed same transformer service area")
                 true
         }
     }
 
-    def heavy (voltages: collection.Map[String, Double]) (arg: (String, (PowerTransformer, Option[Iterable[PowerTransformerEnd]]))): Boolean =
+    def heavy (voltages: collection.Map[String, Double])(arg: (String, (PowerTransformer, Option[Iterable[PowerTransformerEnd]]))): Boolean =
     {
         val (_, (_, e)) = arg
-        val ends = e.getOrElse (Iterable()).toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+        val ends = e.getOrElse (Iterable ()).toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
         val v = ends.map (t => voltages.getOrElse (t.TransformerEnd.BaseVoltage, 0.0))
         if (v.length < 2)
             false
         else
-            v.head > 1000.0 && v.tail.forall (v => v <= 1000.0 && v > 230.0) // ToDo: don't hard code these voltage values
+            v.head > 1000.0 || (calculate_public_lighting && v.head == 400.0) && v.tail.forall (v => v <= 1000.0 && v > 230.0 || calculate_public_lighting && v == 230.0) // ToDo: don't hard code these voltage values
     }
 
     /**
@@ -167,7 +166,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
             .map (x ⇒ (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
             .join (
                 topological_node_rdd
-                .keyBy (_.id))
+                    .keyBy (_.id))
             .map (x ⇒ (x._1, (x._2._2.TopologicalIsland, x._2._1))) // (nodeid, (islandid, trafoid))
             .groupByKey.values // (islandid, trafoid)
             .flatMap (
@@ -201,7 +200,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         // get voltages
         val voltages = voltage_rdd.map (v => (v.id, v.nominalVoltage * 1000.0)).collect.toMap // ToDo: fix this 1000V multiplier
         // get nodes by TopologicalIsland
-        val members = topological_node_rdd.map (node ⇒ (node.id, (node.TopologicalIsland, voltages(node.BaseVoltage)))) // (nodeid, (islandid, volts))
+        val members = topological_node_rdd.map (node ⇒ (node.id, (node.TopologicalIsland, voltages (node.BaseVoltage)))) // (nodeid, (islandid, volts))
         // get terminals by TopologicalIsland
         val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x ⇒ (x._2._2, x._2._1)) // ((islandid, volts), terminal)
         // get equipment with terminals in different islands as GraphX Edge objects
@@ -236,7 +235,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
         {
             if (null == msg) // do nothing initially
-                attr
+            attr
             else
             {
                 if (debug && log.isDebugEnabled)
@@ -250,27 +249,27 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
             if (!triplet.attr.isConnected)
                 Iterator.empty // send no message across an area boundary
             else
-                if ((null != triplet.srcAttr.area_label) && (null == triplet.dstAttr.area_label))
+            if ((null != triplet.srcAttr.area_label) && (null == triplet.dstAttr.area_label))
+            {
+                if (debug && log.isDebugEnabled)
+                    log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.toString, triplet.dstAttr.toString))
+                Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
+            }
+            else
+                if ((null == triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label))
                 {
                     if (debug && log.isDebugEnabled)
-                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.toString, triplet.dstAttr.toString))
-                    Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
+                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.toString, triplet.srcAttr.toString))
+                    Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
                 }
                 else
-                    if ((null == triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label))
+                    if ((null != triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
                     {
-                        if (debug && log.isDebugEnabled)
-                            log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.toString, triplet.srcAttr.toString))
-                        Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
+                        log.error ("""transformer service areas "%s" and "%s" are connected""".format (triplet.srcAttr.area_label, triplet.dstAttr.area_label))
+                        Iterator.empty
                     }
                     else
-                        if ((null != triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
-                        {
-                            log.error ("""transformer service areas "%s" and "%s" are connected""".format (triplet.srcAttr.area_label, triplet.dstAttr.area_label))
-                            Iterator.empty
-                        }
-                        else
-                            Iterator.empty
+                        Iterator.empty
         }
 
         def merge_message (a: VertexData, b: VertexData): VertexData =
@@ -309,7 +308,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         // assigns the area_label (the source transformer set name) to all "connected" islands (joined by closed switches)
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
             Graph (nodes, edges, VertexData (), storage_level, storage_level)
-        graph.pregel [VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).persist (storage_level)
+        graph.pregel[VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).persist (storage_level)
     }
 
     def hasIslands: Boolean = !topological_island_rdd.isEmpty
