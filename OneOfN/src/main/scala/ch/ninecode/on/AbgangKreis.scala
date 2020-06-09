@@ -94,7 +94,15 @@ object AbgangKreis
                 switch
         // otherwise fall back to just the first switch
         val none: Option[Switch] = None
-        switches.foldLeft (none) ((f, switch) => switch match { case Some (s) if !s.normalOpen => Some (s) case _ => f })
+        switches.foldLeft (none) (
+            (last, switch) => last match
+            {
+                case Some (s) =>
+                    if (!s.normalOpen) last else switch
+                case _ =>
+                    switch
+            }
+        )
     }
 
     /**

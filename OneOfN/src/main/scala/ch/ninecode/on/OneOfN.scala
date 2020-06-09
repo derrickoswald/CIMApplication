@@ -30,6 +30,7 @@ import ch.ninecode.model.TopologicalNode
 import ch.ninecode.net.LineDetails
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.net.Transformers
+import ch.ninecode.net.Voltages
 
 case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 {
@@ -151,6 +152,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
             "StorageLevel" -> storage_level_tostring (storage)) ++
             options.cim_reader_options
         val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files: _*)
+            .persist (storage)
         log.info (s"${elements.count} elements")
 
         val read = System.nanoTime ()
@@ -158,7 +160,9 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 
         // eliminate elements in substations
         val new_elements = deleteSubstationElements ()
+            .persist (storage)
         log.info (s"${new_elements.count} elements after substation deletion")
+        elements.unpersist (false)
 
         // identify topological nodes
         val ntp = CIMNetworkTopologyProcessor (session)
@@ -167,8 +171,11 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                 identify_islands = true,
                 force_retain_switches = ForceTrue,
                 force_retain_fuses = Unforced,
-                storage = storage))
+                storage = storage,
+                debug = true))
+            .persist (storage)
         log.info (s"${ele.count} elements after topology generation")
+        new_elements.unpersist (false)
 
         val topo = System.nanoTime ()
         log.info (s"topology: ${(topo - read) / 1e9} seconds")
@@ -177,17 +184,18 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         //        export.exportAll (options.files.head.replace (".", "_with_topology."), "PSRType_Substation removed")
 
         // get all the transformers
-        val _transformers = new Transformers (session, storage)
-        val transformer_data = _transformers.getTransformers (transformer_filter = transformer => true)
+        val _transformers = Transformers (session, storage)
+        val transformer_data = _transformers.getTransformers (transformer_filter = _ => true)
+        log.info (s"${transformer_data.count} transformers")
 
         // feeder service area calculations
         val feeder = Feeder (session, storage)
         val nodes_feeders = feeder.identifyFeeders.filter (_._2 != null) // (nodeid, feederid)
+        log.info (s"${nodes_feeders.count} feeders")
 
         // get a map of voltage for each TopologicalNode starting from Terminal elements
-        // ToDo: fix these 1kV multiplier on the voltages
         log.info ("creating nodes")
-        val voltages = get[BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap
+        val voltages = Voltages (session, storage).getVoltages
         val end_voltages = getOrElse[PowerTransformerEnd].map (
             x =>
             {

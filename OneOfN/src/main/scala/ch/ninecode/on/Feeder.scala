@@ -12,7 +12,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.Bay
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.ConductingEquipment
@@ -32,6 +31,7 @@ import ch.ninecode.model.Switch
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.model.VoltageLevel
+import ch.ninecode.net.Voltages
 
 /**
  * Identify the nodes fed by each feeder.
@@ -50,48 +50,17 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     /**
-     * Index of normalOpen field in Switch bitmask.
-     */
-    val normalOpenMask: Int = Switch.fields.indexOf ("normalOpen")
-
-    /**
-     * Index of open field in Switch bitmask.
-     */
-    val openMask: Int = Switch.fields.indexOf ("open")
-
-    /**
-     * Compute the vertex id.
+     * Compute the hash code for the string to be used as a VertextId (Long).
      *
-     * @param string The CIM mRID.
-     * @return the node id (similar to the hash code of the mRID)
+     * @param string the mRID to convert into a VertexId
+     * @return the VertexId for the mRID
      */
-    def vertex_id (string: String): VertexId =
+    def asVertexId (string: String): VertexId =
     {
         var h = 2166136261L
         for (c <- string)
             h = (h * 16777619) ^ c
         h
-    }
-
-    /**
-     * Method to determine if a switch is closed (both terminals are the same topological node).
-     *
-     * If the switch has the <code>open</code> attribute set, use that.
-     * Otherwise if it has the <code>normalOpen</code> attribute set, use that.
-     * Otherwise assume it is closed.
-     *
-     * @param switch The switch object to test.
-     * @return <code>true</code> if the switch is closed, <code>false</code> otherwise.
-     */
-    def switchClosed (switch: Switch): Boolean =
-    {
-        if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
-            !switch.open // open valid
-        else
-            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
-                !switch.normalOpen
-            else
-                true
     }
 
     /**
@@ -162,10 +131,9 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     def feeders: RDD[Element] =
     {
         // get the list of N5 voltages
-        // ToDo: fix this 1000V multiplier
-        val medium_voltages = getOrElse[BaseVoltage].filter (x => x.nominalVoltage > 1.0 && x.nominalVoltage < 50.0).map (_.id).collect
+        val medium_voltages = Voltages (session, storage).getVoltages.filter (x => x._2 > 1000.0 && x._2 < 50000).keys.toArray
 
-        // get the list of M5 level feeders in substations
+        // get the list of N5 level feeders in substations
         // ToDo: is it faster to use RDD[Connector] and join with RDD[Element] ?
         getOrElse[Element]("Elements").filter (isFeeder (medium_voltages, Array ("PSRType_Substation")))
             .persist (storage)
@@ -235,7 +203,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
             val description = connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description
             val alias = connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName
             val number = parseNumber (description)
-            val header = s"${description} [$alias]"
+            val header = s"$description [$alias]"
             val feeder = connector
 
             // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
@@ -280,7 +248,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
                                 yield
                                 {
                                     val edge = EdgeData (element.id, island1, island2)
-                                    Edge (vertex_id (edge.island1), vertex_id (edge.island2), edge)
+                                    Edge (asVertexId (edge.island1), asVertexId (edge.island2), edge)
                                 }
                         case _ =>
                             List ()
@@ -305,7 +273,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
             x =>
             {
                 val starting_feeders = x._2.map (y => y.map (_.id).toSet).getOrElse (Set[String]())
-                (vertex_id (x._1), VertexData (x._1, starting_feeders, starting_feeders))
+                (asVertexId (x._1), VertexData (x._1, starting_feeders, starting_feeders))
             }
         ).persist (storage) // (vertexid, VertexData)
     }
@@ -364,7 +332,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         // assigns the minimum VertexId of all electrically identical islands
         // Note: on the first pass through the Pregel algorithm all nodes get a VertexData with no id
         val graph: Graph[VertexData, EdgeData] = Graph (vertices, edges, VertexData (), storage, storage).cache
-        val g = graph.pregel[VertexData](VertexData (), 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).cache
+        val g = graph.pregel[VertexData](VertexData (), 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message)
+            .persist (storage)
 
         // label every node (not just the ones on the boundary switches
         val island_feeders = g.vertices.map (x => (x._2.id, x._2.feeders)).filter (null != _._2) // (islandid, [feeders])
