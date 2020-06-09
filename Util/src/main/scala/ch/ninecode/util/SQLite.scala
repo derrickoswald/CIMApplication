@@ -4,7 +4,7 @@ import java.sql.DriverManager
 import com.sun.rowset.CachedRowSetImpl
 
 trait SQLite {
-    def readSQLite (databasePath: String, sqlStatement: String): CachedRowSetImpl =
+    def querySQLite (databasePath: String, sqlStatement: String): CachedRowSetImpl =
     {
         // load the sqlite-JDBC driver using the current class loader
         Class.forName ("org.sqlite.JDBC")
@@ -19,13 +19,5 @@ trait SQLite {
         statement.close ()
         connection.close ()
         crs
-    }
-    def writeSQLite (databasePath: String, sqlStatement: String) =
-    {
-        Class.forName ("org.sqlite.JDBC")
-        val connection = DriverManager.getConnection (s"jdbc:sqlite:$databasePath")
-        val statement = connection.createStatement ()
-        statement.close ()
-        connection.close ()
     }
 }
