@@ -180,8 +180,12 @@ class GridLABD
                     "invalid element (%s r=%s)".format (cable.id, cable.r)
                 else
                     null
-            case _: PowerTransformer =>
+            case _: PowerTransformer ⇒
+                // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
+                if (num_terminals > 2)
+                    "%s transformer windings for edge %s".format (num_terminals, element.id)
                 // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
+                else
                 if (v1 == v2)
                     "voltage (%sV) regulator edge %s".format(v1, element.id)
                 else

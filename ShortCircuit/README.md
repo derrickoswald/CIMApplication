@@ -259,6 +259,13 @@ Execution from CIMApplication is performed from the Analysis tab:
 
 The program will *not* provide valid output values for the following cases:
 
+## Three Winding Transformers
+
+![Three Winding Transformer](https://rawgit.com/derrickoswald/CIMApplication/master/ShortCircuit/img/three_winding_transformer.svg "Three Winding Transformer")
+
+Where a transformer has more than one winding, the program will not provide valid results for downstream nodes,
+and will have a message like `INVALID: 3 transformer windings for edge TRA1234`.
+
 ## Voltage Regulators
 
 ![Voltage Regulator](https://rawgit.com/derrickoswald/CIMApplication/master/ShortCircuit/img/voltage_regulator.svg "Voltage Regulator")

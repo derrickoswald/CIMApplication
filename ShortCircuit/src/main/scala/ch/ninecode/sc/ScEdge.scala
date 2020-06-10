@@ -128,21 +128,28 @@ case class ScEdge
                 else
                     errors
             case _: PowerTransformer ⇒
+                // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
+                if (num_terminals > 2)
+                {
+                    val error = ScError (fatal = false, invalid = true, "%s transformer windings for edge %s".format (num_terminals, id_equ))
+                    ScError.combine_errors (errors, List (error), options.messagemax)
+                }
                 // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
-                if (v1 == v2)
-                {
-                    val error = ScError (fatal = false, invalid = true, "voltage (%sV) regulator edge %s".format (v1, id_equ))
-                    ScError.combine_errors (errors, List (error), options.messagemax)
-                }
-                // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
                 else
-                if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
-                {
-                    val error = ScError (fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
-                    ScError.combine_errors (errors, List (error), options.messagemax)
-                }
-                else
-                errors
+                    if (v1 == v2)
+                    {
+                        val error = ScError (fatal = false, invalid = true, "voltage (%sV) regulator edge %s".format (v1, id_equ))
+                        ScError.combine_errors (errors, List (error), options.messagemax)
+                    }
+                    // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
+                    else
+                        if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
+                            {
+                                val error = ScError (fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
+                                ScError.combine_errors (errors, List (error), options.messagemax)
+                            }
+                            else
+                            errors
             case _ ⇒
                 errors
         }
