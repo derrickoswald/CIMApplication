@@ -1,7 +1,5 @@
 package ch.ninecode.sc
 
-import ch.ninecode.cim.CIMRDD
-import ch.ninecode.model.ACLineSegment
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
@@ -9,6 +7,9 @@ import org.apache.spark.graphx.VertexId
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.model.ACLineSegment
 
 /**
  * Short circuit calculation tracing.
@@ -32,7 +33,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
     def vprog (id: VertexId, v: ScNode, message: ScMessage): ScNode =
     {
         if (null == message.source_id) // handle the initial message by keeping the same vertex node
-        v
+            v
         else
         {
             val errors = ScError.combine_errors (v.errors, message.errors, options.messagemax)
@@ -70,7 +71,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
         val src = triplet.srcAttr
         val dst = triplet.dstAttr
         if ((src.id_prev == dst.id_seq) || (dst.id_prev == src.id_seq)) // reinforcement
-        Iterator.empty
+            Iterator.empty
         else
         {
             // check if the non-null impedance difference matches what we expect for this cable

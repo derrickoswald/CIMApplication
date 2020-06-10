@@ -58,10 +58,10 @@ case class ScEdge
         if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
             !switch.open // open valid
         else
-        if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
-            !switch.normalOpen
-        else
-            true
+            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+                !switch.normalOpen
+            else
+                true
     }
 
     /**
@@ -136,20 +136,20 @@ case class ScEdge
                 }
                 // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
                 else
-                if (v1 == v2)
-                {
-                    val error = ScError (fatal = false, invalid = true, "voltage (%sV) regulator edge %s".format (v1, id_equ))
-                    ScError.combine_errors (errors, List (error), options.messagemax)
-                }
-                // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
-                else
-                if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
-                {
-                    val error = ScError (fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
-                    ScError.combine_errors (errors, List (error), options.messagemax)
-                }
-                else
-                errors
+                    if (v1 == v2)
+                    {
+                        val error = ScError (fatal = false, invalid = true, "voltage (%sV) regulator edge %s".format (v1, id_equ))
+                        ScError.combine_errors (errors, List (error), options.messagemax)
+                    }
+                    // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
+                    else
+                        if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
+                        {
+                            val error = ScError (fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
+                            ScError.combine_errors (errors, List (error), options.messagemax)
+                        }
+                    else
+                        errors
             case _ ⇒
                 errors
         }
