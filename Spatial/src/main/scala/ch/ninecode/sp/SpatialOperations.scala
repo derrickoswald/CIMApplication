@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CHIM
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.cim.ClassInfo
 import ch.ninecode.model.Element
 import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.PowerSystemResource
@@ -46,8 +45,7 @@ class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
     {
         // get the subsetter
         val chim = new CHIM ("")
-        val classes: List[ClassInfo] = chim.classes
-        val clz = classes.find (_.subsetter.cls == args.clazz).orNull
+        val clz = chim.classes.find (_.subsetter.cls == args.clazz).orNull
 
         if (null != clz)
         {

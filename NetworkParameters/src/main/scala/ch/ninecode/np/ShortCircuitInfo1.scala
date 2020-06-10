@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.CHIM
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMSubsetter
-import ch.ninecode.cim.ClassInfo
 import ch.ninecode.model.ACDCTerminal
 import ch.ninecode.model.BasicElement
 import ch.ninecode.model.ConductingEquipment
@@ -303,8 +302,7 @@ extends CIMRDD
     def merge (elements: RDD[Element]): Unit =
     {
         val chim = new CHIM ("")
-        val classes: List[ClassInfo] = chim.classes
-        val subsetters: List[String] = classes.map (info ⇒ info.name)
+        val subsetters: List[String] = chim.classes.map (info ⇒ info.name)
         val old_elements = get[Element]("Elements")
 
         // get the list of classes that need to be merged
@@ -327,7 +325,7 @@ extends CIMRDD
 
         val uniq_to_be_merged: RDD[String] = elements.flatMap (supers).distinct.cache
         val array_to_be_merged: Array[String] = uniq_to_be_merged.collect
-        val list = classes.filter (x ⇒ array_to_be_merged.contains (x.name)).toArray
+        val list = chim.classes.filter (x ⇒ array_to_be_merged.contains (x.name)).toArray
 
         // merge each class
         def add[T <: Product] (subsetter: CIMSubsetter[T]): Unit =
