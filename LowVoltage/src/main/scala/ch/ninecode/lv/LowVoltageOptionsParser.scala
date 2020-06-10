@@ -18,19 +18,27 @@ class LowVoltageOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     var unittest = false
     var helpout = false
     var versionout = false
+    val COMMA = ","
+    val EQUAL = "="
 
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
-    implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
+
+    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map[String, String]()
-            val ss = s.split (",")
-            for (p <- ss)
-            {
-                val kv = p.split ("=")
-                ret = ret + ((kv (0), kv (1)))
-            }
-            ret
+            val pairs = for (p <- s.split (COMMA); kv = p.split (EQUAL))
+                yield
+                    {
+                        if (2 == kv.length)
+                            Some ((kv(0), kv(1)))
+                        else
+                        {
+                            reportError (s"unrecognized key=value pair '$p'")
+                            helpout = true
+                            None
+                        }
+                    }
+            pairs.flatten.toMap
         }
     )
 
@@ -58,11 +66,11 @@ class LowVoltageOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     opt[Map[String, String]]("sparkopts").valueName ("k1=v1,k2=v2").
         action ((x, c) => c.copy (spark_options = x)).
-        text (s"Spark options [${default.spark_options.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
+        text (s"Spark options [${default.spark_options.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
 
     opt[Map[String, String]]("cimopts").valueName ("k1=v1,k2=v2").
         action ((x, c) => c.copy (cim_reader_options = x)).
-        text (s"CIMReader options [${default.cim_reader_options.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
+        text (s"CIMReader options [${default.cim_reader_options.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
 
     opt[String]("storage")
         .action ((x, c) => c.copy (storage = x))
@@ -70,7 +78,7 @@ class LowVoltageOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     opt[LogLevels.Value]("log")
         .action ((x, c) => c.copy (log_level = x))
-        .text (s"log level, one of ${LogLevels.values.mkString (",")} [${default.log_level}]")
+        .text (s"log level, one of ${LogLevels.values.mkString (COMMA)} [${default.log_level}]")
 
     opt[Unit]("deduplicate").
         action ((_, c) => c.copy (dedup = true)).

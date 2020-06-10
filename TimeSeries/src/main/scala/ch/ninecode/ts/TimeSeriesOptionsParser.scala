@@ -18,6 +18,7 @@ object Operations extends Enumeration
     val Statistics, Meta, Model, MetaModel, SimpleMetaModel, Synthesize = Value
 }
 
+@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
 class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
     extends OptionParser[TimeSeriesOptions](APPLICATION_NAME)
 {
@@ -27,6 +28,8 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     var unittest = false
     var helpout = false
     var versionout = false
+    val COMMA = ","
+    val EQUAL = "="
 
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
@@ -35,34 +38,62 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     implicit val string_string_mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map[String, String] ()
-            val ss = s.split (",")
-            for (p <- ss)
-            {
-                val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1)))
-            }
-            ret
+            val pairs = for (p <- s.split (COMMA); kv = p.split (EQUAL))
+                yield
+                {
+                    if (2 == kv.length)
+                        Some ((kv(0), kv(1)))
+                    else
+                    {
+                        reportError (s"unrecognized key=value pair '$p'")
+                        helpout = true
+                        None
+                    }
+                }
+            pairs.flatten.toMap
         }
     )
 
     implicit val string_int_mapRead: scopt.Read[Map[String,Int]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map[String, Int] ()
-            val ss = s.split (",")
-            for (p <- ss)
+            def toInt (s: String): Option[Int] =
             {
-                val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1).toInt))
+                try
+                {
+                    Some(s.toInt)
+                }
+                catch
+                {
+                    case _: Exception => None
+                }
             }
-            ret
+            val pairs = for (p <- s.split (COMMA); kv = p.split (EQUAL))
+                yield
+                    {
+                        if (2 == kv.length)
+                            toInt (kv(1)) match
+                            {
+                                case Some (i) => Some ((kv(0), i))
+                                case _ =>
+                                    reportError (s"unrecognized integer '${kv(1)}'")
+                                    helpout = true
+                                    None
+                            }
+                        else
+                        {
+                            reportError (s"unrecognized key=value pair '$p'")
+                            helpout = true
+                            None
+                        }
+                    }
+            pairs.flatten.toMap
         }
     )
 
-    implicit val IntArrayRead: scopt.Read[Array[Int]] = scopt.Read.reads (_.split (",").map (_.toInt))
+    implicit val IntArrayRead: scopt.Read[Array[Int]] = scopt.Read.reads (_.split (COMMA).map (_.toInt))
 
-    implicit val DoubleArrayRead: scopt.Read[Array[Double]] = scopt.Read.reads (_.split (",").map (_.toDouble))
+    implicit val DoubleArrayRead: scopt.Read[Array[Double]] = scopt.Read.reads (_.split (COMMA).map (_.toDouble))
 
     implicit val CalendarRead: scopt.Read[Calendar] = scopt.Read.calendarRead ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
 
@@ -95,14 +126,13 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         yearly_kWh * 1000.0 / 365.25 / periods
     }
 
-    version ("version").
-        validate (Unit => { versionout = true; Right (Unit) }).
-            text ("Scala: %s, Spark: %s, %s: %s".format (
-                APPLICATION_VERSION.split ("-")(0),
-                APPLICATION_VERSION.split ("-")(1),
-                APPLICATION_NAME,
-                APPLICATION_VERSION.split ("-")(2)
-            )
+    version ("version")
+        .validate (Unit => { versionout = true; Right (Unit) })
+        .text (
+            {
+                val version = APPLICATION_VERSION.split ("-")
+                s"Scala: ${version(0)}, Spark: ${version(1)}, $APPLICATION_NAME: ${version(2)}"
+            }
         )
 
     opt[Unit]("unittest").
@@ -116,7 +146,7 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
         action ((x, c) => c.copy (spark_options = c.spark_options ++ x)).
-        text (s"Spark options [${default.spark_options.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
+        text (s"Spark options [${default.spark_options.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
 
     opt[String]("storage_level").
         action ((x, c) => c.copy (storage_level = x)).
@@ -124,7 +154,7 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     opt[LogLevels.Value]("logging").
         action ((x, c) => c.copy (log_level = x)).
-        text (s"log level, one of ${LogLevels.values.iterator.mkString (",")} [${default.log_level}]")
+        text (s"log level, one of ${LogLevels.values.iterator.mkString (COMMA)} [${default.log_level}]")
 
     opt[String]("host").valueName ("<cassandra>").
         action ((x, c) ⇒ c.copy (host = x)).
@@ -162,15 +192,15 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         .children (
             opt[Array[Int]]("tree_depth").
             action ((x, c) => c.copy (tree_depth = x)).
-            text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (",")}]"),
+            text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (COMMA)}]"),
 
             opt[Array[Int]]("bins").
             action ((x, c) => c.copy (bins = x)).
-            text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (",")}]"),
+            text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (COMMA)}]"),
 
             opt[Array[Double]]("info").
             action ((x, c) => c.copy (info = x)).
-            text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (",")}]"),
+            text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (COMMA)}]"),
 
             opt[Long]("seed").
             action ((x, c) => c.copy (seed = x)).
@@ -183,15 +213,15 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         .children (
             opt[Array[Int]]("tree_depth").
                 action ((x, c) => c.copy (tree_depth = x)).
-                text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (",")}]"),
+                text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (COMMA)}]"),
 
             opt[Array[Int]]("bins").
                 action ((x, c) => c.copy (bins = x)).
-                text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (",")}]"),
+                text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (COMMA)}]"),
 
             opt[Array[Double]]("info").
                 action ((x, c) => c.copy (info = x)).
-                text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (",")}]"),
+                text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (COMMA)}]"),
 
             opt[Long]("seed").
                 action ((x, c) => c.copy (seed = x)).
@@ -204,15 +234,15 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         .children (
             opt[Array[Int]]("tree_depth").
                 action ((x, c) => c.copy (tree_depth = x)).
-                text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (",")}]"),
+                text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (COMMA)}]"),
 
             opt[Array[Int]]("bins").
                 action ((x, c) => c.copy (bins = x)).
-                text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (",")}]"),
+                text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (COMMA)}]"),
 
             opt[Array[Double]]("info").
                 action ((x, c) => c.copy (info = x)).
-                text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (",")}]"),
+                text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (COMMA)}]"),
 
             opt[Long]("seed").
                 action ((x, c) => c.copy (seed = x)).
@@ -249,7 +279,7 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
             opt[Map[String, Int]]("classes").valueName ("cls1=#,cls2=#").
                 action ((x, c) => c.copy (classes = c.classes ++ x)).
-                text (s"meta class & count, one or more of ${TimeSeriesMeta (null, null).classes.mkString (",")} with instance count [${default.classes.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
+                text (s"meta class & count, one or more of ${TimeSeriesMeta (null, null).classes.mkString (COMMA)} with instance count [${default.classes.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
         )
 
     help ("help").

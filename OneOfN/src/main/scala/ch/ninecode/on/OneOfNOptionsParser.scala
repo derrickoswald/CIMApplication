@@ -18,6 +18,8 @@ class OneOfNOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
     var unittest = false
     var helpout = false
     var versionout = false
+    val COMMA = ","
+    val EQUAL = "="
 
     override def terminate (exitState: Either[String, Unit]): Unit =
     {
@@ -31,17 +33,22 @@ class OneOfNOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
-    implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
+    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map[String, String]()
-            val ss = s.split (",")
-            for (p <- ss)
-            {
-                val kv = p.split ("=")
-                ret = ret + ((kv (0), kv (1)))
-            }
-            ret
+            val pairs = for (p <- s.split (COMMA); kv = p.split (EQUAL))
+                yield
+                {
+                    if (2 == kv.length)
+                        Some ((kv(0), kv(1)))
+                    else
+                    {
+                        reportError (s"unrecognized key=value pair '$p'")
+                        helpout = true
+                        None
+                    }
+                }
+            pairs.flatten.toMap
         }
     )
 
@@ -56,7 +63,7 @@ class OneOfNOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     opt[LogLevels.Value]("logging")
         .action ((x, c) => c.copy (log_level = x))
-        .text (s"log level, one of ${LogLevels.values.iterator.mkString (",")} [${default.log_level}]")
+        .text (s"log level, one of ${LogLevels.values.iterator.mkString (COMMA)} [${default.log_level}]")
 
     opt[String]("master")
         .valueName ("MASTER_URL")
@@ -66,12 +73,12 @@ class OneOfNOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
     opt[Map[String, String]]("options")
         .valueName ("k1=v1,k2=v2")
         .action ((x, c) => c.copy (options = c.options))
-        .text (s"Spark options [${default.options.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
+        .text (s"Spark options [${default.options.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
 
     opt[Map[String, String]]("cim_options")
         .valueName ("k1=v1,k2=v2")
         .action ((x, c) => c.copy (cim_reader_options = c.cim_reader_options))
-        .text (s"CIM reader options [${default.cim_reader_options.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
+        .text (s"CIM reader options [${default.cim_reader_options.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
 
     opt[Unit]("deduplicate")
         .action ((_, c) => c.copy (dedup = true))

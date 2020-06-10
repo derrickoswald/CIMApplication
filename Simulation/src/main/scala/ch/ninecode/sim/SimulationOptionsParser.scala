@@ -20,18 +20,27 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     var unittest = false
     var helpout = false
     var versionout = false
+    val COMMA = ","
+    val EQUAL = "="
 
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
-    implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
+
+    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
         s =>
         {
-            val ret = for (p <- s.split (","))
+            val pairs = for (p <- s.split (COMMA); kv = p.split (EQUAL))
                 yield
                 {
-                    val kv = p.split ("=")
-                    (kv (0), kv (1))
+                    if (2 == kv.length)
+                        Some ((kv(0), kv(1)))
+                    else
+                    {
+                        reportError (s"unrecognized key=value pair '$p'")
+                        helpout = true
+                        None
+                    }
                 }
-            ret.toMap
+            pairs.flatten.toMap
         }
     )
 
@@ -69,7 +78,7 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2")
         .action ((x, c) => c.copy (options = c.options ++ x))
-        .text (s"Spark options [${default.options.map (x => s"${x._1}=${x._2}").mkString (",")}]")
+        .text (s"Spark options [${default.options.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
 
     opt[String]("host").valueName ("Cassandra")
         .action ((x, c) => c.copy (host = x))
@@ -81,7 +90,7 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     opt[LogLevels.Value]("log")
         .action ((x, c) => c.copy (log_level = x))
-        .text (s"log level, one of ${LogLevels.values.mkString (",")} [${default.log_level}]")
+        .text (s"log level, one of ${LogLevels.values.mkString (COMMA)} [${default.log_level}]")
 
     opt[String]("checkpoint").valueName ("<dir>")
         .action ((x, c) => c.copy (checkpoint = x))
