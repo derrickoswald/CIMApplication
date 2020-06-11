@@ -124,7 +124,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         val new_elements = kelements.subtractByKey (doomed.union (doomed_terminals)).map (_._2)
 
         // update Elements named RDD
-        put (new_elements, "Elements")
+        put (new_elements, "Elements", true)
         val _ = kelements.unpersist (false)
 
         // update all persistent RDD

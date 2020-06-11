@@ -33,7 +33,7 @@ class Feeders (
 
     // get the list of N7 voltages
     // ToDo: fix this 1000V multiplier
-    val low_voltages: Array[String] = getOrElse[BaseVoltage].filter (x ⇒ x.nominalVoltage <= 1.0).map (_.id).collect
+    val low_voltages: Array[String] = getOrElse[BaseVoltage].filter (x => x.nominalVoltage <= 1.0).map (_.id).collect
 
     // get the list of allowed power system resource types
     val allowed_PSRTypes: Array[String] = Array ("PSRType_Substation", "PSRType_TransformerStation")
@@ -52,11 +52,11 @@ class Feeders (
     {
         element match
         {
-            case c: Connector ⇒
+            case c: Connector =>
                 val equipment = c.ConductingEquipment
                 low_voltages.contains (equipment.BaseVoltage) &&
                     allowed_PSRTypes.contains (equipment.Equipment.PowerSystemResource.PSRType)
-            case _ ⇒ false
+            case _ => false
         }
     }
 
@@ -88,7 +88,7 @@ class Feeders (
             .leftOuterJoin (switches)
             .values
             .map (x => Feeder (x._1._1.id, x._1._2.TopologicalNode, x._2.orNull))
-        put (feeders, "Feeders")
+        put (feeders, "Feeders", true)
         feeders
     }
 }
