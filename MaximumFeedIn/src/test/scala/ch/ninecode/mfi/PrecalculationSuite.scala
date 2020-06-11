@@ -47,7 +47,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
      */
     test ("MultipleServiceCables")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
             readFile (session, filename)
@@ -89,7 +89,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
      */
     test ("MultipleTransformers")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME2.rdf"
             readFile (session, filename)
@@ -130,7 +130,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
      */
     test ("MeshedNetwork")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME3.rdf"
             readFile (session, filename)
@@ -176,7 +176,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
      */
     test ("MultipleSupplies")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME4.rdf"
             readFile (session, filename)
@@ -221,7 +221,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
      */
     test ("Rueckspannung")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME5.rdf"
             readFile (session, filename)
@@ -262,7 +262,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
      */
     test ("ganged transformers")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME6.rdf"
             readFile (session, filename)

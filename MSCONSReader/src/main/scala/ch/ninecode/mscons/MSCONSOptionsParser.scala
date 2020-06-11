@@ -40,7 +40,7 @@ class MSCONSOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         )
 
     opt[Unit]("verbose").
-        action ((_, c) ⇒ c.copy (verbose = true)).
+        action ((_, c) => c.copy (verbose = true)).
         text ("emit progress messages [%s]".format (default.verbose))
 
     opt[LogLevels.Value]("log").
@@ -48,15 +48,15 @@ class MSCONSOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
     opt[String]("output_file").
-        action ((x, c) ⇒ c.copy (output_file = x)).
+        action ((x, c) => c.copy (output_file = x)).
         text ("output file to create, when null use stdout")
 
     opt[String]("delimiter").
-        action ((x, c) ⇒ c.copy (delimiter = x)).
+        action ((x, c) => c.copy (delimiter = x)).
         text ("delimiter between fields in each output record")
 
     arg[String]("<MSCONS> <MSCONS>...").optional ().unbounded ().
-        action ((x, c) ⇒ c.copy (mscons = c.mscons :+ x)).
+        action ((x, c) => c.copy (mscons = c.mscons :+ x)).
         text ("MSCONS files to process")
 
     help ("help").

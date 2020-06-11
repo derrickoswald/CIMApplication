@@ -131,7 +131,7 @@ class SmaxSolverSuite extends FunSuite
 
     test ("random")
     {
-        for (_ ← 1 to 10000)
+        for (_ <- 1 to 10000)
         {
             val cosphi = (if (Math.random () > 0.75) -1.0 else 1.0) * 1.0 - Math.random () * 0.25
             val angle = 15.0 * (Math.random () - 0.5)

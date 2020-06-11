@@ -19,11 +19,11 @@ case class MyFeeders
     {
         element match
         {
-            case c: Connector ⇒
+            case c: Connector =>
                 val equipment = c.ConductingEquipment
                 (equipment.BaseVoltage == "BaseVoltage_400") &&
                     equipment.Equipment.EquipmentContainer.startsWith ("STA")
-            case _ ⇒ false
+            case _ => false
         }
     }
 }
@@ -49,7 +49,7 @@ class FeederSuite extends MFITestBase with BeforeAndAfter
      */
     test ("getFeeders")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val begin = System.nanoTime ()
 

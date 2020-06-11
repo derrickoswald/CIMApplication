@@ -41,7 +41,7 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
         {
             session =>
                 val resultset: ResultSet = session.execute (sql)
-                for (row: Row ← resultset.iterator)
+                for (row: Row <- resultset.iterator)
                     yield (row.getString(0), row.getString(1))
         }
         iterator.toSeq
@@ -53,7 +53,7 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
         val sql = s"""select mrid, type, min(period) as period, min(time) as min, max(time) as max, count(mrid) as count, min(real_a) as min, avg(real_a) as avg, max(real_a) as max, ${options.keyspace}.standard_deviation (real_a) as standard_deviation from ${options.keyspace}.measured_value where mrid='$mrid' and real_a > 0.0 and type = '${`type`}' group by mrid, type allow filtering"""
         val range = CassandraConnector (session.sparkContext.getConf).withSessionDo
         {
-            session ⇒
+            session =>
                 val row = session.execute (sql).one()
                 if (null != row)
                 {
@@ -77,9 +77,9 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
         val scope = Scope
         val count = scope.size
         log.info ("%s distinct mrid and type".format (count))
-        val range = for ((mrid, typ) ← scope)
+        val range = for ((mrid, typ) <- scope)
             yield Range (mrid, typ)
-        val stats = for (r ← range if null != r)
+        val stats = for (r <- range if null != r)
         yield
         {
             log.info ("%s:%s %s⇒%s %8d %6d %10.3f %10.3f %10.3f %10.3f".format (

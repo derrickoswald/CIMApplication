@@ -62,22 +62,22 @@ object FData
             Amp (1150, 400)
         )
 
-    var fuse: (Double, Branch) ⇒ Double = fuse1
+    var fuse: (Double, Branch) => Double = fuse1
 
     def fuse_sizing_table (number: Int): Unit =
     {
         number match
         {
-            case 1 ⇒
+            case 1 =>
                 fuse = fuse1
 
-            case 2 ⇒
+            case 2 =>
                 fuse = fuse2
 
-            case 3 ⇒
+            case 3 =>
                 fuse = fuse3
 
-            case _ ⇒
+            case _ =>
                 val log: Logger = LoggerFactory.getLogger (getClass)
                 log.error ("unrecognized fuse sizing table number %s, ignored".format (number))
         }
@@ -106,12 +106,12 @@ object FData
         else
             branch match
             {
-                case simple: SimpleBranch ⇒
+                case simple: SimpleBranch =>
                     if (simple.name.startsWith ("SEV"))
                         recommended_fuse_sizing_3.filter (_.Ik <= Math.abs (ik)).last.Rating
                     else
                         recommended_fuse_sizing_1.filter (_.Ik <= Math.abs (ik)).last.Rating
-                case _ ⇒
+                case _ =>
                     recommended_fuse_sizing_1.filter (_.Ik <= Math.abs (ik)).last.Rating
             }
     }
@@ -121,7 +121,7 @@ object FData
         if (ik.isNaN || (null == branches))
             fuse (Double.NaN, branches).toInt.toString
         else
-            branches.ratios.map (x ⇒ (x._1 * Math.abs (ik), x._2)).map (x ⇒ fuse (x._1, x._2).toInt).mkString (",")
+            branches.ratios.map (x => (x._1 * Math.abs (ik), x._2)).map (x => fuse (x._1, x._2).toInt).mkString (",")
     }
 
     def lastFuseHasMissingValues (branches: Branch): Boolean =
@@ -132,10 +132,10 @@ object FData
         {
             val missing = branches match
             {
-                case sim: SimpleBranch ⇒ sim.rating.getOrElse (Double.MinValue) <= 0.0
-                case ser: SeriesBranch ⇒ ser.lastFuses.exists (lastFuseHasMissingValues)
-                case par: ParallelBranch ⇒ par.parallel.exists (lastFuseHasMissingValues)
-                case com: ComplexBranch ⇒ com.basket.exists(lastFuseHasMissingValues)
+                case sim: SimpleBranch => sim.rating.getOrElse (Double.MinValue) <= 0.0
+                case ser: SeriesBranch => ser.lastFuses.exists (lastFuseHasMissingValues)
+                case par: ParallelBranch => par.parallel.exists (lastFuseHasMissingValues)
+                case com: ComplexBranch => com.basket.exists(lastFuseHasMissingValues)
             }
             missing
         }

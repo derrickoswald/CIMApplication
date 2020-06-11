@@ -149,7 +149,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             {
                 for
                 {
-                    e ← experiments
+                    e <- experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     feeder = lookup.getOrElse (x.element, null)
                     threshold = if (null == feeder) max else if (feeder == e.feeder) max else neighbormax
@@ -176,7 +176,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else
         {
             val map = new mutable.HashMap[String, List[String]]()
-            for (pair ← feeders)
+            for (pair <- feeders)
             {
                 val l = map.getOrElse (pair._1, List ())
                 if (!l.contains (pair._2))
@@ -194,7 +194,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             {
                 for
                 {
-                    e ← experiments
+                    e <- experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     if !options.ignore_other || lookup.getOrElse (x.element, List ()).contains (e.feeder)
                     threshold = cdata_map.getOrElse (x.element, Double.PositiveInfinity)
@@ -235,7 +235,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             for
             {
-                e ← experiments
+                e <- experiments
                 if (e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis)
             }
                 yield (e, r, limit, r.element + " > " + power + " Watts")

@@ -137,7 +137,7 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         .text (s"format of the data files, one of ${Formats.values.iterator.mkString (",")} [${job.format}]")
 
     opt[Modes.Value]("mode")
-        .action ((x, c) ⇒ {job = job.copy (mode = x); updateJson(c)})
+        .action ((x, c) => {job = job.copy (mode = x); updateJson(c)})
         .text (s"ingest mode, one of ${Modes.values.iterator.mkString (",")} [${job.mode}]")
 
     opt[Unit]("nocopy")

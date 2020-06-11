@@ -65,7 +65,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         if (!df.isEmpty)
         {
             df.select ("key", "query", "value").rdd
-                .map (row ⇒ (row.getString (0), (row.getString (1), row.getString (2))))
+                .map (row => (row.getString (0), (row.getString (1), row.getString (2))))
                 .groupByKey
         }
         else
@@ -82,19 +82,19 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     {
         val nodes: RDD[(Id, (Simulation, Transformer, SimulationNode))] =
             trafos.flatMap (
-                trafo ⇒
+                trafo =>
                     trafo.nodes.map (
-                        node ⇒
+                        node =>
                             (
                                 node.equipment,
                                 (trafo.simulation, trafo.transformer.transformer_name, node)
                             )
                     )
             )
-        val consumers = nodes.join (getOrElse[EnergyConsumer].keyBy (_.id)).values.map (x ⇒ (x._1._3.equipment, x._1))
+        val consumers = nodes.join (getOrElse[EnergyConsumer].keyBy (_.id)).values.map (x => (x._1._3.equipment, x._1))
         val jsons = consumers.leftOuterJoin (extra).values
             .flatMap (
-                (x: ((Simulation, Transformer, SimulationNode), Option[KeyValueList])) ⇒
+                (x: ((Simulation, Transformer, SimulationNode), Option[KeyValueList])) =>
                 {
                     val node = x._1._3
                     val world = if (null != node.world_position)
@@ -127,9 +127,9 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     {
         val edges: RDD[(Id, (Simulation, Transformer, SimulationEdge))] =
             trafos.flatMap (
-                trafo ⇒
+                trafo =>
                     trafo.edges.map (
-                        edge ⇒
+                        edge =>
                             (
                                 edge.rawedge.id,
                                 (trafo.simulation, trafo.transformer.transformer_name, edge)
@@ -139,7 +139,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
 
         val jsons = edges.leftOuterJoin (extra).values
             .flatMap (
-                (x: ((Simulation, Transformer, SimulationEdge), Option[KeyValueList])) ⇒
+                (x: ((Simulation, Transformer, SimulationEdge), Option[KeyValueList])) =>
                 {
                     val edge = x._1._3
                     edge.rawedge match
@@ -147,7 +147,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                         case _: GLMLineEdge =>
                             val world = if (null != edge.world_position)
                             {
-                                val coordinates = edge.world_position.map (p ⇒ List (p._1, p._2)).toList
+                                val coordinates = edge.world_position.map (p => List (p._1, p._2)).toList
                                 val geometry = ("LineString", coordinates)
                                 Some ((x._1._1, edge.rawedge.id, "wgs84", geometry, x._2.orNull, x._1._2, "Feature"))
                             }
@@ -155,7 +155,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                                 None
                             val schematic = if (null != edge.schematic_position)
                             {
-                                val coordinates = edge.schematic_position.map (p ⇒ List (p._1, p._2)).toList
+                                val coordinates = edge.schematic_position.map (p => List (p._1, p._2)).toList
                                 val geometry = ("LineString", coordinates)
                                 Some ((x._1._1, edge.rawedge.id, "pseudo_wgs84", geometry, x._2.orNull, x._1._2, "Feature"))
                             }
@@ -175,14 +175,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         var points =
             for
             {
-                raw ← trafo.nodes
+                raw <- trafo.nodes
                 sim_node = raw.asInstanceOf[SimulationNode]
                 if null != sim_node.world_position
             }
                 yield sim_node.world_position
         for
         {
-            raw ← trafo.edges
+            raw <- trafo.edges
             sim_edge = raw.asInstanceOf[SimulationEdge]
             if null != sim_edge.world_position
         }
@@ -195,14 +195,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         var points =
             for
             {
-                raw ← trafo.nodes
+                raw <- trafo.nodes
                 sim_node = raw.asInstanceOf[SimulationNode]
                 if null != sim_node.schematic_position
             }
                 yield sim_node.schematic_position
         for
         {
-            raw ← trafo.edges
+            raw <- trafo.edges
             sim_edge = raw.asInstanceOf[SimulationEdge]
             if null != sim_edge.schematic_position
         }
@@ -214,13 +214,13 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     {
         val jsons = trafos.keyBy (_.transformer.transformer_name).leftOuterJoin (extra).values
             .flatMap (
-                (x: (SimulationTrafoKreis, Option[KeyValueList])) ⇒
+                (x: (SimulationTrafoKreis, Option[KeyValueList])) =>
                 {
                     val trafo = x._1
                     val world_points = get_world_points (trafo).toList
                     val world = if (world_points.nonEmpty)
                     {
-                        val hull = Hull.scan (world_points).map (p ⇒ List (p._1, p._2))
+                        val hull = Hull.scan (world_points).map (p => List (p._1, p._2))
                         val coordinates: List[List[List[Double]]] = List (hull)
                         val geometry = ("Polygon", coordinates)
                         val properties = x._2.orNull
@@ -231,7 +231,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     val schematic_points = get_schematic_points (trafo).toList
                     val schematic = if (schematic_points.nonEmpty)
                     {
-                        val hull = Hull.scan (schematic_points).map (p ⇒ List (p._1, p._2))
+                        val hull = Hull.scan (schematic_points).map (p => List (p._1, p._2))
                         val coordinates: List[List[List[Double]]] = List (hull)
                         val geometry = ("Polygon", coordinates)
                         val properties = x._2.orNull
@@ -248,12 +248,12 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     def store_geojson_transformers (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
     {
         // get the few thousand transformer names with transformer id(s) and location
-        val transformers = trafos.flatMap (trafo ⇒ trafo.transformer.transformers.map (
-            x ⇒ (trafo.name, x.transformer.id, x.transformer.ConductingEquipment.Equipment.PowerSystemResource.Location)))
+        val transformers = trafos.flatMap (trafo => trafo.transformer.transformers.map (
+            x => (trafo.name, x.transformer.id, x.transformer.ConductingEquipment.Equipment.PowerSystemResource.Location)))
         // get the world positions
-        val location_trafo = transformers.map (x ⇒ (x._3, x._1)).collectAsMap
+        val location_trafo = transformers.map (x => (x._3, x._1)).collectAsMap
         val world_positions: RDD[(String, (Double, Double))] = get[PositionPoint].flatMap (
-            point ⇒
+            point =>
             {
                 val location = point.Location
                 if (location_trafo.contains (location))
@@ -267,9 +267,9 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     None
             }
         )
-        val transformer_trafo = transformers.map (x ⇒ (x._2, x._1)).collectAsMap
+        val transformer_trafo = transformers.map (x => (x._2, x._1)).collectAsMap
         val diagram_trafo = getOrElse[DiagramObject].flatMap (
-            obj ⇒
+            obj =>
             {
                 val id = obj.IdentifiedObject_attr
                 if (transformer_trafo.contains (id))
@@ -282,7 +282,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
             }
         ).collectAsMap
         val schematic_points: RDD[(String, (Double, Double))] = getOrElse[DiagramObjectPoint].flatMap (
-            point ⇒
+            point =>
             {
                 val obj = point.DiagramObject
                 if (diagram_trafo.contains (obj))
@@ -301,7 +301,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         {
             stuff._2 match
             {
-                case Some (x) ⇒
+                case Some (x) =>
                     val trafo = stuff._1._1
                     val geometry = ("Point", List (x._1._1, x._1._2))
                     val properties = stuff._1._2.orNull
@@ -309,14 +309,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     val one = (trafo.simulation, "wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry, properties)
                     val two = x._2 match
                     {
-                        case Some (coords) ⇒
+                        case Some (coords) =>
                             val geometry2 = ("Point", List (coords._1, coords._2))
                             Some ((trafo.simulation, "pseudo_wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry2, properties))
-                        case None ⇒
+                        case None =>
                             None
                     }
                     (Some(one) :: two :: Nil).flatten
-                case None ⇒ List()
+                case None => List()
             }
         }
         val with_properties = trafos.keyBy (_.transformer.transformer_name).leftOuterJoin (extra).values
@@ -327,14 +327,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     def store_geojson_stations (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
     {
         // get a map of islands to Simulation & Transformer
-        val transformers: RDD[(NodemRID, (Simulation, Transformer))] = trafos.map (kreis ⇒ (kreis.transformer.node1, (kreis.simulation, kreis.transformer.transformer_name)))
-        val nodes_islands: RDD[(NodemRID, IslandmRID)] = getOrElse[TopologicalNode].map (node ⇒ (node.id, node.TopologicalIsland))
+        val transformers: RDD[(NodemRID, (Simulation, Transformer))] = trafos.map (kreis => (kreis.transformer.node1, (kreis.simulation, kreis.transformer.transformer_name)))
+        val nodes_islands: RDD[(NodemRID, IslandmRID)] = getOrElse[TopologicalNode].map (node => (node.id, node.TopologicalIsland))
         val islands_transformers: RDD[(IslandmRID, (Simulation, Transformer))] = nodes_islands.join (transformers).values
 
         // get a map of equipment containers and islands
         val terminals = getOrElse[Terminal]
-        val equipment_islands: RDD[(EquipmentmRID, IslandmRID)] = terminals.map (terminal ⇒ (terminal.TopologicalNode, terminal.ConductingEquipment)).join (nodes_islands).values
-        val equipment_containers: RDD[(EquipmentmRID, StationmRID)] = getOrElse[Equipment].map (equipment ⇒ (equipment.id, equipment.EquipmentContainer))
+        val equipment_islands: RDD[(EquipmentmRID, IslandmRID)] = terminals.map (terminal => (terminal.TopologicalNode, terminal.ConductingEquipment)).join (nodes_islands).values
+        val equipment_containers: RDD[(EquipmentmRID, StationmRID)] = getOrElse[Equipment].map (equipment => (equipment.id, equipment.EquipmentContainer))
         val islands_containers: RDD[(IslandmRID, StationmRID)] = equipment_islands.join (equipment_containers).values.distinct
 
         val stations: RDD[(StationmRID, (Simulation, Transformer))] = islands_containers.join (islands_transformers).values
@@ -342,20 +342,20 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         val diagramObjectsPoints: RDD[(DiagrammRID, Iterable[DiagramObjectPoint])] = getOrElse[DiagramObjectPoint].keyBy (_.DiagramObject).groupByKey
         val station_diagram: RDD[(StationmRID, ((Simulation, Transformer), DiagramObject))] = stations.join (diagramObjects)
 
-        val diagramid_station: RDD[(DiagrammRID, (StationmRID, Simulation, Transformer))] = station_diagram.map (x ⇒ (x._2._2.id, (x._1, x._2._1._1, x._2._1._2)))
+        val diagramid_station: RDD[(DiagrammRID, (StationmRID, Simulation, Transformer))] = station_diagram.map (x => (x._2._2.id, (x._1, x._2._1._1, x._2._1._2)))
         val stations_with_geometry: RDD[((StationmRID, Simulation, Transformer), Iterable[DiagramObjectPoint])] = diagramid_station.join (diagramObjectsPoints).values
-        val stations_with_geometry_keyed: RDD[(String, (StationmRID, Simulation, Transformer, Iterable[DiagramObjectPoint]))] = stations_with_geometry.map (x ⇒ (x._1._1, (x._1._1, x._1._2, x._1._3, x._2)))
+        val stations_with_geometry_keyed: RDD[(String, (StationmRID, Simulation, Transformer, Iterable[DiagramObjectPoint]))] = stations_with_geometry.map (x => (x._1._1, (x._1._1, x._1._2, x._1._3, x._2)))
         val stations_with_everything: RDD[((StationmRID, Simulation, Transformer, Iterable[DiagramObjectPoint]), Option[KeyValueList])] = stations_with_geometry_keyed.leftOuterJoin (extra).values
-        val rearranged2: RDD[(Simulation, StationmRID, Transformer, Iterable[DiagramObjectPoint], Option[KeyValueList])] = stations_with_everything.map (x ⇒ (x._1._2, x._1._1, x._1._3, x._1._4, x._2))
+        val rearranged2: RDD[(Simulation, StationmRID, Transformer, Iterable[DiagramObjectPoint], Option[KeyValueList])] = stations_with_everything.map (x => (x._1._2, x._1._1, x._1._3, x._1._4, x._2))
 
         val geojson_station: RDD[(Simulation, CoordinateSystem, StationmRID, Transformer, String, (String, List[List[List[Double]]]), KeyValueList)] = rearranged2.map (
-            x ⇒
+            x =>
             {
                 val simulation = x._1
                 val station = x._2
                 val transformer = x._3
                 val coords = x._4
-                val coordinates = List (coords.toList.sortWith (_.sequenceNumber < _.sequenceNumber).map (y ⇒ List (y.xPosition, y.yPosition)))
+                val coordinates = List (coords.toList.sortWith (_.sequenceNumber < _.sequenceNumber).map (y => List (y.xPosition, y.yPosition)))
                 val geometry = ("Polygon", coordinates)
                 val properties = x._5.orNull
                 (simulation, "pseudo_wgs84", station, transformer, "Feature", geometry, properties)

@@ -48,11 +48,11 @@ object MainCustomer1
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
-        s ⇒
+        s =>
         {
             var ret = Map[String, String]()
             val ss = s.split (",")
-            for (p ← ss)
+            for (p <- ss)
             {
                 val kv = p.split ("=")
                 ret = ret + ((kv (0), kv (1)))
@@ -71,9 +71,9 @@ object MainCustomer1
         quiet: Boolean = false,
         master: String = "",
         opts: Map[String, String] = Map (
-            "spark.graphx.pregel.checkpointInterval" → "8",
-            "spark.serializer" → "org.apache.spark.serializer.KryoSerializer",
-            "spark.ui.showConsoleProgress" → "false"
+            "spark.graphx.pregel.checkpointInterval" -> "8",
+            "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
+            "spark.ui.showConsoleProgress" -> "false"
         ),
         storage: String = "MEMORY_AND_DISK_SER",
         dedup: Boolean = false,
@@ -112,47 +112,47 @@ object MainCustomer1
 
         opt[Unit]("unittest").
             hidden ().
-            action ((_, c) ⇒ c.copy (unittest = true)).
+            action ((_, c) => c.copy (unittest = true)).
             text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
         opt[Unit]("quiet").
-            action ((_, c) ⇒ c.copy (quiet = true)).
+            action ((_, c) => c.copy (quiet = true)).
             text ("suppress informational messages [%s]".format (default.quiet))
 
         opt[String]("master").valueName ("MASTER_URL").
-            action ((x, c) ⇒ c.copy (master = x)).
+            action ((x, c) => c.copy (master = x)).
             text ("local[*], spark://host:port, mesos://host:port, yarn [%s]".format (default.master))
 
         opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
-            action ((x, c) ⇒ c.copy (opts = c.opts ++ x)).
-            text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
+            action ((x, c) => c.copy (opts = c.opts ++ x)).
+            text ("Spark options [%s]".format (default.opts.map (x => x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage").
-            action ((x, c) ⇒ c.copy (storage = x)).
+            action ((x, c) => c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
         opt[Unit]("deduplicate").
-            action ((_, c) ⇒ c.copy (dedup = true)).
+            action ((_, c) => c.copy (dedup = true)).
             text ("de-duplicate input (striped) files [%s]".format (default.dedup))
 
         opt[LogLevels.Value]("logging").
-            action ((x, c) ⇒ c.copy (log_level = x)).
+            action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
         opt[String]("checkpoint").valueName ("<dir>").
-            action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
+            action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://server:8020/... [%s]".format (default.checkpoint_dir))
 
         opt[String]("csv").valueName ("<file>").
-            action ((x, c) ⇒ c.copy (csv_file = x)).
+            action ((x, c) => c.copy (csv_file = x)).
             text ("csv file of available power at station data [%s]".format (default.csv_file))
 
         opt[String]("export").valueName ("<CIM>").
-            action ((x, c) ⇒ c.copy (export = x)).
+            action ((x, c) => c.copy (export = x)).
             text ("name of deduped + topologically processed CIM file [%s]".format (default.export))
 
         arg[String]("<CIM>,<CIM>...").optional ().unbounded ().
-            action ((x, c) ⇒ c.copy (files = c.files :+ x)).
+            action ((x, c) => c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
     }
@@ -167,7 +167,7 @@ object MainCustomer1
         }
         catch
         {
-            case e: UnsupportedEncodingException ⇒ e.printStackTrace ()
+            case e: UnsupportedEncodingException => e.printStackTrace ()
         }
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
@@ -233,7 +233,7 @@ object MainCustomer1
         // parser.parse returns Option[C]
         parser.parse (args, Arguments ()) match
         {
-            case Some (arguments) ⇒
+            case Some (arguments) =>
 
                 if (!arguments.quiet)
                 {
@@ -251,7 +251,7 @@ object MainCustomer1
                     if ("" != arguments.master)
                         configuration.setMaster (arguments.master)
                     if (arguments.opts.nonEmpty)
-                        arguments.opts.map ((pair: (String, String)) ⇒ configuration.set (pair._1, pair._2))
+                        arguments.opts.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
 
                     // get the necessary jar files to send to the cluster
                     if ("" != arguments.master)
@@ -308,7 +308,7 @@ object MainCustomer1
 
                 if (do_exit)
                     sys.exit (0)
-            case None ⇒
+            case None =>
                 if (do_exit)
                     sys.exit (1)
         }

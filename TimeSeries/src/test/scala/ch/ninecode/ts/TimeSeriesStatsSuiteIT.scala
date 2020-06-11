@@ -186,27 +186,27 @@ object TimeSeriesStatsSuiteIT
         session.sparkContext.setLogLevel ("WARN")
 
         val measurement_options = immutable.HashMap (
-            "header" → "false",
-            "ignoreLeadingWhiteSpace" → "false",
-            "ignoreTrailingWhiteSpace" → "false",
-            "sep" → ",",
-            "quote" → "\"",
-            "escape" → "\\",
-            "encoding" → "UTF-8",
-            "comment" → "#",
-            "nullValue" → "",
-            "nanValue" → "NaN",
-            "positiveInf" → "Inf",
-            "negativeInf" → "-Inf",
-            "dateFormat" → "yyyy-MM-dd",
-            "timestampFormat" → "yyyy-MM-dd HH:mm:ss",
-            "mode" → "DROPMALFORMED",
-            "inferSchema" → "true"
+            "header" -> "false",
+            "ignoreLeadingWhiteSpace" -> "false",
+            "ignoreTrailingWhiteSpace" -> "false",
+            "sep" -> ",",
+            "quote" -> "\"",
+            "escape" -> "\\",
+            "encoding" -> "UTF-8",
+            "comment" -> "#",
+            "nullValue" -> "",
+            "nanValue" -> "NaN",
+            "positiveInf" -> "Inf",
+            "negativeInf" -> "-Inf",
+            "dateFormat" -> "yyyy-MM-dd",
+            "timestampFormat" -> "yyyy-MM-dd HH:mm:ss",
+            "mode" -> "DROPMALFORMED",
+            "inferSchema" -> "true"
         )
         Schema (session, "/simulation_schema.sql", true).make (keyspace = KEYSPACE, replication = 1)
         println (s"reading $FILE_DEPOT$FILENAME0.csv")
         val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (s"$FILE_DEPOT$FILENAME0.csv")
-        val ok = df.rdd.map (row ⇒ (row.getString (0), "energy", row.getTimestamp (1), 900000, row.getDouble (2), 0.0, "Wh"))
+        val ok = df.rdd.map (row => (row.getString (0), "energy", row.getTimestamp (1), 900000, row.getDouble (2), 0.0, "Wh"))
         println (s"saving to $KEYSPACE.measured_value")
         ok.saveToCassandra (KEYSPACE, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         println ("stopping Spark session")

@@ -77,19 +77,19 @@ case class ScEdge
         else
             element match
             {
-                case switch: Switch ⇒ switchClosed (switch)
-                case cut: Cut ⇒ switchClosed (cut.Switch)
-                case disconnector: Disconnector ⇒ switchClosed (disconnector.Switch)
-                case fuse: Fuse ⇒ switchClosed (fuse.Switch)
-                case gd: GroundDisconnector ⇒ switchClosed (gd.Switch)
-                case jumper: Jumper ⇒ switchClosed (jumper.Switch)
-                case ps: ProtectedSwitch ⇒ switchClosed (ps.Switch)
-                case sectionaliser: Sectionaliser ⇒ switchClosed (sectionaliser.Switch)
-                case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch)
-                case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch)
-                case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
-                case line: ACLineSegment ⇒ true
-                case trafo: PowerTransformer ⇒
+                case switch: Switch => switchClosed (switch)
+                case cut: Cut => switchClosed (cut.Switch)
+                case disconnector: Disconnector => switchClosed (disconnector.Switch)
+                case fuse: Fuse => switchClosed (fuse.Switch)
+                case gd: GroundDisconnector => switchClosed (gd.Switch)
+                case jumper: Jumper => switchClosed (jumper.Switch)
+                case ps: ProtectedSwitch => switchClosed (ps.Switch)
+                case sectionaliser: Sectionaliser => switchClosed (sectionaliser.Switch)
+                case breaker: Breaker => switchClosed (breaker.ProtectedSwitch.Switch)
+                case lbs: LoadBreakSwitch => switchClosed (lbs.ProtectedSwitch.Switch)
+                case recloser: Recloser => switchClosed (recloser.ProtectedSwitch.Switch)
+                case line: ACLineSegment => true
+                case trafo: PowerTransformer =>
                     // do not trace 230V
                     if (v1 < 230.0 || v2 < 230.0 || ( !calculate_public_lighting && (v1 == 230.0 || v2 == 230.0) )
                     )
@@ -102,7 +102,7 @@ case class ScEdge
                             v2 <= v1 || v2 <= 1000.0
                         else
                             throw new Exception ("edge %s is not connected to %s (only %s and %s)".format (id_equ, id_cn, id_cn_1, id_cn_2))
-                case _ ⇒
+                case _ =>
                     true
             }
     }
@@ -118,7 +118,7 @@ case class ScEdge
     {
         element match
         {
-            case cable: ACLineSegment ⇒
+            case cable: ACLineSegment =>
                 // ToDo: use PSRType_Bogus
                 if (cable.r >= options.cable_impedance_limit)
                 {
@@ -127,7 +127,7 @@ case class ScEdge
                 }
                 else
                     errors
-            case _: PowerTransformer ⇒
+            case _: PowerTransformer =>
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
                 if (num_terminals > 2)
                 {
@@ -150,7 +150,7 @@ case class ScEdge
                         }
                     else
                         errors
-            case _ ⇒
+            case _ =>
                 errors
         }
     }
@@ -166,7 +166,7 @@ case class ScEdge
     {
         element match
         {
-            case transformer: PowerTransformer ⇒
+            case transformer: PowerTransformer =>
                 if (id_cn == id_cn_1)
                 {
                     val ratio = v1 / v2
@@ -182,7 +182,7 @@ case class ScEdge
                     }
                     else
                         ref
-            case _ ⇒
+            case _ =>
                 ref
         }
     }
@@ -197,9 +197,9 @@ case class ScEdge
     {
         element match
         {
-            case _: ACLineSegment ⇒
+            case _: ACLineSegment =>
                 this.impedance
-            case _: PowerTransformer ⇒
+            case _: PowerTransformer =>
                 if (id_cn == id_cn_1)
                 {
                     val tx_impedance_low = this.impedance.impedanz_low
@@ -217,7 +217,7 @@ case class ScEdge
                     }
                     else
                         Impedanzen (Complex (0.0), Complex (0.0), Complex (0.0), Complex (0.0))
-            case _ ⇒
+            case _ =>
                 Impedanzen (Complex (0.0), Complex (0.0), Complex (0.0), Complex (0.0))
         }
     }
@@ -232,29 +232,29 @@ case class ScEdge
     {
         element match
         {
-            case fuse: Fuse ⇒
+            case fuse: Fuse =>
                 val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (fuse.Switch.ratedCurrent))
                 if (null == ref)
                     next
                 else
                     ref match
                     {
-                        case sim: SimpleBranch ⇒ SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
-                        case ser: SeriesBranch ⇒ SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
-                        case _ ⇒ throw new IllegalArgumentException ("unknown class for ref (%s)".format (ref.getClass.toString))
+                        case sim: SimpleBranch => SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
+                        case ser: SeriesBranch => SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
+                        case _ => throw new IllegalArgumentException ("unknown class for ref (%s)".format (ref.getClass.toString))
                     }
-            case breaker: Breaker ⇒
+            case breaker: Breaker =>
                 val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, breaker.id, breaker.ProtectedSwitch.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (breaker.ProtectedSwitch.Switch.ratedCurrent))
                 if (null == ref)
                     next
                 else
                     ref match
                     {
-                        case sim: SimpleBranch ⇒ SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
-                        case ser: SeriesBranch ⇒ SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
-                        case _ ⇒ throw new IllegalArgumentException ("unknown class for ref (%s)".format (ref.getClass.toString))
+                        case sim: SimpleBranch => SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
+                        case ser: SeriesBranch => SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
+                        case _ => throw new IllegalArgumentException ("unknown class for ref (%s)".format (ref.getClass.toString))
                     }
-            case _ ⇒
+            case _ =>
                 ref
         }
     }

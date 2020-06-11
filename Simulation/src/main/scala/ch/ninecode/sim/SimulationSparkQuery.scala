@@ -39,8 +39,8 @@ case class SimulationSparkQuery (session: SparkSession, storage_level: StorageLe
         val `type` = resultset.schema.fieldIndex (typefield)
         val property = resultset.schema.fieldIndex (propertyfield)
         val synthesis = if (resultset.schema.fieldNames.contains (synthesisfield)) resultset.schema.fieldIndex (synthesisfield) else -1
-        resultset.rdd.keyBy (row ⇒ row.getString (island)).mapValues (
-            row ⇒
+        resultset.rdd.keyBy (row => row.getString (island)).mapValues (
+            row =>
             {
                 SimulationPlayerResult (
                     query.title,
@@ -66,8 +66,8 @@ case class SimulationSparkQuery (session: SparkSession, storage_level: StorageLe
         val `type` = resultset.schema.fieldIndex (typefield)
         val property = resultset.schema.fieldIndex (propertyfield)
         val unit = resultset.schema.fieldIndex (unitfield)
-        resultset.rdd.keyBy (row ⇒ row.getString (island)).mapValues (
-            row ⇒
+        resultset.rdd.keyBy (row => row.getString (island)).mapValues (
+            row =>
             {
                 SimulationRecorderResult (
                     query.title,

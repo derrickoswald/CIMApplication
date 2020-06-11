@@ -77,7 +77,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
             // check if the non-null impedance difference matches what we expect for this cable
             triplet.attr.element match
             {
-                case _: ACLineSegment ⇒
+                case _: ACLineSegment =>
                     val diff = src.impedance - dst.impedance
                     val expected = triplet.attr.impedanceTo ("not important")
                     val isequal = Math.abs (!diff.impedanz_low - !expected.impedanz_low) < 1e-6 && Math.abs (!diff.null_impedanz_low - !expected.null_impedanz_low) < 1e-6
@@ -93,7 +93,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                             (triplet.srcId, ScMessage (src.source_id, dst.source_impedance, null, null, src.branches, dst.id_seq, List (error)))
                         )
                     }
-                case _ ⇒
+                case _ =>
                     Iterator.empty
             }
         }

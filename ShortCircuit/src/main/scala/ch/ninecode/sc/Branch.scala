@@ -82,8 +82,8 @@ abstract class Branch (val from: String, val to: String, val current: Double)
 
     def add_in_parallel (those: Iterable[Branch]): Branch =
     {
-        if (those.forall (x ⇒ to == x.to && from == x.from))
-            Branch (from, to, current + those.map (_.current).sum, this.iter ++ those.flatMap (x ⇒ x.iter))
+        if (those.forall (x => to == x.to && from == x.from))
+            Branch (from, to, current + those.map (_.current).sum, this.iter ++ those.flatMap (x => x.iter))
         else
             throw new IllegalArgumentException ("branches are not in parallel (%s, %s)".format (this, those.map (_.toString).mkString (", ")))
     }
@@ -284,9 +284,9 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def ratios: Iterable[(Double, Branch)] = series.last.ratios
 
-    def voltageRatio: Double = seq.foldLeft (1.0) ((v, branch) ⇒ v * branch.voltageRatio)
+    def voltageRatio: Double = seq.foldLeft (1.0) ((v, branch) => v * branch.voltageRatio)
 
-    def z (in: Impedanzen): Impedanzen = seq.foldLeft (in) ((z, branch) ⇒ branch.z (z))
+    def z (in: Impedanzen): Impedanzen = seq.foldLeft (in) ((z, branch) => branch.z (z))
 
     def contents: Iterable[Branch] = this.series
 
@@ -381,21 +381,21 @@ case class ParallelBranch (override val from: String, override val to: String, o
             // use impedances
             val impedance = z (Impedanzen ()).impedanz_low.modulus
             if (0.0 != impedance)
-                parallel.map (branch ⇒ (impedance / branch.z (Impedanzen ()).impedanz_low.modulus, branch)) // ToDo: use vector math
+                parallel.map (branch => (impedance / branch.z (Impedanzen ()).impedanz_low.modulus, branch)) // ToDo: use vector math
             else
-                parallel.map (x ⇒ (1.0 / parallel.size, x)) // split equally
+                parallel.map (x => (1.0 / parallel.size, x)) // split equally
         }
         else
-            parallel.map (x ⇒ (x.current / sum, x))
+            parallel.map (x => (x.current / sum, x))
     }
 
     // assume each branch has unity voltage ratio or the same voltage ratio
-    def voltageRatio: Double = parallel.head.iter.foldLeft (1.0) ((v, branch) ⇒ v * branch.voltageRatio)
+    def voltageRatio: Double = parallel.head.iter.foldLeft (1.0) ((v, branch) => v * branch.voltageRatio)
 
     def z (in: Impedanzen): Impedanzen =
     {
         val pz = parallel.map (_.z (Impedanzen ()))
-        in + pz.tail.foldLeft (pz.head) ((z, bz) ⇒ bz.parallel (z))
+        in + pz.tail.foldLeft (pz.head) ((z, bz) => bz.parallel (z))
     }
 
     def contents: Iterable[Branch] = parallel
@@ -451,7 +451,7 @@ case class ComplexBranch (override val from: String, override val to: String, ov
 
     def lastFuses: Iterable[Branch] =
     {
-        justFuses match { case Some (fuses) ⇒ Seq(fuses) case None ⇒ Seq() }
+        justFuses match { case Some (fuses) => Seq(fuses) case None => Seq() }
     }
 
     def justFuses: Option[Branch] =
@@ -478,9 +478,9 @@ case class ComplexBranch (override val from: String, override val to: String, ov
 
     def reverse: Branch = ComplexBranch (to, from, current, basket.map (_.reverse))
 
-    def ratios: Iterable[(Double, Branch)] = basket.map (x ⇒ (x.current / current, x))
+    def ratios: Iterable[(Double, Branch)] = basket.map (x => (x.current / current, x))
 
-    def voltageRatio: Double = basket.foldLeft (1.0) ((v, branch) ⇒ v * branch.voltageRatio)
+    def voltageRatio: Double = basket.foldLeft (1.0) ((v, branch) => v * branch.voltageRatio)
 
     /**
      * NOTE: this is totally wrong. It just puts a upper and lower bound on the actual impedance.
@@ -492,7 +492,7 @@ case class ComplexBranch (override val from: String, override val to: String, ov
         var low_impedance = Impedanzen (0.0, 0.0, 0.0, 0.0)
         val start_branches = basket.filter (_.from == from)
         if (0 != start_branches.length) low_impedance = low_impedance + (if (1 < start_branches.length) ParallelBranch (from, to, 0.0, start_branches) else SeriesBranch (from, to, 0.0, start_branches)).z (in)
-        val middle_branches = basket.filter (x ⇒ x.from != from && x.to != to)
+        val middle_branches = basket.filter (x => x.from != from && x.to != to)
         if (0 != middle_branches.length) low_impedance = low_impedance + (if (1 < middle_branches.length) ParallelBranch (from, to, 0.0, middle_branches) else SeriesBranch (from, to, 0.0, middle_branches)).z (in)
         val end_branches = basket.filter (_.to == to)
         if (0 != end_branches.length) low_impedance = low_impedance + (if (1 < end_branches.length) ParallelBranch (from, to, 0.0, end_branches) else SeriesBranch (from, to, 0.0, end_branches)).z (in)

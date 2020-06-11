@@ -40,7 +40,7 @@ class SpatialSuite extends TestUtil with BeforeAndAfter
 
     test ("Basic")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
 
             val start = System.nanoTime ()
 

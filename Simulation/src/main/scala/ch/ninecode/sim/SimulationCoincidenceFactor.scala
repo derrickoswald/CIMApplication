@@ -79,7 +79,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
 
         val peaks_trafos = simulated_value_trafos
             .groupBy ("mrid", "date")
-            .agg ("power" → "max")
+            .agg ("power" -> "max")
             .withColumnRenamed ("mrid", "transformer")
             .withColumnRenamed ("max(power)", "peak_power")
 
@@ -87,7 +87,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
 
         val peak_consumers = simulated_power_values_by_day
             .groupBy ("mrid", "date")
-            .agg ("power" → "max")
+            .agg ("power" -> "max")
             .withColumnRenamed ("max(power)", "power")
 
         val peak_houses = peak_consumers
@@ -98,7 +98,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
         // sum up the individual peaks for each transformer and date combination
         val sums_houses = peak_houses
             .groupBy ("transformer", "date")
-            .agg ("power" → "sum")
+            .agg ("power" -> "sum")
             .withColumnRenamed ("sum(power)", "sum_power")
 
         val _coincidences = peaks_trafos
@@ -113,7 +113,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
         val coincidence = coincidences.schema.fieldIndex ("coincidence")
 
         val work = coincidences.rdd.map (
-            row ⇒
+            row =>
             {
                 val factor = if (row.isNullAt (coincidence)) 0.0 else row.getDouble (coincidence)
                 (row.getString (transformer), typ, row.getDate (date), row.getDouble (peak_power), row.getDouble (sum_power), factor, "VA÷VA", access.simulation)
@@ -142,13 +142,13 @@ object SimulationCoincidenceFactor extends SimulationPostProcessorParser
      * Generates a JSON parser to populate a processor.
      * @return A method that will return an instance of a post processor given the postprocessing element of a JSON.
      */
-    def parser (): JsonObject ⇒ (SparkSession, SimulationOptions) ⇒ SimulationPostProcessor =
-        post ⇒
+    def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
+        post =>
         {
             val aggregates = if (post.containsKey ("aggregates"))
             {
                 val list = post.getJsonArray ("aggregates")
-                for (i ← 0 until list.size)
+                for (i <- 0 until list.size)
                     yield
                         {
                             val aggregate = list.getJsonObject (i)

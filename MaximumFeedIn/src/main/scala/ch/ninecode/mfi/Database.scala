@@ -187,15 +187,15 @@ object Database
                     datainsert.setString (5, records (i).house)
                     records (i).reason match
                     {
-                        case "voltage limit" | "current limit" | "transformer limit" ⇒
+                        case "voltage limit" | "current limit" | "transformer limit" =>
                             records (i).max match
                             {
-                                case Some (kw) ⇒ datainsert.setDouble (6, kw)
-                                case None ⇒ datainsert.setNull (6, Types.DOUBLE)
+                                case Some (kw) => datainsert.setDouble (6, kw)
+                                case None => datainsert.setNull (6, Types.DOUBLE)
                             }
                             datainsert.setString (7, records (i).reason)
                             datainsert.setString (8, records (i).details)
-                        case _ ⇒
+                        case _ =>
                             datainsert.setNull (6, Types.DOUBLE)
                             datainsert.setString (7, "no results")
                             datainsert.setString (8, records (i).reason)
@@ -214,7 +214,7 @@ object Database
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException ⇒ log.error ("exception caught: " + e)
+            case e: SQLException => log.error ("exception caught: " + e)
                 -1
         }
         finally
@@ -227,7 +227,7 @@ object Database
             catch
             {
                 // connection close failed
-                case e: SQLException ⇒ log.error ("exception caught: " + e);
+                case e: SQLException => log.error ("exception caught: " + e);
             }
         }
 
@@ -281,11 +281,11 @@ object Database
                 datainsert.setInt (7, if (records (i).eea != null) records (i).eea.size else 0)
                 records (i).reason match
                 {
-                    case "voltage limit" | "current limit" | "transformer limit" ⇒
+                    case "voltage limit" | "current limit" | "transformer limit" =>
                         datainsert.setDouble (6, records (i).max_power_feeding)
                         datainsert.setString (8, records (i).reason)
                         datainsert.setString (9, records (i).details)
-                    case _ ⇒
+                    case _ =>
                         datainsert.setNull (6, Types.DECIMAL) // also set the maximum to null
                         datainsert.setString (8, "no results")
                         datainsert.setString (9, records (i).reason)
@@ -301,7 +301,7 @@ object Database
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException ⇒ log.error ("exception caught: " + e)
+            case e: SQLException => log.error ("exception caught: " + e)
                 return -1
         }
         finally
@@ -314,7 +314,7 @@ object Database
             catch
             {
                 // connection close failed
-                case e: SQLException ⇒ log.error ("exception caught: " + e);
+                case e: SQLException => log.error ("exception caught: " + e);
             }
         }
     }
@@ -349,7 +349,7 @@ object Database
             {
                 // if the error message is "out of memory",
                 // it probably means no database file is found
-                case e: SQLException ⇒ log.error ("exception caught: " + e);
+                case e: SQLException => log.error ("exception caught: " + e);
             }
             finally
             {
@@ -361,7 +361,7 @@ object Database
                 catch
                 {
                     // connection close failed
-                    case e: SQLException ⇒ log.error ("exception caught: " + e);
+                    case e: SQLException => log.error ("exception caught: " + e);
                 }
             }
         }
@@ -409,7 +409,7 @@ object Database
             {
                 // if the error message is "out of memory",
                 // it probably means no database file is found
-                case e: SQLException ⇒ log.error ("exception caught: " + e);
+                case e: SQLException => log.error ("exception caught: " + e);
             }
             finally
             {
@@ -421,7 +421,7 @@ object Database
                 catch
                 {
                     // connection close failed
-                    case e: SQLException ⇒ log.error ("exception caught: " + e);
+                    case e: SQLException => log.error ("exception caught: " + e);
                 }
             }
         }

@@ -128,7 +128,7 @@ case class ScResult
         else
             branches.justFuses match
             {
-                case Some (branch) => branch.ratios.map (x ⇒ x._1 * high_ik).map (_.toString).mkString (",")
+                case Some (branch) => branch.ratios.map (x => x._1 * high_ik).map (_.toString).mkString (",")
                 case None => ""
             }
     }

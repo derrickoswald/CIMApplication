@@ -90,12 +90,12 @@ class OneOfNOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     opt[Double]("tbase")
         .valueName ("<value>")
-        .action ((x, c) ⇒ c.copy (base_temperature = x))
+        .action ((x, c) => c.copy (base_temperature = x))
         .text (s"temperature assumed in CIM file (°C) [${default.base_temperature}]")
 
     opt[Double]("temp")
         .valueName ("<value>")
-        .action ((x, c) ⇒ c.copy (temperature = x))
+        .action ((x, c) => c.copy (temperature = x))
         .text (s"temperature for simulation (°C) [${default.temperature}]")
 
     opt[String]("storage_level")

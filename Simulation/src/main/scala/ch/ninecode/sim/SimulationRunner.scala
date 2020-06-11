@@ -103,7 +103,7 @@ case class SimulationRunner (
         file.getParentFile.mkdirs
         using (new PrintWriter (file, "UTF-8"))
         {
-            writer ⇒
+            writer =>
                 writer.write (text)
         }
     }
@@ -124,7 +124,7 @@ case class SimulationRunner (
         if (null != text)
             using (new PrintWriter (file, "UTF-8"))
             {
-                writer ⇒
+                writer =>
                     writer.write (text)
             }
     }
@@ -215,7 +215,7 @@ case class SimulationRunner (
         else
         {
             val handle = Source.fromFile (name, "UTF-8")
-            val text = handle.getLines ().filter (line ⇒ (line != "") && !line.startsWith ("#"))
+            val text = handle.getLines ().filter (line => (line != "") && !line.startsWith ("#"))
             val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
 
             def toTimeStamp (string: String): Long =
@@ -224,7 +224,7 @@ case class SimulationRunner (
             }
 
             val ret = text.map (
-                line ⇒
+                line =>
                 {
                     val fields = line.split (",")
                     if (three_phase)
@@ -276,16 +276,16 @@ case class SimulationRunner (
     def read_recorders_and_accumulate (trafo: SimulationTrafoKreis): Iterable[SimulationResult] =
     {
         trafo.recorders.flatMap (
-            recorder ⇒
+            recorder =>
             {
                 val measures = recorder.aggregations.find (_.intervals == 1) match
                 {
-                    case Some (baseline: SimulationAggregate) ⇒
+                    case Some (baseline: SimulationAggregate) =>
                         // compensate for single phase simulated current using line-line voltage scaling
                         val factor = if (!three_phase && recorder.`type` == "current") 1.0 / math.sqrt (3) else 1.0
                         val multiplier = trafo.directions.getOrElse (recorder.mrid, 1).toDouble * factor
                         val records = read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, recorder.unit, multiplier).map (
-                            entry ⇒
+                            entry =>
                                 SimulationResult
                                 (
                                     trafo.simulation,
@@ -308,14 +308,14 @@ case class SimulationRunner (
                         val sorted = records.sortBy (_.time)
 
                         // get an accumulator for every interval to be aggregated
-                        val accumulators = recorder.aggregations.map (x ⇒ Accumulator (x.intervals, recorder.`type` != "energy", x.time_to_live))
+                        val accumulators = recorder.aggregations.map (x => Accumulator (x.intervals, recorder.`type` != "energy", x.time_to_live))
 
                         // aggregate over the accumulators
                         val accumulated = sorted.flatMap (
-                            entry ⇒
+                            entry =>
                             {
                                 accumulators.flatMap (
-                                    accumulator ⇒
+                                    accumulator =>
                                     {
                                         if (accumulator.intervals == 1)
                                             Some (entry)
@@ -368,7 +368,7 @@ case class SimulationRunner (
                             }
                         )
                         accumulated
-                    case None ⇒
+                    case None =>
                         log.error ("""no baseline interval ("intervals" = 1) in recorder (%s)""".format (recorder.toString))
                         Array[SimulationResult] ()
                 }
@@ -386,13 +386,13 @@ case class SimulationRunner (
         // match the players to the data
         val players: Iterable[(SimulationPlayer, Iterable[SimulationPlayerData])] =
             trafo.players.map (
-                player ⇒
+                player =>
                 {
-                    data.find (x ⇒ x._1 == player.mrid) match
+                    data.find (x => x._1 == player.mrid) match
                     {
-                        case Some (records) ⇒
+                        case Some (records) =>
                             (player, records._2)
-                        case None ⇒
+                        case None =>
                             (player, List())
                     }
                 }

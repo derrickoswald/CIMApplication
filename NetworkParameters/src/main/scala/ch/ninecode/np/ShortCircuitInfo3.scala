@@ -54,7 +54,7 @@ extends CIMRDD
     {
         // ToDo: fix this 1000V multiplier
         val voltages = session.sql ("select IdentifiedObject.mRID, nominalVoltage * 1000.0 voltage from BaseVoltage")
-        voltages.rdd.map (v ⇒ (v.getDouble (1), v.getString (0))).collectAsMap ()
+        voltages.rdd.map (v => (v.getDouble (1), v.getString (0))).collectAsMap ()
     }
 
     def read_csv (csv: String): RDD[EquivalentInjection] =
@@ -108,7 +108,7 @@ extends CIMRDD
             def findClosestVoltage (voltage: Double): String =
             {
                 val best = voltages.foldLeft ((Double.MaxValue, "BaseVoltage_Unknown_%s".format (voltage)))(
-                    (best, next) ⇒
+                    (best, next) =>
                     {
                         val diff = Math.abs (voltage - next._1)
                         if (diff < best._1) (diff, next._2) else best
@@ -293,7 +293,7 @@ extends CIMRDD
             """.format (tslc)
         val nexec = session.sparkContext.getExecutorMemoryStatus.size
         val transformerdetails = session.sql (query).rdd.map (
-            row ⇒
+            row =>
                 TransformerDetails (
                     row.getString (0),
                     row.getString (1),
@@ -320,7 +320,7 @@ extends CIMRDD
     def merge (elements: RDD[Element]): Unit =
     {
         val chim = new CHIM ("")
-        val subsetters: List[String] = chim.classes.map (info ⇒ info.name)
+        val subsetters: List[String] = chim.classes.map (info => info.name)
         val old_elements = get[Element]("Elements")
 
         // get the list of classes that need to be merged
@@ -333,8 +333,8 @@ extends CIMRDD
                 val name = classname.substring (classname.lastIndexOf (".") + 1)
                 subsetters.find (_ == name) match
                 {
-                    case Some (subsetter) ⇒ List (subsetter) ::: supers (element.sup)
-                    case None ⇒ List ()
+                    case Some (subsetter) => List (subsetter) ::: supers (element.sup)
+                    case None => List ()
                 }
             }
             else
@@ -343,7 +343,7 @@ extends CIMRDD
 
         val uniq_to_be_merged: RDD[String] = elements.flatMap (supers).distinct.cache
         val array_to_be_merged: Array[String] = uniq_to_be_merged.collect
-        val list = chim.classes.filter (x ⇒ array_to_be_merged.contains (x.name)).toArray
+        val list = chim.classes.filter (x => array_to_be_merged.contains (x.name)).toArray
 
         // merge each class
         def add[T <: Product] (subsetter: CIMSubsetter[T]): Unit =
@@ -360,6 +360,6 @@ extends CIMRDD
 
         // replace elements in Elements
         val new_elements: RDD[Element] = old_elements.union (elements)
-        val _ = put (new_elements, "Elements")
+        val _ = put (new_elements, "Elements", true)
     }
 }

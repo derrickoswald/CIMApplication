@@ -173,7 +173,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             averages
             .join (meta_frame, Seq ("mrid"))
         // only use measurements for which we have metadata
-        val in = meta_frame.select ("mrid").rdd.collect.map (row ⇒ row.getString (0)).mkString ("mrid in ('", "','", "')")
+        val in = meta_frame.select ("mrid").rdd.collect.map (row => row.getString (0)).mkString ("mrid in ('", "','", "')")
         var data = session
             .read
             .format ("org.apache.spark.sql.cassandra")
@@ -201,7 +201,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             averages
                 .join (meta_frame, Seq ("mrid"))
         // only use measurements for which we have metadata
-        val in = meta_frame.select ("mrid").rdd.collect.map (row ⇒ row.getString (0)).mkString ("mrid in ('", "','", "')")
+        val in = meta_frame.select ("mrid").rdd.collect.map (row => row.getString (0)).mkString ("mrid in ('", "','", "')")
         var data = session
             .read
             .format ("org.apache.spark.sql.cassandra")

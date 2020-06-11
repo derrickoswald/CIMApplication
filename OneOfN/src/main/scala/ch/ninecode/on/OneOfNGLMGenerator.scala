@@ -40,7 +40,7 @@ case class OneOfNGLMGenerator
     override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder != null)
         .groupBy (_._id).values.map (_.head) // take only one feeder per node
 
-    def nodelist: Map[String, GLMNode] = feeder.nodes.map (x ⇒ (x._id, x)).toMap
+    def nodelist: Map[String, GLMNode] = feeder.nodes.map (x => (x._id, x)).toMap
 
     /**
      * Add meter elements for nodes on the edge of the network.
@@ -57,23 +57,23 @@ case class OneOfNGLMGenerator
         {
             edge match
             {
-                case line: GLMLineEdge ⇒
+                case line: GLMLineEdge =>
                     val v = voltages.getOrElse (line.lines.head.Conductor.ConductingEquipment.BaseVoltage, 0.0)
                     List ((line.cn1, v), (line.cn2, v))
-                case switch: PlayerSwitchEdge ⇒
+                case switch: PlayerSwitchEdge =>
                     val v = voltages.getOrElse (switch.switch.ConductingEquipment.BaseVoltage, 0.0)
                     List ((switch.cn1, v), (switch.cn2, v))
-                case transformer: GLMTransformerEdge ⇒
+                case transformer: GLMTransformerEdge =>
                     List ((transformer.cn1, transformer.transformer.v0), (transformer.cn2, transformer.transformer.v1))
-                case edge: GLMEdge ⇒
+                case edge: GLMEdge =>
                     List ((edge.cn1, 0.0), (edge.cn2, 0.0)) // unspecified transformers
             }
         }
 
         val missing: Iterable[(String, Double)] = feeder.edges.flatMap (ends_voltages) // get the nodes from each edge
-            .filter (x ⇒ !nodelist.isDefinedAt (x._1)) // eliminate those that are emitted normally
+            .filter (x => !nodelist.isDefinedAt (x._1)) // eliminate those that are emitted normally
             .groupBy (_._1).values.map (_.head) // eliminate duplicates from multiple edges
-        missing.map (x ⇒ FeederNode (x._1, null, x._2).emit (this))
+        missing.map (x => FeederNode (x._1, null, x._2).emit (this))
     }
 
     def three_or_one (property: String): String =
@@ -83,7 +83,7 @@ case class OneOfNGLMGenerator
             "%s_A,%s_B,%s_C".format (property, property, property)
 
     def three_or_one (value: Complex): String =
-        (for (_ ← 1 to (if (one_phase) 1 else 3)) yield value.toString).mkString (",")
+        (for (_ <- 1 to (if (one_phase) 1 else 3)) yield value.toString).mkString (",")
 
     /**
      * Add switch player to toggle the SWING bus.

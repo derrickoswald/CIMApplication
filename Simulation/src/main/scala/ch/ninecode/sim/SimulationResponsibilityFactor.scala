@@ -84,7 +84,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
 
         val trafo_max_per_day = simulated_value_trafos
             .groupBy ("mrid", "date")
-            .agg ("power" → "max")
+            .agg ("power" -> "max")
             .drop ("power")
             .withColumnRenamed ("max(power)", "power")
 
@@ -101,7 +101,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
 
         val house_max_per_day = simulated_value_houses
             .groupBy ("mrid", "date", "transformer")
-            .agg ("power" → "max")
+            .agg ("power" -> "max")
             .drop ("power")
             .withColumnRenamed ("max(power)", "peak")
 
@@ -126,7 +126,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
         val responsibility = responsibilities.schema.fieldIndex ("responsibility")
 
         val work = responsibilities.rdd.map (
-            row ⇒
+            row =>
             {
                 val resp = if (row.isNullAt (responsibility)) 0.0 else row.getDouble (responsibility)
                 (row.getString (mrid), typ, row.getDate (date), row.getTimestamp (time), row.getString (transformer), row.getDouble (power), row.getDouble (peak), resp, "VA÷VA×100", access.simulation)
@@ -154,13 +154,13 @@ object SimulationResponsibilityFactor extends SimulationPostProcessorParser
      * Generates a JSON parser to populate a processor.
      * @return A method that will return an instance of a post processor given the postprocessing element of a JSON.
      */
-    def parser (): JsonObject ⇒ (SparkSession, SimulationOptions) ⇒ SimulationPostProcessor =
-        post ⇒
+    def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
+        post =>
         {
             val aggregates = if (post.containsKey ("aggregates"))
             {
                 val list = post.getJsonArray ("aggregates")
-                for (i ← 0 until list.size)
+                for (i <- 0 until list.size)
                     yield
                         {
                             val aggregate = list.getJsonObject (i)

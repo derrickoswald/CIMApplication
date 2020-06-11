@@ -200,7 +200,7 @@ object Database
                 var done = false
                 do
                 {
-                    val batch = zipped.filter (x ⇒ x._2 >= index && x._2 < index + options.batchsize).map (_._1).collect
+                    val batch = zipped.filter (x => x._2 >= index && x._2 < index + options.batchsize).map (_._1).collect
                     for (i <- batch.indices)
                     {
                         datainsert1.setNull (1, Types.INTEGER)
@@ -310,7 +310,7 @@ object Database
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException ⇒ log.error ("exception caught: " + e)
+            case e: SQLException => log.error ("exception caught: " + e)
                 -1
         }
         finally
@@ -323,7 +323,7 @@ object Database
             catch
             {
                 // connection close failed
-                case e: SQLException ⇒ log.error ("exception caught: " + e)
+                case e: SQLException => log.error ("exception caught: " + e)
             }
         }
     }

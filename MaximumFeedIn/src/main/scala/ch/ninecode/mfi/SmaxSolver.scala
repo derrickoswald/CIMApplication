@@ -33,7 +33,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
         }
         var angle: Int = 0
         var diff: Double = Double.MaxValue
-        for (index ← -90000 to 90000) // thousandths of a degree in the range where cos() is positive
+        for (index <- -90000 to 90000) // thousandths of a degree in the range where cos() is positive
         {
             val rad = toRadians (index)
             val vc = Complex (v * Math.cos (rad), v * Math.sin (rad))

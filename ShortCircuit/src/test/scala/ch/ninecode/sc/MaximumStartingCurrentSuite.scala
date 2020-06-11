@@ -11,7 +11,7 @@ class MaximumStartingCurrentSuite extends FunSuite
      */
     test ("Motor Start-up")
     {
-        number: Int ⇒
+        _: Int =>
             val v = 400.0
             val Sk = 2.13e6
             val phi = 29.5 // °

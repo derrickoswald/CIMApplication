@@ -71,7 +71,7 @@ abstract class Trigger (
      * @param nominal The nominal value, e.g. ratedVoltage, ratedCurrent or ratedS
      * @return A function that can determine if a value causes the trigger to fire.
      */
-    def comparator (nominal: Double): Double ⇒ Boolean
+    def comparator (nominal: Double): Double => Boolean
 
     /**
      * Message describing the event.
@@ -104,7 +104,7 @@ case class HighTrigger (
     extends Trigger (`type`, severity, reference, default, ratio, duration)
 {
     def hi (threshold: Double)(value:Double): Boolean = value > threshold
-    def comparator (nominal: Double): Double ⇒ Boolean = hi (ratio * nominal)
+    def comparator (nominal: Double): Double => Boolean = hi (ratio * nominal)
     def message (millis: Int): String = f"${`type`}%s exceeds ${ratio * 100.0}%3.1f%% threshold for ${millis / 1000}%d seconds"
 }
 
@@ -130,7 +130,7 @@ case class LowTrigger (
     extends Trigger (`type`, severity, reference, default, ratio, duration)
 {
     def lo (threshold: Double)(value:Double): Boolean = value < threshold
-    def comparator (nominal: Double): Double ⇒ Boolean = lo (ratio * nominal)
+    def comparator (nominal: Double): Double => Boolean = lo (ratio * nominal)
     def message (millis: Int): String = f"${`type`}%s subceeds ${ratio * 100.0}%3.1f%% threshold for ${millis / 1000}%d seconds"
 }
 
@@ -149,7 +149,7 @@ case class Checker (simulation: String, mrid: String, trigger: Trigger, limit: D
     var start = 0L                         // starting time
     var end = 0L                           // ending time
     var timeout: Int = Int.MaxValue        // count-down
-    val predicate: Double ⇒ Boolean = trigger.comparator (limit)
+    val predicate: Double => Boolean = trigger.comparator (limit)
 
     def next (time: Long, period: Int, current: Double): Unit =
     {
@@ -238,8 +238,8 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         var maxratio = Double.MinValue
         thresholds.foreach
         {
-            case h: HighTrigger ⇒ if (h.ratio < minratio) minratio = h.ratio
-            case l: LowTrigger ⇒ if (l.ratio > maxratio) maxratio = l.ratio
+            case h: HighTrigger => if (h.ratio < minratio) minratio = h.ratio
+            case l: LowTrigger => if (l.ratio > maxratio) maxratio = l.ratio
         }
         val filters = Array (
             if (minratio != Double.MaxValue) Some (s"$column > ($minratio * $nominal)") else None,
@@ -266,15 +266,15 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         val threshold = data.head._5
 
         // pare down the data and sort by time
-        val values = data.map (x ⇒ (x._2.getTime, x._3, x._4)).toArray.sortWith (_._1 < _._1)
+        val values = data.map (x => (x._2.getTime, x._3, x._4)).toArray.sortWith (_._1 < _._1)
 
-        val checkers = triggers.map (x ⇒ Checker (simulation, mrid, x, threshold))
-        for (i ← values.indices)
+        val checkers = triggers.map (x => Checker (simulation, mrid, x, threshold))
+        for (i <- values.indices)
         {
             val time = values(i)._1
             val period = values(i)._2
             val value = values(i)._3
-            checkers.foreach (x ⇒ x.next (time, period, value))
+            checkers.foreach (x => x.next (time, period, value))
         }
         checkers.flatMap (_.gimme)
     }
@@ -362,21 +362,21 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         // two stages here, one for HighTrigger and one for LowTrigger
         val highs = triggers.flatMap (
             {
-                case h: HighTrigger ⇒ Some (h)
-                case _: LowTrigger ⇒ None
+                case h: HighTrigger => Some (h)
+                case _: LowTrigger => None
             }
         )
         val lows = triggers.flatMap (
             {
-                case _: HighTrigger ⇒ None
-                case l: LowTrigger ⇒ Some (l)
+                case _: HighTrigger => None
+                case l: LowTrigger => Some (l)
             }
         )
 
         // for exceeding threshold checks, use the minimum of the three phases (worst case), or just the value (single phase case)
         val highEvents = if (0 < highs.size)
             values.filter (filterFor (highs, val_min, "reference"))
-                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_min), row.getDouble (ref)))
+                .rdd.map (row => (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_min), row.getDouble (ref)))
                 .groupBy (_._1).values.flatMap (check (access.simulation, highs))
         else
             spark.sparkContext.emptyRDD[Event]
@@ -384,7 +384,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         // for subceeding threshold checks, use the maximum of the three phases (worst case), or just the value (single phase case)
         val lowEvents = if (0 < lows.size)
             values.filter (filterFor (lows, val_max, "reference"))
-                .rdd.map (row ⇒ (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_max), row.getDouble (ref)))
+                .rdd.map (row => (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_max), row.getDouble (ref)))
                 .groupBy (_._1).values.flatMap (check (access.simulation, lows))
         else
             spark.sparkContext.emptyRDD[Event]
@@ -442,8 +442,8 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
         val total = severity._2
         severities.get (color) match
         {
-            case Some (current: Int) ⇒ severities.updated (color, current + total)
-            case None ⇒ severities.updated (color, total)
+            case Some (current: Int) => severities.updated (color, current + total)
+            case None => severities.updated (color, total)
         }
     }
 
@@ -452,24 +452,24 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
         def seqop (sum: Summary, event: (mRID, Severity)): Summary =
         {
             val mrid = event._1
-            val color = event._2 match { case 1 ⇒ "red" case 2 ⇒ "orange" case _ ⇒ "unknown" }
+            val color = event._2 match { case 1 => "red" case 2 => "orange" case _ => "unknown" }
             sum.get (mrid) match
             {
-                case Some (total: Total) ⇒ sum.updated (mrid, accumulate (total, (color, 1)))
-                case None ⇒                sum.updated (mrid, Map[Color, Count] (color → 1))
+                case Some (total: Total) => sum.updated (mrid, accumulate (total, (color, 1)))
+                case None =>                sum.updated (mrid, Map[Color, Count] (color -> 1))
             }
         }
         def combop (a: Summary, b: Summary): Summary =
         {
             b.foldLeft (a) (
-                (summary: Summary, sum: Sum) ⇒
+                (summary: Summary, sum: Sum) =>
                 {
                     val mrid: mRID = sum._1
                     val map: Total = sum._2
                     summary.get (mrid) match
                     {
-                        case Some (total: Total) ⇒ summary.updated (mrid, map.foldLeft (total)(accumulate))
-                        case None ⇒                summary.updated (mrid, map)
+                        case Some (total: Total) => summary.updated (mrid, map.foldLeft (total)(accumulate))
+                        case None =>                summary.updated (mrid, map)
                     }
                 }
 
@@ -480,21 +480,21 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
 
     def severities (total: Summary): Total =
     {
-        total.foldLeft (Map[Color, Count] ()) ((map: Total, tot: Sum) ⇒ tot._2.foldLeft (map) (accumulate))
+        total.foldLeft (Map[Color, Count] ()) ((map: Total, tot: Sum) => tot._2.foldLeft (map) (accumulate))
     }
 
     def summary (transformer: Transformer, day: Day, records: Iterable[(Type, mRID, Severity)]):
         (Transformer, Day, Summary, Total, Summary, Total, Summary, Total) =
     {
-        val voltage_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "voltage").map (event ⇒ (event._2, event._3))
+        val voltage_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "voltage").map (event => (event._2, event._3))
         val voltage_summary: Summary = aggregate (voltage_events)
         val voltage_totals: Total = severities (voltage_summary)
 
-        val current_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "current").map (event ⇒ (event._2, event._3))
+        val current_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "current").map (event => (event._2, event._3))
         val current_summary: Summary = aggregate (current_events)
         val current_totals: Total = severities (current_summary)
 
-        val power_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "power").map (event ⇒ (event._2, event._3))
+        val power_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "power").map (event => (event._2, event._3))
         val power_summary: Summary = aggregate (power_events)
         val power_totals: Total = severities (power_summary)
 
@@ -522,7 +522,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
             val severity = values.schema.fieldIndex ("severity")
 
             val work1: RDD[(Transformer, Day, Type, mRID, Severity)] = values.rdd.map (
-                row ⇒
+                row =>
                 {
                     val t = row.getString (transformer)
                     val d = row.getDate (date)
@@ -531,9 +531,9 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
                 }
             )
 
-            val work2: RDD[Iterable[(Transformer, Day, Type, mRID, Severity)]] = work1.groupBy (row ⇒ row._1 + "_" + row._2.getTime).values
-            val work3: RDD[(Transformer, Day, Iterable[(Type, mRID, Severity)])] = work2.map (record ⇒ (record.head._1, record.head._2, record.map (event ⇒ (event._3, event._4, event._5))))
-            val work4: RDD[(Transformer, Day, Summary, Total, Summary, Total, Summary, Total)] = work3.map (record ⇒ summary (record._1, record._2, record._3))
+            val work2: RDD[Iterable[(Transformer, Day, Type, mRID, Severity)]] = work1.groupBy (row => row._1 + "_" + row._2.getTime).values
+            val work3: RDD[(Transformer, Day, Iterable[(Type, mRID, Severity)])] = work2.map (record => (record.head._1, record.head._2, record.map (event => (event._3, event._4, event._5))))
+            val work4: RDD[(Transformer, Day, Summary, Total, Summary, Total, Summary, Total)] = work3.map (record => summary (record._1, record._2, record._3))
 
             def toUDT (total: Total): EventNumber =
             {
@@ -542,7 +542,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
                 EventNumber (orange, red)
             }
 
-            val records = work4.map (x ⇒
+            val records = work4.map (x =>
                 (
                     access.simulation,
                     x._1,
@@ -581,11 +581,11 @@ case class SimulationEvents (triggers: Iterable[Trigger]) (spark: SparkSession, 
     def run (implicit access: SimulationCassandraAccess): Unit =
     {
         // organize the triggers by type, table, reference and default
-        val sets = triggers.groupBy (trigger ⇒ (trigger.`type`, trigger.reference, trigger.default)).values.toArray
+        val sets = triggers.groupBy (trigger => (trigger.`type`, trigger.reference, trigger.default)).values.toArray
         log.info ("""checking for events in %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
 
         // handle each trigger set
-        for (i ← sets.indices)
+        for (i <- sets.indices)
         {
             val thresholds = sets(i)
             val `type` = thresholds.head.`type`
@@ -635,14 +635,14 @@ object SimulationEvents extends SimulationPostProcessorParser
      * Generates a JSON parser to populate a processor.
      * @return A method that will return an instance of a post processor given the postprocessing element of a JSON.
      */
-    def parser (): JsonObject ⇒ (SparkSession, SimulationOptions) ⇒ SimulationPostProcessor =
-        post ⇒
+    def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
+        post =>
         {
 
             val triggers = if (post.containsKey ("thresholds"))
             {
                 val thresholds = post.getJsonArray ("thresholds")
-                for (i ← 0 until thresholds.size)
+                for (i <- 0 until thresholds.size)
                     yield
                         {
                             val threshold = thresholds.getJsonObject (i)
@@ -655,9 +655,9 @@ object SimulationEvents extends SimulationPostProcessorParser
                             val duration = threshold.getInt ("duration", 900000)
                             trigger match
                             {
-                                case "high" ⇒ HighTrigger (`type`, severity, reference, default, ratio, duration)
-                                case "low" ⇒ LowTrigger (`type`, severity, reference, default, ratio, duration)
-                                case _ ⇒ null
+                                case "high" => HighTrigger (`type`, severity, reference, default, ratio, duration)
+                                case "low" => LowTrigger (`type`, severity, reference, default, ratio, duration)
+                                case _ => null
                             }
                         }
             }

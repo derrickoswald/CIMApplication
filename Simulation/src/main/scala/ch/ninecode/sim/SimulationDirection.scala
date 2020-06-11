@@ -71,7 +71,7 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         file.getParentFile.mkdirs
         using (new PrintWriter (file, "UTF-8"))
         {
-            writer ⇒
+            writer =>
                 writer.write (text)
         }
     }
@@ -122,10 +122,10 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         else
         {
             val handle = Source.fromFile (name, "UTF-8")
-            val text = handle.getLines ().filter (line ⇒ (line != "") && !line.startsWith ("#") && !line.startsWith ("node_name"))
+            val text = handle.getLines ().filter (line => (line != "") && !line.startsWith ("#") && !line.startsWith ("node_name"))
 
             val ret = text.map (
-                line ⇒
+                line =>
                 {
                     val fields = line.split (",")
                     ThreePhaseComplexDataElement (fields (0), time, Complex.fromPolar (fields (1).toDouble, fields (2).toDouble), Complex.fromPolar (fields (3).toDouble, fields (4).toDouble), Complex.fromPolar (fields (5).toDouble, fields (6).toDouble), units)
@@ -151,11 +151,11 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         val list = if (ret._1)
         {
             val records = read_voltage_dump_csv (workdir, trafo.directory + "output_data/" + trafo.name + "_voltdump.csv", trafo.start_time.getTimeInMillis, "V")
-            val lookup = records.map (x ⇒ (x.element, x)).toMap
+            val lookup = records.map (x => (x.element, x)).toMap
             trafo.edges
-                .filter (_.rawedge match { case line: LineEdge ⇒ true; case _ ⇒ false })
+                .filter (_.rawedge match { case line: LineEdge => true; case _ => false })
                 .map (
-                    edge ⇒
+                    edge =>
                     {
                         val v1 = lookup (edge.cn1)
                         val v2 = lookup (edge.cn2)

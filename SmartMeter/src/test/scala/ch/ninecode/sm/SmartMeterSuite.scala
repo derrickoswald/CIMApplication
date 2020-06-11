@@ -28,7 +28,7 @@ class SmartMeterSuite extends TestUtil
 
     test ("Basic")
     {
-        session: SparkSession ⇒
+        session: SparkSession =>
             println ("placeholder")
     }
 }

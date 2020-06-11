@@ -35,35 +35,35 @@ class CopyOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
         .text (s"log level, one of ${LogLevels.values.mkString (",")} [${default.log_level}]")
 
     opt[String]("master").valueName ("MASTER_URL")
-        .action ((x, c) ⇒ c.copy (master = x))
+        .action ((x, c) => c.copy (master = x))
         .text (s"local[*], spark://host:port, mesos://host:port or yarn [${default.master}]")
 
     opt[String]("source_host").valueName ("Cassandra")
-        .action ((x, c) ⇒ c.copy (source_host = x))
+        .action ((x, c) => c.copy (source_host = x))
         .text (s"Cassandra source connection host (listen_address or seed in cassandra.yaml) [${default.source_host}]")
 
     opt[Int]("source_port").valueName ("<port>")
-        .action ((x, c) ⇒ c.copy (source_port = x))
+        .action ((x, c) => c.copy (source_port = x))
         .text (s"Cassandra source connection port [${default.source_port}]")
 
     opt[String]("source_keyspace").valueName ("<name>")
-        .action ((x, c) ⇒ c.copy (source_keyspace = x))
+        .action ((x, c) => c.copy (source_keyspace = x))
         .text (s"source Cassandra keyspace [${default.source_keyspace}]")
 
     opt[String]("target_host").valueName ("Cassandra")
-        .action ((x, c) ⇒ c.copy (target_host = x))
+        .action ((x, c) => c.copy (target_host = x))
         .text (s"Cassandra destination connection host (listen_address or seed in cassandra.yaml) [${default.target_host}]")
 
     opt[Int]("target_port").valueName ("<port>")
-        .action ((x, c) ⇒ c.copy (target_port = x))
+        .action ((x, c) => c.copy (target_port = x))
         .text (s"Cassandra destination connection port [${default.target_port}]")
 
     opt[String]("target_keyspace").valueName ("<name>")
-        .action ((x, c) ⇒ c.copy (target_keyspace = x))
+        .action ((x, c) => c.copy (target_keyspace = x))
         .text (s"destination Cassandra keyspace [${default.target_keyspace}]")
 
     opt[Int]("target_replication").valueName ("<#>")
-        .action ((x, c) ⇒ c.copy (target_replication = x))
+        .action ((x, c) => c.copy (target_replication = x))
         .text (s"destination keyspace replication if the Cassandra keyspace needs creation [${default.target_replication}]")
 
     help ("help")

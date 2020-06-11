@@ -45,11 +45,11 @@ object Main
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
     implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
-        s ⇒
+        s =>
         {
             var ret = Map[String, String]()
             val ss = s.split (",")
-            for (p ← ss)
+            for (p <- ss)
             {
                 val kv = p.split ("=")
                 ret = ret + ((kv (0), kv (1)))
@@ -59,7 +59,7 @@ object Main
     )
 
     implicit val complexRead: scopt.Read[Complex] = scopt.Read.reads (
-        s ⇒ Complex.fromString (s)
+        s => Complex.fromString (s)
     )
 
     case class Arguments
@@ -110,75 +110,75 @@ object Main
         val default = new Arguments
 
         opt[Unit]("quiet").
-            action ((_, c) ⇒ c.copy (quiet = true)).
+            action ((_, c) => c.copy (quiet = true)).
             text ("suppress informational messages [false]")
 
         opt[String]("master").valueName ("MASTER_URL").
-            action ((x, c) ⇒ c.copy (master = x)).
+            action ((x, c) => c.copy (master = x)).
             text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
         opt[Map[String, String]]("opts").valueName ("k1=v1,k2=v2").
-            action ((x, c) ⇒ c.copy (opts = c.opts ++ x)).
-            text ("Spark options [%s]".format (default.opts.map (x ⇒ x._1 + "=" + x._2).mkString (",")))
+            action ((x, c) => c.copy (opts = c.opts ++ x)).
+            text ("Spark options [%s]".format (default.opts.map (x => x._1 + "=" + x._2).mkString (",")))
 
         opt[String]("storage").
-            action ((x, c) ⇒ c.copy (storage = x)).
+            action ((x, c) => c.copy (storage = x)).
             text ("storage level for RDD serialization [%s]".format (default.storage))
 
         opt[Long]("splitsize").
-            action ((x, c) ⇒ c.copy (splitsize = x)).
+            action ((x, c) => c.copy (splitsize = x)).
             text ("file input format maximum size [%s]".format (default.splitsize))
 
         opt[Unit]("deduplicate").
-            action ((_, c) ⇒ c.copy (dedup = true)).
+            action ((_, c) => c.copy (dedup = true)).
             text ("de-duplicate input (striped) files [false]")
 
         opt[LogLevels.Value]("logging").
-            action ((x, c) ⇒ c.copy (log_level = x)).
+            action ((x, c) => c.copy (log_level = x)).
             text ("log level, one of " + LogLevels.values.iterator.mkString (",") + " [%s]".format (default.log_level))
 
         opt[String]("checkpoint").valueName ("<dir>").
-            action ((x, c) ⇒ c.copy (checkpoint_dir = x)).
+            action ((x, c) => c.copy (checkpoint_dir = x)).
             text ("checkpoint directory on HDFS, e.g. hdfs://...")
 
         opt[String]("description").valueName ("<text>").
-            action ((x, c) ⇒ c.copy (description = x)).
+            action ((x, c) => c.copy (description = x)).
             text ("text describing this program execution for SQLite run table")
 
         opt[Double]("netp_max").valueName ("<Sk_max>").
-            action ((x, c) ⇒ c.copy (default_network_power_max = x)).
+            action ((x, c) => c.copy (default_network_power_max = x)).
             text ("maximum network power if not in CIM, VA [%g]".format (default.default_network_power_max))
 
         opt[Complex]("netz_max").valueName ("<r + xj>").
-            action ((x, c) ⇒ c.copy (default_network_impedance_max = x)).
+            action ((x, c) => c.copy (default_network_impedance_max = x)).
             text ("network impedance at maximum power if not in CIM, Ω [%s]".format (default.default_network_impedance_max))
 
         opt[Double]("neta_max").valueName ("<angle>").
-            action ((x, c) ⇒ c.copy (default_network_angle_max = x)).
+            action ((x, c) => c.copy (default_network_angle_max = x)).
             text ("network power factor angle at maximum power if not in CIM, overrides impedance, ° [%s]".format (default.default_network_angle_max))
 
         opt[Double]("netp_min").valueName ("<Sk_min>").
-            action ((x, c) ⇒ c.copy (default_network_power_min = x)).
+            action ((x, c) => c.copy (default_network_power_min = x)).
             text ("minimum network power if not in CIM, VA [%g]".format (default.default_network_power_min))
 
         opt[Complex]("netz_min").valueName ("<r + xj>").
-            action ((x, c) ⇒ c.copy (default_network_impedance_min = x)).
+            action ((x, c) => c.copy (default_network_impedance_min = x)).
             text ("network impedance at minumum power if not in CIM, Ω [%s]".format (default.default_network_impedance_min))
 
         opt[Double]("neta_min").valueName ("<angle>").
-            action ((x, c) ⇒ c.copy (default_network_angle_min = x)).
+            action ((x, c) => c.copy (default_network_angle_min = x)).
             text ("network power factor angle at minimum power if not in CIM, overrides impedance, ° [%s]".format (default.default_network_angle_min))
 
         opt[Double]("tbase").valueName ("<value>").
-            action ((x, c) ⇒ c.copy (base_temperature = x)).
+            action ((x, c) => c.copy (base_temperature = x)).
             text ("temperature assumed in CIM file (°C) [%g]".format (default.base_temperature))
 
         opt[Double]("tlow").valueName ("<value>").
-            action ((x, c) ⇒ c.copy (low_temperature = x)).
+            action ((x, c) => c.copy (low_temperature = x)).
             text ("low temperature for maximum fault (°C) [%g]".format (default.low_temperature))
 
         opt[Double]("thigh").valueName ("<value>").
-            action ((x, c) ⇒ c.copy (high_temperature = x)).
+            action ((x, c) => c.copy (high_temperature = x)).
             text ("high temperature for minimum fault (°C) [%g]".format (default.high_temperature))
 
         opt[String]("trafos").valueName ("<TRA file>").
@@ -218,21 +218,21 @@ object Main
             text ("size of result collections for driver database writes [%d]".format (default.batchsize))
 
         opt[Double]("cable_impedance_limit").valueName ("<value>").
-            action ((x, c) ⇒ c.copy (cable_impedance_limit = x)).
+            action ((x, c) => c.copy (cable_impedance_limit = x)).
             text ("cables with higher impedances for R1 will not be processed with gridlabd [%g]".format (default.cable_impedance_limit))
 
         opt[String]("workdir").valueName ("<dir>").
-            action ((x, c) ⇒ c.copy (workdir = x)).
+            action ((x, c) => c.copy (workdir = x)).
             text ("shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files")
 
         opt [Boolean]("calculate_public_lighting").
-            action ((x, c) ⇒ c.copy (calculate_public_lighting = x)).
+            action ((x, c) => c.copy (calculate_public_lighting = x)).
             text ("calculate public lighting [%s]".format(default.calculate_public_lighting))
 
         help ("help").text ("prints this usage text")
 
         arg[String]("<CIM>,<CIM>...").unbounded ().
-            action ((x, c) ⇒ c.copy (files = c.files :+ x)).
+            action ((x, c) => c.copy (files = c.files :+ x)).
             text ("CIM rdf files to process")
 
     }
@@ -247,7 +247,7 @@ object Main
         }
         catch
         {
-            case e: UnsupportedEncodingException ⇒ e.printStackTrace ()
+            case e: UnsupportedEncodingException => e.printStackTrace ()
         }
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
@@ -311,7 +311,7 @@ object Main
         // parser.parse returns Option[C]
         parser.parse (args, Arguments ()) match
         {
-            case Some (arguments) ⇒
+            case Some (arguments) =>
 
                 if (!arguments.quiet)
                 {
@@ -328,7 +328,7 @@ object Main
                 if ("" != arguments.master)
                     configuration.setMaster (arguments.master)
                 if (arguments.opts.nonEmpty)
-                    arguments.opts.map ((pair: (String, String)) ⇒ configuration.set (pair._1, pair._2))
+                    arguments.opts.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
 
                 // get the necessary jar files to send to the cluster
                 if ("" != arguments.master)
@@ -407,7 +407,7 @@ object Main
                 log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + results.count + " node results calculated")
 
                 sys.exit (0)
-            case None ⇒
+            case None =>
                 sys.exit (1)
         }
     }

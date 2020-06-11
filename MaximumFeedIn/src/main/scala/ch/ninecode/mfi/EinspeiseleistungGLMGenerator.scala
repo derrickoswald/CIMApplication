@@ -244,7 +244,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         var load = ""
         var index = 1
 
-        for (solargeneratingunit ← solargeneratingunits)
+        for (solargeneratingunit <- solargeneratingunits)
         {
             val ratedNetMaxP = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
             val normalPFMask = GeneratingUnit.fields.indexOf ("normalPF")

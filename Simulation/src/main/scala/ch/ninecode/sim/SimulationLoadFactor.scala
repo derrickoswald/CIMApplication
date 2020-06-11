@@ -79,7 +79,7 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate]) (s
 
         val aggregates = simulated_power_values
             .groupBy ("mrid", "date") // sum over time for each day
-            .agg ("power" → "avg", "power" → "max")
+            .agg ("power" -> "avg", "power" -> "max")
             .withColumnRenamed ("avg(power)", "avg_power")
             .withColumnRenamed ("max(power)", "peak_power")
         val loadfactors = aggregates
@@ -92,7 +92,7 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate]) (s
         val load_factor = loadfactors.schema.fieldIndex ("load_factor")
 
         val work = loadfactors.rdd.map (
-            row ⇒ (row.getString (mrid), typ, row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA÷VA", access.simulation))
+            row => (row.getString (mrid), typ, row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA÷VA", access.simulation))
 
         // save to Cassandra
         work.saveToCassandra (access.output_keyspace, "load_factor_by_day",
@@ -116,13 +116,13 @@ object SimulationLoadFactor extends SimulationPostProcessorParser
      * Generates a JSON parser to populate a processor.
      * @return A method that will return an instance of a post processor given the postprocessing element of a JSON.
      */
-    def parser (): JsonObject ⇒ (SparkSession, SimulationOptions) ⇒ SimulationPostProcessor =
-        post ⇒
+    def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
+        post =>
         {
             val aggregates = if (post.containsKey ("aggregates"))
             {
                 val list = post.getJsonArray ("aggregates")
-                for (i ← 0 until list.size)
+                for (i <- 0 until list.size)
                     yield
                         {
                             val aggregate = list.getJsonObject (i)

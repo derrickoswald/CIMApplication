@@ -37,5 +37,5 @@ abstract class SimulationPostProcessorParser[T <: SimulationPostProcessor]
      *
      * @return A method that will return a way to make an instance of a post processor given the postprocessing element of a JSON.
      */
-    def parser (): JsonObject ⇒ (SparkSession, SimulationOptions) ⇒ SimulationPostProcessor
+    def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor
 }

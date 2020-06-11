@@ -47,8 +47,8 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         edge.element match
         {
             // ToDo: fix this (see note above)
-            case line: ACLineSegment ⇒ (line.Conductor.len / 1000.0, Complex (line.r, line.x), edge.ratedCurrent)
-            case _ ⇒ (0.0, 0.0, Double.PositiveInfinity)
+            case line: ACLineSegment => (line.Conductor.len / 1000.0, Complex (line.r, line.x), edge.ratedCurrent)
+            case _ => (0.0, 0.0, Double.PositiveInfinity)
         }
     }
 
@@ -225,7 +225,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
     {
         val houses = nodes.filter (_.sum_z.re > 0.0)
         val psrtype = get[Terminal].keyBy (_.ConductingEquipment).groupByKey.join (get[ConductingEquipment].keyBy (_.id))
-            .filter (_._2._1.size == 1).map (x ⇒ (x._2._1.head.TopologicalNode, (x._2._2.id, x._2._2.Equipment.PowerSystemResource.PSRType)))
+            .filter (_._2._1.size == 1).map (x => (x._2._1.head.TopologicalNode, (x._2._2.id, x._2._2.Equipment.PowerSystemResource.PSRType)))
         houses.keyBy (_.id).leftOuterJoin (psrtype).values.map (calc_max_feeding_power (options))
     }
 
@@ -258,17 +258,17 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         // raw nodes
         val nodes: VertexRDD[PowerFeedingNode] = graph.vertices.filter (_._2.source_obj != null)
         // get all edges per node
-        val src_edges = graph.edges.map (e ⇒ (e.srcId, e.attr))
-        val dst_edges = graph.edges.map (e ⇒ (e.dstId, e.attr))
+        val src_edges = graph.edges.map (e => (e.srcId, e.attr))
+        val dst_edges = graph.edges.map (e => (e.dstId, e.attr))
         val union_edges = src_edges.union (dst_edges).groupByKey ()
         // get connected edge per node
         val grouped_nodes = nodes.leftOuterJoin (union_edges).values
-        val nodes_with_edge = grouped_nodes.map (n ⇒
+        val nodes_with_edge = grouped_nodes.map (n =>
         {
             n._2 match
             {
-                case Some (it) ⇒ n._1.copy (conn_edge = it.toArray)
-                case None ⇒ n._1
+                case Some (it) => n._1.copy (conn_edge = it.toArray)
+                case None => n._1
             }
         })
 
@@ -292,26 +292,26 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 pfn.head.problem
         }
         // update each element in the transformer service area with bad value
-        val problem_trafos = graph.vertices.values.filter (x ⇒ x.source_obj != null && (x.hasIssues || x.hasNonRadial)).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1.trafo_id, pickWorst (x._2)))
+        val problem_trafos = graph.vertices.values.filter (x => x.source_obj != null && (x.hasIssues || x.hasNonRadial)).keyBy (_.source_obj).groupByKey.map (x => (x._1.trafo_id, pickWorst (x._2)))
         val has = traced_house_nodes_EEA.map (
             node =>
             {
                 node._2 match
                 {
-                    case Some (eea) ⇒
+                    case Some (eea) =>
                         node._1.copy (eea = eea)
-                    case None ⇒
+                    case None =>
                         node._1
                 }
             }
         )
             .keyBy (_.source_obj).leftOuterJoin (problem_trafos).values.map (
-            arg ⇒
+            arg =>
             {
                 arg._2 match
                 {
-                    case Some (problem) ⇒ arg._1.copy (reason = problem, details = null)
-                    case None ⇒ arg._1
+                    case Some (problem) => arg._1.copy (reason = problem, details = null)
+                    case None => arg._1
                 }
             }
         )

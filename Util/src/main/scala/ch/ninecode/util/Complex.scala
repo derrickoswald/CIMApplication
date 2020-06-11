@@ -85,10 +85,10 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
     {
         number match
         {
-            case Double.PositiveInfinity ⇒ (if (leading_sign) "+" else "") + "∞"
-            case Double.NegativeInfinity ⇒ "-∞"
-            case Double.NaN ⇒ (if (leading_sign) "?" else "") + "□"
-            case _ ⇒
+            case Double.PositiveInfinity => (if (leading_sign) "+" else "") + "∞"
+            case Double.NegativeInfinity => "-∞"
+            case Double.NaN => (if (leading_sign) "?" else "") + "□"
+            case _ =>
                 if (leading_sign)
                     if (number < 0) "-" + round (-number, digits).toString else "+" + round (number, digits).toString
                 else
@@ -99,10 +99,10 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
     def toString (digits: Int): String =
         this match
         {
-            case Complex.j ⇒ "j"
-            case Complex (r, 0) ⇒ numberformat (r, digits)
-            case Complex (0, i) ⇒ numberformat (i, digits) + "j"
-            case _ ⇒ asString (digits)
+            case Complex.j => "j"
+            case Complex (r, 0) => numberformat (r, digits)
+            case Complex (0, i) => numberformat (i, digits) + "j"
+            case _ => asString (digits)
         }
 
     def asString (digits: Int): String =

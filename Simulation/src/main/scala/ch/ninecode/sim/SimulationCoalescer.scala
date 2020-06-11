@@ -32,17 +32,17 @@ case class SimulationCoalescer (executors: Array[String]) extends PartitionCoale
         val log: Logger = LoggerFactory.getLogger (getClass)
 
         log.info ("""coalescing '%s' of %d partitions to %d partitions on executors [%s]""".format (parent.name, parent.getNumPartitions, maxPartitions, executors.mkString (", ")))
-        val ret: Array[PartitionGroup] = executors.map (executor ⇒ new PartitionGroup (Some (executor))).take (maxPartitions)
+        val ret: Array[PartitionGroup] = executors.map (executor => new PartitionGroup (Some (executor))).take (maxPartitions)
         val partitions: Array[Partition] = parent.partitions
         var index: Int = 0
         partitions.foreach (
-            partition ⇒
+            partition =>
             {
                 ret (index % ret.length).partitions.append (partition)
                 index = index + 1
             })
         ret.foreach (
-            group ⇒
+            group =>
                 log.info ("""group %s of %s partitions at %s [%s]""".format (group.prefLoc.get, group.numPartitions, if (1 <= group.partitions.size) "index" else "indicies", group.partitions.map (_.index.toString).mkString (",")))
         )
         ret

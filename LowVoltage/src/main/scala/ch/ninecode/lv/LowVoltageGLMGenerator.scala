@@ -37,7 +37,7 @@ class LowVoltageGLMGenerator
         t
     }
 
-    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges ⇒ GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
+    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges => GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
 
     override def transformers: Iterable[GLMTransformerEdge] =
         trafokreis.transformers.transformers.map (GLMTransformerEdge)
@@ -233,7 +233,7 @@ class LowVoltageGLMGenerator
     {
         val experiments = trafokreis.experiments
         val house = nis_number (node.id)
-        val filtered = experiments.filter (p ⇒ p.house == house)
+        val filtered = experiments.filter (p => p.house == house)
         val experiment = if (0 != filtered.length) filtered (0) else null
 
         if (null != experiment)
@@ -263,7 +263,7 @@ class LowVoltageGLMGenerator
     {
         val experiments = trafokreis.experiments
         val house = nis_number (node.id)
-        val filtered = experiments.filter (p ⇒ p.house == house)
+        val filtered = experiments.filter (p => p.house == house)
         val experiment = if (0 != filtered.length) filtered (0) else null
 
         if (null != experiment)

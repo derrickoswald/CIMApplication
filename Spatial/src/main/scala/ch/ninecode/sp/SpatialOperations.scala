@@ -61,7 +61,7 @@ class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
             val points = getOrElse[PositionPoint]
 
             // join
-            val targets: RDD[(T, PositionPoint)] = rdd.keyBy (x ⇒ location (x.asInstanceOf[Element])).join (points.keyBy (_.Location)).values
+            val targets: RDD[(T, PositionPoint)] = rdd.keyBy (x => location (x.asInstanceOf[Element])).join (points.keyBy (_.Location)).values
 
             object nearestOrdering extends Ordering[(T, PositionPoint)]
             {

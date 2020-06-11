@@ -57,11 +57,11 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
         cls match
         {
-            case "ACLineSegment" ⇒
+            case "ACLineSegment" =>
                 element.asInstanceOf[ACLineSegment].Conductor.len
-            case "Conductor" ⇒
+            case "Conductor" =>
                 element.asInstanceOf[Conductor].len
-            case _ ⇒
+            case _ =>
                 0.0
         }
     }
@@ -101,12 +101,12 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
             val volts =
                 pte_op match
                 {
-                    case Some (x: Iterable[PowerTransformerEnd]) ⇒
+                    case Some (x: Iterable[PowerTransformerEnd]) =>
                         // sort ends by end number
                         // ToDo: handle the case where terminal sequence and end sequence aren't the same
                         val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
-                        tends.map (e ⇒ 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
-                    case None ⇒
+                        tends.map (e => 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
+                    case None =>
                         Array[Double](volt, volt)
                 }
             // Note: we eliminate 230V edges because transformer information doesn't exist and
@@ -115,7 +115,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
             // make a pre-edge for each pair of terminals
                 ret = terminals.length match
                 {
-                    case 1 ⇒
+                    case 1 =>
                         ret :+
                             PreEdge (
                                 terminals (0).ACDCTerminal.id,
@@ -129,8 +129,8 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
                                 equipment,
                                 e,
                                 span (e))
-                    case _ ⇒
-                        for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                    case _ =>
+                        for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
                         {
                             ret = ret :+ PreEdge (
                                 terminals (0).ACDCTerminal.id,
@@ -201,7 +201,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val wireinfos = get[WireInfo]
         val lines = get[ACLineSegment]
         val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
-        val cables = keyed.join (wireinfos.keyBy (_.id)).values.map (x ⇒ (x._1.id, x._2.ratedCurrent))
+        val cables = keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent))
 
         cables.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined) cables.checkpoint ()
@@ -213,7 +213,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
     def prepare: Graph[PreNode, PreEdge] =
     {
         // get a map of voltages
-        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) ⇒ (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals
         val terminals = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
@@ -226,14 +226,14 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
 
         // join with WireInfo to get ratedCurrent (only for ACLineSegments)
         val cableMaxCurrent = getCableMaxCurrent
-        val joined_elements = elements.keyBy (_.id).leftOuterJoin (cableMaxCurrent).map (e ⇒
+        val joined_elements = elements.keyBy (_.id).leftOuterJoin (cableMaxCurrent).map (e =>
         {
             val ele = e._2._1
             val wire = e._2._2
             val wireinfo = wire match
             {
-                case Some (maxCurrent) ⇒ maxCurrent
-                case None ⇒ Double.PositiveInfinity
+                case Some (maxCurrent) => maxCurrent
+                case None => Double.PositiveInfinity
             }
             (ele.id, (ele, wireinfo))
         })
@@ -248,7 +248,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val edges = elementsplus.join (terms).flatMapValues (edge_operator (voltages)).values
 
         // eliminate edges with only one connectivity node, or the same connectivity node
-        val real_edges = edges.filter (x ⇒ null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
+        val real_edges = edges.filter (x => null != x.id_cn_1 && null != x.id_cn_2 && "" != x.id_cn_1 && "" != x.id_cn_2 && x.id_cn_1 != x.id_cn_2)
 
         // get terminal to voltage mapping by referencing the equipment voltage for each of two terminals
         val tv = edges.keyBy (_.id_seq_1).union (edges.keyBy (_.id_seq_2)).distinct
@@ -302,7 +302,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val data = Json.createObjectBuilder
         data.add ("name", node.name)
         val ao = Json.createArrayBuilder ()
-        node.ao_id.foreach (id ⇒ ao.add (id))
+        node.ao_id.foreach (id => ao.add (id))
         data.add ("ao_id", ao)
         data.add ("voltage", node.voltage)
         data.add ("neighbor", node.neighbor)
