@@ -106,7 +106,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
             case breaker: Breaker ⇒ switchClosed (breaker.ProtectedSwitch.Switch)
             case lbs: LoadBreakSwitch ⇒ switchClosed (lbs.ProtectedSwitch.Switch)
             case recloser: Recloser ⇒ switchClosed (recloser.ProtectedSwitch.Switch)
-            case _: PowerTransformer ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && (v2 > 230.0 || calculate_public_lighting && v2 == 230.0)) // ToDo: don't hard code these voltage values
+            case _: PowerTransformer ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && (v2 > 230.0 || (calculate_public_lighting && v2 == 230.0))) // ToDo: don't hard code these voltage values
             case _ ⇒
                 log.warn ("transformer service area processor encountered edge with unhandled class '" + element.getClass.getName + "', assumed same transformer service area")
                 true
@@ -120,8 +120,10 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         val v = ends.map (t => voltages.getOrElse (t.TransformerEnd.BaseVoltage, 0.0))
         if (v.length < 2)
             false
+        else if (v.head > 1000.0 && v.tail.forall (v => v <= 1000.0 && v > 230.0)) // ToDo: don't hard code these voltage values
+            true
         else
-            v.head > 1000.0 || (calculate_public_lighting && v.head == 400.0) && v.tail.forall (v => v <= 1000.0 && v > 230.0 || calculate_public_lighting && v == 230.0) // ToDo: don't hard code these voltage values
+            (calculate_public_lighting && v.head == 400.0) && v.tail.forall (v => calculate_public_lighting && v == 230.0)
     }
 
     /**

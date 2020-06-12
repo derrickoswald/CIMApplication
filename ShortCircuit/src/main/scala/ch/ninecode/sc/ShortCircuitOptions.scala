@@ -28,6 +28,7 @@ import ch.ninecode.gl.Complex
  * @param trafos                              file name of transformer names to process
  * @param cable_impedance_limit               cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with too high impedance values
  * @param workdir                             shared directory (HDFS or NFS share) for intermediate results
+ * @param calculate_public_lighting           whether to consider public lighting in the shortcircuit calculations
  */
 case class ShortCircuitOptions
 (
