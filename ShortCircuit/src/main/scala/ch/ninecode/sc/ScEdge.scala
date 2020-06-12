@@ -90,9 +90,9 @@ case class ScEdge
                 case recloser: Recloser => switchClosed (recloser.ProtectedSwitch.Switch)
                 case line: ACLineSegment => true
                 case trafo: PowerTransformer =>
-                    // do not trace 230V
-                    if (v1 < 230.0 || v2 < 230.0 || ( !calculate_public_lighting && (v1 == 230.0 || v2 == 230.0) )
-                    )
+                    if (v1 < 230.0 || v2 < 230.0)
+                        return false
+                    else if ( !calculate_public_lighting && (v1 == 230.0 || v2 == 230.0) )
                         return false
                     val id_cn = node.id_seq // continue if voltage decreases or it stays below 1000.0
                     if (id_cn == id_cn_1)

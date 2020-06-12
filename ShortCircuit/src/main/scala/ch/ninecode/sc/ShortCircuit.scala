@@ -482,9 +482,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             val new_series = if (buddy.to == branch.from)
                 buddy.add_in_series (branch)
             else
-                if (branch.to == buddy.from)
-                    branch.add_in_series (buddy)
-                else
                 // choose the simplest element to reverse
                     branch match
                     {
