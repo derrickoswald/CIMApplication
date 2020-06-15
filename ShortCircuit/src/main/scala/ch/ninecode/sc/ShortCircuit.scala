@@ -908,7 +908,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
                 val id_cn_1 = args.head._1.head._2.TopologicalNode
                 val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
-                (args.head._1.head._1, GLMEdge.toGLMEdge (args.map (_._2), id_cn_1, id_cn_2, tedger))
+                (args.head._1.head._1, GLMEdge.toGLMEdge (args.map (_._2), id_cn_1, id_cn_2, tedger, options.base_temperature))
             }
         )
     }

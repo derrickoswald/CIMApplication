@@ -2,36 +2,36 @@ package ch.ninecode.mfi
 
 import java.util.Calendar
 
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.graphx.EdgeDirection
-import org.apache.spark.graphx.EdgeTriplet
-import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.VertexId
-import org.apache.spark.graphx.VertexRDD
-import org.apache.spark.graphx.Graph.graphToGraphOps
-import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
-import org.apache.spark.storage.StorageLevel
-import org.slf4j.LoggerFactory
-import org.slf4j.Logger
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.PV
 import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.TransformerIsland
-import ch.ninecode.gl.TransformerSet
 import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Connector
-import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
+import org.apache.spark.graphx.EdgeDirection
+import org.apache.spark.graphx.EdgeTriplet
+import org.apache.spark.graphx.Graph
+import org.apache.spark.graphx.Graph.graphToGraphOps
+import org.apache.spark.graphx.VertexId
+import org.apache.spark.graphx.VertexRDD
+import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER) extends CIMRDD with Serializable
+class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER, tbase: Double = 20, tsim: Double) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
+
+    val alpha: Double = 0.004
+
+    def resistanceAt (t: Double, base: Double, r: Double): Double = (1.0 + (alpha * (t - base))) * r
 
     /**
      * Get details for an edge.
@@ -50,7 +50,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         edge.element match
         {
             // ToDo: fix this (see note above)
-            case line: ACLineSegment ⇒ (line.Conductor.len / 1000.0, Complex (line.r, line.x), edge.ratedCurrent)
+            case line: ACLineSegment ⇒ (line.Conductor.len / 1000.0, Complex (resistanceAt(tsim, tbase,line.r), line.x), edge.ratedCurrent)
             case _ ⇒ (0.0, 0.0, Double.PositiveInfinity)
         }
     }

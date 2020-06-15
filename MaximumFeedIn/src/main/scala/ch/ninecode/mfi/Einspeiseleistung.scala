@@ -391,7 +391,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         def doit (t: Trafokreis): Array[Experiment] =
         {
-            val generator = new EinspeiseleistungGLMGenerator (!options.three, _DateFormat, t)
+            val generator = new EinspeiseleistungGLMGenerator (!options.three, _DateFormat, t, options.base_temperature, options.sim_temperature)
             gridlabd.export (generator)
             t.experiments
         }
@@ -582,7 +582,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
-            val pf = new PowerFeeding (session, storage_level)
+            val pf = new PowerFeeding (session, storage_level, options.base_temperature, options.sim_temperature)
             pf.threshold_calculation (initial, sdata, transformers, options)
         }
         precalc_results

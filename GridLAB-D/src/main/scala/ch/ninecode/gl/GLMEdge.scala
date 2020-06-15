@@ -131,7 +131,7 @@ object GLMEdge
      * @return a type of edge
      */
     def toGLMEdge (elements: Iterable[Element], cn1: String, cn2: String,
-       makeTransformerEdge: (Iterable[Element], String, String) ⇒ TransformerEdge = transformermaker): GLMEdge =
+       makeTransformerEdge: (Iterable[Element], String, String) ⇒ TransformerEdge = transformermaker, tbase: Double = 20.0): GLMEdge =
     {
         // for now, we handle Conductor, Switch and eventually PowerTransformer
         var tagged = elements.map (x ⇒ (baseClass (x), x))
@@ -148,7 +148,7 @@ object GLMEdge
             case "Switch" ⇒
                 SwitchEdge (cn1, cn2, elements)
             case "Conductor" ⇒
-                LineEdge (cn1, cn2, elements.map (multiconductor))
+                LineEdge (cn1, cn2, elements.map (multiconductor), tbase)
                 // base_temperature: Double = 20.0,
                 // DEFAULT_R: Double = 0.225,
                 // DEFAULT_X: Double = 0.068

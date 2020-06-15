@@ -17,7 +17,8 @@ class EinspeiseleistungGLMGeneratorSuite extends FunSuite
     def getConstantPower (solargen: SolarGeneratingUnit, one_phase: Boolean = true): List[(String, String)] =
     {
         val node_mock = MaxPowerFeedingNodeEEA ("ID123", 400.0, "", "", "", "", 0.0, null, "", "")
-        val glm_gen = new EinspeiseleistungGLMGenerator (one_phase, null, null)
+        val options = EinspeiseleistungOptions()
+        val glm_gen = new EinspeiseleistungGLMGenerator (one_phase, null, null, options.base_temperature, options.sim_temperature)
         val load = glm_gen.emit_pv (List (solargen), node_mock)
         val regex_constant_power = "(constant_power_[ABC])\\s+(.*)(?=;)".r
         val g: Seq[scala.util.matching.Regex.Match] = regex_constant_power.findAllMatchIn (load).toList
