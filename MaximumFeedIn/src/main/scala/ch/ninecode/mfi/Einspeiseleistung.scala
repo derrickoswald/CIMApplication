@@ -6,9 +6,20 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import scala.collection._
-import scala.io.Source
-
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.gl.GridlabFailure
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.PreNode
+import ch.ninecode.gl.Solar
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Terminal
+import ch.ninecode.net.TransformerData
+import ch.ninecode.net.TransformerIsland
+import ch.ninecode.net.Transformers
+import ch.ninecode.util.Complex
+import ch.ninecode.util.ThreePhaseComplexDataElement
 import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -17,20 +28,8 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.GLMEdge
-import ch.ninecode.gl.GridlabFailure
-import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.PreNode
-import ch.ninecode.gl.Solar
-import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Terminal
-import ch.ninecode.net.TransformerIsland
-import ch.ninecode.net.TransformerData
-import ch.ninecode.net.Transformers
-import ch.ninecode.util.Complex
-import ch.ninecode.util.ThreePhaseComplexDataElement
+import scala.collection._
+import scala.io.Source
 
 case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions) extends CIMRDD
 {
@@ -393,7 +392,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         def doit (t: Trafokreis): Array[Experiment] =
         {
-            val generator = new EinspeiseleistungGLMGenerator (!options.three, _DateFormat, t)
+            val generator = new EinspeiseleistungGLMGenerator (!options.three, _DateFormat, t, options.base_temperature, options.sim_temperature)
             gridlabd.export (generator)
             t.experiments
         }
@@ -585,7 +584,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
-            val pf = new PowerFeeding (session, storage_level)
+            val pf = new PowerFeeding (session, storage_level, options.base_temperature, options.sim_temperature)
             pf.threshold_calculation (initial, sdata, transformers, options)
         }
         precalc_results

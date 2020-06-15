@@ -36,8 +36,8 @@ final case class LineData (lines: Iterable[LineDetails])
      * @param temperature the temperature at which to calculate the impedance (°C)
      * @return the positive and zero sequence impedance between the two nodes
      */
-    def perLengthImpedanceAt (temperature: Double = CIM_BASE_TEMPERATURE): Sequences =
-        lines.map (_.perLengthImpedanceAt (temperature)).foldLeft (Sequences ()) ((x, y) => x + y.reciprocal).reciprocal
+    def perLengthImpedanceAt (temperature: Double = CIM_BASE_TEMPERATURE, base: Double = CIM_BASE_TEMPERATURE): Sequences =
+        lines.map (_.perLengthImpedanceAt (temperature, base)).foldLeft (Sequences ()) ((x, y) => x + y.reciprocal).reciprocal
 
     /**
      * Predicate to determine if the <code>perLengthImpedanceAt</code> method is using default impedance values.

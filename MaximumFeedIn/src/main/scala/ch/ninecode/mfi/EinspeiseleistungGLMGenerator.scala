@@ -20,7 +20,7 @@ import ch.ninecode.net.TransformerEdge
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.util.Complex
 
-class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis)
+class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis, tbase: Double, tsim: Double)
     extends GLMGenerator (one_phase, 20.0, date_format, true) // ToDo: get library base temperature and target temperature as command line input
 {
     override def name: String = trafokreis.name
@@ -31,6 +31,8 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def finish_time: Calendar = trafokreis.finish_time
 
+    override def targetTemperature: Double = tsim
+
     def makeTransformerEdge (elements: Iterable[Element], cn1: String, cn2: String): GLMTransformerEdge =
     {
         val element = elements.head
@@ -38,7 +40,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         GLMTransformerEdge (TransformerSet (Array (trafo.headOption.orNull)))
     }
 
-    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges => GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2, makeTransformerEdge))
+    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges => GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2, makeTransformerEdge, tbase))
 
     override def transformers: Iterable[GLMTransformerEdge] =
         trafokreis.transformers.transformers.map (GLMTransformerEdge)

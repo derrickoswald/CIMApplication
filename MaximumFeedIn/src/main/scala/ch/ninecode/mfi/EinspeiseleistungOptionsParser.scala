@@ -171,6 +171,17 @@ class EinspeiseleistungOptionsParser (APPLICATION_NAME: String, APPLICATION_VERS
         .action ((x, c) => c.copy (files = c.files :+ x))
         .text ("CIM rdf files to process")
 
+    opt [Double]("tbase")
+        .valueName ("<value>")
+        .action ((x, c) => c.copy (base_temperature = x))
+        .text ("base temperature for feedin (°C) [%g]".format (default.base_temperature))
+
+    opt [Double]("tsim")
+        .valueName ("<value>")
+        .action ((x, c) => c.copy (sim_temperature = x))
+        .text ("simulation temperature for feedin (°C) [%g]".format (default.sim_temperature))
+
+
     help ("help")
         .hidden ()
         .validate (Unit => { helpout = true; Right (Unit) })

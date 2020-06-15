@@ -263,7 +263,8 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
         {
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
-            val pf = new PowerFeeding (session, storage_level)
+            val options = EinspeiseleistungOptions()
+            val pf = new PowerFeeding (session, storage_level, options.base_temperature, options.sim_temperature)
             pf.threshold_calculation (initial, sdata, transformers, EinspeiseleistungOptions (cosphi = 1.0))
         }
 
