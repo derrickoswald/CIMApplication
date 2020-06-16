@@ -100,5 +100,5 @@ case class EinspeiseleistungOptions
     outputfile: String = "simulation/results.db",
     files: Seq[String] = Seq (),
     base_temperature: Double = 20.0,
-    sim_temperature: Double = 60.0
+    sim_temperature: Double = 20.0
 )
