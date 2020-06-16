@@ -96,6 +96,8 @@ object EventAndFactorSuiteIT
             .set ("spark.cassandra.connection.port", PORT)
             // register CIMReader classes
             .registerKryoClasses (CIMClasses.list)
+            // use the custom registrator
+            .set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
         // register GraphX classes
         GraphXUtils.registerKryoClasses (configuration)
 

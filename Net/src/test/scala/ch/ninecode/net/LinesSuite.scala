@@ -4,7 +4,6 @@ import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
 
-import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
 import ch.ninecode.testutil.TestUtil
 import ch.ninecode.util.Complex
@@ -18,8 +17,6 @@ import org.scalactic.source.Position
 
 class LinesSuite extends TestUtil
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array(CIMClasses.list)
-
     override def withFixture (test: OneArgTest): Outcome =
     {
         val SERVER = "sandbox"

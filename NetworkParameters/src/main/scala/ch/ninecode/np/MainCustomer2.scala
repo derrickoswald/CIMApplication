@@ -268,6 +268,8 @@ object MainCustomer2
                     val storage = StorageLevel.fromString (arguments.storage)
                     // register CIMReader classes
                     configuration.registerKryoClasses (CIMClasses.list)
+                    // use the custom registrator
+                    configuration.set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
                     // register GraphX classes
                     GraphXUtils.registerKryoClasses (configuration)
 

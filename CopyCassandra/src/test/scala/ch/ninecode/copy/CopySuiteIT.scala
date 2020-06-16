@@ -8,7 +8,6 @@ import com.datastax.driver.core.Cluster
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
-import ch.ninecode.cim.CIMClasses
 import ch.ninecode.copy.Main.main
 import ch.ninecode.testutil.TestUtil
 
@@ -16,8 +15,6 @@ class CopySuiteIT extends TestUtil
 {
     val TARGET_KEYSPACE = "delete_me"
     val DEFAULT_CASSANDRA_PORT = 9042
-
-    override val classesToRegister: Array[Array[Class[_]]] = Array(CIMClasses.list)
 
     def cassandra_port: Int =
     {

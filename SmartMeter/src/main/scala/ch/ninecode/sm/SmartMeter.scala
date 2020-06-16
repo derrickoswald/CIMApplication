@@ -449,6 +449,8 @@ object SmartMeter
 
         // register CIMReader classes
         configuration.registerKryoClasses (CIMClasses.list)
+        // use the custom registrator
+        configuration.set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
 
         // make a Spark session
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture

@@ -13,7 +13,7 @@ import ch.ninecode.util.Util
 
 class LowVoltageSuite extends TestUtil
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Net.classes, Util.classes)
+    override val classesToRegister: Array[Class[_]] = Array.concat (CIMClasses.list, GridLABD.classes, Net.classes, Util.classes)
     def readFile (session: SparkSession, filename: String): RDD[Element] =
     {
         implicit val spark: SparkSession = session

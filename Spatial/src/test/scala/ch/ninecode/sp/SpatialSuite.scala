@@ -6,14 +6,12 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 
-import ch.ninecode.cim.CIMClasses
 import ch.ninecode.testutil.TestUtil
 
 import org.scalatest.BeforeAndAfter
 
 class SpatialSuite extends TestUtil with BeforeAndAfter
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list)
     val FILE_DEPOT = "data/"
     val FILENAME1 = "DemoData"
 

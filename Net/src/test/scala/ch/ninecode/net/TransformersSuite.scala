@@ -2,13 +2,11 @@ package ch.ninecode.net
 
 import org.apache.spark.sql.SparkSession
 
-import ch.ninecode.cim.CIMClasses
 import ch.ninecode.model.EquivalentInjection
 import ch.ninecode.testutil.TestUtil
 
 class TransformersSuite extends TestUtil
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array(CIMClasses.list)
     test ("default_injection with sk=100MVA and angle=-73 16kV")
     {
         session: SparkSession =>

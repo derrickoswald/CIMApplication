@@ -32,7 +32,7 @@
         <version.dependency.hadoop>2.7.6</version.dependency.hadoop>
         <version.dependency.spark>2.4.5</version.dependency.spark>
         <version.dependency.cassandra_spark>2.4.1</version.dependency.cassandra_spark>
-        <version.dependency.cimreader>2.11-2.4.5-4.2.0</version.dependency.cimreader>
+        <version.dependency.cimreader>2.11-2.4.5-4.2.1</version.dependency.cimreader>
 
         <!-- Component versions -->
         <version.dependency.javaee>8.0.1</version.dependency.javaee>

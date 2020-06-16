@@ -40,7 +40,7 @@ case class MyPandaPowerGenerator (
 
 class SampleSuite extends TestUtil with BeforeAndAfter
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array (
+    override val classesToRegister: Array[Class[_]] = Array.concat (
         CIMClasses.list,
         Net.classes,
         PandaPower.classes)

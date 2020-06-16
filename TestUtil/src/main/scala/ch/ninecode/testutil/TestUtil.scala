@@ -14,13 +14,16 @@ import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
+
+import ch.ninecode.cim.CIMClasses
+
 import org.scalatest.Outcome
 import org.scalatest.fixture
 
 trait TestUtil extends fixture.FunSuite with SQLite with Unzip
 {
     type FixtureParam = SparkSession
-    val classesToRegister: Array[Array[Class[_]]]
+    val classesToRegister: Array[Class[_]] = CIMClasses.list
 
     def time[R](template: String)(block: => R): R =
     {
@@ -113,12 +116,9 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
 
     def registerDependency (configuration: SparkConf): Unit =
     {
-        val length = classesToRegister.length
-        for (i <- Range (0, length))
-        {
-            val classToRegister: Array[Class[_]] = classesToRegister(i)
-            configuration.registerKryoClasses (classToRegister)
-        }
+        configuration.registerKryoClasses (classesToRegister)
+        // use the custom registrator
+        configuration.set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
     }
 
     /**

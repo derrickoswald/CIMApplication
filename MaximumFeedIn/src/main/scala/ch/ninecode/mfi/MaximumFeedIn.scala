@@ -107,21 +107,20 @@ object MaximumFeedIn
                             configuration.setJars (jars.toArray)
                         }
 
-                        if (StorageLevel.fromString (arguments.storage).useDisk)
-                        {
-                            // register CIMReader classes
-                            configuration.registerKryoClasses (CIMClasses.list)
-                            // register Einspeiseleistung classes
-                            configuration.registerKryoClasses (Einspeiseleistung.classes)
-                            // register GridLAB-D classes
-                            configuration.registerKryoClasses (GridLABD.classes)
-                            // register Net classes
-                            configuration.registerKryoClasses (Net.classes)
-                            // register Util classes
-                            configuration.registerKryoClasses (Util.classes)
-                            // register GraphX classes
-                            GraphXUtils.registerKryoClasses (configuration)
-                        }
+                        // register CIMReader classes
+                        configuration.registerKryoClasses (CIMClasses.list)
+                        // use the custom registrator
+                        configuration.set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
+                        // register Einspeiseleistung classes
+                        configuration.registerKryoClasses (Einspeiseleistung.classes)
+                        // register GridLAB-D classes
+                        configuration.registerKryoClasses (GridLABD.classes)
+                        // register Net classes
+                        configuration.registerKryoClasses (Net.classes)
+                        // register Util classes
+                        configuration.registerKryoClasses (Util.classes)
+                        // register GraphX classes
+                        GraphXUtils.registerKryoClasses (configuration)
 
                         // make a Spark session
                         val session = SparkSession.builder ().config (configuration).getOrCreate ()

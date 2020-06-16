@@ -14,7 +14,11 @@ import ch.ninecode.util.Util
 
 class OneOfNMainSuite extends TestUtil with BeforeAndAfter
 {
-    val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes, Net.classes, Util.classes)
+    override val classesToRegister: Array[Class[_]] = Array.concat (
+        CIMClasses.list,
+        GridLABD.classes,
+        Net.classes,
+        Util.classes)
     val FILE_DEPOT = "data/"
     val FILENAME = "DemoData_medium_voltage_network"
 

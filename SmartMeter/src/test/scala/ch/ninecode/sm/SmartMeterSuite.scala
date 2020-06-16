@@ -6,13 +6,10 @@ import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SparkSession
 
-import ch.ninecode.cim.CIMClasses
 import ch.ninecode.testutil.TestUtil
 
 class SmartMeterSuite extends TestUtil
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list)
-
     def readFile (context: SQLContext, filename: String, use_topolocial_nodes: Boolean): DataFrame =
     {
         val files = filename.split (",")

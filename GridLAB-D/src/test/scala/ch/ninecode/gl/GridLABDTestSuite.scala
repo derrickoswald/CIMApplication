@@ -7,7 +7,6 @@ import java.util.TimeZone
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
-import ch.ninecode.cim.CIMClasses
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.model.Element
 import ch.ninecode.model.EnergyConsumer
@@ -68,7 +67,6 @@ class TestIsland (session: SparkSession) extends Island (session)
 
 class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list)
     val FILE_DEPOT = "data/"
     val FILENAME1 = "DemoData.rdf"
     val filename1: String = FILE_DEPOT + FILENAME1

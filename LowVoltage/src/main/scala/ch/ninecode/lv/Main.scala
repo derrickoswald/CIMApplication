@@ -98,6 +98,9 @@ object Main
             .registerKryoClasses (Einspeiseleistung.classes)
             // register Util classes
             .registerKryoClasses (Util.classes)
+            // use the custom registrator
+            .set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
+
         if ("" != arguments.master)
         {
             val _ = configuration.setMaster (arguments.master)

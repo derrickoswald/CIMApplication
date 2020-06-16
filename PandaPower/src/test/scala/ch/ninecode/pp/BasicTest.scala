@@ -7,7 +7,7 @@ import ch.ninecode.testutil.TestUtil
 
 class BasicTest extends TestUtil
 {
-    override val classesToRegister: Array[Array[Class[_]]] = new Array[Array[Class[_]]](0)
+    override val classesToRegister: Array[Class[_]] = new Array[Class[_]](0)
 
     test ("try it")
     {

@@ -99,6 +99,8 @@ object Main
 
                             // register CIMReader classes
                             .registerKryoClasses (CIMClasses.list)
+                            // use the custom registrator
+                            .set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
                             // register GridLAB-D classes
                             .registerKryoClasses (GridLABD.classes)
                             // register Net classes

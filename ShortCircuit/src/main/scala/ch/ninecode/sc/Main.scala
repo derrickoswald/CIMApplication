@@ -344,6 +344,8 @@ object Main
                 val storage = StorageLevel.fromString (arguments.storage)
                 // register CIMReader classes
                 configuration.registerKryoClasses (CIMClasses.list)
+                // use the custom registrator
+                configuration.set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
                 // register GridLAB-D classes
                 configuration.registerKryoClasses (GridLABD.classes)
                 // register Net classes

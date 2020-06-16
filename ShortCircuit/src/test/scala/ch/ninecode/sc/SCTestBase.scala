@@ -9,7 +9,7 @@ import ch.ninecode.util.Util
 class SCTestBase extends TestUtil
 {
     val FILE_DEPOT = "data/"
-    override val classesToRegister: Array[Array[Class[_]]] = Array (
+    override val classesToRegister: Array[Class[_]] = Array.concat (
         CIMClasses.list,
         GridLABD.classes,
         Net.classes,
