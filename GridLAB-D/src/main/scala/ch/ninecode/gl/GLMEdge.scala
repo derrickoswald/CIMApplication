@@ -107,7 +107,7 @@ object GLMEdge
                 val t1 = Terminal (TopologicalNode = cn1)
                 val t2 = Terminal (TopologicalNode = cn2)
                 implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
-                GLMLineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None))), tbase)
+                GLMLineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None, tbase))))
             // base_temperature: Double = 20.0,
             // DEFAULT_R: Double = 0.225,
             // DEFAULT_X: Double = 0.068

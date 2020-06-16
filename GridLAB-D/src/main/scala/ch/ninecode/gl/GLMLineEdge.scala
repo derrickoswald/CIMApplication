@@ -6,8 +6,7 @@ import ch.ninecode.util.Sequences
 
 final case class GLMLineEdge
 (
-    override val data: LineData,
-    base_temperature: Double = 20.0
+    override val data: LineData
 )
 extends LineEdge (data)
 with GLMEdge
@@ -86,7 +85,7 @@ with GLMEdge
      */
     def configuration (generator: GLMGenerator): String =
     {
-        val pli = data.perLengthImpedanceAt (generator.targetTemperature, base_temperature)
+        val pli = data.perLengthImpedanceAt (generator.targetTemperature, data.lines.head.CIMBaseTemperature)
         make_line_configuration (configurationName, pli, data.perLengthImpedanceIsDefault, generator)
     }
 }

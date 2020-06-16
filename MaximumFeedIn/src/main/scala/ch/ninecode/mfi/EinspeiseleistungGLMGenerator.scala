@@ -21,7 +21,7 @@ import ch.ninecode.net.TransformerSet
 import ch.ninecode.util.Complex
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis, tbase: Double, tsim: Double)
-    extends GLMGenerator (one_phase, 20.0, date_format, true) // ToDo: get library base temperature and target temperature as command line input
+    extends GLMGenerator (one_phase, tsim, date_format, true)
 {
     override def name: String = trafokreis.name
 
@@ -30,8 +30,6 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
     override def start_time: Calendar = trafokreis.start_time
 
     override def finish_time: Calendar = trafokreis.finish_time
-
-    override def targetTemperature: Double = tsim
 
     def makeTransformerEdge (elements: Iterable[Element], cn1: String, cn2: String): GLMTransformerEdge =
     {
