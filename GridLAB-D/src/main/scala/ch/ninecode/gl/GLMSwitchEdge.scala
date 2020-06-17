@@ -1,9 +1,14 @@
 package ch.ninecode.gl
 
+import scala.util.Random
+
+import ch.ninecode.model.ACDCTerminal
+import ch.ninecode.model.BasicElement
+import ch.ninecode.model.Element
+import ch.ninecode.model.IdentifiedObject
+import ch.ninecode.model.Terminal
 import ch.ninecode.net.SwitchData
 import ch.ninecode.net.SwitchDetails
-import ch.ninecode.model.Element
-import ch.ninecode.model.Terminal
 import ch.ninecode.net.SwitchEdge
 
 case class GLMSwitchEdge (
@@ -53,8 +58,22 @@ object GLMSwitchEdge
         switches: Iterable[Element]
     ): GLMSwitchEdge =
     {
-        val t1 = Terminal (TopologicalNode = cn1)
-        val t2 = Terminal (TopologicalNode = cn2)
+        val basic1 = BasicElement (mRID = s"generated_terminal_${ Random.nextInt (99999999) }")
+        val obj1 = IdentifiedObject (basic1, mRID = basic1.mRID)
+        obj1.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
+        val ac1 = ACDCTerminal (obj1, true, 1)
+        ac1.bitfields = ACDCTerminal.fieldsToBitfields ("connected", "sequenceNumber")
+        val t1 = Terminal (ac1, TopologicalNode = cn1)
+        t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
+
+        val basic2 = BasicElement (mRID = s"generated_terminal_${ Random.nextInt (99999999) }")
+        val obj2 = IdentifiedObject (basic2, mRID = basic2.mRID)
+        obj2.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
+        val ac2 = ACDCTerminal (obj2, true, 2)
+        ac2.bitfields = ACDCTerminal.fieldsToBitfields ("connected", "sequenceNumber")
+        val t2 = Terminal (ac2, TopologicalNode = cn2)
+        t2.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
+
         GLMSwitchEdge (SwitchData (switches.map (x => SwitchDetails (x, t1, t2, None))))
     }
 }

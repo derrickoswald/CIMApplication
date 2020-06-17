@@ -20,8 +20,6 @@ import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.Switch
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-import ch.ninecode.net.LoadFlowEdge
-import ch.ninecode.net.LoadFlowNode
 
 /**
  * A container for a simulation piece of work.
@@ -80,21 +78,31 @@ case class SimulationTrafoKreis
     {
         val basic = BasicElement (mRID = id)
         val obj = IdentifiedObject (basic, mRID = id)
+        obj.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
         val psr = PowerSystemResource (obj)
+        psr.bitfields = PowerSystemResource.fieldsToBitfields ()
         val equipment = Equipment (psr)
+        equipment.bitfields = Equipment.fieldsToBitfields ()
         val conducting = ConductingEquipment (equipment)
-        Switch (conducting)
+        conducting.bitfields = ConductingEquipment.fieldsToBitfields ()
+        val s = Switch (conducting)
+        s.bitfields = Switch.fieldsToBitfields ()
+        s
     }
 
     def alterTerminal (terminal: Terminal, original_node: String, new_node: String): Terminal =
     {
         if (terminal.TopologicalNode == original_node)
-            Terminal (
+        {
+            val t = Terminal (
                 terminal.ACDCTerminal,
                 phases = terminal.phases,
                 ConductingEquipment = terminal.ConductingEquipment,
                 ConnectivityNode = terminal.ConnectivityNode,
                 TopologicalNode = new_node)
+            t.bitfields = terminal.bitfields.clone
+            t
+        }
         else
             terminal
     }
@@ -102,15 +110,22 @@ case class SimulationTrafoKreis
     def alterNode (node: TopologicalNode, original_node: String, new_node: String): TopologicalNode =
     {
         if (node.id == original_node)
-            TopologicalNode (
-                IdentifiedObject (
-                    BasicElement (mRID = new_node),
-                    aliasName = node.IdentifiedObject.aliasName,
-                    description = node.IdentifiedObject.description,
-                    mRID = new_node,
-                    name = node.IdentifiedObject.name),
+        {
+            val idobj = IdentifiedObject (
+                BasicElement (mRID = new_node),
+                aliasName = node.IdentifiedObject.aliasName,
+                description = node.IdentifiedObject.description,
+                mRID = new_node,
+                name = node.IdentifiedObject.name)
+            idobj.bitfields = node.IdentifiedObject.bitfields.clone
+            IdentifiedObject.fieldsToBitfields ("mRID").zipWithIndex.foreach (x => idobj.bitfields(x._2) |= x._1)
+            val n = TopologicalNode (
+                idobj,
                 BaseVoltage = node.BaseVoltage,
                 TopologicalIsland = node.TopologicalIsland)
+            n.bitfields = node.bitfields.clone
+            n
+        }
         else
             node
     }
