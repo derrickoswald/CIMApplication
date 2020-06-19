@@ -2,7 +2,6 @@ package ch.ninecode.net
 
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.util.Complex
-import ch.ninecode.util.Sequences
 
 class LineEdge
 (
@@ -33,7 +32,7 @@ extends LoadFlowEdge (
             if (null != psr.IdentifiedObject.name)
                 psr.IdentifiedObject.name // ToDo: this is a NIS specific characteristic where the ACLineSegment.name is the article.type
             else
-                "_" + line.hashCode.toString
+                s"_${line.hashCode.toString}"
     }
 
     /**
@@ -46,7 +45,7 @@ extends LoadFlowEdge (
         val n = lines.map (config_name).map (valid_config_name).toArray.sortWith (_ < _).mkString ("||") + "_configuration"
         // limit to 64 bytes (GridLAB-D OBJECTTREE.name is an array of 64 bytes) with null:
         if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode ())
+            s"_${Math.abs (n.hashCode ()).toString}"
         else
             n
     }
@@ -54,7 +53,8 @@ extends LoadFlowEdge (
     /**
      * The length (of the longest) line.
      */
-    lazy val length: Double = lines.map (_.Conductor.len).max
+    lazy val length: Double = lines.map (_.Conductor.len)
+        .fold (0.0) ((l1, l2) => if (l1 > l2) l1 else l2) // instead of .max
 
     /**
      * Zero ohms.

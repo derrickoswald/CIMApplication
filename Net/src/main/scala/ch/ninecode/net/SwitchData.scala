@@ -11,10 +11,14 @@ package ch.ninecode.net;
 final case class SwitchData (switches: Iterable[SwitchDetails])
 {
     /** @return the mRID of the TopologicalNode for one end of the switches */
-    def node0: String = switches.head.terminal1.TopologicalNode
+    lazy val node0: String = switches.map (_.terminal1.TopologicalNode).foldLeft ("")(
+        (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */
+    )
 
     /** @return the mRID of the TopologicalNode for the other end of the switches */
-    def node1: String = switches.head.terminal2.TopologicalNode
+    lazy val node1: String = switches.map (_.terminal2.TopologicalNode).foldLeft ("")(
+        (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */
+    )
 
     /**
      * Get the closed status of the switches.

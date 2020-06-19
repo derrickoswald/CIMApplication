@@ -52,11 +52,13 @@ final case class Lines (
         }
     }
 
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     lazy val per_length_impedance: RDD[Element] = session.sparkContext.union (
         getOrElse[PerLengthSequenceImpedance].asInstanceOf[RDD[Element]],
         getOrElse[PerLengthPhaseImpedance].asInstanceOf[RDD[Element]] // ToDo: pick up PhaseImpedanceData
     )
 
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     lazy val wire_info: RDD[Element] = session.sparkContext.union (
         getOrElse[OverheadWireInfo].asInstanceOf[RDD[Element]],
         getOrElse[ConcentricNeutralCableInfo].asInstanceOf[RDD[Element]],
@@ -150,7 +152,7 @@ object Lines
     }
 
     /**
-     * Checks that the line segement is in use according to the related SvStatus.
+     * Checks that the line segment is in use according to the related SvStatus.
      *
      * @note The CIM 16 reference from ConductingEquipment to SvStatus, was changed in CIM100 to be a
      *       reference from SvStatus to ConductingEquipment. This method relies on the incorrect
@@ -168,10 +170,11 @@ object Lines
             line =>
             {
                 val status = line.line.Conductor.ConductingEquipment.SvStatus
-                if (null != status)
-                    status.head != "not_in_use"
-                else
-                    true
+                status match
+                {
+                    case h :: _ => h != "not_in_use"
+                    case _ => true
+                }
             }
         )
     }

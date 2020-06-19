@@ -27,8 +27,8 @@ case class TransformerData
     terminals: Array[Terminal],
     nodes: Array[TopologicalNode],
     voltages: Array[(String, Double)],
-    station: Substation,
-    shortcircuit: EquivalentInjection
+    station: Option[Substation],
+    shortcircuit: Option[EquivalentInjection]
 )
 {
     /** The (assumed) index of the primary PowerTransformerEnd */
@@ -72,5 +72,5 @@ case class TransformerData
     def node1: TopologicalNode = nodes (secondary)
 
     /** @return a summary string for the transformer */
-    def asString: String = "%s %s %skVA %s %s".format (transformer.id, if (null != station) station.id else "", (end0.ratedS / 1000.0).toInt.toString, voltages.map (_._2.toInt).mkString (":"), nodes.map (_.id).mkString (":"))
+    def asString: String = s"${transformer.id} ${station match { case Some (s) => s.id case _ => "" }} ${(end0.ratedS / 1000.0).toInt.toString}kVA ${voltages.map (_._2.toInt).mkString (":")} ${nodes.map (_.id).mkString (":")}"
 }

@@ -14,10 +14,14 @@ import ch.ninecode.util.Sequences
 final case class LineData (lines: Iterable[LineDetails])
 {
     /** @return the mRID of the TopologicalNode for one end of the lines */
-    def node0: String = lines.head.terminal1.TopologicalNode
+    lazy val node0: String = lines.map (_.terminal1.TopologicalNode).foldLeft ("")(
+        (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */
+    )
 
     /** @return the mRID of the TopologicalNode for the other end of the lines */
-    def node1: String = lines.head.terminal2.TopologicalNode
+    lazy val node1: String = lines.map (_.terminal2.TopologicalNode).foldLeft ("")(
+        (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */
+    )
 
     /** @return a summary string for the lines */
     override def toString: String = s"""${lines.map (_.toString).mkString ("||")} from $node0 to $node1"""

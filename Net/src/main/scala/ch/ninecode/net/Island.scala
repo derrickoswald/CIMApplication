@@ -202,7 +202,7 @@ extends CIMRDD with Serializable
             .flatMap (x => List ((x.node0, x), (x.node1, x)))
             .join (keyed_nodes)
             .values
-            .groupBy (x => s"${x._1.switches.head.element.id}${x._2._1}")
+            .groupBy (x => s"${x._1.switches.map (_.element.id).mkString ("||")}${x._2._1}")
             .values
             // keep only switches with both terminals in this island
             .filter (_.size > 1)

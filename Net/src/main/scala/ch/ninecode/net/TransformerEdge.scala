@@ -67,7 +67,7 @@ extends LoadFlowEdge (
     def per_unit_impedance: String =
     {
         val (re: Double, im: Double) = transformer.total_impedance_per_unit._1.asPair
-        "%s%s%sj".format (nodecimals (re), if (im > 0.0) "+" else "", nodecimals (im))
+        s"${nodecimals (re)}${if (im > 0.0) "+" else ""}${nodecimals (im)}j"
     }
 
     /**
@@ -78,7 +78,7 @@ extends LoadFlowEdge (
     def configurationName: String =
     {
         // "630kVA20000$400V123e-3+240e-2jΩ"
-        val n = valid_config_name ("%skVA%s$%sV%sΩ".format (rating, primary, secondary, per_unit_impedance))
+        val n = valid_config_name (s"${rating}kVA${primary}$$${secondary}V${per_unit_impedance}Ω")
         // limit to 64 bytes with null:
         // typedef struct s_objecttree {
         //     char name[64];
@@ -87,7 +87,7 @@ extends LoadFlowEdge (
         //     int balance; /* unused */
         // } OBJECTTREE;
         if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode ())
+            s"_${Math.abs (n.hashCode ()).toString}"
         else
             n
     }

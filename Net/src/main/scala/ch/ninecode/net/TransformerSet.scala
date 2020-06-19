@@ -47,7 +47,7 @@ case class TransformerSet (
     {
         val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("_")
         if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode ()) + "_" + n.substring (0, n.indexOf ("_", 32)) + "_etc"
+            s"_${Math.abs (n.hashCode ())}_${n.substring (0, n.indexOf ("_", 32))}_etc"
         else
             n
     }
@@ -111,7 +111,7 @@ case class TransformerSet (
         //     int balance; /* unused */
         // } OBJECTTREE;
         if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode ()) + "_" + n.substring (0, n.indexOf ("||", 32)) + "_etc"
+            s"_${Math.abs (n.hashCode ())}_${n.substring (0, n.indexOf ("||", 32))}_etc"
         else
             n
     }
@@ -161,6 +161,77 @@ case class TransformerSet (
         (zinv._1.reciprocal, zinv._2)
     }
 
+    def SkMax (equiv: Option[EquivalentInjection]): Double =
+    {
+        equiv match
+        {
+            case Some (injection) =>
+                math.sqrt (injection.maxP * injection.maxP + injection.maxQ * injection.maxQ)
+            case _ => 0.0
+        }
+    }
+
+    def SkMin (equiv: Option[EquivalentInjection]): Double =
+    {
+        equiv match
+        {
+            case Some (injection) =>
+                math.sqrt (injection.minP * injection.minP + injection.minQ * injection.minQ)
+            case _ => 0.0
+        }
+    }
+
+    def Z (equiv: Option[EquivalentInjection]): Complex =
+    {
+        equiv match
+        {
+            case Some (injection) =>
+                Complex (injection.r, injection.x)
+            case _ => 0.0
+        }
+    }
+
+    def Z0 (equiv: Option[EquivalentInjection]): Complex =
+    {
+        equiv match
+        {
+            case Some (injection) =>
+                Complex (injection.r0, injection.x0)
+            case _ => 0.0
+        }
+    }
+
+    def WikMax (equiv: Option[EquivalentInjection]): Double =
+    {
+        equiv match
+        {
+            case Some (injection) =>
+                math.atan2 (injection.maxQ, injection.maxP)
+            case _ => 0.0
+        }
+    }
+
+    def WikMin (equiv: Option[EquivalentInjection]): Double =
+    {
+        equiv match
+        {
+            case Some (injection) =>
+                math.atan2 (injection.minQ, injection.minP)
+            case _ => 0.0
+        }
+    }
+
+    def Z2 (equiv: Option[EquivalentInjection]): Complex =
+    {
+        val power = SkMax (equiv)
+        val angle = WikMax (equiv)
+        val c = 1.0
+        val z = (c * v0 * v0) / power
+        val r = z * Math.cos (angle)
+        val x = z * Math.sin (angle)
+        Complex (r, x)
+    }
+
     /**
      * Return the maximum network short circuit power S<sub>k</sub> (VA).
      *
@@ -168,11 +239,9 @@ case class TransformerSet (
      */
     val network_short_circuit_power_max: Double =
     {
-        def Sk (equiv: EquivalentInjection): Double = math.sqrt (equiv.maxP * equiv.maxP + equiv.maxQ * equiv.maxQ)
-
-        val power = Sk (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x => Sk (x.shortcircuit) == power))
-            log.error ("transformer set " + transformer_name + " has differing maximum network short circuit powers " + transformers.map (x => Sk (x.shortcircuit)).mkString (" "))
+        val power = SkMax (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x => SkMax (x.shortcircuit) == power))
+            log.error ("transformer set " + transformer_name + " has differing maximum network short circuit powers " + transformers.map (x => SkMax (x.shortcircuit)).mkString (" "))
         power
     }
 
@@ -183,11 +252,9 @@ case class TransformerSet (
      */
     val network_short_circuit_power_min: Double =
     {
-        def Sk (equiv: EquivalentInjection): Double = math.sqrt (equiv.minP * equiv.minP + equiv.minQ * equiv.minQ)
-
-        val power = Sk (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x => Sk (x.shortcircuit) == power))
-            log.error ("transformer set " + transformer_name + " has differing minimum network short circuit powers " + transformers.map (x => Sk (x.shortcircuit)).mkString (" "))
+        val power = SkMin (transformers.head.shortcircuit)
+        if (!transformers.tail.forall (x => SkMin (x.shortcircuit) == power))
+            log.error ("transformer set " + transformer_name + " has differing minimum network short circuit powers " + transformers.map (x => SkMin (x.shortcircuit)).mkString (" "))
         power
     }
 
@@ -198,28 +265,11 @@ case class TransformerSet (
      */
     val network_short_circuit_impedance_max: Complex =
     {
-        def Z (equiv: EquivalentInjection): Complex = Complex (equiv.r, equiv.x)
-
         val z = Z (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z (x.shortcircuit) == z))
             log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x => Z (x.shortcircuit)).mkString (" ") + " using the r and x")
 
         // check against Sk
-        def Z2 (equiv: EquivalentInjection): Complex =
-        {
-            def Sk (equiv: EquivalentInjection): Double = math.sqrt (equiv.maxP * equiv.maxP + equiv.maxQ * equiv.maxQ)
-
-            def Wik (equiv: EquivalentInjection): Double = math.atan2 (equiv.maxQ, equiv.maxP)
-
-            val power = Sk (transformers.head.shortcircuit)
-            val angle = Wik (transformers.head.shortcircuit)
-            val c = 1.0
-            val z = (c * v0 * v0) / power
-            val r = z * Math.cos (angle)
-            val x = z * Math.sin (angle)
-            Complex (r, x)
-        }
-
         val z2 = Z2 (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z2 (x.shortcircuit) == z2))
             log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x => Z2 (x.shortcircuit)).mkString (" ") + " using the maxP and maxQ")
@@ -234,26 +284,18 @@ case class TransformerSet (
      */
     val network_short_circuit_impedance_min: Complex =
     {
-        def Z (equiv: EquivalentInjection): Complex =
+        def Z (equiv: Option[EquivalentInjection]): Complex =
         {
-            def Sk (equiv: EquivalentInjection): Double =
-            {
-                var p = math.sqrt (equiv.minP * equiv.minP + equiv.minQ * equiv.minQ)
-                if (0.0 == p)
-                    p = math.sqrt (equiv.maxP * equiv.maxP + equiv.maxQ * equiv.maxQ)
-                p
-            }
-
-            def Wik (equiv: EquivalentInjection): Double =
-            {
-                if (0.0 == equiv.minP * equiv.minP + equiv.minQ * equiv.minQ)
-                    math.atan2 (equiv.maxQ, equiv.maxP)
+            val power =
+                if (0.0 != SkMin (equiv))
+                    SkMin (equiv)
                 else
-                    math.atan2 (equiv.minQ, equiv.minP)
-            }
-
-            val power = Sk (transformers.head.shortcircuit)
-            val angle = Wik (transformers.head.shortcircuit)
+                    SkMax (equiv)
+            val angle =
+                if (0.0 != WikMin (equiv))
+                    WikMin (equiv)
+                else
+                    WikMax (equiv)
             val c = 1.0
             val z = (c * v0 * v0) / power
             val r = z * Math.cos (angle)
@@ -275,9 +317,7 @@ case class TransformerSet (
      */
     val network_short_circuit_zero_sequence_impedance_max: Complex =
     {
-        def Z (equiv: EquivalentInjection): Complex = Complex (equiv.r0, equiv.x0)
-
-        val impedance = Z (transformers.head.shortcircuit)
+        val impedance = Z0 (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z (x.shortcircuit) == impedance))
             log.error ("transformer set " + transformer_name + " has differing maximum network zero sequence short circuit impedance " + transformers.map (x => Z (x.shortcircuit)).mkString (" ") + " using the r0 and x0")
         impedance
@@ -322,6 +362,6 @@ case class TransformerSet (
 
     override def toString: String =
     {
-        "%s %skVA %s:%s".format (transformer_name, power_rating / 1000.0, v0, v1)
+        s"$transformer_name ${power_rating / 1000.0}kVA $v0:$v1"
     }
 }

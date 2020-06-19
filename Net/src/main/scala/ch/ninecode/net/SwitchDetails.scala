@@ -1,6 +1,5 @@
 package ch.ninecode.net;
 
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -43,6 +42,7 @@ final case class SwitchDetails (
      *
      * @return the fuse, breaker etc. subclass as the Switch superclass
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
     def asSwitch: Switch =
     {
         element match
@@ -60,8 +60,9 @@ final case class SwitchDetails (
             case r: Recloser =>           r.ProtectedSwitch.Switch
             case s: Sectionaliser =>      s.Switch
             case _ =>
+                // Todo: should be a "require", but that's impossible for case class creation
                 log.error (s"non-switch (${element.getClass}:${element.id}) in SwitchEdge")
-                null.asInstanceOf[Switch]
+                null
         }
     }
 

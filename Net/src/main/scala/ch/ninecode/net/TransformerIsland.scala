@@ -20,7 +20,7 @@ case class TransformerIsland (transformers: Array[TransformerSet])
         if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
             string
         else
-            "_" + string
+            s"_$string"
         s.replace (".", "d").replace (":", "$")
     }
 
@@ -29,7 +29,7 @@ case class TransformerIsland (transformers: Array[TransformerSet])
     {
         val n = transformers.map (_.transformer_name).map (valid_config_name).sortWith (_ < _).mkString ("_")
         if (n.getBytes.length > 63)
-            "_" + Math.abs (n.hashCode ()) + "_" + n.substring (0, n.indexOf ("_", 32)) + "_etc"
+            s"_${Math.abs (n.hashCode ()).toString}_${n.substring (0, n.indexOf ("_", 32))}_etc"
         else
             n
     }

@@ -107,7 +107,7 @@ final case class Transformers (
     def to_transformer_data (transformer: (PowerTransformer, Iterable[(PowerTransformerEnd, Terminal, (String, Double), TopologicalNode)])): TransformerData =
     {
         val ends = transformer._2.toArray.sortWith (_._1.TransformerEnd.endNumber < _._1.TransformerEnd.endNumber)
-        TransformerData (transformer._1, ends.map (_._1), ends.map (_._2), ends.map (_._4), ends.map (_._3), null, null)
+        TransformerData (transformer._1, ends.map (_._1), ends.map (_._2), ends.map (_._4), ends.map (_._3), None, None)
     }
 
     /**
@@ -129,7 +129,9 @@ final case class Transformers (
                     case station: Substation => station.id
                     case bay: Bay => bay.Substation
                     case level: VoltageLevel => level.Substation
-                    case _ => throw new Exception ("unknown container type (%s) for transformer".format (element.getClass.toString))
+                    case _ =>
+                        log.error (s"unknown container type (${element.getClass.toString}) for transformer")
+                        ""
                 }
             case None => ""
         }
@@ -145,22 +147,22 @@ final case class Transformers (
      * @param voltage the nominal primary voltage
      * @return the EquivalentInjection with the primary network model
      */
-    def default_injection (transformer: String, station: String, voltage: (String, Double)): EquivalentInjection =
+    def default_injection (transformer: String, station: Option[Substation], voltage: (String, Double)): EquivalentInjection =
     {
         val mRID = "EquivalentInjection_" + transformer
         val description = "default equivalent generation injection"
         val element = BasicElement (mRID = mRID)
-        element.bitfields = Array (Integer.parseInt ("1", 2))
         val obj = IdentifiedObject (element, description = description, mRID = mRID)
-        obj.bitfields = Array (Integer.parseInt ("110", 2))
+        obj.bitfields = IdentifiedObject.fieldsToBitfields ("description", "mRID")
         val psr = PowerSystemResource (obj)
-        psr.bitfields = Array (0)
-        val equipment = Equipment (psr, inService = true, normallyInService = true, EquipmentContainer = station)
-        equipment.bitfields = Array (Integer.parseInt ("10001010", 2))
+        psr.bitfields = PowerSystemResource.fieldsToBitfields ()
+        val s = station match { case Some (s) => s.id case _ => "" }
+        val equipment = Equipment (psr, inService = true, normallyInService = true, EquipmentContainer = s)
+        equipment.bitfields = Equipment.fieldsToBitfields ("inService", "normallyInService", "EquipmentContainer")
         val conducting = ConductingEquipment (equipment, BaseVoltage = voltage._1)
-        conducting.bitfields = Array (Integer.parseInt ("1", 2))
+        conducting.bitfields = ConductingEquipment.fieldsToBitfields ("BaseVoltage")
         val equivalent = EquivalentEquipment (conducting)
-        equivalent.bitfields = Array (0)
+        equivalent.bitfields = EquivalentEquipment.fieldsToBitfields ()
 
         // if there is only one supplied angle, apply it to both max and min conditions
         val angle_max = if (default_supply_network_short_circuit_angle_max.isNaN)
@@ -188,9 +190,40 @@ final case class Transformers (
         val minP = default_supply_network_short_circuit_power_min * Math.cos (impedance_min.angle)
         val minQ = default_supply_network_short_circuit_power_min * Math.sin (impedance_min.angle)
 
-        val injection = EquivalentInjection (equivalent, maxP, maxQ, minP, minQ, 0.0, 0.0, impedance_max.re, 0.0, 0.0, regulationCapability = false, regulationStatus = false, 0.0, impedance_max.im, 0.0, 0.0, null)
         // note: use RegulationStatus to indicate this is a default value, and not a real value
-        injection.bitfields = Array (Integer.parseInt ("0001010001001111", 2))
+        val injection = EquivalentInjection (
+            equivalent,
+            maxP = maxP,
+            maxQ = maxQ,
+            minP = minP,
+            minQ = minQ,
+            p = 0.0,
+            q = 0.0,
+            r = impedance_max.re,
+            r0 = 0.0,
+            r2 = 0.0,
+            regulationCapability = false,
+            regulationStatus = false,
+            regulationTarget = 0.0,
+            x = impedance_max.im,
+            x0 = 0.0,
+            x2 = 0.0)
+        injection.bitfields = EquivalentInjection.fieldsToBitfields (
+            "maxP",
+            "maxQ",
+            "minP",
+            "minQ",
+            "p",
+            "q",
+            "r",
+            "r0",
+            "r2",
+            "regulationCapability",
+            "regulationStatus",
+            "regulationTarget",
+            "x",
+            "x0",
+            "x2")
         injection
     }
 
@@ -251,16 +284,17 @@ final case class Transformers (
             .leftOuterJoin (get[Element]("Elements").keyBy (_.id)).values
             .map (x => (station_fn (x._2), x._1))
             .leftOuterJoin (substations_by_id).values
-            .map (x => x._1.copy (station = x._2.orNull))
+            .map (x => x._1.copy (station = x._2))
 
         // add equivalent injection, or default
+        @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
         val injections_by_node = getOrElse[EquivalentInjection].keyBy (_.id)
             .join (getOrElse[Terminal].keyBy (_.ConductingEquipment)).values
             .map (x => (x._2.TopologicalNode, x._1))
-            .groupByKey.mapValues (_.head)
+            .groupByKey.mapValues (_.head) // ToDo: should really sum the (different) EquivalentInjection?
         transformers_stations.keyBy (_.node0.id)
             .leftOuterJoin (injections_by_node).values
-            .map (x => x._1.copy (shortcircuit = x._2.getOrElse (default_injection (x._1.transformer.id, if (null != x._1.station) x._1.station.id else "", x._1.voltages (x._1.primary)))))
+            .map (x => x._1.copy (shortcircuit = if (x._2.isDefined) x._2 else Some (default_injection (x._1.transformer.id, x._1.station, x._1.voltages (x._1.primary)))))
             .persist (storage_level)
     }
 }

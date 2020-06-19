@@ -29,24 +29,24 @@ final case class Switches (
         terminals match
         {
             case Some (terminals) =>
-                if (2 == terminals.size)
+                terminals.toList match
                 {
-                    val t1 = terminals.head
-                    val t2 = terminals.tail.head
-                    if (t1.id != t2.id && t1.TopologicalNode != t2.TopologicalNode)
-                        if (t1.ACDCTerminal.sequenceNumber < t2.ACDCTerminal.sequenceNumber)
-                            Some ((switch, t1, t2))
+                    case t1 :: t2 :: Nil =>
+                        if (t1.id != t2.id && t1.TopologicalNode != t2.TopologicalNode)
+                            if (t1.ACDCTerminal.sequenceNumber < t2.ACDCTerminal.sequenceNumber)
+                                Some ((switch, t1, t2))
+                            else
+                                Some ((switch, t2, t1))
                         else
-                            Some ((switch, t2, t1))
-                    else
+                            None
+                    case _ =>
                         None
                 }
-                else
-                    None
             case None => None
         }
     }
 
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     def switch_info: RDD[Element] = session.sparkContext.union (
         getOrElse[SwitchInfo].asInstanceOf[RDD[Element]],
         getOrElse[OldSwitchInfo].asInstanceOf[RDD[Element]],

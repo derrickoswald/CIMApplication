@@ -116,9 +116,9 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
 
     def registerDependency (configuration: SparkConf): Unit =
     {
-        configuration.registerKryoClasses (classesToRegister)
+        val _ = configuration.registerKryoClasses (classesToRegister)
         // use the custom registrator
-        configuration.set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
+        .set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
     }
 
     /**

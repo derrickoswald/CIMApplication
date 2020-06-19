@@ -13,7 +13,8 @@ extends LoadFlowEdge (
     def closed: Boolean = data.closed
 
     def ratedCurrent: Double =
-        data.switches.map (x => x.asSwitch.ratedCurrent).min
+        data.switches.map (x => x.asSwitch.ratedCurrent)
+            .fold (Double.MaxValue)((a, b) => if (a < b) a else b) // instead of .min
 
     def fuse: Boolean =
         data.switches.forall (_.fuse)
