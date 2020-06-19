@@ -11,7 +11,9 @@ import ch.ninecode.gl.PreEdge
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.SwingNode
 import ch.ninecode.gl.GLMTransformerEdge
+import ch.ninecode.model.ACDCTerminal
 import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.BasicElement
 import ch.ninecode.model.Breaker
 import ch.ninecode.model.Conductor
 import ch.ninecode.model.Cut
@@ -19,6 +21,7 @@ import ch.ninecode.model.Disconnector
 import ch.ninecode.model.Element
 import ch.ninecode.model.Fuse
 import ch.ninecode.model.GroundDisconnector
+import ch.ninecode.model.IdentifiedObject
 import ch.ninecode.model.Jumper
 import ch.ninecode.model.LoadBreakSwitch
 import ch.ninecode.model.MktSwitch
@@ -127,8 +130,10 @@ object AbgangKreis
             case _: Switch | _: Cut | _: Disconnector | _: Fuse | _: GroundDisconnector | _: Jumper | _: MktSwitch | _: ProtectedSwitch | _: Breaker | _: LoadBreakSwitch | _: Recloser | _: Sectionaliser =>
                 PlayerSwitchEdge (cn1, cn2, pickSwitch (elements).get, fuse = false)
             case _: Conductor | _: ACLineSegment =>
-                val t1 = Terminal (TopologicalNode = cn1)
-                val t2 = Terminal (TopologicalNode = cn2)
+                val t1 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID="terminal_1"))), TopologicalNode = cn1)
+                t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
+                val t2 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID="terminal_2"))), TopologicalNode = cn2)
+                t2.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
                 implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
                 GLMLineEdge (LineData (elements.flatMap (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
             //                DEFAULT_R: Double = 0.225,

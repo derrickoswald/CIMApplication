@@ -3,12 +3,15 @@ package ch.ninecode.gl
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.model.ACDCTerminal
 import ch.ninecode.net.LineData
 import ch.ninecode.net.LineDetails
 import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.BasicElement
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Conductor
 import ch.ninecode.model.Element
+import ch.ninecode.model.IdentifiedObject
 import ch.ninecode.model.Terminal
 import ch.ninecode.net.LoadFlowEdge
 
@@ -104,8 +107,10 @@ object GLMEdge
             case "Switch" =>
                 GLMSwitchEdge (cn1, cn2, elements)
             case "Conductor" =>
-                val t1 = Terminal (TopologicalNode = cn1)
-                val t2 = Terminal (TopologicalNode = cn2)
+                val t1 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID="terminal_1"))), TopologicalNode = cn1)
+                t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
+                val t2 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID="terminal_2"))), TopologicalNode = cn2)
+                t2.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
                 implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
                 GLMLineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None, tbase))))
             // base_temperature: Double = 20.0,
