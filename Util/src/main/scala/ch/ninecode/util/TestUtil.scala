@@ -84,7 +84,7 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
             thisOptions = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
-                "ch.ninecode.cim.do_topo" -> "true",
+                "ch.ninecode.cim.do_topo_islands" -> "true",
                 "ch.ninecode.cim.force_retain_switches" -> "Unforced",
                 "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
                 "ch.ninecode.cim.debug" -> "true",
