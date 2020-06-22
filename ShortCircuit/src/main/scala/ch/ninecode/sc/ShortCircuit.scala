@@ -1185,7 +1185,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             {
                 trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) || // ToDo: don't hard code these voltage values
                     trafo.ends.length > 2 ||
-                    options.calculate_public_lighting && trafo.voltages.exists (v => v._2 == 230.0)
+                    (options.calculate_public_lighting && trafo.voltages.exists (v => v._2 == 230.0))
             }
 
             val subtransmission_trafos = transformer_data.filter (subtransmission).collect
