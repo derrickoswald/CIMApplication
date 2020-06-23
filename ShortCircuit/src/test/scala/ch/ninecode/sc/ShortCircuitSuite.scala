@@ -277,8 +277,16 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME6
-            readCIMElements (session, filename)
-
+            readCIMElements (session, filename, Map [String, String](
+                    "path" -> filename,
+                    "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                    "ch.ninecode.cim.do_topo" -> "true", // turn off island processing
+                    "ch.ninecode.cim.force_retain_switches" -> "Unforced",
+                    "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                    "ch.ninecode.cim.debug" -> "true",
+                    "ch.ninecode.cim.do_deduplication" -> "true"
+                )
+            )
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -318,8 +326,16 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             val filename = FILE_DEPOT + FILENAME7
 
-            readCIMElements (session, filename)
-
+            readCIMElements (session, filename, Map [String, String](
+                    "path" -> filename,
+                    "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                    "ch.ninecode.cim.do_topo" -> "true", // turn off island processing
+                    "ch.ninecode.cim.force_retain_switches" -> "Unforced",
+                    "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                    "ch.ninecode.cim.debug" -> "true",
+                    "ch.ninecode.cim.do_deduplication" -> "true"
+                )
+            )
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -502,8 +518,16 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             val filename = FILE_DEPOT + FILENAME11
             val MESSAGELIMIT = 2
-            readCIMElements (session, filename)
-
+            readCIMElements (session, filename, Map [String, String](
+                    "path" -> filename,
+                    "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                    "ch.ninecode.cim.do_topo" -> "true", // turn off island processing
+                    "ch.ninecode.cim.force_retain_switches" -> "Unforced",
+                    "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
+                    "ch.ninecode.cim.debug" -> "true",
+                    "ch.ninecode.cim.do_deduplication" -> "true"
+                )
+            )
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
