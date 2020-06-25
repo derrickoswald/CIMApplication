@@ -62,7 +62,26 @@ object FData
             Amp (1150, 400)
         )
 
-    var fuse: (Double, Branch) => Double = fuse1
+    val recommended_fuse_sizing_4: Array[Amp] =
+        Array (
+            Amp (0, 6), // failsafe fallback for currents less than 65A
+            Amp (65, 25),
+            Amp (105, 35),
+            Amp (140, 50),
+            Amp (180, 50),
+            Amp (240, 63),
+            Amp (320, 100),
+            Amp (380, 100),
+            Amp (500, 160),
+            Amp (650, 160),
+            Amp (800, 200),
+            Amp (1050, 250),
+            Amp (1300, 400),
+            Amp (1750, 400),
+            Amp (2400, 500)
+        )
+
+    var fuse: (Double, Branch) ⇒ Double = fuse1
 
     def fuse_sizing_table (number: Int): Unit =
     {
@@ -77,9 +96,12 @@ object FData
             case 3 =>
                 fuse = fuse3
 
+            case 4 =>
+                fuse = fuse4
+
             case _ =>
                 val log: Logger = LoggerFactory.getLogger (getClass)
-                log.error ("unrecognized fuse sizing table number %s, ignored".format (number))
+                log.error (s"unrecognized fuse sizing table number $number, ignored")
         }
     }
 
@@ -114,6 +136,14 @@ object FData
                 case _ =>
                     recommended_fuse_sizing_1.filter (_.Ik <= Math.abs (ik)).last.Rating
             }
+    }
+
+    def fuse4 (ik: Double, branch: Branch = null): Double =
+    {
+        if (ik.isNaN)
+            recommended_fuse_sizing_4.last.Rating
+        else
+            recommended_fuse_sizing_4.filter (_.Ik <= Math.abs (ik)).last.Rating
     }
 
     def fuses (ik: Double, branches: Branch): String =

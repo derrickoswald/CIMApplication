@@ -207,7 +207,7 @@ object Main
 
         opt[Int]("fuse_table").
             action ((x, c) => c.copy (fuse_table = x)).
-            text ("recommended fuse sizing table, #1 from 65A⇒25 to 2400A⇒630, #2 from 28A⇒10 to 2500A⇒630 [%s], #3 DIN as #1, SEV 200A⇒60 to 1150A⇒400".format (default.fuse_table))
+            text ("recommended fuse sizing table, #1 from 65A⇒25 to 2400A⇒630, #2 from 28A⇒10 to 2500A⇒630 [%s], #3 DIN as #1, SEV 200A⇒60 to 1150A⇒400, #4 0⇒6,65A⇒25 to 2400A⇒500".format (default.fuse_table))
 
         opt[Int]("messagemax").
             action ((x, c) => c.copy (messagemax = x)).
