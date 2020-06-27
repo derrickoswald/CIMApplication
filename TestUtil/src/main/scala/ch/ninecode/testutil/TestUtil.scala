@@ -88,7 +88,7 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
                     .set ("spark.executor.memory", "2g")
                     .set ("spark.ui.showConsoleProgress", "false")
                     .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-                    .set ("spark.graphx.pregel.checkpointInterval", "8"))
+                    .set ("spark.graphx.pregel.checkpointInterval", "8")
 
                 // register relevant classes
                 registerDependency (configuration)
