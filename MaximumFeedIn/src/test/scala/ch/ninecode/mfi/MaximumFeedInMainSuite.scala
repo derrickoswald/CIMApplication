@@ -5,11 +5,11 @@ import java.io.FileDescriptor
 import java.io.FileOutputStream
 import java.io.PrintStream
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 import ch.ninecode.mfi.MaximumFeedIn.main
 
-class MaximumFeedInMainSuite extends FunSuite
+class MaximumFeedInMainSuite extends AnyFunSuite
 {
     test ("Help")
     {

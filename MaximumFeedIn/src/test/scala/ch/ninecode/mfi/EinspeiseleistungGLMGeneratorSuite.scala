@@ -1,11 +1,11 @@
 package ch.ninecode.mfi
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 import ch.ninecode.model.SolarGeneratingUnit
 import ch.ninecode.cim.CHIM
 
-class EinspeiseleistungGLMGeneratorSuite extends FunSuite
+class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
 {
     def parseSolarGen (xml: String): SolarGeneratingUnit =
     {

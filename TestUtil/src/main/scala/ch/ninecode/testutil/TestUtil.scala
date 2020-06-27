@@ -18,9 +18,9 @@ import org.apache.spark.storage.StorageLevel
 import ch.ninecode.cim.CIMClasses
 
 import org.scalatest.Outcome
-import org.scalatest.fixture
+import org.scalatest.funsuite.FixtureAnyFunSuite
 
-trait TestUtil extends fixture.FunSuite with SQLite with Unzip
+trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
 {
     type FixtureParam = SparkSession
     val classesToRegister: Array[Class[_]] = CIMClasses.list

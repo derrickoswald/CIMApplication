@@ -2,9 +2,9 @@ package ch.ninecode.sc
 
 import ch.ninecode.util.Complex
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class BranchImpedanceSuite extends FunSuite
+class BranchImpedanceSuite extends AnyFunSuite
 {
     test ("SeriesImpedance")
     {

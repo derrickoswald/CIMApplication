@@ -50,7 +50,7 @@
 
         <!-- test versions -->
         <version.dependency.junit>4.13</version.dependency.junit>
-        <version.dependency.scalatest>3.1.2</version.dependency.scalatest>
+        <version.dependency.scalatest>3.2.0</version.dependency.scalatest>
 
         <!-- plugin versions -->
         <version.dependency.maven-jar-plugin>3.1.2</version.dependency.maven-jar-plugin>

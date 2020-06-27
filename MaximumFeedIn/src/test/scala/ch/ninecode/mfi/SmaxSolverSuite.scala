@@ -2,9 +2,9 @@ package ch.ninecode.mfi
 
 import ch.ninecode.util.Complex
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class SmaxSolverSuite extends FunSuite
+class SmaxSolverSuite extends AnyFunSuite
 {
     val root3: Double = math.sqrt (3)
     def toRadians (angle: Double): Double = angle * Math.PI / 180.0

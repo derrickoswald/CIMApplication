@@ -4,9 +4,9 @@ import java.nio.channels.FileChannel
 import java.nio.file.FileSystems
 import java.nio.file.StandardOpenOption
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class EDIFACTSuite extends FunSuite
+class EDIFACTSuite extends AnyFunSuite
 {
     test ("UNA 1 - default")
     {

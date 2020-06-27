@@ -1,8 +1,8 @@
 package ch.ninecode.util
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class ComplexSuite extends FunSuite
+class ComplexSuite extends AnyFunSuite
 {
     test ("rectangular no suffix")
     {

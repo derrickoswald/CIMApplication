@@ -2,9 +2,9 @@ package ch.ninecode.sc
 
 import ch.ninecode.util.Complex
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class FDataSuite extends FunSuite
+class FDataSuite extends AnyFunSuite
 {
     test ("Fuse+")
     {

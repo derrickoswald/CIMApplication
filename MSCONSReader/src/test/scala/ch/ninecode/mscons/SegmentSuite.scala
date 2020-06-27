@@ -2,7 +2,7 @@ package ch.ninecode.mscons
 
 import java.util.Calendar
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 import ch.ninecode.edifact.Segment
 import ch.ninecode.edifact.SegmentListParser
@@ -10,7 +10,7 @@ import ch.ninecode.edifact.SegmentParser
 import ch.ninecode.edifact.SegmentScanner
 import ch.ninecode.edifact.ServiceSegmentParser
 
-class SegmentSuite extends FunSuite
+class SegmentSuite extends AnyFunSuite
 {
     abstract class Mock[T] extends MSCONSMessage
     {

@@ -2,9 +2,9 @@ package ch.ninecode.sc
 
 import ch.ninecode.util.Complex
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class MaximumStartingCurrentSuite extends FunSuite
+class MaximumStartingCurrentSuite extends AnyFunSuite
 {
     /**
      * See example 4.6.1 Motor Start-up in DACHCZ Technical Rules for the Assessment of Network Disturbances
