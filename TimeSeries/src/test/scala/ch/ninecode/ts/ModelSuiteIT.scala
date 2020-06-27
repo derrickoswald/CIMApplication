@@ -11,7 +11,9 @@ import ch.ninecode.ts.TimeSeries.main
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class ModelSuiteIT
 {
-    def cassandra_port: String =
+    val DEFAULT_CASSANDRA_PORT = 9042
+
+    def cassandra_port: Int =
     {
         val properties: Properties =
         {
@@ -21,7 +23,11 @@ class ModelSuiteIT
             in.close ()
             p
         }
-        properties.getProperty ("nativeTransportPort", "9042")
+        val port = properties.getProperty ("nativeTransportPort", "9042")
+        if ("" == port)
+            DEFAULT_CASSANDRA_PORT
+        else
+            port.toInt
     }
 
     def time[R](template: String)(block: => R): R =
@@ -47,7 +53,7 @@ class ModelSuiteIT
                     "--master", "local[*]",
                     "--logging", "INFO",
                     "--host", "localhost",
-                    "--port", cassandra_port,
+                    "--port", cassandra_port.toString,
                     "--keyspace", KEYSPACE,
                     "--tree_depth", "8", // it's just quicker this way
                     "--model_file", "target/models/myDecisionTreeRegressorModel"))
@@ -60,7 +66,7 @@ class ModelSuiteIT
                     "--master", "local[*]",
                     "--logging", "INFO",
                     "--host", "localhost",
-                    "--port", cassandra_port,
+                    "--port", cassandra_port.toString,
                     "--keyspace", KEYSPACE,
                     "--model_file", "target/models/myDecisionTreeRegressorModel",
                     "--start", "2017-07-19T00:00:00.000+0000",

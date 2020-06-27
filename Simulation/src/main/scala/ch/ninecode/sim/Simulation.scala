@@ -27,7 +27,7 @@ import org.apache.spark.sql.Row
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import com.datastax.driver.core.ConsistencyLevel
+import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.TTLOption
 import com.datastax.spark.connector.writer.WriteConf
@@ -234,7 +234,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def plural (number: Int): String = if (1 == number) "" else "s"
 
-    def make_tasks (subtransmission_trafos: Array[TransformerData]) (job: SimulationJob): RDD[SimulationTask] =
+    def make_tasks (job: SimulationJob): RDD[SimulationTask] =
     {
         log.info (s"""preparing simulation job "${job.name}"""")
 
@@ -529,7 +529,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     def createSimulationTasks (job: SimulationJob, batchno: Int): RDD[SimulationTrafoKreis] =
     {
         val (transformers, subtransmission_trafos) = getTransformers
-        val tasks = make_tasks (subtransmission_trafos)(job)
+        val tasks = make_tasks (job)
         job.save (session, job.output_keyspace, job.id, tasks)
 
         log.info ("""matching tasks to topological islands""")

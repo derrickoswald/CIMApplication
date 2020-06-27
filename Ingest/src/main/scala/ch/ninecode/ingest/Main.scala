@@ -68,8 +68,7 @@ object Main
         // get the necessary jar files to send to the cluster
         val jars = Set (
             jarForObject (IngestOptions ()),
-            jarForObject (com.datastax.spark.connector.mapper.ColumnMapper),
-            jarForObject (new com.twitter.jsr166e.LongAdder ())
+            jarForObject (com.datastax.spark.connector.mapper.ColumnMapper)
         ).toArray
 
         // create the configuration

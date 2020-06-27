@@ -178,7 +178,6 @@ object TimeSeriesStatsSuiteIT
         configuration.set ("spark.executor.memory", "2g")
         configuration.set ("spark.ui.port", "4041")
         configuration.set ("spark.ui.showConsoleProgress", "false")
-        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
         configuration.set ("spark.cassandra.connection.host", "localhost")
         configuration.set ("spark.cassandra.connection.port", cassandra_port)
 

@@ -13,7 +13,6 @@ import ch.ninecode.mscons.MSCONSParser
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 import com.datastax.spark.connector.rdd.ReadConf
-import org.apache.spark.rdd.RDD
 
 case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {

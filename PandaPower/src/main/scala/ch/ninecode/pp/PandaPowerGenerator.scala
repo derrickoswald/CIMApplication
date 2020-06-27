@@ -1,7 +1,5 @@
 package ch.ninecode.pp
 
-import scala.math.tan
-
 import ch.ninecode.net.LineDetails
 import ch.ninecode.net.LineEdge
 import ch.ninecode.net.LoadFlowNode

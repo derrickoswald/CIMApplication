@@ -2,9 +2,7 @@ package ch.ninecode.ts
 
 import java.util.Date
 
-import com.datastax.driver.core.ConsistencyLevel
-
-import scala.collection.JavaConversions.asScalaIterator
+import scala.collection.JavaConverters._
 
 import org.apache.commons.lang.StringUtils
 import org.apache.log4j.Level
@@ -13,8 +11,9 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import com.datastax.driver.core.ResultSet
-import com.datastax.driver.core.Row
+import com.datastax.oss.driver.api.core.ConsistencyLevel
+import com.datastax.oss.driver.api.core.cql.ResultSet
+import com.datastax.oss.driver.api.core.cql.Row
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.WriteConf
@@ -41,7 +40,7 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
         {
             session =>
                 val resultset: ResultSet = session.execute (sql)
-                for (row: Row <- resultset.iterator)
+                for (row: Row <- resultset.iterator.asScala)
                     yield (row.getString(0), row.getString(1))
         }
         iterator.toSeq
@@ -58,12 +57,14 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
                 if (null != row)
                 {
                     val period = row.getInt (2)
-                    val start = row.getTimestamp (3)
-                    val end = row.getTimestamp (4)
-                    val expected = (end.getTime - start.getTime + period) / period
+//                    val start = row.getTimestamp (3).getTime
+//                    val end = row.getTimestamp (4).getTime
+                    val start = row.getInstant (3).toEpochMilli
+                    val end = row.getInstant (4).toEpochMilli
+                    val expected = (end - start + period) / period
                     val count = row.getLong (5)
                     val missing = (expected - count).toInt
-                    (row.getString (0), row.getString (1), start, end, count, missing, row.getDouble (6), row.getDouble (7), row.getDouble (8), row.getDouble (9))
+                    (row.getString (0), row.getString (1), new Date (start), new Date (end), count, missing, row.getDouble (6), row.getDouble (7), row.getDouble (8), row.getDouble (9))
                 }
                 else
                     null

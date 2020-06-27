@@ -37,7 +37,6 @@ class LinesSuite extends TestUtil
                         .setMaster (s"spark://$SERVER:$PORT")
                         .set ("spark.driver.memory", "2g")
                         .set ("spark.executor.memory", "2g")
-                        .set ("spark.sql.warehouse.dir", "file:///tmp/")
                         .set ("spark.ui.showConsoleProgress", "false")
                         .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                         .setJars (Set (s1, s2, s3).toArray)

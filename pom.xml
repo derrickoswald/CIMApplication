@@ -6,7 +6,7 @@
     <groupId>ch.ninecode.cim</groupId>
     <artifactId>CIMApplication</artifactId>
     <!-- version>${version.dependency.scala}-${version.dependency.spark}-CIMAPPLICATION_VERSION</version -->
-    <version>2.11-2.4.5-2.7.2</version>
+    <version>2.12-3.0.0-3.0.0</version>
     <packaging>pom</packaging>
     <name>CIM Application Multimodule</name>
     <scm>
@@ -21,46 +21,49 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
 
         <!-- Scala versions -->
-        <version.dependency.scala>2.11</version.dependency.scala>
-        <version.dependency.scalalibrary>2.11.12</version.dependency.scalalibrary>
+        <version.dependency.scala>2.12</version.dependency.scala>
+        <version.dependency.scalalibrary>2.12.10</version.dependency.scalalibrary>
 
         <!-- Spark versions -->
-        <version.dependency.hadoop>2.7.6</version.dependency.hadoop>
-        <version.dependency.spark>2.4.5</version.dependency.spark>
-        <version.dependency.cassandra_spark>2.4.1</version.dependency.cassandra_spark>
-        <version.dependency.cimreader>2.11-2.4.5-4.2.2</version.dependency.cimreader>
+        <version.dependency.hadoop>3.2.1</version.dependency.hadoop>
+        <version.dependency.spark>3.0.0</version.dependency.spark>
+        <version.dependency.cimreader>2.12-3.0.0-5.0.1</version.dependency.cimreader>
+        <!-- NFG: version.dependency.cassandra_spark>2.5.0</version.dependency.cassandra_spark -->
+        <!-- NFG: version.dependency.cassandra_spark>v3.0.0-alpha2</version.dependency.cassandra_spark -->
+        <version.dependency.cassandra_spark>2.5.0</version.dependency.cassandra_spark>
+        <version.dependency.cassandra_driver>4.5.1</version.dependency.cassandra_driver>
+        <version.dependency.cassandra_all>3.11.6</version.dependency.cassandra_all>
 
         <!-- Component versions -->
         <version.dependency.javaee>8.0.1</version.dependency.javaee>
-        <version.dependency.tomee>8.0.0</version.dependency.tomee>
+        <version.dependency.tomee>8.0.3</version.dependency.tomee>
         <version.dependency.json>1.1.4</version.dependency.json>
         <version.dependency.sqlite>3.21.0.1</version.dependency.sqlite>
         <version.dependency.scopt>3.7.0</version.dependency.scopt>
-        <version.dependency.java-driver-core>4.2.0</version.dependency.java-driver-core>
         <version.dependency.netty-all>4.1.42.Final</version.dependency.netty-all>
         <version.dependency.bigdl>0.9.1</version.dependency.bigdl>
+        <version.dependency.joda-time>2.10.6</version.dependency.joda-time>
 
         <!-- test versions -->
-        <version.dependency.junit>4.12</version.dependency.junit>
-        <version.dependency.scalatest>3.0.5</version.dependency.scalatest>
+        <version.dependency.junit>4.13</version.dependency.junit>
+        <version.dependency.scalatest>3.1.2</version.dependency.scalatest>
 
         <!-- plugin versions -->
         <version.dependency.maven-jar-plugin>3.1.2</version.dependency.maven-jar-plugin>
         <version.dependency.maven-rar-plugin>2.4</version.dependency.maven-rar-plugin>
         <version.dependency.maven-war-plugin>3.2.3</version.dependency.maven-war-plugin>
         <version.dependency.maven-ear-plugin>3.0.1</version.dependency.maven-ear-plugin>
-        <version.dependency.maven-surefire-plugin>3.0.0-M3</version.dependency.maven-surefire-plugin>
+        <version.dependency.maven-surefire-plugin>3.0.0-M5</version.dependency.maven-surefire-plugin>
         <version.dependency.maven-assembly-plugin>3.1.1</version.dependency.maven-assembly-plugin>
         <version.dependency.maven-compiler-plugin>3.8.1</version.dependency.maven-compiler-plugin>
-        <version.dependency.maven-enforcer-plugin>3.0.0-M2</version.dependency.maven-enforcer-plugin>
+        <version.dependency.maven-enforcer-plugin>3.0.0-M3</version.dependency.maven-enforcer-plugin>
         <version.dependency.maven-failsafe-plugin>2.22.2</version.dependency.maven-failsafe-plugin>
         <version.dependency.build-helper-maven-plugin>3.0.0</version.dependency.build-helper-maven-plugin>
         <version.dependency.cassandra-maven-plugin>3.6</version.dependency.cassandra-maven-plugin>
-        <!-- see http://davidb.github.com/scala-maven-plugin -->
         <version.dependency.scala-maven-plugin>4.2.0</version.dependency.scala-maven-plugin>
         <version.dependency.wartremover>2.4.5</version.dependency.wartremover>
         <version.dependency.scalatest-maven-plugin>2.0.0</version.dependency.scalatest-maven-plugin>
@@ -142,7 +145,7 @@
                         <arg>-feature</arg>
                         <arg>-unchecked</arg>
                         <arg>-Ywarn-dead-code</arg>
-                        <arg>-Ywarn-unused</arg>
+                        <arg>-Ywarn-unused:_,-explicits</arg>
                         <arg>-Xlint:_</arg>
                         <arg>-target:jvm-1.8</arg>
                         <!-- see https://github.com/wartremover/wartremover/blob/704113034f9d2829aa8d577ac4f059c2136c6781/core/src/main/scala/wartremover/warts/Unsafe.scala -->

@@ -84,10 +84,10 @@ abstract class FieldExtractor[T] extends Parsers
                                 log.error ("too many subfields")
                                 Error ("too many subfields", in.rest)
                             }
-                        case Failure (msg, rest) =>
+                        case Failure (msg, _) =>
                             log.error (s"bad subfields $msg")
                             Error ("bad subfields", in.rest)
-                        case Error (msg, rest) =>
+                        case Error (msg, _) =>
                             log.error (s"bad subfields: $msg")
                             Error ("bad subfields", in.rest)
                     }

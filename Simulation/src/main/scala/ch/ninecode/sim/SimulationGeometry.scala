@@ -4,7 +4,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import com.datastax.driver.core.ConsistencyLevel
+
+import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.WriteConf
 
@@ -15,7 +16,6 @@ import ch.ninecode.model.DiagramObjectPoint
 import ch.ninecode.model.EnergyConsumer
 import ch.ninecode.model.Equipment
 import ch.ninecode.model.PositionPoint
-import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 

@@ -1,10 +1,12 @@
 package ch.ninecode.copy
 
+import java.net.InetSocketAddress
 import java.util.Properties
 
 import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 
-import com.datastax.driver.core.Cluster
+import com.datastax.oss.driver.api.core.CqlSession
+
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -33,6 +35,16 @@ class CopySuiteIT extends TestUtil
             port.toInt
     }
 
+    def getSession: CqlSession =
+    {
+        val session: CqlSession = CqlSession
+            .builder ()
+            .withLocalDatacenter ("datacenter1")
+            .addContactPoint (new InetSocketAddress ("localhost", cassandra_port))
+            .build ()
+        session
+    }
+
     @Test def help ()
     {
         main (Array ("--unittest", "--help"))
@@ -51,7 +63,7 @@ class CopySuiteIT extends TestUtil
             "--target_port", cassandra_port.toString,
             "--target_keyspace", TARGET_KEYSPACE))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        val session = getSession
         val sql = s"select * from system_schema.keyspaces where keyspace_name='$TARGET_KEYSPACE'"
         val records = session.execute (sql).all.asScala
         assert (1 == records.size, s"""keyspace "$TARGET_KEYSPACE" doesn't exist""")

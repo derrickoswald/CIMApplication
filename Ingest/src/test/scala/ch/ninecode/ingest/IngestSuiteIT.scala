@@ -1,12 +1,11 @@
 package ch.ninecode.ingest
 
+import java.net.InetSocketAddress
 import java.util.Properties
 
 import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 
-import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.Session
-
+import com.datastax.oss.driver.api.core.CqlSession
 import org.junit.Test
 
 import ch.ninecode.ingest.Main.main
@@ -21,6 +20,16 @@ class IngestSuiteIT
     val DAYLIGHT_MAPPING_FILE = "daylight_mapping.csv"
     val DAYLIGHT_START = "daylight_start.txt"
     val DAYLIGHT_END = "daylight_end.txt"
+
+    def getSession: CqlSession =
+    {
+        val session: CqlSession = CqlSession
+            .builder ()
+            .withLocalDatacenter ("datacenter1")
+            .addContactPoint (new InetSocketAddress ("localhost", cassandra_port))
+            .build ()
+        session
+    }
 
     def cassandra_port: Int =
     {
@@ -39,7 +48,7 @@ class IngestSuiteIT
             port.toInt
     }
 
-    def checkCount (session: Session, sql: String, count: Long, tag: String): Unit =
+    def checkCount (session: CqlSession, sql: String, count: Long, tag: String): Unit =
     {
         val records = session.execute (sql).all.asScala
         assert (1 == records.size, "record doesn't exist")
@@ -51,7 +60,7 @@ class IngestSuiteIT
         }
     }
 
-    def checkValue (session: Session, sql: String, real: Double, imag: Double, units: String): Unit =
+    def checkValue (session: CqlSession, sql: String, real: Double, imag: Double, units: String): Unit =
     {
         val records = session.execute (sql).all.asScala
         assert (1 == records.size, "record doesn't exist")
@@ -85,7 +94,7 @@ class IngestSuiteIT
             s"${FILE_DEPOT}${LPEX_FILE1}",
             s"${FILE_DEPOT}${LPEX_FILE2}"))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        val session = getSession
 
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS12345' and type='power'", 96L, "HAS12345")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12345' and type='power' and time='2019-03-02 23:15:00.000+0000'", 12075.0, 3750.0, "W")
@@ -116,7 +125,7 @@ class IngestSuiteIT
             s"${FILE_DEPOT}${DAYLIGHT_START}",
             s"${FILE_DEPOT}${DAYLIGHT_END}"))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        val session = getSession
 
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time>'2018-10-28 23:45:00.000+0000'", 188L, "daylight savings start")
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time<'2018-10-28 23:45:00.000+0000'", 196L, "daylight savings end")
@@ -148,7 +157,7 @@ class IngestSuiteIT
             "--mapping", MAPPING_FILE,
             "--format", "MSCONS"), FILES))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        val session = getSession
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='USR0001' and type='energy'", 96L, "merged records")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time = '2019-12-13 23:15:00.000+0000'", 36300, 10800, "Wh")
         val _ = session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
@@ -170,7 +179,7 @@ class IngestSuiteIT
             "--format", "MSCONS",
             FILE))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        val session = getSession
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='USR0001' and type='energy'", 96L, "merged records")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time = '2019-12-13 23:15:00.000+0000'", 36300, 10800, "Wh")
         val _ = session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")

@@ -5,7 +5,7 @@ import scala.collection.mutable
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
-import com.datastax.driver.core.ConsistencyLevel
+import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.writer.WriteConf
 import com.datastax.spark.connector._

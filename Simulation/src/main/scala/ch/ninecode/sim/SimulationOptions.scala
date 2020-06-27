@@ -36,8 +36,7 @@ case class SimulationOptions
     master: String = "",
     options: Map[String, String] = Map (
         "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
-        "spark.ui.showConsoleProgress" -> "false",
-        "spark.sql.warehouse.dir" -> "file:///tmp/"
+        "spark.ui.showConsoleProgress" -> "false"
     ),
     host: String = "localhost",
     port: Int = 9042,

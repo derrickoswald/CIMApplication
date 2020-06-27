@@ -86,11 +86,9 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
                     .setMaster ("local[2]")
                     .set ("spark.driver.memory", "2g")
                     .set ("spark.executor.memory", "2g")
-                    .set ("spark.sql.warehouse.dir", "file:///tmp/")
                     .set ("spark.ui.showConsoleProgress", "false")
                     .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-                    .set ("spark.graphx.pregel.checkpointInterval", "8")
-                    .set ("spark.sql.warehouse.dir", System.getProperty ("java.io.tmpdir", "/tmp/"))
+                    .set ("spark.graphx.pregel.checkpointInterval", "8"))
 
                 // register relevant classes
                 registerDependency (configuration)

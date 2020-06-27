@@ -25,7 +25,7 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
     {
         var skip = false
         var stop = false
-        var start = buffer.position
+        var start = buffer.position ()
         var size = 0
         var c = 0
         var intervals = List[(Int,Int)] () // start and size of each piece of the segment
@@ -105,7 +105,7 @@ object SegmentScanner
     //     segment terminator (')
     def parseUNA (buffer: ByteBuffer): UNA =
     {
-        if (buffer.limit >= 9)
+        if (buffer.limit () >= 9)
         {
             buffer.mark
             val buna = new Array[Char] (9)

@@ -7,7 +7,7 @@
         <groupId>ch.ninecode.cim</groupId>
         <artifactId>CIMApplication</artifactId>
         <relativePath>../pom.xml</relativePath>
-        <version>2.11-2.4.5-2.7.2</version>
+        <version>2.12-3.0.0-3.0.0</version>
     </parent>
     <artifactId>CIMConnector</artifactId>
     <packaging>rar</packaging>
@@ -20,7 +20,7 @@
 
     <properties>
         <!-- test dependencies versions -->
-        <version.dependency.shrinkwrap>3.1.3</version.dependency.shrinkwrap>
+        <version.dependency.shrinkwrap>3.1.4</version.dependency.shrinkwrap>
     </properties>
 
     <build>
@@ -37,8 +37,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${version.dependency.maven-compiler-plugin}</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>11</source>
+                    <target>11</target>
                     <compilerArgs>
                         <compilerArg>-Xlint:unchecked</compilerArg>
                     </compilerArgs>
@@ -128,6 +128,10 @@
                 <exclusion>
                     <groupId>org.apache.hadoop</groupId>
                     <artifactId>hadoop-client</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

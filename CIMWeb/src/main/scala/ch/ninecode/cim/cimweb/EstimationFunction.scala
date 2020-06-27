@@ -3,7 +3,6 @@ package ch.ninecode.cim.cimweb
 import javax.json.Json
 import javax.json.JsonStructure
 
-import com.datastax.driver.core.Cluster
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
@@ -28,8 +27,7 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
         jarForObject (new GLMGenerator ()),               // GridLabD.jar
         jarForObject (new LoadFlowNode ("", 0.0)), // Net.jar
         jarForObject (Complex (0.0, 0.0)),                // Util.jar
-        jarForObject (Cluster.builder),                   // spark-cassandra-connector.jar
-        jarForObject (new com.twitter.jsr166e.LongAdder ()), // some Spark garbage
+        jarForObject (com.datastax.oss.driver.api.core.ConsistencyLevel.ANY), // spark-cassandra-connector.jar
         jarForObject (Json.createObjectBuilder))          // javaee-api <JSON implementation>.jar
 
     override def getReturnType: Return = Return.JSON

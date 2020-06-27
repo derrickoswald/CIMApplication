@@ -70,16 +70,13 @@ object MetaTest
         configuration.set ("spark.executor.memory", "2g")
         configuration.set ("spark.ui.port", "4041")
         configuration.set ("spark.ui.showConsoleProgress", "false")
-        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
         configuration.set ("spark.cassandra.connection.host", "beach")
         configuration.set ("spark.cassandra.connection.port", "9042")
         val s1 = jarForObject (ch.ninecode.ts.TimeSeriesOptions ())
         val s2 = jarForObject (com.datastax.spark.connector.SomeColumns ())
-        val s3 = jarForObject (new com.twitter.jsr166e.LongAdder ())
         configuration.setJars (Array (
             s1,
-            s2,
-            s3))
+            s2))
 
         session = SparkSession.builder.config (configuration).getOrCreate
         session.sparkContext.setLogLevel ("WARN")

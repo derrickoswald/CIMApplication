@@ -17,7 +17,7 @@ import javax.json.stream.JsonGenerator
 
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
-import scala.collection.JavaConversions.mapAsJavaMap
+import scala.collection.JavaConverters.mapAsJavaMapConverter
 
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
@@ -78,7 +78,7 @@ case class IngestJob
         {
             case Some (writer) => writer
             case None =>
-                val writer = Json.createWriterFactory (Map[String, AnyRef](JsonGenerator.PRETTY_PRINTING -> "true"))
+                val writer = Json.createWriterFactory (Map[String, AnyRef](JsonGenerator.PRETTY_PRINTING -> "true").asJava)
                 FACTORY_INSTANCE = Some (writer)
                 writer
         }
@@ -281,7 +281,7 @@ object IngestJob
         val mapping = json.getString ("mapping", "")
         if ("" == mapping)
         {
-            log.error (s"""job does not specify a mapping file""")
+            log.error (s"""mapping file not specified in ${options.ingestions.mkString (",")}""")
             None
         }
         else

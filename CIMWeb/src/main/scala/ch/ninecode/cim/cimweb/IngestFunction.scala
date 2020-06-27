@@ -9,7 +9,6 @@ import javax.json.JsonObject
 import javax.json.JsonStructure
 import javax.json.JsonException
 
-import com.datastax.driver.core.Cluster
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
@@ -28,8 +27,7 @@ case class IngestFunction (job: String) extends CIMWebFunction
     jars = Array (
         jarForObject (this),
         jarForObject (IngestOptions()),                   // Ingest.jar
-        jarForObject (Cluster.builder),                   // spark-cassandra-connector.jar
-        jarForObject (new com.twitter.jsr166e.LongAdder ()), // some Spark garbage
+        jarForObject (com.datastax.oss.driver.api.core.ConsistencyLevel.ANY), // spark-cassandra-connector.jar
         jarForObject (Json.createObjectBuilder))          // javaee-api <JSON implementation>.jar
 
     override def getReturnType: Return = Return.JSON

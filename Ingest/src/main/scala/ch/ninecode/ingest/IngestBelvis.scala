@@ -10,7 +10,6 @@ import org.apache.spark.sql.SparkSession
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.rdd.ReadConf
-import org.apache.spark.rdd.RDD
 
 case class IngestBelvis (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {

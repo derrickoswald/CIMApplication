@@ -9,17 +9,17 @@ import scala.reflect.runtime.universe.TypeTag
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types.DateType
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import com.datastax.driver.core.ConsistencyLevel
-import com.datastax.driver.mapping.annotations.UDT
+
+import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.writer.WriteConf
-import org.apache.spark.sql.functions
 
 // Measurements needed from GridLAB-D recorders:
 //   - PowerTransformer (N6) apparent power [Scheinleistung (S)] (VA)
@@ -397,7 +397,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
     }
 }
 
-@UDT(name="event_number")
+//@UDT(name="event_number")
 case class EventNumber (
     orange: Int,
     red: Int)

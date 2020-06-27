@@ -88,7 +88,7 @@ object Main
                         val util = jarForClass (Class.forName ("ch.ninecode.util.Complex"))
                         val json = jarForClass (Class.forName ("javax.json.JsonStructure"))
                         val json_impl = jarForClass (Class.forName ("org.glassfish.json.JsonProviderImpl"))
-                        val datastax = jarForClass (Class.forName ("com.datastax.driver.core.Cluster"))
+                        val datastax = jarForClass (Class.forName ("com.datastax.oss.driver.api.core.CqlSession"))
 
                         // create the configuration
                         val configuration = new SparkConf (false)

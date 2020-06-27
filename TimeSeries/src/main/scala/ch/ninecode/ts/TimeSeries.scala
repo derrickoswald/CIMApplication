@@ -74,23 +74,22 @@ object TimeSeries
 
                     val begin = System.nanoTime ()
 
-                    // create the configuration
-                    val configuration = new SparkConf (false)
-                    // val configuration = Engine.createSparkConf ()
-                    configuration.setAppName (APPLICATION_NAME)
-                    if ("" != options.master)
-                        configuration.setMaster (options.master)
-                    if (options.spark_options.nonEmpty)
-                        options.spark_options.map ((pair: (String, String)) => configuration.set (pair._1, pair._2))
-                    configuration.set ("spark.cassandra.connection.host", options.host)
-                    configuration.set ("spark.cassandra.connection.port", options.port.toString)
-                    configuration.set ("spark.ui.showConsoleProgress", "false")
-
                     // get the necessary jar files to send to the cluster
                     val s1 = jarForObject (TimeSeriesOptions ())
                     val s2 = jarForObject (com.datastax.spark.connector.mapper.ColumnMapper)
-                    val s3 = jarForObject (new com.twitter.jsr166e.LongAdder ())
-                    configuration.setJars (Set (s1, s2, s3).toArray)
+                    val jars = Set (s1, s2)
+                    // create the configuration
+                    val configuration = new SparkConf (false)
+                        .setAppName (APPLICATION_NAME)
+                        .set ("spark.cassandra.connection.host", options.host)
+                        .set ("spark.cassandra.connection.port", options.port.toString)
+                        .set ("spark.ui.showConsoleProgress", "false")
+                        .setJars (jars.toArray)
+                    options.spark_options.foreach ((pair: (String, String)) => configuration.set (pair._1, pair._2))
+                    if ("" != options.master)
+                    {
+                        val _ = configuration.setMaster (if ("" != options.master) options.master else "")
+                    }
 
                     // make a Spark session
                     val session = SparkSession.builder ().config (configuration).getOrCreate ()

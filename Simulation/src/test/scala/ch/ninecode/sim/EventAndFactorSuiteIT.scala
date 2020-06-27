@@ -91,7 +91,6 @@ object EventAndFactorSuiteIT
             .set ("spark.graphx.pregel.checkpointInterval", "8")
             .set ("spark.ui.showConsoleProgress", "false")
             .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-            .set ("spark.sql.warehouse.dir", "file:///tmp/")
             .set ("spark.cassandra.connection.host", "localhost")
             .set ("spark.cassandra.connection.port", PORT)
             // register CIMReader classes

@@ -9,7 +9,6 @@ import org.apache.spark.sql.SparkSession
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.FixMethodOrder
-import org.junit.Test
 import org.junit.runners.MethodSorters
 import com.intel.analytics.bigdl.utils.Engine
 import ch.ninecode.ts.TimeSeries.jarForObject
@@ -31,7 +30,7 @@ class DLTest
     def toCalendar (date: String): Calendar =
     {
         val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSSZ")
-        val timestamp = date_format.parse ("2017-07-19 00:00:00.000+0000")
+        val timestamp = date_format.parse (date)
         val calendar = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
         calendar.setTimeInMillis (timestamp.getTime)
         calendar
@@ -83,12 +82,11 @@ object DLTest
         configuration.set ("spark.cores.max", "2")
         configuration.set ("spark.ui.port", "4041")
         configuration.set ("spark.ui.showConsoleProgress", "false")
-        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
         configuration.set ("spark.cassandra.connection.host", "beach")
         configuration.set ("spark.cassandra.connection.port", "9042")
         val s1 = jarForObject (ch.ninecode.ts.TimeSeriesOptions ())
         val s2 = jarForObject (com.datastax.spark.connector.SomeColumns ())
-        val s3 = jarForObject (new org.apache.spark.mllib.stat.test.BinarySampleBeanInfo ())
+        val s3 = jarForObject (new org.apache.spark.mllib.stat.test.BinarySample (true, 1.0))
         val s4 = jarForObject (new com.intel.analytics.bigdl.utils.LayerException (null, null))
         val s5 = jarForObject (com.intel.analytics.bigdl.models.utils.DistriOptimizerPerfParam())
         configuration.setJars (Array (

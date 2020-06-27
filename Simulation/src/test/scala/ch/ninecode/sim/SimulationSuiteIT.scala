@@ -2,16 +2,18 @@ package ch.ninecode.sim
 
 import java.io.File
 import java.io.PrintWriter
+import java.net.InetSocketAddress
 import java.util.Properties
 
 import scala.collection.JavaConverters.asScalaBufferConverter
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
-import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.Row
+import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.cql.Row
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
+
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.FixMethodOrder
@@ -32,6 +34,16 @@ class SimulationSuiteIT
     import SimulationSuiteIT.cassandra_port
     import SimulationSuiteIT.delete
     import SimulationSuiteIT.using
+
+    def getSession: CqlSession =
+    {
+        val session: CqlSession = CqlSession
+            .builder ()
+            .withLocalDatacenter ("datacenter1")
+            .addContactPoint (new InetSocketAddress ("localhost", cassandra_port.toInt))
+            .build ()
+        session
+    }
 
     @Test def Help ()
     {
@@ -532,7 +544,7 @@ class SimulationSuiteIT
                 json
             )
         )
-        using (Cluster.builder.addContactPoint ("localhost").withPort (cassandra_port.toInt).build.connect)
+        using (getSession)
         {
             cassandraSession =>
                 val sql1 = s"""select * from "$KEYSPACE".measured_value where mrid='USR0001' and type='energy' and time='2017-12-31 23:00:00.000+0000'"""
@@ -1096,7 +1108,7 @@ class SimulationSuiteIT
                 "--host", "localhost",
                 "--port", cassandra_port,
                 json))
-        using (Cluster.builder.addContactPoint ("localhost").withPort (cassandra_port.toInt).build.connect)
+        using (getSession)
         {
             cassandraSession =>
                 val sql = s"""select * from "$KEYSPACE".simulated_value where simulation='$ID_SIMULATION' and type='voltage' and period=900000 allow filtering"""
@@ -1155,7 +1167,6 @@ object SimulationSuiteIT extends Unzip with Using
             .set ("spark.executor.memory", "2g")
             .set ("spark.ui.port", "4041")
             .set ("spark.ui.showConsoleProgress", "false")
-            .set ("spark.sql.warehouse.dir", "file:///tmp/")
             .set ("spark.cassandra.connection.host", "localhost")
             .set ("spark.cassandra.connection.port", cassandra_port)
 

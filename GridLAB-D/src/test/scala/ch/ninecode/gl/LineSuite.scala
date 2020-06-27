@@ -10,7 +10,6 @@ import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.DefaultSource
-import ch.ninecode.net.LineData
 import ch.ninecode.net.LineDetails
 import ch.ninecode.net.Lines
 import ch.ninecode.net.Net
@@ -24,18 +23,6 @@ import org.scalatest.Canceled
 import org.scalatest.Outcome
 import org.scalatest.exceptions.StackDepthException
 import org.scalatest.exceptions.TestCanceledException
-
-case class Probe ()
-{
-    def acceptAllLines (line_filter: LineData): Boolean = true
-
-    def stringify (line: LineData): (String, String) =
-    {
-        val id = line.lines.map (_.line.id).toArray.sortWith (_ < _).mkString ("_")
-        val z = line.lines.map (_.impedance.toString).mkString("_")
-        (id, z)
-    }
-}
 
 class LineSuite extends TestUtil with BeforeAndAfter
 {
@@ -69,7 +56,7 @@ class LineSuite extends TestUtil with BeforeAndAfter
                     // create the configuration
                     val s1 = jarForObject (new DefaultSource ())
                     val s2 = jarForObject (ThreePhaseComplexDataElement ("", 0L, Complex.j, Complex.j, Complex.j, ""))
-                    val s3 = jarForObject (Probe ())
+                    val s3 = jarForObject (this)
                     val s4 = jarForObject (Lines)
                     val s5 = jarForObject (FlowDirection)
                     val configuration = new SparkConf (false)
@@ -77,7 +64,6 @@ class LineSuite extends TestUtil with BeforeAndAfter
                         .setMaster (s"spark://$SERVER:$PORT")
                         .set ("spark.driver.memory", "2g")
                         .set ("spark.executor.memory", "2g")
-                        .set ("spark.sql.warehouse.dir", "file:///tmp/")
                         .set ("spark.ui.showConsoleProgress", "false")
                         .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                         .setJars (Set (s1, s2, s3, s4, s5).toArray)
@@ -117,21 +103,15 @@ class LineSuite extends TestUtil with BeforeAndAfter
             source.close
 
             val filename = s"hdfs://sandbox:8020/$FILENAME.rdf"
-            readCIMElements (session, filename, Map[String, String] (
-                    "path" -> filename,
-                    "ch.ninecode.cim.do_topo" -> "true"
-                )
-            )
+            readCIMElements (session, filename, Map[String, String] ("ch.ninecode.cim.do_topo" -> "true"))
 
             LineDetails.PROPERTIES_ARE_ERRONEOUSLY_PER_KM = true // should be default value anyway
 
-            val l1 = Lines (session).getLines (Probe().acceptAllLines)
-            val lines1 = l1.map (Probe().stringify).collect
+            val lines1 = Probe (session).getLines
 
             LineDetails.PROPERTIES_ARE_ERRONEOUSLY_PER_KM = false
 
-            val l2 = Lines (session).getLines (Probe().acceptAllLines)
-            val lines2 = l2.map (Probe().stringify).collect
+            val lines2 = Probe (session).getLines
 
             LineDetails.PROPERTIES_ARE_ERRONEOUSLY_PER_KM = true // reset static var
 

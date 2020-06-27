@@ -3,49 +3,44 @@ package ch.ninecode.cim.cimweb
 import java.nio.charset.StandardCharsets
 import java.sql.Date
 import java.sql.Time
-import java.util
 import java.util.Base64
 
 import javax.json.Json
 import javax.json.JsonObjectBuilder
 import javax.json.JsonStructure
-
-import scala.collection.JavaConversions.asScalaIterator
-import scala.collection.JavaConversions.collectionAsScalaIterable
+import scala.collection.JavaConverters._
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
-import com.datastax.driver.core.Cluster
-import com.datastax.driver.core.DataType
-import com.datastax.driver.core.DataType.Name.ASCII
-import com.datastax.driver.core.DataType.Name.BIGINT
-import com.datastax.driver.core.DataType.Name.BLOB
-import com.datastax.driver.core.DataType.Name.BOOLEAN
-import com.datastax.driver.core.DataType.Name.COUNTER
-import com.datastax.driver.core.DataType.Name.CUSTOM
-import com.datastax.driver.core.DataType.Name.DATE
-import com.datastax.driver.core.DataType.Name.DECIMAL
-import com.datastax.driver.core.DataType.Name.DOUBLE
-import com.datastax.driver.core.DataType.Name.FLOAT
-import com.datastax.driver.core.DataType.Name.INET
-import com.datastax.driver.core.DataType.Name.INT
-import com.datastax.driver.core.DataType.Name.LIST
-import com.datastax.driver.core.DataType.Name.MAP
-import com.datastax.driver.core.DataType.Name.SET
-import com.datastax.driver.core.DataType.Name.SMALLINT
-import com.datastax.driver.core.DataType.Name.TEXT
-import com.datastax.driver.core.DataType.Name.TIME
-import com.datastax.driver.core.DataType.Name.TIMESTAMP
-import com.datastax.driver.core.DataType.Name.TIMEUUID
-import com.datastax.driver.core.DataType.Name.TINYINT
-import com.datastax.driver.core.DataType.Name.TUPLE
-import com.datastax.driver.core.DataType.Name.VARCHAR
-import com.datastax.driver.core.DataType.Name.VARINT
-import com.datastax.driver.core.DataType.Name.UDT
-import com.datastax.driver.core.DataType.Name.UUID
-import com.datastax.driver.core.ResultSet
+import com.datastax.oss.driver.api.core.`type`.DataType
+import com.datastax.oss.driver.api.core.`type`.DataTypes.ASCII
+import com.datastax.oss.driver.api.core.`type`.DataTypes.BIGINT
+import com.datastax.oss.driver.api.core.`type`.DataTypes.BLOB
+import com.datastax.oss.driver.api.core.`type`.DataTypes.BOOLEAN
+import com.datastax.oss.driver.api.core.`type`.DataTypes.COUNTER
+import com.datastax.oss.driver.api.core.`type`.CustomType
+import com.datastax.oss.driver.api.core.`type`.DataTypes.DATE
+import com.datastax.oss.driver.api.core.`type`.DataTypes.DECIMAL
+import com.datastax.oss.driver.api.core.`type`.DataTypes.DOUBLE
+import com.datastax.oss.driver.api.core.`type`.DataTypes.FLOAT
+import com.datastax.oss.driver.api.core.`type`.DataTypes.INET
+import com.datastax.oss.driver.api.core.`type`.DataTypes.INT
+import com.datastax.oss.driver.api.core.`type`.ListType
+import com.datastax.oss.driver.api.core.`type`.MapType
+import com.datastax.oss.driver.api.core.`type`.SetType
+import com.datastax.oss.driver.api.core.`type`.DataTypes.SMALLINT
+import com.datastax.oss.driver.api.core.`type`.DataTypes.TEXT
+import com.datastax.oss.driver.api.core.`type`.DataTypes.TIME
+import com.datastax.oss.driver.api.core.`type`.DataTypes.TIMESTAMP
+import com.datastax.oss.driver.api.core.`type`.DataTypes.TIMEUUID
+import com.datastax.oss.driver.api.core.`type`.DataTypes.TINYINT
+import com.datastax.oss.driver.api.core.`type`.TupleType
+import com.datastax.oss.driver.api.core.`type`.DataTypes.VARINT
+import com.datastax.oss.driver.api.core.`type`.UserDefinedType
+import com.datastax.oss.driver.api.core.`type`.DataTypes.UUID
+import com.datastax.oss.driver.api.core.cql.ResultSet
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector._
@@ -54,7 +49,7 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
 {
     jars = Array (
         jarForObject (this),
-        jarForObject (Cluster.builder))                // spark-cassandra-connector.jar
+        jarForObject (com.datastax.oss.driver.api.core.ConsistencyLevel.ANY))                // spark-cassandra-connector.jar
 
     def packRow (row: Row): JsonObjectBuilder =
     {
@@ -85,7 +80,7 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
 
     def getDataTypeClass (datatype: DataType): Class[_] =
     {
-        datatype.getName match
+        datatype match
         {
             case ASCII => classOf[String]
             case BIGINT => classOf[Long]
@@ -100,7 +95,6 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
             case TEXT => classOf[String]
             case TIMESTAMP => classOf[Date]
 //            case UUID => if (!row.isNull (index)) ret.add (name, row.getString (index))
-            case VARCHAR => classOf[String]
             case VARINT => classOf[Integer]
 //            case TIMEUUID =>
 //            case LIST =>
@@ -117,66 +111,64 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
         }
     }
 
-    def packRow2 (row: com.datastax.driver.core.Row): JsonObjectBuilder =
+    def packRow2 (row: com.datastax.oss.driver.api.core.cql.Row): JsonObjectBuilder =
     {
         val ret = Json.createObjectBuilder
         val definitions = row.getColumnDefinitions
         for (index <- 0 until definitions.size)
         {
             //column: ColumnDefinitions.Definition
-            val name: String = definitions.getName (index) // column.getName
-            val typ: DataType = definitions.getType (index) // column.getType
-            typ.getName match
+            val definition = definitions.get (index)
+            val name: String = definition.getName.toString // column.getName
+            val typ: DataType = definition.getType // column.getType
+            typ match
             {
                 case ASCII => if (!row.isNull (index)) ret.add (name, row.getString (index))
                 case BIGINT => if (!row.isNull (index)) ret.add (name, row.getLong (index))
                 case BLOB =>
                     if (!row.isNull (index))
                     {
-                        val bytes = row.getBytes (index).asReadOnlyBuffer
+                        val bytes = row.getByteBuffer (index)
                         val encoded = Base64.getEncoder.encode (bytes)
                         val string = new String (encoded.array, StandardCharsets.US_ASCII)
                         ret.add (name, string)
                     }
-                case BOOLEAN => if (!row.isNull (index)) ret.add (name, row.getBool (index))
+                case BOOLEAN => if (!row.isNull (index)) ret.add (name, row.getBoolean (index))
                 case COUNTER => if (!row.isNull (index)) ret.add (name, row.getLong (index)) // ToDo: counter?
                 case DECIMAL => if (!row.isNull (index)) ret.add (name, row.getDouble (index))
                 case DOUBLE => if (!row.isNull (index)) ret.add (name, row.getDouble (index))
                 case FLOAT => if (!row.isNull (index)) ret.add (name, row.getDouble (index))
-                case INET => if (!row.isNull (index)) ret.add (name, row.getInet (index).toString) // ToDo: internet address?
+                case INET => if (!row.isNull (index)) ret.add (name, row.getInetAddress (index).toString) // ToDo: internet address?
                 case INT => if (!row.isNull (index)) ret.add (name, row.getInt (index))
                 case TEXT => if (!row.isNull (index)) ret.add (name, row.getString (index))
-                case TIMESTAMP => if (!row.isNull (index)) ret.add (name, row.getTimestamp (index).getTime)
+                case TIMESTAMP => if (!row.isNull (index)) ret.add (name, row.getInstant (index).toEpochMilli)
                 case UUID => if (!row.isNull (index)) ret.add (name, row.getString (index))
-                case VARCHAR => if (!row.isNull (index)) ret.add (name, row.getString (index))
                 case VARINT => if (!row.isNull (index)) ret.add (name, row.getInt (index)) // ToDo: varying int?
                 case TIMEUUID => if (!row.isNull (index)) ret.add (name, row.getString (index))
-                case LIST => if (!row.isNull (index))
+                case lt: ListType => if (!row.isNull (index))
                 {
-                    val list = row.getList (name, classOf[String])
+                    val c1 = lt.getElementType
+                    val list = row.getList (name, getDataTypeClass (c1))
                     val array = Json.createArrayBuilder
-                    list.foreach (x => array.add (x))
+                    list.asScala.foreach (x => array.add (x.toString))
                     ret.add (name, array)
                 }
-                case SET => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: set?
-                case MAP => if (!row.isNull (index))
+                case _: SetType => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: set?
+                case mt: MapType => if (!row.isNull (index))
                 {
-                    val types: List[DataType] = typ.getTypeArguments.toList
-                    val map = types match
-                    {
-                        case c1 :: c2 :: Nil => row.getMap (index, getDataTypeClass (c1), getDataTypeClass (c2))
-                        case _ => new util.HashMap[Any, Any] ()
-                    }
-                    val obj = map.entrySet.foldLeft (Json.createObjectBuilder)((b, x) => b.add (x.getKey.toString, x.getValue.toString))
+                    val c1 = mt.getKeyType
+                    val c2 = mt.getValueType
+                    val map = row.getMap (index, getDataTypeClass (c1), getDataTypeClass (c2))
+                    val obj = map.entrySet.asScala.foldLeft (Json.createObjectBuilder)((b, x) => b.add (x.getKey.toString, x.getValue.toString))
                     ret.add (name, obj)
                 }
-                case CUSTOM => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: custom?
-                case UDT => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: udt?
-                case TUPLE => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: tuple?
+                case _: CustomType => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: custom?
+                case _: UserDefinedType => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: udt?
+                case _: TupleType => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: tuple?
                 case SMALLINT => if (!row.isNull (index)) ret.add (name, row.getInt (index))
                 case TINYINT => if (!row.isNull (index)) ret.add (name, row.getInt (index))
-                case DATE => if (!row.isNull (index)) ret.add (name, row.getDate (index).toString)
-                case TIME => if (!row.isNull (index)) ret.add (name, row.getTime (index).toString)
+                case DATE => if (!row.isNull (index)) ret.add (name, new Date (row.getInstant (index).toEpochMilli).toString)
+                case TIME => if (!row.isNull (index)) ret.add (name, new Time (row.getInstant (index).toEpochMilli).toString)
             }
         }
         ret
@@ -190,7 +182,7 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
             {
                 session =>
                 val resultset: ResultSet = session.execute (sql)
-                for (row: com.datastax.driver.core.Row <- resultset.iterator)
+                for (row: com.datastax.oss.driver.api.core.cql.Row <- resultset.iterator.asScala)
                     response.add (packRow2 (row))
             }
         else
@@ -218,7 +210,7 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                     println ("""Cassandra format error: RDD has rows of %d columns, not 7, or 11 ("mrid", "type", "time", "period", "real_a", "imag_a", ..., "units")""".format (rows.first.length))
             }
             val results = df.collectAsList
-            for (row <- results)
+            for (row <- results.asScala)
                 response.add (packRow (row))
         }
         response.build
