@@ -42,16 +42,24 @@ case class Copy (session: SparkSession, options: CopyOptions)
         val schema = Schema (session, "/simulation_schema.sql", true)
         if (schema.make (target, options.target_keyspace, options.target_replication))
         {
-            val tables: Array[String] =
+            val target_tables: Array[String] =
             {
                 implicit val c: CassandraConnector = target
                 val t = session.sparkContext.cassandraTable ("system_schema", "tables")
                 val f = t.where (s"keyspace_name='${options.target_keyspace}'")
                 f.collect.map (_.getString ("table_name"))
             }
-            log.info (s"tables ${tables.mkString (",")}")
+            log.info (s"tables ${target_tables.mkString (",")}")
 
-            for (table <- tables)
+            val source_tables: Array[String] =
+            {
+                implicit val c: CassandraConnector = source
+                val t = session.sparkContext.cassandraTable ("system_schema", "tables")
+                val f = t.where (s"keyspace_name='${options.target_keyspace}'")
+                f.collect.map (_.getString ("table_name"))
+            }
+
+            for (table <- target_tables if source_tables.contains (table))
             {
                 val (data, columns) =
                 {
