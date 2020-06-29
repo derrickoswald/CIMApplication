@@ -49,7 +49,7 @@ class Transformers (
     def transformer_filter (transformer: TransformerData): Boolean =
     {
         val power_transformer = transformer.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
-        val power_significant = transformer.ends.forall (_.ratedS >= 1000.0)
+        val power_significant = transformer.ends.forall (_.ratedS > 0.0)
         power_transformer && power_significant
     }
 
