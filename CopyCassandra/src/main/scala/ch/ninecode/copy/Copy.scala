@@ -55,7 +55,7 @@ case class Copy (session: SparkSession, options: CopyOptions)
             {
                 implicit val c: CassandraConnector = source
                 val t = session.sparkContext.cassandraTable ("system_schema", "tables")
-                val f = t.where (s"keyspace_name='${options.target_keyspace}'")
+                val f = t.where (s"keyspace_name='${options.source_keyspace}'")
                 f.collect.map (_.getString ("table_name"))
             }
 
