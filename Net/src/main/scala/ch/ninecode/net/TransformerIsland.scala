@@ -48,7 +48,7 @@ object TransformerIsland
     def apply (transformers: Iterable[TransformerData]): TransformerIsland =
     {
         val sets = transformers
-            .groupBy (t => s"${t.node0}_${t.node1}")
+            .groupBy (t => s"${t.node1}")
             .map (set => TransformerSet (set._2.toArray))
             .toArray
         TransformerIsland (sets)
@@ -57,7 +57,7 @@ object TransformerIsland
     def apply (transformers: Iterable[TransformerData], default_power_rating: Double = 630000, default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875)): TransformerIsland =
     {
         val sets = transformers
-            .groupBy (t => s"${t.node0}_${t.node1}")
+            .groupBy (t => s"${t.node1}")
             .map (set => TransformerSet (set._2.toArray, default_power_rating, default_impedance))
             .toArray
         TransformerIsland (sets)
