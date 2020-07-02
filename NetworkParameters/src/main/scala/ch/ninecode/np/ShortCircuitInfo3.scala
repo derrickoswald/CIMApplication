@@ -182,7 +182,7 @@ extends CIMRDD
 
     def toTerminalsAndLocations (pairs: Iterable[(EquivalentInjection, TransformerDetails)]): List[Element] =
     {
-        val pair = pairs.head
+        val pair :: _ = pairs.toList
         val (eq_inj, details) = pair
 
         // only keep transformers with matching primary voltage

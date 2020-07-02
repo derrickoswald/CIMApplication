@@ -1,10 +1,14 @@
 package ch.ninecode.sc
 
+import java.io
 import java.nio.charset.StandardCharsets
 import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
+
+import scala.collection.Map
+import scala.io.Source
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
@@ -42,8 +46,6 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.Map
-import scala.io.Source
 
 /**
  * Short circuit calculation.
@@ -1007,13 +1009,18 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime ("2018-07-19T12:00:00")
 
-            def notTheTransformers (island: TransformerIsland)(edge: GLMEdge): Boolean =
+            def notTheTransformers (island: TransformerIsland): GLMEdge => Boolean =
             {
-                edge match
+                val trafos = island.transformers.flatMap (
+                    trafo =>
+                    {
+                        Set (trafo.transformer_name) ++ trafo.transformers.map (x => x.transformer.id).toSet
+                    }
+                ).toSet
+
                 {
                     case t: GLMTransformerEdge =>
-                        val sets = island.transformers.map (_.transformer_name)
-                        !sets.contains (t.transformer.transformer_name)
+                        !trafos.contains (t.transformer.transformer_name)
                     case _ => true
                 }
             }

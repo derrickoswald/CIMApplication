@@ -1,4 +1,4 @@
-package ch.ninecode.net;
+package ch.ninecode.net
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -318,8 +318,8 @@ case class TransformerSet (
     val network_short_circuit_zero_sequence_impedance_max: Complex =
     {
         val impedance = Z0 (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x => Z (x.shortcircuit) == impedance))
-            log.error ("transformer set " + transformer_name + " has differing maximum network zero sequence short circuit impedance " + transformers.map (x => Z (x.shortcircuit)).mkString (" ") + " using the r0 and x0")
+        if (!transformers.tail.forall (x => Z0 (x.shortcircuit) == impedance))
+            log.error ("transformer set " + transformer_name + " has differing maximum network zero sequence short circuit impedance " + transformers.map (x => Z0 (x.shortcircuit)).mkString (" ") + " using the r0 and x0")
         impedance
     }
 
