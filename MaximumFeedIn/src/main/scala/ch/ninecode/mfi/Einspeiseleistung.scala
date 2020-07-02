@@ -548,7 +548,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         if (log.isDebugEnabled)
             transformer_data.map (_.asString).collect.foreach (log.debug)
 
-        val subtransmission_trafos: Array[TransformerData] = transformer_data.filter (trafo => trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0))).collect // ToDo: don't hard code these voltage values
+        val subtransmission_trafos: Array[TransformerData] = transformer_data.filter (
+            trafo =>
+            {
+                trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) || // ToDo: don't hard code these voltage values
+                (trafo.v0 == trafo.v1)
+            }
+        ).collect
 
         // determine the set of transformers to work on
         val transformers: RDD[TransformerIsland] = if (null != trafos)
