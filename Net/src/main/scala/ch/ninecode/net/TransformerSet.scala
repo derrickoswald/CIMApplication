@@ -42,10 +42,15 @@ case class TransformerSet (
     // there should be at least one transformer
     require (transformers.length > 0, "no transformers in TransformerData array")
 
+    def strings (fn: TransformerData => String, sep: String = " "): String = transformers.map (fn).mkString (sep)
+    def dstrings (fn: TransformerData => Double, sep: String = " "): String = strings (x => fn (x).toString, sep)
+    def cstrings (fn: TransformerData => Complex, sep: String = " "): String = strings (x => fn (x).toString, sep)
+    def raw_name (sep: String): String = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString (sep)
+
     // get the transformer name (of the parallel transformers)
-    val transformer_name: String =
+    lazy val transformer_name: String =
     {
-        val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("_")
+        val n = raw_name ("_")
         if (n.getBytes.length > 63)
             s"_${Math.abs (n.hashCode ())}_${n.substring (0, n.indexOf ("_", 32))}_etc"
         else
@@ -53,36 +58,36 @@ case class TransformerSet (
     }
 
     // primary and secondary voltage should be the same on all edges - use the first
-    val v0: Double =
+    lazy val v0: Double =
     {
         val v = transformers.head.v0
-        if (!transformers.forall (_.v0 == v))
-            log.error ("transformer set " + transformer_name + " has different voltages on terminal 0 " + transformers.map (_.v0).mkString (" "))
+        if (!transformers.tail.forall (_.v0 == v))
+            log.error (s"transformer set $transformer_name has different voltages on terminal 0 ${dstrings (_.v0)}")
         v
     }
 
-    val v1: Double =
+    lazy val v1: Double =
     {
         val v = transformers.head.v1
-        if (!transformers.forall (_.v1 == v))
-            log.error ("transformer set " + transformer_name + " has different voltages on terminal 1 " + transformers.map (_.v1).mkString (" "))
+        if (!transformers.tail.forall (_.v1 == v))
+            log.error (s"transformer set $transformer_name has different voltages on terminal 1 ${dstrings (_.v1)}")
         v
     }
 
     // all primaries and secondaries should be connected to the same nodes (respectively)
-    val node0: String =
+    lazy val node0: String =
     {
         val n = transformers.head.node0.id
         if (!transformers.tail.forall (_.node0.id == n))
-            log.error ("transformer set " + transformer_name + " has different nodes on terminal 0 " + transformers.map (_.node0.id).mkString (" "))
+            log.error (s"transformer set $transformer_name has different nodes on terminal 0 ${strings (_.node0.id)}")
         n
     }
 
-    val node1: String =
+    lazy val node1: String =
     {
         val n = transformers.head.node1.id
         if (!transformers.tail.forall (_.node1.id == n))
-            log.error ("transformer set " + transformer_name + " has different nodes on terminal 1 " + transformers.map (_.node1.id).mkString (" "))
+            log.error (s"transformer set $transformer_name has different nodes on terminal 1 ${strings (_.node1.id)}")
         n
     }
 
@@ -95,14 +100,14 @@ case class TransformerSet (
             if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
                 string
             else
-                "_" + string
+                s"_$string"
         s.replace (".", "d").replace (":", "$")
     }
 
     // get the configuration name (of the parallel transformers)
-    val configurationName: String =
+    lazy val configurationName: String =
     {
-        val n = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString ("||") + "_configuration"
+        val n = s"${raw_name ("||")}_configuration"
         // limit to 64 bytes with null:
         // typedef struct s_objecttree {
         //     char name[64];
@@ -117,15 +122,15 @@ case class TransformerSet (
     }
 
     // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
-    val power_rating: Double = transformers.map (edge => if (0.0 == edge.end1.ratedS) default_power_rating else edge.end1.ratedS).sum
+    lazy val power_rating: Double = transformers.map (edge => if (0.0 == edge.end1.ratedS) default_power_rating else edge.end1.ratedS).sum
 
-    val base_amps: Double = power_rating / v0 / Math.sqrt (3)
+    lazy val base_amps: Double = power_rating / v0 / Math.sqrt (3)
 
-    val base_ohms: Double = v0 / base_amps / Math.sqrt (3)
+    lazy val base_ohms: Double = v0 / base_amps / Math.sqrt (3)
 
     // the characteristic transformer impedances at the secondary
     // with a flag indicating if it is the default value (the impedance was zero)
-    val impedances: Array[(Complex, Boolean)] = transformers.map (
+    lazy val impedances: Array[(Complex, Boolean)] = transformers.map (
         edge =>
         {
             if ((0.0 == edge.end1.r) && (0.0 == edge.end1.x))
@@ -135,7 +140,7 @@ case class TransformerSet (
                 {
                     val va = transformers.map (_.end1.ratedS).max
                     if (!transformers.forall (_.end1.ratedS == va))
-                        log.error ("transformer set " + transformer_name + " has units with different base VA " + transformers.map (_.end1.ratedS).mkString (" "))
+                        log.error (s"transformer set $transformer_name has units with different base VA ${dstrings (_.end1.ratedS)}")
                     if (0.0 == va)
                         default_power_rating
                     else
@@ -155,7 +160,7 @@ case class TransformerSet (
      *
      * Calculate the impedance as 1 / sum (1/Zi)
      */
-    val total_impedance: (Complex, Boolean) =
+    lazy val total_impedance: (Complex, Boolean) =
     {
         val zinv = impedances.foldLeft ((Complex (0.0), false))((c1, c2) => (c1._1 + c2._1.reciprocal, c1._2 || c2._2))
         (zinv._1.reciprocal, zinv._2)
@@ -237,11 +242,11 @@ case class TransformerSet (
      *
      * @return the network short circuit power (VA)
      */
-    val network_short_circuit_power_max: Double =
+    lazy val network_short_circuit_power_max: Double =
     {
         val power = SkMax (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => SkMax (x.shortcircuit) == power))
-            log.error ("transformer set " + transformer_name + " has differing maximum network short circuit powers " + transformers.map (x => SkMax (x.shortcircuit)).mkString (" "))
+            log.error (s"transformer set $transformer_name has differing maximum network short circuit powers ${dstrings (x => SkMax (x.shortcircuit))}")
         power
     }
 
@@ -250,11 +255,11 @@ case class TransformerSet (
      *
      * @return the network short circuit power (VA)
      */
-    val network_short_circuit_power_min: Double =
+    lazy val network_short_circuit_power_min: Double =
     {
         val power = SkMin (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => SkMin (x.shortcircuit) == power))
-            log.error ("transformer set " + transformer_name + " has differing minimum network short circuit powers " + transformers.map (x => SkMin (x.shortcircuit)).mkString (" "))
+            log.error (s"transformer set $transformer_name has differing minimum network short circuit powers ${dstrings (x => SkMin (x.shortcircuit))}")
         power
     }
 
@@ -263,16 +268,16 @@ case class TransformerSet (
      *
      * @return the network impedance (Ω)
      */
-    val network_short_circuit_impedance_max: Complex =
+    lazy val network_short_circuit_impedance_max: Complex =
     {
         val z = Z (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z (x.shortcircuit) == z))
-            log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x => Z (x.shortcircuit)).mkString (" ") + " using the r and x")
+            log.error (s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings (x => Z (x.shortcircuit))} using the r and x")
 
         // check against Sk
         val z2 = Z2 (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z2 (x.shortcircuit) == z2))
-            log.error ("transformer set " + transformer_name + " has differing maximum network short circuit impedance " + transformers.map (x => Z2 (x.shortcircuit)).mkString (" ") + " using the maxP and maxQ")
+            log.error (s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings (x => Z2 (x.shortcircuit))} using the maxP and maxQ")
 
         if (Complex (0.0) != z) z else z2
     }
@@ -282,7 +287,7 @@ case class TransformerSet (
      *
      * @return the network impedance (Ω)
      */
-    val network_short_circuit_impedance_min: Complex =
+    lazy val network_short_circuit_impedance_min: Complex =
     {
         def Z (equiv: Option[EquivalentInjection]): Complex =
         {
@@ -305,7 +310,7 @@ case class TransformerSet (
 
         val z = Z (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z (x.shortcircuit) == z))
-            log.error ("transformer set " + transformer_name + " has differing minimum network short circuit impedance " + transformers.map (x => Z (x.shortcircuit)).mkString (" ") + " using the minP and minQ")
+            log.error (s"transformer set $transformer_name has differing minimum network short circuit impedance ${cstrings (x => Z (x.shortcircuit))} using the minP and minQ")
 
         z
     }
@@ -315,11 +320,11 @@ case class TransformerSet (
      *
      * @return the network zero sequence impedance (Ω)
      */
-    val network_short_circuit_zero_sequence_impedance_max: Complex =
+    lazy val network_short_circuit_zero_sequence_impedance_max: Complex =
     {
         val impedance = Z0 (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z0 (x.shortcircuit) == impedance))
-            log.error ("transformer set " + transformer_name + " has differing maximum network zero sequence short circuit impedance " + transformers.map (x => Z0 (x.shortcircuit)).mkString (" ") + " using the r0 and x0")
+            log.error (s"transformer set $transformer_name has differing maximum network zero sequence short circuit impedance ${cstrings (x => Z0 (x.shortcircuit))} using the r0 and x0")
         impedance
     }
 
@@ -328,7 +333,7 @@ case class TransformerSet (
      *  i.e. (total_impedance, default)
      * calculate the impedance as 1 / sum (1/Zi)
      */
-    val total_impedance_per_unit: (Complex, Boolean) =
+    lazy val total_impedance_per_unit: (Complex, Boolean) =
     {
         // get a list of primary impedances or default
         val impedances: Array[(Complex, Boolean)] = transformers.map (
