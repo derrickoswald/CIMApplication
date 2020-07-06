@@ -28,6 +28,13 @@
     <dependencies>
 
         <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMReader</artifactId>
+            <version>${version.dependency.cimreader}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>ch.ninecode.util</groupId>
             <artifactId>Util</artifactId>
             <version>${project.version}</version>

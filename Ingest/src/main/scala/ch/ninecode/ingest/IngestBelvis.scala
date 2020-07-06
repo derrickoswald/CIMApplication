@@ -4,16 +4,17 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import org.apache.log4j.Level
-import org.apache.log4j.LogManager
-import org.apache.spark.sql.SparkSession
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.rdd.ReadConf
+import org.apache.log4j.Level
+import org.apache.log4j.LogManager
+import org.apache.spark.sql.SparkSession
 
 case class IngestBelvis (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {
     if (options.verbose) LogManager.getLogger (getClass).setLevel (Level.INFO)
+    implicit val spark: SparkSession = session
 
     /**
      * Make tuples suitable for Cassandra:
@@ -89,15 +90,14 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
         }
     }
 
-    def process (join_table: Map[String, String], job: IngestJob): Unit =
-    {
-        job.datafiles.foreach (
+    def process (filename: String, job: IngestJob): Unit = {
+        val join_table = loadCsvMapping(session, filename, job)
+        job.datafiles.foreach(
             file =>
-                for (filename <- getFiles (job, options.workdir) (file))
-                    time (s"process $filename: %s seconds")
-                    {
-                        sub_belvis (filename, join_table, job)
-                        cleanUp (job, filename)
+                for (filename <- getFiles(job, options.workdir)(file))
+                    time(s"process $filename: %s seconds") {
+                        sub_belvis(filename, join_table, job)
+                        cleanUp(job, filename)
                     }
         )
     }

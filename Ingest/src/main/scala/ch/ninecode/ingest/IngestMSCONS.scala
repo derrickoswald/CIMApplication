@@ -21,6 +21,7 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
         LogManager.getLogger (getClass).setLevel (Level.INFO)
         LogManager.getLogger ("ch.ninecode.mscons.MSCONSParser").setLevel (Level.INFO)
     }
+    implicit val spark: SparkSession = session
 
     /**
      * Make a three phase data element from record returned by MSCONS parser.
@@ -84,8 +85,9 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
         (record.element, "energy", record.millis, 900000, record.value_a.re, record.value_a.im, record.units)
     }
 
-    def process (join_table: Map[String, String], job: IngestJob): Unit =
+    def process (filename: String, job: IngestJob): Unit =
     {
+        val join_table = loadCsvMapping(session, filename, job)
         val all_files = job.datafiles.flatMap (getFiles (job, options.workdir))
         val some_files = all_files.take (6).mkString (",")
         val more_files = all_files.length > 6

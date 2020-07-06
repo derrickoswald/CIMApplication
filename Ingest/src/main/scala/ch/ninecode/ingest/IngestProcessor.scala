@@ -12,6 +12,9 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsPermission
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.DataType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -28,6 +31,27 @@ trait IngestProcessor
 
     lazy val log: Logger = LoggerFactory.getLogger (getClass)
     lazy val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
+
+    def map_csv_options: Map[String, String] =
+    {
+        Map[String, String](
+            "header" -> "true",
+            "ignoreLeadingWhiteSpace" -> "false",
+            "ignoreTrailingWhiteSpace" -> "false",
+            "sep" -> ";",
+            "quote" -> "\"",
+            "escape" -> "\\",
+            "encoding" -> "UTF-8",
+            "comment" -> "#",
+            "nullValue" -> "",
+            "nanValue" -> "NaN",
+            "positiveInf" -> "Inf",
+            "negativeInf" -> "-Inf",
+            "dateFormat" -> "yyyy-MM-dd",
+            "timestampFormat" -> "dd.MM.yyyy HH:mm",
+            "mode" -> "PERMISSIVE",
+            "inferSchema" -> "true")
+    }
 
     def time[R](template: String)(block: => R): R =
     {
@@ -272,5 +296,35 @@ trait IngestProcessor
             case _: Throwable => 0.0
         }
 
-    def process (join_table: Map[String, String], job: IngestJob): Unit
+    def extractor (datatype: DataType): (Row, Int) => String =
+    {
+        datatype.simpleString match
+        {
+            case "decimal" | "double" | "float" =>
+                (row: Row, column: Int) => row.getDouble (column).toString
+            case "string" =>
+                (row: Row, column: Int) => row.getString (column)
+            case "integer" | "int" | "short" | "smallint" =>
+                (row: Row, column: Int) => row.getInt (column).toString
+            case "long" =>
+                (row: Row, column: Int) => row.getLong (column).toString
+            case _ =>
+                (_: Row, _: Int) => s"unsupported datatype ${datatype.toString}"
+        }
+    }
+
+    def loadCsvMapping(session: SparkSession, filename: String, job: IngestJob): Map[String, String] = {
+        val dataframe = time(s"read $filename: %s seconds") {
+            session.sqlContext.read.format("csv").options(map_csv_options).csv(filename)
+        }
+        val join_table = time("map: %s seconds") {
+            val ch_number = dataframe.schema.fieldIndex(job.metercol)
+            val nis_number = dataframe.schema.fieldIndex(job.mridcol)
+            val extract = extractor(dataframe.schema.fields(ch_number).dataType)
+            dataframe.rdd.map(row => (extract(row, ch_number), row.getString(nis_number))).filter(_._2 != null).collect.toMap
+        }
+        join_table
+    }
+
+    def process (filename: String, job: IngestJob): Unit
 }

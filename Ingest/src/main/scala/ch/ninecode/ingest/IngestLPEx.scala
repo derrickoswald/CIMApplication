@@ -16,6 +16,7 @@ import com.datastax.spark.connector.rdd.ReadConf
 case class IngestLPEx (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {
     if (options.verbose) LogManager.getLogger (getClass).setLevel (Level.INFO)
+    implicit val spark: SparkSession = session
 
     /**
      * Make tuples suitable for Cassandra:
@@ -101,8 +102,9 @@ case class IngestLPEx (session: SparkSession, options: IngestOptions) extends In
         }
     }
 
-    def process (join_table: Map[String, String], job: IngestJob): Unit =
+    def process (filename: String, job: IngestJob): Unit =
     {
+        val join_table = loadCsvMapping(session, filename, job)
         job.datafiles.foreach (
             file =>
                 for (filename <- getFiles (job, options.workdir) (file))

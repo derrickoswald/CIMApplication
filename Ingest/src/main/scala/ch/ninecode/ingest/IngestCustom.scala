@@ -15,6 +15,7 @@ import com.datastax.spark.connector.rdd.ReadConf
 case class IngestCustom (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {
     if (options.verbose) LogManager.getLogger (getClass).setLevel (Level.INFO)
+    implicit val spark: SparkSession = session
 
     def isNumber (s: String): Boolean = s forall Character.isDigit
 
@@ -97,8 +98,9 @@ case class IngestCustom (session: SparkSession, options: IngestOptions) extends 
         }
     }
 
-    def process (join_table: Map[String, String], job: IngestJob): Unit =
+    def process (filename: String, job: IngestJob): Unit =
     {
+        val join_table = loadCsvMapping(session, filename, job)
         job.datafiles.foreach (
             file =>
                 for (filename <- getFiles (job, options.workdir) (file))
