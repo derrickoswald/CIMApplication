@@ -20,10 +20,9 @@ import scala.collection.Iterable
 
 case class IngestParquet (session: SparkSession, options: IngestOptions) extends IngestProcessor with CIMRDD {
     if (options.verbose) LogManager.getLogger(getClass).setLevel(Level.INFO)
-
     implicit val spark: SparkSession = session
 
-    def process (join_table: Map[String, String], job: IngestJob): Unit = {
+    def process (filename: String, job: IngestJob): Unit = {
         readCIM(job)
         val synthLoadProfile: RDD[MeasuredValue] = import_parquet(job)
         val mapping: RDD[(String, String)] = getMappingAoHas()
@@ -32,7 +31,7 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
         def aggregateData(data: Iterable[MeasuredValue]): MeasuredValue = {
             val real_a = data.map(_._5).sum
             val imag_a = data.map(_._6).sum
-            data.head.copy(_5 = real_a, _6 = imag_a)
+            data.headOption.get.copy(_5 = real_a, _6 = imag_a)
         }
 
         val aggregatedData: RDD[MeasuredValue] = joinedData.groupBy(k => (k._1, k._3)).values.map(aggregateData)
@@ -66,21 +65,21 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
     }
 
     def readCIM(job: IngestJob): Unit = {
-        val start = System.nanoTime
-        val thisFiles = job.mapping.split(",")
-        val readOptions = Map[String, String](
-            "path" -> job.mapping,
-            "StorageLevel" -> "MEMORY_AND_DISK_SER",
-            "ch.ninecode.cim.do_topo_islands" -> "false",
-            "ch.ninecode.cim.debug" -> "true",
-            "ch.ninecode.cim.do_deduplication" -> "true"
-        )
-        val elements = session.sqlContext.read.format("ch.ninecode.cim")
-            .options(readOptions)
-            .load(thisFiles: _*)
-            .persist(StorageLevel.MEMORY_AND_DISK_SER)
-        println(elements.count + " elements")
-        val read = System.nanoTime
-        println("read: " + (read - start) / 1e9 + " seconds")
+        time(s"read cim: %s seconds")
+        {
+            val thisFiles = job.mapping.split(",")
+            val readOptions = Map[String, String](
+                "path" -> job.mapping,
+                "StorageLevel" -> "MEMORY_AND_DISK_SER",
+                "ch.ninecode.cim.do_topo_islands" -> "false",
+                "ch.ninecode.cim.debug" -> "true",
+                "ch.ninecode.cim.do_deduplication" -> "true"
+            )
+            val elements = session.sqlContext.read.format("ch.ninecode.cim")
+                .options(readOptions)
+                .load(thisFiles: _*)
+                .persist(StorageLevel.MEMORY_AND_DISK_SER)
+            println(elements.count + " elements")
+        }
     }
 }

@@ -6,9 +6,7 @@ import java.sql.Timestamp
 
 import org.apache.log4j.LogManager
 import org.apache.log4j.Level
-import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.DataType
 import ch.ninecode.util.Schema
 
 /**
@@ -29,27 +27,6 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
 
     case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
 
-    def map_csv_options: Map[String, String] =
-    {
-        Map[String, String](
-            "header" -> "true",
-            "ignoreLeadingWhiteSpace" -> "false",
-            "ignoreTrailingWhiteSpace" -> "false",
-            "sep" -> ";",
-            "quote" -> "\"",
-            "escape" -> "\\",
-            "encoding" -> "UTF-8",
-            "comment" -> "#",
-            "nullValue" -> "",
-            "nanValue" -> "NaN",
-            "positiveInf" -> "Inf",
-            "negativeInf" -> "-Inf",
-            "dateFormat" -> "yyyy-MM-dd",
-            "timestampFormat" -> "dd.MM.yyyy HH:mm",
-            "mode" -> "PERMISSIVE",
-            "inferSchema" -> "true")
-    }
-
     def readFile (file: String): Array[Byte] =
     {
         try
@@ -62,24 +39,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
         }
     }
 
-    def extractor (datatype: DataType): (Row, Int) => String =
-    {
-        datatype.simpleString match
-        {
-            case "decimal" | "double" | "float" =>
-                (row: Row, column: Int) => row.getDouble (column).toString
-            case "string" =>
-                (row: Row, column: Int) => row.getString (column)
-            case "integer" | "int" | "short" | "smallint" =>
-                (row: Row, column: Int) => row.getInt (column).toString
-            case "long" =>
-                (row: Row, column: Int) => row.getLong (column).toString
-            case _ =>
-                (_: Row, _: Int) => s"unsupported datatype ${datatype.toString}"
-        }
-    }
-
-    def process (join_table: Map[String, String], job: IngestJob): Unit =
+    def process (filename: String, job: IngestJob): Unit =
     {
         log.error ("abstract class Ingest call to process()")
     }
@@ -103,19 +63,6 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
             mapping_files.headOption match
             {
                 case Some (filename) =>
-                    var join_table: Map[String, String] = Map.empty
-                    if (job.format != Formats.Parquet) {
-
-                        val dataframe = time(s"read $filename: %s seconds") {
-                            session.sqlContext.read.format("csv").options(map_csv_options).csv(filename)
-                        }
-                        join_table = time("map: %s seconds") {
-                            val ch_number = dataframe.schema.fieldIndex(job.metercol)
-                            val nis_number = dataframe.schema.fieldIndex(job.mridcol)
-                            val extract = extractor(dataframe.schema.fields(ch_number).dataType)
-                            dataframe.rdd.map(row => (extract(row, ch_number), row.getString(nis_number))).filter(_._2 != null).collect.toMap
-                        }
-                    }
                     time ("process: %s seconds")
                     {
                         val processor: IngestProcessor = job.format.toString match
@@ -126,7 +73,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
                             case "Custom" => IngestCustom (session, options)
                             case "Parquet" => IngestParquet (session, options)
                         }
-                        processor.process (join_table, job)
+                        processor.process (filename, job)
                     }
                     cleanUp (job, filename)
                 case None =>
