@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.Map
 
+case class GridlabFailure (trafoID: String, errorMessages: List[String])
+
 /**
  * Compute the maximum feed-in power at house connections in a network.
  *
@@ -47,9 +49,6 @@ import scala.collection.Map
  * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with GridLAB-D, the reason is bad performance in GridLAB-D with too high
  *                              impedance values
  */
-
-case class GridlabFailure (trafoID: String, errorMessages: List[String])
-
 class GridLABD
 (
     session: SparkSession,
@@ -184,12 +183,12 @@ class GridLABD
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
                 if (num_terminals > 2)
                     "%s transformer windings for edge %s".format (num_terminals, element.id)
-                // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
+                // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are equal
                 else
-                if (v1 == v2)
-                    "voltage (%sV) regulator edge %s".format(v1, element.id)
-                else
-                    null
+                    if (v1 == v2)
+                        "voltage (%sV) regulator edge %s".format(v1, element.id)
+                    else
+                        null
             case _ ⇒
                 null
         }

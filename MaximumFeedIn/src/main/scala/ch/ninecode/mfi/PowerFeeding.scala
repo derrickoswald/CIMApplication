@@ -57,7 +57,13 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
 
     def vertexProgram (id: VertexId, v: PowerFeedingNode, message: PowerFeedingNode): PowerFeedingNode =
     {
-        if (message.sum_z.re > v.sum_z.re || message.min_ir < v.min_ir || message.hasIssues || message.hasNonRadial) message else v
+        if (v.hasIssues)
+            message.copy (problem = v.problem) // keep special problem messages
+        else
+            if (message.sum_z.re > v.sum_z.re || message.min_ir < v.min_ir || message.hasIssues || message.hasNonRadial)
+                message
+            else
+                v
     }
 
     def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =

@@ -8,7 +8,7 @@ import ch.ninecode.gl.PreEdge
  * Vertex data for the precalculation Pregel algorithm.
  *
  * @param id              Node mRID.
- * @param prev_node       The previos node in the tracing
+ * @param prev_node       The previous node in the tracing
  * @param conn_edge       The connected edges
  * @param nominal_voltage Nominal voltage.
  * @param source_obj      Feeding transformer.

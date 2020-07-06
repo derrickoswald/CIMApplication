@@ -79,7 +79,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
                 if (num_terminals > 2)
                     "%s transformer windings for edge %s".format (num_terminals, element.id)
-                // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
+                // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are equal
                 else
                     if (v1 == v2)
                         "voltage (%sV) regulator edge %s".format (v1, element.id)
@@ -283,7 +283,7 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
     /**
      * Generate the GraphX graph for the island.
      *
-     * @param island      The island name (TopologicalIsland mRDI).
+     * @param island      The island name (TopologicalIsland mRID).
      * @param vertex_data The data to use as the default vertex attribute.
      * @return A tuple of edge and node RDD' suitable for GraphX.
      */
