@@ -9,7 +9,6 @@ import org.apache.log4j.Level
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.DataType
-
 import ch.ninecode.util.Schema
 
 /**
@@ -104,16 +103,18 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
             mapping_files.headOption match
             {
                 case Some (filename) =>
-                    val dataframe = time (s"read $filename: %s seconds")
-                    {
-                        session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
-                    }
-                    val join_table = time ("map: %s seconds")
-                    {
-                        val ch_number = dataframe.schema.fieldIndex (job.metercol)
-                        val nis_number = dataframe.schema.fieldIndex (job.mridcol)
-                        val extract = extractor (dataframe.schema.fields (ch_number).dataType)
-                        dataframe.rdd.map (row => (extract (row, ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
+                    var join_table: Map[String, String] = Map.empty
+                    if (job.format != Formats.Parquet) {
+
+                        val dataframe = time(s"read $filename: %s seconds") {
+                            session.sqlContext.read.format("csv").options(map_csv_options).csv(filename)
+                        }
+                        join_table = time("map: %s seconds") {
+                            val ch_number = dataframe.schema.fieldIndex(job.metercol)
+                            val nis_number = dataframe.schema.fieldIndex(job.mridcol)
+                            val extract = extractor(dataframe.schema.fields(ch_number).dataType)
+                            dataframe.rdd.map(row => (extract(row, ch_number), row.getString(nis_number))).filter(_._2 != null).collect.toMap
+                        }
                     }
                     time ("process: %s seconds")
                     {
@@ -123,6 +124,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
                             case "LPEx" =>   IngestLPEx   (session, options)
                             case "MSCONS" => IngestMSCONS (session, options)
                             case "Custom" => IngestCustom (session, options)
+                            case "Parquet" => IngestParquet (session, options)
                         }
                         processor.process (join_table, job)
                     }

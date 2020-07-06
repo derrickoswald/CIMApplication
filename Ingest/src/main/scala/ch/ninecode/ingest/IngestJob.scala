@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory
 object Formats extends Enumeration
 {
     type Formats = Value
-    val Belvis, LPEx, MSCONS, Custom = Value
+    val Belvis, LPEx, MSCONS, Custom, Parquet = Value
 }
 
 object Modes extends Enumeration
@@ -39,7 +39,7 @@ object Modes extends Enumeration
 
 /**
  *
- * @param mapping Mapping CSV file name.
+ * @param mapping Mapping CSV file or RDF file name.
  * @param metercol Mapping CSV measurement identifier column name (column containing CH############################### values).
  * @param mridcol Mapping CSV mRID column name (column containing HAS##### values).
  * @param timezone Time zone for the measurement files.

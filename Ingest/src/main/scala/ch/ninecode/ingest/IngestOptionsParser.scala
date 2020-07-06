@@ -102,7 +102,7 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     opt[String]("mapping")
         .action ((x, c) => { job = job.copy (mapping = x); updateJson (c) })
-        .text (s"file name of mapping CSV [${job.mapping}] (required)")
+        .text (s"file name of mapping CSV or RDF [${job.mapping}] (required)")
 
     opt[String]("metercol")
         .action ((x, c) => { job = job.copy (metercol = x); updateJson (c) })
