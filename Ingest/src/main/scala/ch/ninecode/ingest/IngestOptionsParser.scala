@@ -89,7 +89,7 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     opt[String]("mapping").
         action ((x, c) ⇒ c.copy (mapping = x)).
-        text ("file name of mapping CSV [%s] (required)".format (default.mapping))
+        text ("file name of mapping CSV or RDF [%s] (required)".format (default.mapping))
 
     opt[String]("metercol").
         action ((x, c) ⇒ c.copy (metercol = x)).
