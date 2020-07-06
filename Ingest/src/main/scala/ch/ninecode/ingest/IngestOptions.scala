@@ -9,7 +9,7 @@ object LogLevels extends Enumeration
 object Formats extends Enumeration
 {
     type Formats = Value
-    val Belvis, LPEx, MSCONS, Custom = Value
+    val Belvis, LPEx, MSCONS, Custom, Parquet = Value
 }
 
 object Modes extends Enumeration
@@ -31,7 +31,7 @@ object Modes extends Enumeration
  * @param log_level Logging level.
  * @param nocopy If <code>true</code>, use the file names provided directly, without unzipping or transferring them to HDFS.
  * @param workdir Working directory for unzipping and copying if nocopy is <code>false</code>.
- * @param mapping Mapping CSV file name.
+ * @param mapping Mapping CSV file or RDF file name.
  * @param metercol Mapping CSV measurement identifier column name (column containing CH############################### values).
  * @param mridcol Mapping CSV mRID column name (column containing HAS##### values).
  * @param timezone Time zone for the measurement files.

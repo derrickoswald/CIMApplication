@@ -13,13 +13,17 @@ import java.util.TimeZone
 import java.util.regex.Pattern
 import java.util.zip.ZipInputStream
 
-import scala.collection._
-
+import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.Complex
 import ch.ninecode.gl.ThreePhaseComplexDataElement
+import ch.ninecode.model.Name
+import ch.ninecode.model.ServiceLocation
+import ch.ninecode.model.StringQuantity
+import ch.ninecode.model.UserAttribute
 import ch.ninecode.mscons._
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.rdd.ReadConf
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
@@ -32,7 +36,7 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import com.datastax.spark.connector.rdd.ReadConf
+import scala.collection._
 
 /**
  * Import measured data into Cassandra.
@@ -42,7 +46,7 @@ import com.datastax.spark.connector.rdd.ReadConf
  * @param session The Spark session to use.
  * @param options Options regarding Cassandra master, files to process etc.
  */
-case class Ingest (session: SparkSession, options: IngestOptions)
+case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
 {
 
     type Mrid = String
@@ -56,7 +60,9 @@ case class Ingest (session: SparkSession, options: IngestOptions)
 
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     if (options.verbose) org.apache.log4j.LogManager.getLogger ("ch.ninecode.mscons.MSCONSParser").setLevel (org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger (getClass)
+
+    implicit val spark: SparkSession = session
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     val MeasurementTimeZone: TimeZone = TimeZone.getTimeZone (options.timezone)
     val MeasurementCalendar: Calendar = Calendar.getInstance ()
@@ -753,6 +759,64 @@ case class Ingest (session: SparkSession, options: IngestOptions)
         }
     }
 
+    def process_parquet(): Unit = {
+        readCIM()
+        val synthLoadProfile: RDD[MeasuredValue] = import_parquet()
+        val mapping: RDD[(String, String)] = getMappingAoHas()
+        val joinedData: RDD[MeasuredValue] = synthLoadProfile.keyBy(_._1).join(mapping).values.map(v => v._1.copy(_1 = v._2))
+
+        def aggregateData(data: Iterable[MeasuredValue]): MeasuredValue = {
+            val real_a = data.map(_._5).sum
+            val imag_a = data.map(_._6).sum
+            data.head.copy(_5 = real_a, _6 = imag_a)
+        }
+        val aggregatedData: RDD[MeasuredValue] = joinedData.groupBy(k => (k._1, k._3)).values.map(aggregateData)
+        aggregatedData.saveToCassandra(options.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+    }
+
+    def getMappingAoHas(): RDD[(String, String)] = {
+        val name: RDD[Name] = getOrElse[Name]
+        val serviceLocation: RDD[ServiceLocation] = getOrElse[ServiceLocation]
+        val userAttribute: RDD[UserAttribute] = getOrElse[UserAttribute]
+        val stringQuantity: RDD[StringQuantity] = getOrElse[StringQuantity]
+
+        val MstHasMapping: RDD[(String, String)] = userAttribute.keyBy(_.value).join(stringQuantity.keyBy(_.id)).values.map(x => (x._1.name, x._2.value))
+        val MstAoMapping: RDD[(String, String)] = serviceLocation.keyBy(_.id).join(name.keyBy(_.IdentifiedObject)).values.map(x => (x._1.sup.sup.sup.name, x._2.name))
+        MstAoMapping.join(MstHasMapping).values
+    }
+
+    def import_parquet(): RDD[MeasuredValue] = {
+        val dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssXXX")
+        def parquetMapping(row: Row): MeasuredValue = {
+            val ao_id = row.getLong(0).toString
+            val timestamp = dateFormat.parse(row.getString(1)).getTime
+            val real_a = row.getDouble(2)
+            val imag_a = row.getDouble(3)
+            (ao_id, "energy", timestamp, 900000, real_a, imag_a, "Wh")
+        }
+        val parquetFileDF = session.read.parquet(options.datafiles: _*)
+        parquetFileDF.rdd.map(parquetMapping)
+    }
+
+    def readCIM(): Unit = {
+        val start = System.nanoTime
+        val thisFiles = options.mapping.split(",")
+        val readOptions = Map[String, String](
+            "path" -> options.mapping,
+            "StorageLevel" -> "MEMORY_AND_DISK_SER",
+            "ch.ninecode.cim.do_topo_islands" -> "false",
+            "ch.ninecode.cim.debug" -> "true",
+            "ch.ninecode.cim.do_deduplication" -> "true"
+        )
+        val elements = session.sqlContext.read.format("ch.ninecode.cim")
+            .options(readOptions)
+            .load(thisFiles: _*)
+            .persist(StorageLevel.MEMORY_AND_DISK_SER)
+        println(elements.count + " elements")
+        val read = System.nanoTime
+        println("read: " + (read - start) / 1e9 + " seconds")
+    }
+
     def extractor (datatype: DataType): (Row, Int) => String =
     {
         datatype.simpleString match
@@ -781,36 +845,37 @@ case class Ingest (session: SparkSession, options: IngestOptions)
             log.info (s"schema: ${(db - begin) / 1e9} seconds")
             val mapping_files =
                 if (options.nocopy)
-                    Seq (options.mapping)
+                    Seq(options.mapping)
                 else
-                    putFile (session, base_name (options.mapping), options.mapping, options.mapping.toLowerCase.endsWith (".zip"))
-            if (mapping_files.nonEmpty)
-            {
+                    putFile(session, base_name(options.mapping), options.mapping, options.mapping.toLowerCase.endsWith(".zip"))
+
+            var join_table: Map[String, String] = Map.empty
+            if (options.format != Formats.Parquet && mapping_files.nonEmpty) {
                 val filename = mapping_files.head
-                val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
+                val dataframe = session.sqlContext.read.format("csv").options(map_csv_options).csv(filename)
 
-                val read = System.nanoTime ()
-                log.info (s"read $filename: ${(read - db) / 1e9} seconds")
+                val read = System.nanoTime()
+                log.info(s"read $filename: ${(read - db) / 1e9} seconds")
 
-                val ch_number = dataframe.schema.fieldIndex (options.metercol)
-                val nis_number = dataframe.schema.fieldIndex (options.mridcol)
-                val extract = extractor (dataframe.schema.fields (ch_number).dataType)
-                val join_table = dataframe.rdd.map (row => (extract (row, ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
+                val ch_number = dataframe.schema.fieldIndex(options.metercol)
+                val nis_number = dataframe.schema.fieldIndex(options.mridcol)
+                val extract = extractor(dataframe.schema.fields(ch_number).dataType)
+                join_table = dataframe.rdd.map(row => (extract(row, ch_number), row.getString(nis_number))).filter(_._2 != null).collect.toMap
 
-                val map = System.nanoTime ()
-                log.info (s"map: ${(map - read) / 1e9} seconds")
-
-                options.format.toString match
-                {
-                    case "Belvis" => options.datafiles.foreach (process_belvis (join_table))
-                    case "LPEx" => options.datafiles.foreach (process_lpex (join_table))
-                    case "MSCONS" => process_mscons (join_table) (options.datafiles)
-                    case "Custom" => options.datafiles.foreach (process_custom (join_table))
-                }
-
-                if (!options.nocopy)
-                    hdfs.delete (new Path (filename), false)
+                val map = System.nanoTime()
+                log.info(s"map: ${(map - read) / 1e9} seconds")
             }
+
+            options.format.toString match {
+                case "Belvis" => options.datafiles.foreach(process_belvis(join_table))
+                case "LPEx" => options.datafiles.foreach(process_lpex(join_table))
+                case "MSCONS" => process_mscons(join_table)(options.datafiles)
+                case "Custom" => options.datafiles.foreach(process_custom(join_table))
+                case "Parquet" => process_parquet()
+            }
+
+            if (!options.nocopy)
+                hdfs.delete(new Path(mapping_files.head), false)
         }
     }
 }
