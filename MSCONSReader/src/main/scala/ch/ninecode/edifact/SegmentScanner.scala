@@ -107,7 +107,7 @@ object SegmentScanner
     {
         if (buffer.limit () >= 9)
         {
-            buffer.mark
+            buffer.mark ()
             val buna = new Array[Char] (9)
             for (i <- 0 until 9)
                 buna(i) = buffer.get.asInstanceOf[Char]
