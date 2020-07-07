@@ -781,7 +781,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
         val stringQuantity: RDD[StringQuantity] = getOrElse[StringQuantity]
 
         val MstHasMapping: RDD[(String, String)] = userAttribute.keyBy(_.value).join(stringQuantity.keyBy(_.id)).values.map(x => (x._1.name, x._2.value))
-        val MstAoMapping: RDD[(String, String)] = serviceLocation.keyBy(_.id).join(name.keyBy(_.IdentifiedObject)).values.map(x => (x._1.sup.sup.sup.name, x._2.name))
+        val MstAoMapping: RDD[(String, String)] = serviceLocation.keyBy(_.id).join(name.keyBy(_.IdentifiedObject)).values.map(x => (x._1.WorkLocation.Location.IdentifiedObject.name, x._2.name))
         MstAoMapping.join(MstHasMapping).values
     }
 
