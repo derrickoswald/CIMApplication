@@ -32,9 +32,7 @@
         <version.dependency.hadoop>3.2.1</version.dependency.hadoop>
         <version.dependency.spark>3.0.0</version.dependency.spark>
         <version.dependency.cimreader>2.12-3.0.0-5.0.1</version.dependency.cimreader>
-        <!-- NFG: version.dependency.cassandra_spark>2.5.0</version.dependency.cassandra_spark -->
-        <!-- NFG: version.dependency.cassandra_spark>v3.0.0-alpha2</version.dependency.cassandra_spark -->
-        <version.dependency.cassandra_spark>2.5.0</version.dependency.cassandra_spark>
+        <version.dependency.cassandra_spark>3.0.0-beta</version.dependency.cassandra_spark>
         <version.dependency.cassandra_driver>4.5.1</version.dependency.cassandra_driver>
         <version.dependency.cassandra_all>3.11.6</version.dependency.cassandra_all>
 
