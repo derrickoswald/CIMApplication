@@ -92,7 +92,7 @@ object Main
                         val session = SparkSession.builder ().config (configuration).getOrCreate ()
                         session.sparkContext.setLogLevel (options.log_level.toString)
 
-                        if (options.aws_s3a_access_key.trim.nonEmpty && options.aws_s3a_access_key.trim.nonEmpty)
+                        if (options.aws_s3a_access_key.trim.nonEmpty && options.aws_s3a_secret_key.trim.nonEmpty)
                         {
                             System.setProperty("com.amazonaws.services.s3.enableV4", "true")
                             session.sparkContext.hadoopConfiguration.set("com.amazonaws.services.s3.enableV4", "true")
