@@ -127,13 +127,25 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
       action ((x, c) ⇒ c.copy (mode = x)).
       text ("ingest mode, one of " + Modes.values.iterator.mkString (",") + " [%s]".format (default.mode))
 
+    opt[String]("aws_s3a_access_key").
+        action ((x, c) ⇒ c.copy (aws_s3a_access_key = x)).
+        text ("aws access key [%s]".format (default.aws_s3a_access_key))
+
+    opt[String]("aws_s3a_secret_key").
+        action ((x, c) ⇒ c.copy (aws_s3a_secret_key = x)).
+        text ("aws secret key [%s]".format (default.aws_s3a_secret_key))
+
     arg[String]("<ZIP> or <CSV>...").optional ().unbounded ().
         action ((x, c) ⇒
         {
             try
             {
                 val sep = System.getProperty ("file.separator")
-                val file = if (x.startsWith (sep)) x else new java.io.File (".").getCanonicalPath + sep + x
+                val file = if (x.startsWith (sep) || x.startsWith("s3a:")) {
+                    x
+                } else {
+                 new java.io.File (".").getCanonicalPath + sep + x
+                }
                 c.copy (datafiles = c.datafiles :+ file.toString)
             }
             catch

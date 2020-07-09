@@ -794,7 +794,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
             val imag_a = row.getDouble(3)
             (ao_id, "energy", timestamp, 900000, real_a, imag_a, "Wh")
         }
-        val parquetFileDF = session.read.parquet(options.datafiles: _*)
+        val parquetFileDF = session.read.load(options.datafiles: _*)
         parquetFileDF.rdd.map(parquetMapping)
     }
 
