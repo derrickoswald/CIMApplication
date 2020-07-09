@@ -113,6 +113,13 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         }
     }
 
+    /**
+     * Predicate to determine if the transformer is supplying a transformer service area.
+     *
+     * @param voltages array of end voltages
+     * @param arg the transformer id, PowerTransformer element and PowerTransformerEnds
+     * @return <code>true</code> if this transformer should be a starting point for tracing a transformer service area
+     */
     def heavy (voltages: collection.Map[String, Double])(arg: (String, (PowerTransformer, Option[Iterable[PowerTransformerEnd]]))): Boolean =
     {
         val (_, (_, e)) = arg
@@ -120,10 +127,8 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         val v = ends.map (t => voltages.getOrElse (t.TransformerEnd.BaseVoltage, 0.0))
         if (v.length < 2)
             false
-        else if (v.head > 1000.0 && v.tail.forall (v => v <= 1000.0 && v > 230.0)) // ToDo: don't hard code these voltage values
-            true
         else
-            (calculate_public_lighting && v.head == 400.0) && v.tail.forall (v => calculate_public_lighting && v == 230.0)
+            v.head > 1000.0 && v.tail.forall (v => v <= 1000.0 && v > 230.0) // ToDo: don't hard code these voltage values
     }
 
     /**
