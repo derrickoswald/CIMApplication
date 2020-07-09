@@ -649,6 +649,23 @@ class GridLABD
         ret
     }
 
+    /**
+     * Make directories with permissions.
+     *
+     * @param hdfs the file system for the file
+     * @param file the file path to make
+     */
+    def mkdirs (hdfs: FileSystem, file: Path): Unit =
+    {
+        val parent = file.getParent
+        if (!parent.isRoot && !hdfs.exists (parent))
+        {
+            mkdirs (hdfs, parent)
+            hdfs.mkdirs (parent, new FsPermission ("ugo-rwx")) // WTF? permissions are absolutely fucking ignored
+            hdfs.setPermission (parent, new FsPermission ("ugo-rwx")) // WTF? "-", not "+"
+        }
+    }
+
     def writeInputFile (directory: String, path: String, bytes: Array[Byte], permissions: String = null): Any =
     {
         if ((workdir_scheme == "file") || (workdir_scheme == ""))
@@ -670,11 +687,8 @@ class GridLABD
             hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
             val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
 
-            val file = new Path (workdir_slash + directory + "/" + path)
-            // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
-            // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
-            hdfs.mkdirs (file.getParent, new FsPermission ("ugo-rwx"))
-            hdfs.setPermission (file.getParent, new FsPermission ("ugo-rwx")) // "-"  WTF?
+            val file = new Path (s"$workdir_slash$directory/$path")
+            mkdirs (hdfs, file)
 
             if (null != bytes)
             {
