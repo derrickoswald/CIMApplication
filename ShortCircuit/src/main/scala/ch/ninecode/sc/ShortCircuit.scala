@@ -987,7 +987,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         log.info (s"""performing load-flow for $n non-radial network${if (n > 1) "s" else ""}""")
 
         // transformer area calculations
-        val tsa = TransformerServiceArea (session, storage_level, options.calculate_public_lighting)
+        val tsa = TransformerServiceArea (session, storage_level, calculate_public_lighting = options.calculate_public_lighting)
         val trafos_islands: RDD[(identifier, island_id)] = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
         def set_island (island: TransformerIsland): Iterable[(identifier, identifier)] =
         {

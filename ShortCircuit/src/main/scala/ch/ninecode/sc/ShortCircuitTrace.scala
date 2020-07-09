@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.Fuse
+import ch.ninecode.model.Switch
+import ch.ninecode.model.PowerTransformer
 
 /**
  * Short circuit calculation tracing.
@@ -70,28 +73,70 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
     {
         val src = triplet.srcAttr
         val dst = triplet.dstAttr
+        val edge = triplet.attr
         if ((src.id_prev == dst.id_seq) || (dst.id_prev == src.id_seq)) // reinforcement
+            Iterator.empty
+        else if (!edge.shouldContinueTo (dst, options.calculate_public_lighting)) // boundary switch ?
             Iterator.empty
         else
         {
             // check if the non-null impedance difference matches what we expect for this cable
-            triplet.attr.element match
+            edge.element match
             {
                 case _: ACLineSegment =>
                     val diff = src.impedance - dst.impedance
-                    val expected = triplet.attr.impedanceTo ("not important")
+                    val expected = edge.impedanceTo ("not important")
                     val isequal = Math.abs (!diff.impedanz_low - !expected.impedanz_low) < 1e-6 && Math.abs (!diff.null_impedanz_low - !expected.null_impedanz_low) < 1e-6
                     if (isequal)
                         Iterator.empty
                     else
                     {
-                        val error = ScError (fatal = true, invalid = true, "non-radial network detected through %s".format (triplet.attr.id_equ))
+                        val error = ScError (fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
                         log.error (error.message)
+                        if (!src.fatalErrors && !dst.fatalErrors)
                         // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                         Iterator (
                             (triplet.dstId, ScMessage (dst.source_id, dst.source_impedance, null, null, src.branches, src.id_seq, List (error))),
                             (triplet.srcId, ScMessage (src.source_id, dst.source_impedance, null, null, src.branches, dst.id_seq, List (error)))
                         )
+                            else
+                            Iterator.empty
+                    }
+                case _: PowerTransformer =>
+                    val diff = src.impedance - dst.impedance
+                    val expected = edge.impedanceTo (dst.id_seq)
+                    val isequal = Math.abs (!diff.impedanz_low - !expected.impedanz_low) < 1e-6 && Math.abs (!diff.null_impedanz_low - !expected.null_impedanz_low) < 1e-6
+                    if (isequal)
+                        Iterator.empty
+                    else
+                    {
+                        val error = ScError (fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
+                        log.error (error.message)
+                        if (!src.fatalErrors && !dst.fatalErrors)
+                        // neither node has a fatal error yet, send a message to both to mark them with a fatal error
+                        Iterator (
+                            (triplet.dstId, ScMessage (dst.source_id, dst.source_impedance, null, null, src.branches, src.id_seq, List (error))),
+                            (triplet.srcId, ScMessage (src.source_id, dst.source_impedance, null, null, src.branches, dst.id_seq, List (error)))
+                        )
+                            else
+                            Iterator.empty
+                    }
+                case _: Switch | _: Fuse =>
+                    val isequal = Math.abs (!src.impedance.impedanz_low - !dst.impedance.impedanz_low) < 1e-6 && Math.abs (!src.impedance.null_impedanz_low - !dst.impedance.null_impedanz_low) < 1e-6
+                    if (isequal)
+                        Iterator.empty
+                    else
+                    {
+                        val error = ScError (fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
+                        log.error (error.message)
+                        if (!src.fatalErrors && !dst.fatalErrors)
+                        // neither node has a fatal error yet, send a message to both to mark them with a fatal error
+                        Iterator (
+                            (triplet.dstId, ScMessage (dst.source_id, dst.source_impedance, null, null, src.branches, src.id_seq, List (error))),
+                            (triplet.srcId, ScMessage (src.source_id, dst.source_impedance, null, null, src.branches, dst.id_seq, List (error)))
+                        )
+                            else
+                            Iterator.empty
                     }
                 case _ =>
                     Iterator.empty

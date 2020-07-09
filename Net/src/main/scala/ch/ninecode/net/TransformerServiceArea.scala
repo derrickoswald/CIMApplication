@@ -133,10 +133,8 @@ extends CIMRDD with Graphable
         val v = ends.map (t => voltages.getOrElse (t.TransformerEnd.BaseVoltage, 0.0))
         if (v.length < 2)
             false
-        else if (v.head > 1000.0 && v.tail.forall (v => v <= 1000.0 && v > 230.0)) // ToDo: don't hard code these voltage values
-            true
         else
-            (calculate_public_lighting && v.head == 400.0) && v.tail.forall (v => calculate_public_lighting && v == 230.0)
+            v.head > 1000.0 && v.tail.forall (v => v <= 1000.0 && v > 230.0) // ToDo: don't hard code these voltage values
     }
 
     /**
