@@ -44,6 +44,8 @@ object Modes extends Enumeration
  * @param datafiles Source Belvis/LPEx/MSCONS files.
  * @param keyspace Cassandra keyspace.
  * @param replication Cassandra keyspace replication factor only if the keyspace is created.
+ * @param aws_s3a_access_key The access key to log into AWS S3
+ * @param aws_s3a_secret_key The secret key to log into AWS S3
  */
 case class IngestOptions
 (
@@ -68,7 +70,9 @@ case class IngestOptions
     mode: Modes.Value = Modes.Overwrite,
     datafiles: Seq[String] = Seq (),
     keyspace: String = "cimapplication",
-    replication: Int = 1
+    replication: Int = 1,
+    aws_s3a_access_key: String = "",
+    aws_s3a_secret_key: String = ""
 )
 
 object IngestOptions

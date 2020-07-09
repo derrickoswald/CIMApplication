@@ -60,6 +60,8 @@ case class IngestFunction (options: IngestOptions) extends CIMWebFunction
         result.add ("datafiles", files.build)
         result.add ("keyspace", _options.keyspace)
         result.add ("replication", _options.replication)
+        result.add("aws_s3a_access_key", _options.aws_s3a_access_key)
+        result.add("aws_s3a_secret_key", _options.aws_s3a_secret_key)
         RESTfulJSONResult (OK, "ingest successful", result.build).getJSON
     }
 

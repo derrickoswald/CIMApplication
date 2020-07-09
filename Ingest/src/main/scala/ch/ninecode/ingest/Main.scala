@@ -4,13 +4,13 @@ import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import java.util.Properties
 
-import scala.tools.nsc.io.Jar
-import scala.util.Random
-
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import scala.tools.nsc.io.Jar
+import scala.util.Random
 
 object Main
 {
@@ -83,6 +83,7 @@ object Main
                         val s1 = jarForObject (IngestOptions ())
                         val s2 = jarForObject (com.datastax.spark.connector.mapper.ColumnMapper)
                         val s3 = jarForObject (new com.twitter.jsr166e.LongAdder ())
+
                         configuration.setJars (Set (s1, s2, s3).toArray)
 
                         configuration.set ("spark.ui.showConsoleProgress", "false")
@@ -90,6 +91,17 @@ object Main
                         // make a Spark session
                         val session = SparkSession.builder ().config (configuration).getOrCreate ()
                         session.sparkContext.setLogLevel (options.log_level.toString)
+
+                        if (options.aws_s3a_access_key.trim.nonEmpty && options.aws_s3a_secret_key.trim.nonEmpty)
+                        {
+                            System.setProperty("com.amazonaws.services.s3.enableV4", "true")
+                            session.sparkContext.hadoopConfiguration.set("com.amazonaws.services.s3.enableV4", "true")
+                            session.sparkContext.hadoopConfiguration.set("fs.s3a.access.key", options.aws_s3a_access_key)
+                            session.sparkContext.hadoopConfiguration.set("fs.s3a.secret.key", options.aws_s3a_secret_key)
+                            session.sparkContext.hadoopConfiguration.set("fs.s3a.endpoint","s3.eu-central-1.amazonaws.com")
+                            session.sparkContext.hadoopConfiguration.set("fs.s3a.impl","org.apache.hadoop.fs.s3a.S3AFileSystem")
+                        }
+
                         val version = session.version
                         log.info (s"Spark $version session established")
                         if (version.take (SPARK.length) != SPARK.take (version.length))
