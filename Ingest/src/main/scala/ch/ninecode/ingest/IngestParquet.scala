@@ -50,6 +50,16 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
     }
 
     def import_parquet(job: IngestJob): RDD[MeasuredValue] = {
+        if (job.aws_s3a_access_key.trim.nonEmpty && job.aws_s3a_secret_key.trim.nonEmpty)
+        {
+            System.setProperty("com.amazonaws.services.s3.enableV4", "true")
+            session.sparkContext.hadoopConfiguration.set("com.amazonaws.services.s3.enableV4", "true")
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.access.key", job.aws_s3a_access_key)
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.secret.key", job.aws_s3a_secret_key)
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.endpoint","s3.eu-central-1.amazonaws.com")
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.impl","org.apache.hadoop.fs.s3a.S3AFileSystem")
+        }
+
         val dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssXXX")
 
         def parquetMapping(row: Row): MeasuredValue = {
@@ -60,7 +70,7 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
             (ao_id, "energy", timestamp, 900000, real_a, imag_a, "Wh")
         }
 
-        val parquetFileDF = session.read.parquet(job.datafiles: _*)
+        val parquetFileDF = session.read.load(job.datafiles: _*)
         parquetFileDF.rdd.map(parquetMapping)
     }
 

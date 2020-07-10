@@ -144,6 +144,14 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         .action ((_, c) => { job = job.copy (nocopy = true); updateJson (c) })
         .text (s"use files 'as is' without unzipping and copying to HDFS [${job.nocopy}]")
 
+    opt[String]("aws_s3a_access_key")
+        .action ((x, c) => { job = job.copy (aws_s3a_access_key = x); updateJson (c) })
+        .text (s"aws access key [${job.aws_s3a_access_key}]")
+
+    opt[String]("aws_s3a_secret_key")
+        .action ((x, c) => { job = job.copy (aws_s3a_secret_key = x); updateJson (c) })
+        .text (s"aws seceret key [${job.aws_s3a_secret_key}]")
+
     arg[String]("<ZIP> or <CSV>...")
         .optional ()
         .unbounded ()
@@ -152,7 +160,11 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
             try
             {
                 val sep = System.getProperty ("file.separator")
-                val file = if (x.startsWith (sep)) x else s"${new java.io.File (".").getCanonicalPath}$sep$x"
+                val file = if (x.startsWith (sep) || x.startsWith("s3a:")) {
+                    x
+                } else {
+                    s"${new java.io.File (".").getCanonicalPath}$sep$x"
+                }
                 job = job.copy (datafiles = job.datafiles :+ file)
                 updateJson (c)
             }

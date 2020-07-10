@@ -67,7 +67,9 @@ case class IngestJob
     nocopy: Boolean = false,
     datafiles: Seq[String] = Seq (),
     keyspace: String = "cimapplication",
-    replication: Int = 1
+    replication: Int = 1,
+    aws_s3a_access_key: String = "",
+    aws_s3a_secret_key: String = ""
 )
 {
     protected def getPrettyJsonWriterFactory: JsonWriterFactory =
@@ -111,6 +113,8 @@ case class IngestJob
             .add ("datafiles", files)
             .add ("keyspace", keyspace)
             .add ("replication", replication)
+            .add ("aws_s3a_access_key", aws_s3a_access_key)
+            .add ("aws_s3a_secret_key", aws_s3a_secret_key)
             .build
         val string = new StringWriter
         val writer = getPrettyJsonWriterFactory.createWriter (string)
@@ -296,6 +300,8 @@ object IngestJob
             val datafiles = parseArrayOfString ("datafiles", json)
             val keyspace = json.getString ("keyspace", "cimapplication")
             val replication = json.getInt ("replication", 1)
+            val aws_s3a_access_key = json.getString ("aws_s3a_access_key", "")
+            val aws_s3a_secret_key = json.getString ("aws_s3a_secret_key", "")
 
             Some (IngestJob (
                 mapping = mapping,
@@ -309,7 +315,9 @@ object IngestJob
                 nocopy = nocopy,
                 datafiles = datafiles,
                 keyspace = keyspace,
-                replication = replication
+                replication = replication,
+                aws_s3a_access_key = aws_s3a_access_key,
+                aws_s3a_secret_key = aws_s3a_secret_key
                 )
             )
         }
