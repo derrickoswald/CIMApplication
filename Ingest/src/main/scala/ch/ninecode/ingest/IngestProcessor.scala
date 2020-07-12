@@ -11,6 +11,7 @@ import java.util.zip.ZipInputStream
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsAction
 import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
@@ -100,6 +101,8 @@ trait IngestProcessor
             path
     }
 
+    lazy val wideOpen = new FsPermission (FsAction.ALL, FsAction.ALL, FsAction.ALL)
+
     /**
      * Put a file on HDFS
      * @param dst the path to save the file
@@ -118,9 +121,9 @@ trait IngestProcessor
             val parent = if (dst.endsWith ("/")) file else file.getParent
             if (!fs.exists (parent))
             {
-                val _ = fs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
+                val _ = fs.mkdirs (parent, wideOpen)
                 if (!parent.isRoot)
-                    fs.setPermission (parent, new FsPermission ("ugoa-rwx"))
+                    fs.setPermission (parent, wideOpen)
             }
 
             if (unzip)
@@ -145,8 +148,8 @@ trait IngestProcessor
                         if (entry.isDirectory)
                         {
                             val path = new Path (parent, entry.getName)
-                            val _ = fs.mkdirs (path, new FsPermission ("ugoa-rwx"))
-                            fs.setPermission (path, new FsPermission ("ugoa-rwx"))
+                            val _ = fs.mkdirs (path, wideOpen)
+                            fs.setPermission (path, wideOpen)
                         }
                         else
                         {
