@@ -165,15 +165,15 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         elements.unpersist (false)
 
         // identify topological nodes
-        val ntp = CIMNetworkTopologyProcessor (session)
-        val ele = ntp.process (
+        val ntp = CIMNetworkTopologyProcessor (
+            session,
             CIMTopologyOptions (
                 identify_islands = true,
                 force_retain_switches = ForceTrue,
                 force_retain_fuses = Unforced,
                 storage = storage,
                 debug = true))
-            .persist (storage)
+        val ele = ntp.process.persist (storage)
         log.info (s"${ele.count} elements after topology generation")
         new_elements.unpersist (false)
 

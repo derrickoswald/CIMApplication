@@ -2,6 +2,7 @@ package ch.ninecode.testutil
 
 import java.io.File
 import java.io.UnsupportedEncodingException
+import java.net.InetSocketAddress
 import java.net.URLDecoder
 
 import scala.reflect.ClassTag
@@ -16,7 +17,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
 import ch.ninecode.cim.CIMClasses
-
 import org.scalatest.Outcome
 import org.scalatest.funsuite.FixtureAnyFunSuite
 
@@ -38,7 +38,9 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
     {
         try
         {
-            val socket = new scala.tools.nsc.io.Socket (new java.net.Socket (host, port))
+            val s = new java.net.Socket ()
+            s.connect (new InetSocketAddress (host, port), 1000)
+            val socket = new scala.tools.nsc.io.Socket (s)
             socket.close
             true
         }

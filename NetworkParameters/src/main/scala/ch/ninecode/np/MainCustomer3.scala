@@ -211,14 +211,15 @@ object MainCustomer3
         log.info (s"read: ${(read - start) / 1e9} seconds")
 
         // identify topological nodes
-        val ntp = CIMNetworkTopologyProcessor (session)
-        val ele = ntp.process (
+        val ntp = CIMNetworkTopologyProcessor (
+            session,
             CIMTopologyOptions (
                 identify_islands = true,
                 force_retain_switches = Unforced,
                 force_retain_fuses = ForceTrue,
                 debug = true,
                 storage = storage))
+        val ele = ntp.process
         val topo = System.nanoTime ()
         log.info (s"topology: ${(topo - read) / 1e9} seconds")
         ele.name = "Elements"

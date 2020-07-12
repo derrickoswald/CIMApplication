@@ -6,6 +6,7 @@ import java.util.Properties
 import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 
 import com.datastax.oss.driver.api.core.CqlSession
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 import ch.ninecode.ingest.Main.main
@@ -20,6 +21,7 @@ class IngestSuiteIT
     val DAYLIGHT_MAPPING_FILE = "daylight_mapping.csv"
     val DAYLIGHT_START = "daylight_start.txt"
     val DAYLIGHT_END = "daylight_end.txt"
+    val HDFS_HOST = "sandbox"
 
     def getSession: CqlSession =
     {
@@ -46,6 +48,22 @@ class IngestSuiteIT
             9042
         else
             port.toInt
+    }
+
+    def serverListening (host: String, port: Int): Boolean =
+    {
+        try
+        {
+            val s = new java.net.Socket ()
+            s.connect (new InetSocketAddress (host, port), 1000)
+            val socket = new scala.tools.nsc.io.Socket (s)
+            socket.close
+            true
+        }
+        catch
+        {
+            case _: Exception => false
+        }
     }
 
     def checkCount (session: CqlSession, sql: String, count: Long, tag: String): Unit =
@@ -166,6 +184,8 @@ class IngestSuiteIT
 
     @Test def MSCONS_Zip ()
     {
+        assumeTrue (s"$HDFS_HOST:8020 is not listening", serverListening (HDFS_HOST, 8020))
+
         val FILE_DEPOT = "data" + System.getProperty ("file.separator")
         val MAPPING_FILE = s"${FILE_DEPOT}sample.csv"
         val FILE = s"${FILE_DEPOT}sample.zip"

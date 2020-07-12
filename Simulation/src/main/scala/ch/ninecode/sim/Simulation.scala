@@ -118,11 +118,12 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 log.info ("topology exists")
             case None =>
                 log.info ("generating topology")
-                val ntp = CIMNetworkTopologyProcessor (session)
-                val ele = ntp.process (
+                val ntp = CIMNetworkTopologyProcessor (
+                    session,
                     CIMTopologyOptions (
                         identify_islands = true,
                         storage = storage_level))
+                val ele = ntp.process
                 log.info (s"${ele.count ()} elements after topology creation")
                 val topology = System.nanoTime ()
                 log.info (s"topology: ${(topology - read) / 1e9} seconds")
