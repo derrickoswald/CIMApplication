@@ -30,11 +30,13 @@
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
+            <version>${version.dependency.hadoop}</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-aws</artifactId>
+            <version>${version.dependency.hadoop}</version>
         </dependency>
 
         <dependency>
