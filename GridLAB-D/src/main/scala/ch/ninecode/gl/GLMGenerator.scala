@@ -3,8 +3,6 @@ package ch.ninecode.gl
 import java.text.SimpleDateFormat
 import java.util.{Calendar, TimeZone}
 
-import ch.ninecode.net.LoadFlowEdge
-
 /**
  * The .glm file generator.
  *
@@ -215,7 +213,8 @@ class GLMGenerator
         {
             val t = date_format.getCalendar
             val tz = t.getTimeZone
-            tz.getDisplayName (false, TimeZone.SHORT) + (-tz.getOffset (t.getTimeInMillis) / 60 / 60 / 1000) + tz.getDisplayName (true, TimeZone.SHORT)
+            val hrs = -tz.getOffset (t.getTimeInMillis) / 60 / 60 / 1000
+            s"${tz.getDisplayName (false, TimeZone.SHORT)}$hrs${tz.getDisplayName (true, TimeZone.SHORT)}"
         }
     }
 
@@ -380,14 +379,14 @@ class GLMGenerator
 
         // create the output file.
         val result = new StringBuilder ()
-        result.append (prefix)
-        result.append (gather (t_string))
-        result.append (gather (l_strings))
-        result.append (gather (o_strings))
-        result.append (gather (n_strings))
-        result.append (gather (t_edges))
-        result.append (gather (l_edges))
-        result.append (gather (e_strings))
+            .append (prefix)
+            .append (gather (t_string))
+            .append (gather (l_strings))
+            .append (gather (o_strings))
+            .append (gather (n_strings))
+            .append (gather (t_edges))
+            .append (gather (l_edges))
+            .append (gather (e_strings))
 
         result.toString
     }

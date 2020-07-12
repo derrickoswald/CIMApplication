@@ -8,11 +8,14 @@ import javax.json.Json
 import javax.json.JsonStructure
 
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsAction
 import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.sql.SparkSession
 
 case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = false) extends CIMWebFunction
 {
+    lazy val wideOpen = new FsPermission (FsAction.ALL, FsAction.ALL, FsAction.ALL)
+
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
         // form the response
@@ -25,8 +28,8 @@ case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = fa
         val response = try
         {
             val parent = if (path.endsWith ("/")) file else file.getParent
-            if (hdfs.mkdirs (parent, new FsPermission("ugoa-rwx")))
-                hdfs.setPermission (parent, new FsPermission("ugoa-rwx"))
+            if (hdfs.mkdirs (parent, wideOpen))
+                hdfs.setPermission (parent, wideOpen)
 
             if (0 != data.length && !path.endsWith ("/"))
             {
@@ -44,8 +47,8 @@ case class PutFileFunction (path: String, data: Array[Byte], unzip: Boolean = fa
                             if (entry.isDirectory)
                             {
                                 val path = new Path (parent, entry.getName)
-                                if (hdfs.mkdirs (path, new FsPermission("ugoa-rwx")))
-                                    hdfs.setPermission (path, new FsPermission("ugoa-rwx"))
+                                if (hdfs.mkdirs (path, wideOpen))
+                                    hdfs.setPermission (path, wideOpen)
                             }
                             else
                             {

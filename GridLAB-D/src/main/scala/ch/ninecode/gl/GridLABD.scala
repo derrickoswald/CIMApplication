@@ -300,9 +300,8 @@ class GridLABD
     def getCableMaxCurrent: RDD[(String, Double)] =
     {
         val keyed = getOrElse[ACLineSegment].keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
-        val cables = keyed.join (getOrElse[WireInfo].keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent))
+        val cables = keyed.join (getOrElse[WireInfo].keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent)).persist (storage_level)
 
-        cables.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined) cables.checkpoint ()
 
         cables
@@ -376,12 +375,10 @@ class GridLABD
         }
 
         // persist edges and nodes to avoid recompute
-        val xedges = real_edges.map (make_graph_edges)
-        val xnodes = nodes.map (make_graph_vertices).groupByKey.map (worst)
+        val xedges = real_edges.map (make_graph_edges).persist (storage_level)
+        val xnodes = nodes.map (make_graph_vertices).groupByKey.map (worst).persist (storage_level)
         xedges.name = "xedges"
-        xedges.persist (storage_level)
         xnodes.name = "xnodes"
-        xnodes.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined)
         {
             xedges.checkpoint ()
@@ -643,7 +640,7 @@ class GridLABD
         if (!parent.isRoot && !hdfs.exists (parent))
         {
             mkdirs (hdfs, parent)
-            hdfs.mkdirs (parent, wideOpen) // 0777, but permissions are determined by umask maybe
+            val _ = hdfs.mkdirs (parent, wideOpen) // 0777, but permissions are determined by umask maybe
             hdfs.setPermission (parent, wideOpen)
         }
     }
@@ -654,12 +651,14 @@ class GridLABD
         {
             // ToDo: check for IOException
             val file = Paths.get (workdir_path + directory + "/" + path)
-            Files.createDirectories (file.getParent)
+            val _ = Files.createDirectories (file.getParent)
             if (null != bytes)
             {
-                Files.write (file, bytes)
+                val _ = Files.write (file, bytes)
                 if (null != permissions)
-                    Files.setPosixFilePermissions (file, parsePermissions (permissions).asJava)
+                {
+                    val _ = Files.setPosixFilePermissions (file, parsePermissions (permissions).asJava)
+                }
             }
         }
         else
@@ -686,7 +685,9 @@ class GridLABD
     def eraseInputFile (equipment: String)
     {
         if ((workdir_scheme == "file") || (workdir_scheme == ""))
-            FileUtils.deleteQuietly (new File (workdir_path + equipment))
+        {
+            val _ = FileUtils.deleteQuietly (new File (workdir_path + equipment))
+        }
         else
         {
             val hdfs_configuration = new Configuration ()
@@ -695,7 +696,7 @@ class GridLABD
             val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
 
             val directory = new Path (workdir_slash + equipment)
-            hdfs.delete (directory, true)
+            val _ = hdfs.delete (directory, true)
         }
     }
 

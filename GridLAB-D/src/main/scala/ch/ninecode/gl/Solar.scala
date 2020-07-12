@@ -61,9 +61,8 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
         val t = terminals.keyBy (_.ConductingEquipment).join (house_solars).values.map (
             x => PV (if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2))
 
-        val pv = t.groupBy (_.node)
+        val pv = t.groupBy (_.node).persist (storage_level)
 
-        pv.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined) pv.checkpoint ()
 
         pv

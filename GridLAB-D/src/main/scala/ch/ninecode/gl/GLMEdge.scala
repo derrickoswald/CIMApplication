@@ -65,7 +65,7 @@ object GLMEdge
         {
             case acline: ACLineSegment => acline
             case conductor: Conductor =>
-                new ACLineSegment (conductor, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, List (), List (), List (), List (), null, null, null)
+                new ACLineSegment (conductor)
             case _ =>
                 println ("unexpected class in edge elements (%s)".format (element.getClass))
                 null

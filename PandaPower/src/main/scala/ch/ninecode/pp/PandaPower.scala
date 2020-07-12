@@ -12,6 +12,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsAction
 import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
@@ -72,6 +73,8 @@ extends Serializable
             s"${uri.getScheme}://${if (null == uri.getAuthority) "" else uri.getAuthority}/"
     }
 
+    lazy val wideOpen = new FsPermission (FsAction.ALL, FsAction.ALL, FsAction.ALL)
+
     def hdfs_filesystem (workdir: String): FileSystem =
     {
         val hdfs_configuration = new Configuration ()
@@ -96,6 +99,23 @@ extends Serializable
         )
     }
 
+    /**
+     * Make directories with permissions.
+     *
+     * @param hdfs the file system for the file
+     * @param file the file path to make
+     */
+    def mkdirs (hdfs: FileSystem, file: Path): Unit =
+    {
+        val parent = file.getParent
+        if (!parent.isRoot && !hdfs.exists (parent))
+        {
+            mkdirs (hdfs, parent)
+            val _ = hdfs.mkdirs (parent, wideOpen) // 0777, but permissions are determined by umask maybe
+            hdfs.setPermission (parent, wideOpen)
+        }
+    }
+
     def writeInputFile (directory: String, path: String, bytes: Option[Array[Byte]], permissions: Option[String]): Unit =
     {
         if (isLocal)
@@ -115,10 +135,7 @@ extends Serializable
         {
             val hdfs = hdfs_filesystem (workdir_uri)
             val file = new Path (s"$workdir_slash$directory/$path")
-            // wrong: hdfs.mkdirs (file.getParent (), new FsPermission ("ugoa+rwx")) only permissions && umask
-            // fail: FileSystem.mkdirs (hdfs, file.getParent (), new FsPermission ("ugoa+rwx")) if directory exists
-            val _ = hdfs.mkdirs (file.getParent, new FsPermission ("ugo-rwx"))
-            hdfs.setPermission (file.getParent, new FsPermission ("ugo-rwx")) // "-"  WTF?
+            mkdirs (hdfs, file)
             bytes.foreach (
                 b =>
                 {

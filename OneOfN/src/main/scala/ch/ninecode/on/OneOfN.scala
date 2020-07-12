@@ -334,7 +334,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                   |do
                   |    echo %s,%s>$file.csv
                   |done""".stripMargin.format (switches, UNIX_EPOC, "CLOSED").getBytes (StandardCharsets.UTF_8)
-            gridlabd.writeInputFile (generator.name + "/input_data", "gen", text, "ugo-rwx")
+            gridlabd.writeInputFile (generator.name + "/input_data", "gen", text)
             log.info ("%10s %8s %s".format (area.feeder, area.metadata.station, area.metadata.description))
             1
         }
