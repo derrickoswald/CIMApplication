@@ -17,6 +17,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsAction
 import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.VertexId
@@ -126,6 +127,8 @@ class GridLABD
         else
             uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/"
     }
+
+    lazy val wideOpen = new FsPermission (FsAction.ALL, FsAction.ALL, FsAction.ALL)
 
     /**
      * The name of the node associated with a terminal.
@@ -640,8 +643,8 @@ class GridLABD
         if (!parent.isRoot && !hdfs.exists (parent))
         {
             mkdirs (hdfs, parent)
-            hdfs.mkdirs (parent, new FsPermission ("ugo-rwx")) // WTF? permissions are absolutely fucking ignored
-            hdfs.setPermission (parent, new FsPermission ("ugo-rwx")) // WTF? "-", not "+"
+            hdfs.mkdirs (parent, wideOpen) // 0777, but permissions are determined by umask maybe
+            hdfs.setPermission (parent, wideOpen)
         }
     }
 
