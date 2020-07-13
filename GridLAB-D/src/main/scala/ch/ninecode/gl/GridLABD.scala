@@ -16,6 +16,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsAction
 import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.graphx.Edge
 import org.apache.spark.graphx.VertexId
@@ -63,7 +64,7 @@ class GridLABD
     /**
      * Get the working directory ensuring a slash terminator.
      */
-    val workdir_slash: String = if (workdir.endsWith ("/")) workdir else workdir + "/"
+    val workdir_slash: String = if (workdir.endsWith ("/")) workdir else s"$workdir/"
 
     /**
      * Get the scheme for the working directory.
@@ -100,6 +101,8 @@ class GridLABD
         else
             uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/"
     }
+
+    lazy val wideOpen = new FsPermission (FsAction.ALL, FsAction.ALL, FsAction.ALL)
 
     /**
      * Lookup CIM RDD by name.
@@ -661,8 +664,8 @@ class GridLABD
         if (!parent.isRoot && !hdfs.exists (parent))
         {
             mkdirs (hdfs, parent)
-            hdfs.mkdirs (parent, new FsPermission ("ugo-rwx")) // WTF? permissions are absolutely fucking ignored
-            hdfs.setPermission (parent, new FsPermission ("ugo-rwx")) // WTF? "-", not "+"
+            val _ = hdfs.mkdirs (parent, wideOpen) // 0777, but permissions are determined by umask maybe
+            hdfs.setPermission (parent, wideOpen)
         }
     }
 

@@ -27,6 +27,7 @@ import com.datastax.spark.connector.rdd.ReadConf
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.permission.FsAction
 import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
@@ -83,6 +84,8 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
     ZuluTimestampFormat.setCalendar (ZuluTimeCalendar)
 
     lazy val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
+
+    lazy val wideOpen = new FsPermission (FsAction.ALL, FsAction.ALL, FsAction.ALL)
 
     case class Reading (mRID: String, time: Timestamp, period: Int, values: Array[Double])
 
@@ -236,9 +239,9 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
             val parent = if (dst.endsWith ("/")) file else file.getParent
             if (!fs.exists (parent))
             {
-                fs.mkdirs (parent, new FsPermission ("ugoa-rwx"))
+                fs.mkdirs (parent, wideOpen)
                 if (!parent.isRoot)
-                    fs.setPermission (parent, new FsPermission ("ugoa-rwx"))
+                    fs.setPermission (parent, wideOpen)
             }
 
             if (unzip)
@@ -263,8 +266,8 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                         if (entry.isDirectory)
                         {
                             val path = new Path (parent, entry.getName)
-                            fs.mkdirs (path, new FsPermission ("ugoa-rwx"))
-                            fs.setPermission (path, new FsPermission ("ugoa-rwx"))
+                            fs.mkdirs (path, wideOpen)
+                            fs.setPermission (path, wideOpen)
                         }
                         else
                         {
