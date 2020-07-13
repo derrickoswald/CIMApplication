@@ -188,6 +188,7 @@
         </plugins>
     </reporting>
     <modules>
+        <module>Util</module>
         <module>CIMConnector</module>
         <module>CIMEar</module>
         <module>CIMWeb</module>
@@ -207,7 +208,6 @@
         <module>Spatial</module>
         <module>TestUtil</module>
         <module>TimeSeries</module>
-        <module>Util</module>
     </modules>
 
 </project>
