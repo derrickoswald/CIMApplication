@@ -37,8 +37,6 @@ case class TransformerSet (
     default_power_rating: Double = 630000,
     default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875))
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
-
     // there should be at least one transformer
     require (transformers.length > 0, "no transformers in TransformerData array")
 
@@ -62,7 +60,7 @@ case class TransformerSet (
     {
         val v = transformers.head.v0
         if (!transformers.tail.forall (_.v0 == v))
-            log.error (s"transformer set $transformer_name has different voltages on terminal 0 ${dstrings (_.v0)}")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has different voltages on terminal 0 ${dstrings (_.v0)}")
         v
     }
 
@@ -70,7 +68,7 @@ case class TransformerSet (
     {
         val v = transformers.head.v1
         if (!transformers.tail.forall (_.v1 == v))
-            log.error (s"transformer set $transformer_name has different voltages on terminal 1 ${dstrings (_.v1)}")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has different voltages on terminal 1 ${dstrings (_.v1)}")
         v
     }
 
@@ -79,7 +77,7 @@ case class TransformerSet (
     {
         val n = transformers.head.node0.id
         if (!transformers.tail.forall (_.node0.id == n))
-            log.error (s"transformer set $transformer_name has different nodes on terminal 0 ${strings (_.node0.id)}")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has different nodes on terminal 0 ${strings (_.node0.id)}")
         n
     }
 
@@ -87,7 +85,7 @@ case class TransformerSet (
     {
         val n = transformers.head.node1.id
         if (!transformers.tail.forall (_.node1.id == n))
-            log.error (s"transformer set $transformer_name has different nodes on terminal 1 ${strings (_.node1.id)}")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has different nodes on terminal 1 ${strings (_.node1.id)}")
         n
     }
 
@@ -140,7 +138,7 @@ case class TransformerSet (
                 {
                     val va = transformers.map (_.end1.ratedS).max
                     if (!transformers.forall (_.end1.ratedS == va))
-                        log.error (s"transformer set $transformer_name has units with different base VA ${dstrings (_.end1.ratedS)}")
+                        LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has units with different base VA ${dstrings (_.end1.ratedS)}")
                     if (0.0 == va)
                         default_power_rating
                     else
@@ -246,7 +244,7 @@ case class TransformerSet (
     {
         val power = SkMax (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => SkMax (x.shortcircuit) == power))
-            log.error (s"transformer set $transformer_name has differing maximum network short circuit powers ${dstrings (x => SkMax (x.shortcircuit))}")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing maximum network short circuit powers ${dstrings (x => SkMax (x.shortcircuit))}")
         power
     }
 
@@ -259,7 +257,7 @@ case class TransformerSet (
     {
         val power = SkMin (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => SkMin (x.shortcircuit) == power))
-            log.error (s"transformer set $transformer_name has differing minimum network short circuit powers ${dstrings (x => SkMin (x.shortcircuit))}")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing minimum network short circuit powers ${dstrings (x => SkMin (x.shortcircuit))}")
         power
     }
 
@@ -272,12 +270,12 @@ case class TransformerSet (
     {
         val z = Z (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z (x.shortcircuit) == z))
-            log.error (s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings (x => Z (x.shortcircuit))} using the r and x")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings (x => Z (x.shortcircuit))} using the r and x")
 
         // check against Sk
         val z2 = Z2 (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z2 (x.shortcircuit) == z2))
-            log.error (s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings (x => Z2 (x.shortcircuit))} using the maxP and maxQ")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings (x => Z2 (x.shortcircuit))} using the maxP and maxQ")
 
         if (Complex (0.0) != z) z else z2
     }
@@ -310,7 +308,7 @@ case class TransformerSet (
 
         val z = Z (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z (x.shortcircuit) == z))
-            log.error (s"transformer set $transformer_name has differing minimum network short circuit impedance ${cstrings (x => Z (x.shortcircuit))} using the minP and minQ")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing minimum network short circuit impedance ${cstrings (x => Z (x.shortcircuit))} using the minP and minQ")
 
         z
     }
@@ -324,7 +322,7 @@ case class TransformerSet (
     {
         val impedance = Z0 (transformers.head.shortcircuit)
         if (!transformers.tail.forall (x => Z0 (x.shortcircuit) == impedance))
-            log.error (s"transformer set $transformer_name has differing maximum network zero sequence short circuit impedance ${cstrings (x => Z0 (x.shortcircuit))} using the r0 and x0")
+            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing maximum network zero sequence short circuit impedance ${cstrings (x => Z0 (x.shortcircuit))} using the r0 and x0")
         impedance
     }
 

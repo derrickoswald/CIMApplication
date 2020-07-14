@@ -59,7 +59,7 @@ extends
     /**
      * Default transformer filter predicate.
      *
-     * Eliminates transformers named Messen_Steuern and transformers under 1000VA.
+     * Eliminates transformers named Messen_Steuern, transformers under 1000VA and public lighting "transformers" (230V Übergang) if not calculating public lighting.
      *
      * @param transformer the transformer to test
      * @return <code>true</code> if the transformer should be kept
@@ -68,7 +68,8 @@ extends
     {
         val power_transformer = transformer.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
         val power_significant = transformer.ends.forall (_.ratedS > 0.0)
-        power_transformer && power_significant
+        val voltage_significant = options.calculate_public_lighting || transformer.voltages.tail.exists (_._2 >= 400.0)
+        power_transformer && power_significant && voltage_significant
     }
 
     override lazy val transformers: RDD[TransformerSet] = Transformers (session, storageLevel).getTransformers (transformer_filter = transformer_filter) // substation filter
