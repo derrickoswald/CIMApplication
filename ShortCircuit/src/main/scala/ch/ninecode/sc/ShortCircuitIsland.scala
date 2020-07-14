@@ -22,7 +22,9 @@ import ch.ninecode.net.LoadFlowEdge
 import ch.ninecode.net.LoadFlowNode
 import ch.ninecode.net.SwitchData
 import ch.ninecode.net.TerminalPlus
+import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerSet
+import ch.ninecode.net.Transformers
 
 class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, options: ShortCircuitOptions)
 extends
@@ -53,6 +55,27 @@ extends
     def filter (data: LineData): Boolean = topological_edge (data) && in_use (data) && impedance_limit (data)
 
     override lazy val lines: RDD[LineData] = Lines (session, storageLevel).getLines (filter)
+
+    /**
+     * Default transformer filter predicate.
+     *
+     * Eliminates transformers named Messen_Steuern, transformers under 1000VA.
+     *
+     * @param transformer the transformer to test
+     * @return <code>true</code> if the transformer should be kept
+     */
+    def transformer_filter (transformer: TransformerData): Boolean =
+    {
+        val power_transformer = transformer.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
+        val power_significant = transformer.ends.forall (_.ratedS > 0.0)
+        power_transformer && power_significant
+    }
+
+    override lazy val transformers: RDD[TransformerSet] = Transformers (session, storageLevel).getTransformers (transformer_filter = transformer_filter) // substation filter
+        // legacy naming: TransformerData should be TransformerDetails, TransformerSet should be TransformerData
+        .groupBy (transformer => transformer.nodes.map (_.id).mkString ("_"))
+        .values
+        .map (trafos => TransformerSet (trafos.toArray)) // default_power_rating, default_impedance
 
     override def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
     {
@@ -129,7 +152,7 @@ extends
                     y =>
                     {
                         val transformer = x.find (_._2._1 == y).get
-                        (transformer._2._1, new GLMTransformerEdge (transformer._1))
+                        (transformer._2._1, GLMTransformerEdge (transformer._1))
                     }
                 )
             }

@@ -1039,7 +1039,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                             start_time = now,
                             directory = island.island_name)
                     }
-                )
+                ).persist (storage_level)
             // perform remedial simulations produces (trafoid, nodeid, equipment, voltage, trafo.Z, Branch)
             val results = remedial (simulations, options.low_temperature, isMax = true).persist (storage_level)
             log.info ("""ran %s experiments""".format (results.count ()))
@@ -1110,7 +1110,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 .map (TransformerIsland.apply)
         }
         else
-        // do all low voltage power transformers
+            // do all low voltage power transformers
             transformer_data
                 .filter (td => (td.v0 > 1000.0) && (td.v1 <= 1000.0)) // ToDo: don't hard code this rule
                 .groupBy (_.node1.TopologicalIsland)
