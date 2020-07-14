@@ -43,7 +43,7 @@ extends
      */
     def impedance_limit (data: LineData): Boolean =
     {
-        data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.modulus < options.cable_impedance_limit)
+        data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.re < options.cable_impedance_limit)
     }
 
     /**
@@ -59,7 +59,7 @@ extends
     /**
      * Default transformer filter predicate.
      *
-     * Eliminates transformers named Messen_Steuern, transformers under 1000VA.
+     * Eliminates transformers named Messen_Steuern and transformers under 1000VA.
      *
      * @param transformer the transformer to test
      * @return <code>true</code> if the transformer should be kept
@@ -94,10 +94,11 @@ extends
         rdd.map (
             parts =>
             {
+                val head = parts.toIterator.next
                 val has = parts.find (h => house (h.element))
                 val bus = parts.find (b => busbar (b.element))
-                val ele: Element = has.getOrElse (bus.getOrElse (parts.head)).element
-                (parts.head.id, SimulationNode (parts.head.node.id, parts.head.voltage, ele.id, house (ele), busbar (ele)))
+                val ele: Element = has.getOrElse (bus.getOrElse (head)).element
+                (head.id, SimulationNode (head.node.id, head.voltage, ele.id, has.isDefined, bus.isDefined))
             }
         )
     }
@@ -125,11 +126,14 @@ extends
             x =>
             {
                 val unique_identifiers = x.map (_._2._1).toSet
-                unique_identifiers.map (
+                unique_identifiers.flatMap (
                     y =>
                     {
-                        val switch = x.find (_._2._1 == y).get
-                        (switch._2._1, new GLMSwitchEdge (switch._1))
+                        x.find (_._2._1 == y) match
+                        {
+                            case Some (switch) => Some ((switch._2._1, new GLMSwitchEdge (switch._1)))
+                            case _ => None
+                        }
                     }
                 )
             }
@@ -148,11 +152,14 @@ extends
             x =>
             {
                 val unique_identifiers = x.map (_._2._1).toList.distinct
-                unique_identifiers.map (
+                unique_identifiers.flatMap (
                     y =>
                     {
-                        val transformer = x.find (_._2._1 == y).get
-                        (transformer._2._1, GLMTransformerEdge (transformer._1))
+                        x.find (_._2._1 == y) match
+                        {
+                            case Some (transformer) => Some ((transformer._2._1, GLMTransformerEdge (transformer._1)))
+                            case _ => None
+                        }
                     }
                 )
             }

@@ -93,7 +93,7 @@ final case class Lines (
     /**
      * Create an RDD of composite ACLineSegment objects.
      *
-     * @param line_filter filter to remove bad lines, default is lines > default_cable_impedance_limit Ω && in use
+     * @param line_filter filter to remove bad lines, default is lines > DEFAULT_CABLE_RESISTANCE_LIMIT Ω/km && in use
      * @return the RDD of cable data
      */
     def getLines (line_filter: LineData => Boolean = filter): RDD[LineData] =
@@ -133,22 +133,22 @@ final case class Lines (
 object Lines
 {
     /**
-     * Maximum per length impedance for a cable (Ω/km).
+     * Maximum per length R1 resistance for a cable (Ω/km).
      */
-    var DEFAULT_CABLE_IMPEDANCE_LIMIT: Double = 5.0
+    var DEFAULT_CABLE_RESISTANCE_LIMIT: Double = 5.0
 
     /**
-     * Checks that the line segment impedance is not too large.
+     * Checks that the line segment resistance is not too large.
      *
      * @note The use of high impedance cables in GridLAB-D leads to long convergence times and
      *       often failures to converge. We use a rule of thumb that drops these cables from consideration.
      *
      * @param data the ACLineSegment data to check
-     * @return <code>true</code> if all cable per length impedances are less than the limit
+     * @return <code>true</code> if all cable per length resistances are less than the limit
      */
     def impedance_limit (data: LineData): Boolean =
     {
-        data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.modulus < DEFAULT_CABLE_IMPEDANCE_LIMIT)
+        data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.re < DEFAULT_CABLE_RESISTANCE_LIMIT)
     }
 
     /**
