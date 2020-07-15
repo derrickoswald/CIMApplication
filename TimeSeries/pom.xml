@@ -184,7 +184,7 @@
                 <configuration>
                     <clusterSize>1</clusterSize>
                     <startNativeTransport>true</startNativeTransport>
-                    <cqlVersion>3.4.4</cqlVersion>
+                    <cqlVersion>${version.dependency.cql}</cqlVersion>
                     <yaml>
 rpc_port: ${cassandra.rpcPort}
 storage_port: ${cassandra.storagePort}

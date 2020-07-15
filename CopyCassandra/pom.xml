@@ -192,6 +192,7 @@
                 <configuration>
                     <clusterSize>1</clusterSize>
                     <startNativeTransport>true</startNativeTransport>
+                    <cqlVersion>${version.dependency.cql}</cqlVersion>
                     <script>${basedir}/src/test/resources/test_copy_schema.sql</script>
                     <yaml>
 rpc_port: ${cassandra.rpcPort}
