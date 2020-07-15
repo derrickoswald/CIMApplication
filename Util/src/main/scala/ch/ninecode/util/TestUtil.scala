@@ -27,13 +27,14 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName (this.getClass.getSimpleName)
-        configuration.setMaster ("local[2]")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "2g")
-        configuration.set ("spark.sql.warehouse.dir", "file:///tmp/")
-        configuration.set ("spark.ui.showConsoleProgress", "false")
-        configuration.set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+            .setAppName (this.getClass.getSimpleName)
+            .setMaster ("local[2]")
+            .set ("spark.driver.memory", "2g")
+            .set ("spark.executor.memory", "2g")
+            .set ("spark.sql.warehouse.dir", "file:///tmp/")
+            .set ("spark.ui.showConsoleProgress", "false")
+            .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+            .set ("spark.graphx.pregel.checkpointInterval", "8")
 
         // register relevant classes
         registerDependency (configuration)
