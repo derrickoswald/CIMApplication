@@ -124,10 +124,25 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 else if (triplet.srcAttr.id != triplet.dstAttr.prev_node && triplet.dstAttr.id != triplet.srcAttr.prev_node)
                 {
                     if (triplet.srcAttr.hasNonRadial || triplet.dstAttr.hasNonRadial)
+                        // at least one node is marked as non-radial, so nothing to do
                         Iterator.empty
                     else
-                        Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")),
-                            (triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
+                    {
+                        val src_issues = triplet.srcAttr.hasIssues
+                        val dst_issues = triplet.dstAttr.hasIssues
+                        if (src_issues && dst_issues)
+                            // both of the nodes already have issues, so nothing we can do
+                            Iterator.empty
+                        else
+                            // send message(s) to mark at least one as non-radial
+                            if (!src_issues && !dst_issues)
+                                Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")),
+                                    (triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
+                            else if (!src_issues)
+                                Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")))
+                            else
+                                Iterator ((triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
+                    }
                 }
                 else
                     Iterator.empty
