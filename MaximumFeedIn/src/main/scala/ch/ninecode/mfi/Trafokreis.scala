@@ -19,6 +19,7 @@ import ch.ninecode.net.TransformerData
  * @param edges        The edges in the transformer service area.
  * @param houses       The house connections in the transformer service area.
  * @param options      Options for calculations.
+ * @param subtransmission_trafos The list of subtransmission transformers to be matched for edge creation.
  */
 case class Trafokreis
 (
