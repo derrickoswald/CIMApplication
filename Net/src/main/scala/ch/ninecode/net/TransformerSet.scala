@@ -38,6 +38,7 @@ case class TransformerSet (
     default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875))
 {
     // there should be at least one transformer
+    require (transformers != null, "no TransformerData array")
     require (transformers.length > 0, "no transformers in TransformerData array")
 
     def strings (fn: TransformerData => String, sep: String = " "): String = transformers.map (fn).mkString (sep)

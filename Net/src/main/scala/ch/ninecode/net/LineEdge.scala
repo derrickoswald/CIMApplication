@@ -8,7 +8,7 @@ class LineEdge
     _data: LineData
 )
 extends LoadFlowEdge (
-    _data.lines.map (_.line).map (_.id).toArray.sortWith (_ < _).mkString ("_"),
+    LineEdge.lineName (_data),
     _data.node0,
     _data.node1
 )
@@ -78,5 +78,24 @@ extends LoadFlowEdge (
         val x2 = Z2 * Complex (-0.5, root3 / -2.0)
         val off = (Z0 + x1 + x2) / 3.0
         (diag, off)
+    }
+}
+
+object LineEdge
+{
+    /**
+     * Get the name (of the parallel lines).
+     *
+     * @return An appropriate line name.
+     */
+    def lineName (data: LineData): String =
+    {
+        val id = data.lines.map (_.line).map (_.id).toArray.sortWith (_ < _).mkString ("_")
+        // limit to 64 bytes (GridLAB-D OBJECTTREE.name is an array of 64 bytes) with null:
+        // leave 20 characters spare to add suffixes
+        if (id.getBytes.length > 43)
+            s"_${Math.abs (id.hashCode ()).toString}"
+        else
+            id
     }
 }

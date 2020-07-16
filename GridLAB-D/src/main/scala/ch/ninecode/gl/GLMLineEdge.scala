@@ -20,7 +20,7 @@ with GLMEdge
     override def emit (generator: GLMGenerator): String =
     {
         // ToDo: with parallel cables of different length or type this is a problem:
-        val conductor = lines.head.Conductor
+        val conductor = lines.toIterator.next.Conductor
         // ToDo: use ProductAssetModel.usageKind (from AssetInfo.AssetModel)
         val typ = if (conductor.ConductingEquipment.Equipment.PowerSystemResource.PSRType == "PSRType_Underground")
             "underground_line"
@@ -28,17 +28,18 @@ with GLMEdge
             "overhead_line"
         val length = conductor.len
         val config = configurationName
-        """
-          |        object %s
+        val phases = if (generator.isSinglePhase) "AN" else "ABCN"
+        s"""
+          |        object $typ
           |        {
-          |            name "%s";
-          |            phases %s;
-          |            from "%s";
-          |            to "%s";
-          |            length %sm;
-          |            configuration "%s";
+          |            name "$id";
+          |            phases $phases;
+          |            from "$cn1";
+          |            to "$cn2";
+          |            length ${length}m;
+          |            configuration "$config";
           |        };
-          |""".stripMargin.format (typ, id, if (generator.isSinglePhase) "AN" else "ABCN", cn1, cn2, length, config)
+          |""".stripMargin
     }
 
     /**
@@ -58,23 +59,22 @@ with GLMEdge
                 sequence2z (pli.z0, pli.z1)
         val dia = diag.asString (8) + " Ohm/m"
         val off = offd.asString (8) + " Ohm/m"
-        val comment =  lines.map (line =>
-            "            // %s".format (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)).mkString ("\n", "\n", "")
-        """
-          |%s        object line_configuration
-          |        {%s
-          |            name "%s";
-          |            z11 %s;
-          |            z12 %s;
-          |            z13 %s;
-          |            z21 %s;
-          |            z22 %s;
-          |            z23 %s;
-          |            z31 %s;
-          |            z32 %s;
-          |            z33 %s;
+        val comment =  lines.map (line => s"            // ${line.id}").mkString ("\n", "\n", "")
+        s"""
+          |$warning        object line_configuration
+          |        {$comment
+          |            name "$config";
+          |            z11 $dia;
+          |            z12 $off;
+          |            z13 $off;
+          |            z21 $off;
+          |            z22 $dia;
+          |            z23 $off;
+          |            z31 $off;
+          |            z32 $off;
+          |            z33 $dia;
           |        };
-          |""".stripMargin.format (warning, comment, config, dia, off, off, off, dia, off, off, off, dia)
+          |""".stripMargin
     }
 
     /**
@@ -85,7 +85,7 @@ with GLMEdge
      */
     def configuration (generator: GLMGenerator): String =
     {
-        val pli = data.perLengthImpedanceAt (generator.targetTemperature, data.lines.head.CIMBaseTemperature)
+        val pli = data.perLengthImpedanceAt (generator.targetTemperature, data.lines.toIterator.next.CIMBaseTemperature)
         make_line_configuration (configurationName, pli, data.perLengthImpedanceIsDefault, generator)
     }
 }
