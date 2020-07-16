@@ -68,88 +68,59 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
             v
     }
 
-    def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
-    {
-        if ((null != triplet.srcAttr.source_obj) || (null != triplet.dstAttr.source_obj))
-            if (triplet.attr.connected)
-                if (triplet.srcAttr.source_obj != null && triplet.dstAttr.source_obj == null)
-                {
-                    val (dist_km, z, ir) = line_details (triplet.attr)
-                    val sum_z = triplet.srcAttr.sum_z + z * dist_km
-                    val min_ir = math.min (triplet.srcAttr.min_ir, ir)
-                    val feeder = if (null != triplet.dstAttr.feeder) triplet.dstAttr.feeder else triplet.srcAttr.feeder
-                    val problem =
-                        if (triplet.srcAttr.nominal_voltage < triplet.dstAttr.nominal_voltage && triplet.dstAttr.nominal_voltage <= 1000.0) // ToDo: don't hard code these values
-                            s"low voltage (${triplet.dstAttr.nominal_voltage}V:${triplet.srcAttr.nominal_voltage}V) subtransmission edge ${triplet.attr.id}"
-                        else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem
-                        else if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem
-                        else if (null != triplet.attr.problem) triplet.attr.problem
-                        else triplet.srcAttr.problem
-                    val message = PowerFeedingNode (triplet.dstAttr.id, triplet.srcAttr.id, null, triplet.dstAttr.nominal_voltage, triplet.srcAttr.source_obj, feeder, sum_z, min_ir, problem)
-                    if (log.isDebugEnabled)
-                        log.info ("%s --> %s".format (triplet.srcAttr.id, message.asString))
-                    Iterator ((triplet.dstId, message))
-                }
-                else if (triplet.srcAttr.source_obj == null && triplet.dstAttr.source_obj != null)
-                {
-                    val (dist_km, z, ir) = line_details (triplet.attr)
-                    val sum_z = triplet.dstAttr.sum_z + z * dist_km
-                    val min_ir = math.min (triplet.dstAttr.min_ir, ir)
-                    val feeder = if (null != triplet.srcAttr.feeder) triplet.srcAttr.feeder else triplet.dstAttr.feeder
-                    val problem =
-                        if (triplet.dstAttr.nominal_voltage < triplet.srcAttr.nominal_voltage && triplet.srcAttr.nominal_voltage <= 1000.0) // ToDo: don't hard code these values
-                            s"low voltage (${triplet.srcAttr.nominal_voltage}V:${triplet.dstAttr.nominal_voltage}V) subtransmission edge ${triplet.attr.id}"
-                        else if (triplet.dstAttr.hasIssues) triplet.dstAttr.problem
-                        else if (triplet.srcAttr.hasIssues) triplet.srcAttr.problem
-                        else if (null != triplet.attr.problem) triplet.attr.problem
-                        else triplet.dstAttr.problem
-                    val message = PowerFeedingNode (triplet.srcAttr.id, triplet.dstAttr.id, null, triplet.srcAttr.nominal_voltage, triplet.dstAttr.source_obj, feeder, sum_z, min_ir, problem)
-                    if (log.isDebugEnabled)
-                        log.info ("%s --> %s".format (triplet.dstAttr.id, message.asString))
-                    Iterator ((triplet.srcId, message))
-                }
-                else if (triplet.srcAttr.source_obj != triplet.dstAttr.source_obj)
-                {
-                    if (triplet.srcAttr.hasIssues && !triplet.dstAttr.hasIssues)
-                        Iterator ((triplet.dstId, triplet.dstAttr.copy (problem = triplet.srcAttr.problem)))
-                    else if (!triplet.srcAttr.hasIssues && triplet.dstAttr.hasIssues)
-                        Iterator ((triplet.srcId, triplet.srcAttr.copy (problem = triplet.dstAttr.problem)))
-                    else
-                        if (triplet.srcAttr.hasNonRadial || triplet.dstAttr.hasNonRadial)
-                            Iterator.empty
-                        else
-                            Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")),
-                                (triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
-                }
-                else if (triplet.srcAttr.id != triplet.dstAttr.prev_node && triplet.dstAttr.id != triplet.srcAttr.prev_node)
-                {
-                    if (triplet.srcAttr.hasNonRadial || triplet.dstAttr.hasNonRadial)
-                        // at least one node is marked as non-radial, so nothing to do
-                        Iterator.empty
-                    else
-                    {
-                        val src_issues = triplet.srcAttr.hasIssues
-                        val dst_issues = triplet.dstAttr.hasIssues
-                        if (src_issues && dst_issues)
-                            // both of the nodes already have issues, so nothing we can do
-                            Iterator.empty
-                        else
-                            // send message(s) to mark at least one as non-radial
-                            if (!src_issues && !dst_issues)
-                                Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")),
-                                    (triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
-                            else if (!src_issues)
-                                Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")))
-                            else
-                                Iterator ((triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
-                    }
-                }
-                else
-                    Iterator.empty
-            else
-                Iterator.empty
-        else
+    def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] = {
+        val dst = triplet.dstAttr
+        val src = triplet.srcAttr
+        if ((null == src.source_obj) && (null == dst.source_obj)) {
             Iterator.empty
+        } else if (src.id == dst.prev_node || dst.id == src.prev_node) {
+            Iterator.empty
+        } else if (!triplet.attr.connected) {
+            Iterator.empty
+        } else if (src.source_obj != null && dst.source_obj == null) {
+            sendMessageToNode(src, dst, triplet.dstId, triplet.attr)
+        } else if (src.source_obj == null && dst.source_obj != null) {
+            sendMessageToNode(dst, src, triplet.srcId, triplet.attr)
+        } else {
+            sendMessageWithIssues(triplet)
+        }
+    }
+
+    private def sendMessageToNode(from: PowerFeedingNode, to: PowerFeedingNode, toId: VertexId, edge: PreEdge): Iterator[(VertexId, PowerFeedingNode)] = {
+        val (dist_km, z, ir) = line_details(edge)
+        val sum_z = from.sum_z + z * dist_km
+        val min_ir = math.min(from.min_ir, ir)
+        val feeder = if (null != to.feeder) to.feeder else from.feeder
+        val problem =
+            if (from.nominal_voltage < to.nominal_voltage && to.nominal_voltage <= 1000.0) // ToDo: don't hard code these values
+            s"low voltage (${to.nominal_voltage}V:${from.nominal_voltage}V) subtransmission edge ${edge.id}"
+                else if (from.hasIssues) from.problem
+            else if (to.hasIssues) to.problem
+            else if (null != edge.problem) edge.problem
+            else from.problem
+        val message = PowerFeedingNode(to.id, from.id, null, to.nominal_voltage, from.source_obj, feeder, sum_z, min_ir, problem)
+        if (log.isDebugEnabled)
+            log.info("%s --> %s".format(from.id, message.asString))
+        Iterator((toId, message))
+    }
+
+    private def sendMessageWithIssues(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] = {
+        val src = triplet.srcAttr
+        val dst = triplet.dstAttr
+        if (triplet.srcAttr.hasNonRadial || triplet.dstAttr.hasNonRadial) {
+            // at least one node is marked as non-radial, so nothing to do
+            Iterator.empty
+        } else if (src.hasIssues && dst.hasIssues) {
+            // both of the nodes already have issues, so nothing we can do
+            Iterator.empty
+        } else if (!src.hasIssues && !dst.hasIssues) {
+            // send message(s) to mark at least one as non-radial
+            Iterator((triplet.srcId, triplet.srcAttr.copy(prev_node = triplet.dstAttr.id, problem = "non-radial network")), (triplet.dstId, triplet.dstAttr.copy(prev_node = triplet.srcAttr.id, problem = "non-radial network")))
+        } else if (!src.hasIssues) {
+            Iterator((triplet.srcId, triplet.srcAttr.copy(prev_node = triplet.dstAttr.id, problem = "non-radial network")))
+        } else {
+            Iterator((triplet.dstId, triplet.dstAttr.copy(prev_node = triplet.srcAttr.id, problem = "non-radial network")))
+        }
     }
 
     def mergeMessage (a: PowerFeedingNode, b: PowerFeedingNode): PowerFeedingNode =
