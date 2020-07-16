@@ -17,10 +17,25 @@ case class LineEdge
      * Return the name of the (possibly parallel) line.
      *
      * Uses the concatenation of the alphabetically sorted names of the ACLineSegments that make up this line.
+     * If the name is longer than 43 characters, a hash code is returned instead.
      *
      * @return The ID of the edge (the mRID of the electrical element).
      */
-    def id: String = lines.map (_.id).toArray.sortWith (_ < _).mkString ("_")
+    def id: String =
+    {
+        val n = lines.map (_.id).toArray.sortWith (_ < _).mkString ("_")
+        // limit to 64 bytes with null:
+        // typedef struct s_objecttree {
+        //     char name[64];
+        //     OBJECT *obj;
+        //     struct s_objecttree *before, *after;
+        //     int balance; /* unused */
+        // } OBJECTTREE;
+        if (n.getBytes.length > 43)
+            "_" + Math.abs (n.hashCode ())
+        else
+            n
+    }
 
     /**
      * Emit a overhead or underground line.
