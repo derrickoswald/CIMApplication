@@ -6,13 +6,15 @@ import java.util.Properties
 import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 
 import com.datastax.oss.driver.api.core.CqlSession
-import org.junit.Assume.assumeTrue
+
 import org.junit.Test
 
 import ch.ninecode.ingest.Main.main
 
 class IngestSuiteIT
 {
+    val LOCALHOST = "localhost"
+    val DEFAULT_CASSANDRA_PORT = 9042
     val KEYSPACE = "delete_me"
     val FILE_DEPOT = "data/"
     val MAPPING_FILE = "mapping.csv"
@@ -28,7 +30,7 @@ class IngestSuiteIT
         val session: CqlSession = CqlSession
             .builder ()
             .withLocalDatacenter ("datacenter1")
-            .addContactPoint (new InetSocketAddress ("localhost", cassandra_port))
+            .addContactPoint (new InetSocketAddress (LOCALHOST, cassandra_port))
             .build ()
         session
     }
@@ -45,25 +47,9 @@ class IngestSuiteIT
         }
         val port = properties.getProperty ("nativeTransportPort", "9042")
         if ("" == port)
-            9042
+            DEFAULT_CASSANDRA_PORT
         else
             port.toInt
-    }
-
-    def serverListening (host: String, port: Int): Boolean =
-    {
-        try
-        {
-            val s = new java.net.Socket ()
-            s.connect (new InetSocketAddress (host, port), 1000)
-            val socket = new scala.tools.nsc.io.Socket (s)
-            socket.close
-            true
-        }
-        catch
-        {
-            case _: Exception => false
-        }
     }
 
     def checkCount (session: CqlSession, sql: String, count: Long, tag: String): Unit =
@@ -92,16 +78,16 @@ class IngestSuiteIT
         }
     }
 
-    @Test def Help ()
+    @Test def doHelp ()
     {
         main (Array ("--unittest", "--help"))
     }
 
-    @Test def Ingest ()
+    @Test def doIngest ()
     {
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
-            "--host", "localhost",
+            "--host", LOCALHOST,
             "--port", cassandra_port.toString,
             "--keyspace", KEYSPACE,
             "--nocopy",
@@ -109,8 +95,8 @@ class IngestSuiteIT
             "--metercol", "meter",
             "--mridcol", "mRID",
             "--format", "LPEx",
-            s"${FILE_DEPOT}${LPEX_FILE1}",
-            s"${FILE_DEPOT}${LPEX_FILE2}"))
+            s"$FILE_DEPOT$LPEX_FILE1",
+            s"$FILE_DEPOT$LPEX_FILE2"))
 
         val session = getSession
 
@@ -128,20 +114,20 @@ class IngestSuiteIT
         session.close ()
     }
 
-    @Test def DaylightSavings_Time ()
+    @Test def useDaylightSavings_Time ()
     {
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
-            "--host", "localhost",
+            "--host", LOCALHOST,
             "--port", cassandra_port.toString,
             "--keyspace", KEYSPACE,
             "--nocopy",
-            "--mapping", s"${FILE_DEPOT}${DAYLIGHT_MAPPING_FILE}",
+            "--mapping", s"$FILE_DEPOT$DAYLIGHT_MAPPING_FILE",
             "--mridcol", "mrid",
             "--metercol", "meter",
             "--format", "LPEx",
-            s"${FILE_DEPOT}${DAYLIGHT_START}",
-            s"${FILE_DEPOT}${DAYLIGHT_END}"))
+            s"$FILE_DEPOT$DAYLIGHT_START",
+            s"$FILE_DEPOT$DAYLIGHT_END"))
 
         val session = getSession
 
@@ -153,7 +139,7 @@ class IngestSuiteIT
         session.close ()
     }
 
-    @Test def MSCONS ()
+    @Test def importMSCONS ()
     {
         val FILE_DEPOT = "../MSCONSReader/data/"
         val MAPPING_FILE = s"${FILE_DEPOT}mapping.csv"
@@ -168,7 +154,7 @@ class IngestSuiteIT
 
         main (Array.concat (Array ("--unittest", "--verbose",
             "--master", "local[2]",
-            "--host", "localhost",
+            "--host", LOCALHOST,
             "--port", cassandra_port.toString,
             "--keyspace", KEYSPACE,
             "--nocopy",
@@ -182,17 +168,15 @@ class IngestSuiteIT
         session.close ()
     }
 
-    @Test def MSCONS_Zip ()
+    @Test def importMSCONS_Zip ()
     {
-        assumeTrue (s"$HDFS_HOST:8020 is not listening", serverListening (HDFS_HOST, 8020))
-
         val FILE_DEPOT = "data" + System.getProperty ("file.separator")
         val MAPPING_FILE = s"${FILE_DEPOT}sample.csv"
         val FILE = s"${FILE_DEPOT}sample.zip"
 
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
-            "--host", "localhost",
+            "--host", LOCALHOST,
             "--port", cassandra_port.toString,
             "--keyspace", KEYSPACE,
             "--mapping", MAPPING_FILE,
