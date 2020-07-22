@@ -6,7 +6,23 @@ import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-case class SimulationCassandraAccess (spark: SparkSession, storage_level: StorageLevel, simulation: String, input_keyspace: String, output_keyspace: String, verbose: Boolean = false, unittest: Boolean = false)
+/**
+ * Standard queries to Cassandra.
+ *
+ * @param spark the spark session to use (has spark.cassandra.connection.host and spark.cassandra.connection.port set).
+ * @param storage_level persistence applied to each created DataFrame
+ * @param simulation the simulation id (part of the primary key for all tables)
+ * @param input_keyspace the keyspace used for measured and synthesized values
+ * @param output_keyspace the keyspace used for simulated and other values
+ * @param verbose if <code>true</code> turns on logging level INFO for this class
+ */
+case class SimulationCassandraAccess (
+    spark: SparkSession,
+    storage_level: StorageLevel,
+    simulation: String,
+    input_keyspace: String,
+    output_keyspace: String,
+    verbose: Boolean = false)
 {
     if (verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -28,13 +44,14 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "key_value", "keyspace" -> output_keyspace))
             .load
-            .filter ("simulation = '%s' and query='%s'".format (simulation, query))
+            .filter (s"simulation = '$simulation' and query='$query'")
             .drop ("simulation", "query")
             .withColumnRenamed ("key", "mrid")
             .persist (storage_level)
         keyvalue
     }
 
+    // not used
     def geojson (table: String, coordinate_system: String = "wgs84"): DataFrame =
     {
         val geojson = spark
@@ -42,7 +59,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> table, "keyspace" -> output_keyspace))
             .load
-            .filter ("simulation = '%s' and coordinate_system='%s'".format (simulation, coordinate_system))
+            .filter (s"simulation = '$simulation' and coordinate_system='$coordinate_system'")
             .drop ("simulation", "coordinate_system", "type", "geometry")
             .persist (storage_level)
         geojson
@@ -55,13 +72,15 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "simulated_value", "keyspace" -> output_keyspace))
             .load
-            // push down partition key = (simulation, mrid, type, period)
-            .filter ("simulation = '%s' and type = '%s' and period = %s".format (simulation, `type`, period))
+            // can't push down partition key = (simulation, mrid, type, period)
+            // so it relies on indices on simulation, type and period
+            .filter (s"simulation = '$simulation' and type = '${`type`}' and period = $period")
             .drop (to_drop:_*)
             .persist (storage_level)
         values
     }
 
+    // not used
     def raw_meter_values: DataFrame =
     {
         val values = spark
@@ -82,7 +101,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "simulation_player", "keyspace" -> output_keyspace))
             .load
-            .filter ("simulation = '%s' and type = '%s'".format (simulation, `type`))
+            .filter (s"simulation = '$simulation' and type = '${`type`}'")
             .drop ("simulation", "type")
             .persist (storage_level)
         values
@@ -95,7 +114,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "simulation_recorder", "keyspace" -> output_keyspace))
             .load
-            .filter ("simulation = '%s'".format (simulation))
+            .filter (s"simulation = '$simulation'")
             .drop ("simulation")
             .persist (storage_level)
         values
@@ -108,7 +127,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "simulation_event", "keyspace" -> output_keyspace))
             .load
-            .filter ("simulation = '%s'".format (simulation))
+            .filter (s"simulation = '$simulation'")
             .drop ("simulation")
             .persist (storage_level)
         values

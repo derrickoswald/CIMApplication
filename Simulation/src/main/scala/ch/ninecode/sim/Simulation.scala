@@ -372,36 +372,37 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     def queryValues (job: SimulationJob, simulations: RDD[SimulationTrafoKreis]): RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] =
     {
         val phases = if (options.three_phase && !options.fake_three_phase) 3 else 1
-        def inTime (min: Long, max: Long) (row: Row): Boolean =
-        {
-            val time = row.getTimestamp (2).getTime
-            time >= min && time <= max
-        }
-        val inInterval = inTime (job.start_time.getTimeInMillis - job.buffer, job.end_time.getTimeInMillis + job.buffer)_
+        val start = job.start_time.clone ().asInstanceOf[Calendar]
+        start.add (Calendar.MILLISECOND, - job.buffer)
+        val end = job.end_time.clone ().asInstanceOf[Calendar]
+        end.add (Calendar.MILLISECOND, job.buffer)
+        val low = cassandra_date_format.format (start.getTime)
+        val high = cassandra_date_format.format (end.getTime)
+        val time_filter = s"time >= '$low' and time <= '$high'"
         val measured_df = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "measured_value", "keyspace" -> job.input_keyspace))
             .load
+            .filter (time_filter)
             .selectExpr (columns ("mrid") (phases): _*)
         val synthesised_df = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "synthesized_value", "keyspace" -> job.input_keyspace))
             .load
+            .filter (time_filter)
             .selectExpr (columns ("synthesis") (phases): _*)
             .withColumnRenamed ("synthesis", "mrid")
         val function = if (phases == 3) toThreePhase _ else toOnePhase _
         val raw_measured: RDD[SimulationPlayerData] =
             measured_df
                 .rdd
-                .filter (inInterval)
                 .map (function ("")) // convert to case class early
                 .persist (options.storage_level)
         val raw_synthesised: RDD[SimulationPlayerData] =
             synthesised_df
                 .rdd
-                .filter (inInterval)
                 .map (function ("")) // convert to case class early
                 .persist (options.storage_level)
         val queries_measured: RDD[(House, Trafo)] = simulations.flatMap (
@@ -529,7 +530,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def createSimulationTasks (job: SimulationJob, batchno: Int): RDD[SimulationTrafoKreis] =
     {
-        val (transformers, subtransmission_trafos) = getTransformers
+        val (transformers, _) = getTransformers
         val tasks = make_tasks (job)
         job.save (session, job.output_keyspace, job.id, tasks)
 
@@ -651,7 +652,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             {
                 case Some ((id, input, output)) =>
                     implicit val access: SimulationCassandraAccess =
-                        SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose, options.unittest)
+                        SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose)
                     // ToDo: this isn't quite right, take the first job matching the output keyspace
                     val batches = jobs.groupBy (_.output_keyspace)
                     val job = batches (output).head

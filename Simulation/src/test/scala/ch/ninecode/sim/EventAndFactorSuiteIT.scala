@@ -45,13 +45,13 @@ class EventAndFactorSuiteIT
             HighTrigger ("power", 2, "ratedS", 630.0, 1.10,      15 * 60 * 1000)
         )
         val check = SimulationEvents (STANDARD_TRIGGERS) (_Spark, options)
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true, unittest = true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         check.run (access)
     }
 
     @Test def coincidence_factor ()
     {
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true, unittest = true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
         val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
         val coincidence = SimulationCoincidenceFactor (IGNORED_AGGREGATES) (_Spark, options)
@@ -60,7 +60,7 @@ class EventAndFactorSuiteIT
 
     @Test def load_factor ()
     {
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true, unittest = true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
         val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
         val load = SimulationLoadFactor (IGNORED_AGGREGATES) (_Spark, options)
@@ -69,7 +69,7 @@ class EventAndFactorSuiteIT
 
     @Test def responsibility_factor ()
     {
-        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true, unittest = true)
+        val access = SimulationCassandraAccess  (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] ()
         val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
         val responsibility = SimulationResponsibilityFactor (IGNORED_AGGREGATES) (_Spark, options)
@@ -79,6 +79,8 @@ class EventAndFactorSuiteIT
 
 object EventAndFactorSuiteIT
 {
+    val DEFAULT_CASSANDRA_PORT = "9042"
+
     lazy val _Spark: SparkSession =
     {
         // create the configuration
@@ -112,7 +114,14 @@ object EventAndFactorSuiteIT
         in.close ()
         p
     }
-    val PORT: String = properties.getProperty ("nativeTransportPort", "9042")
+    val PORT: String =
+    {
+        val port = properties.getProperty ("nativeTransportPort", "9042")
+        if ("" == port)
+            DEFAULT_CASSANDRA_PORT
+        else
+            port
+    }
 
     @BeforeClass def before (): Unit =
     {

@@ -29,3 +29,7 @@ These are typically smart meter readings, or transformer values from a SCADA sys
     units  - the units for the measurement
 ';
 
+create index if not exists measured_value_typ_idx on cimapplication.measured_value (type);
+
+create index if not exists measured_value_tim_idx on cimapplication.measured_value (time);
+

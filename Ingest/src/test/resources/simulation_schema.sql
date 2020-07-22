@@ -70,6 +70,54 @@ These are typically smart meter readings, or transformer values from a SCADA sys
     units  - the units for the measurement
 ';
 
+create index if not exists measured_value_typ_idx on cimapplication.measured_value (type);
+
+create index if not exists measured_value_tim_idx on cimapplication.measured_value (time);
+
+create table if not exists cimapplication.measured_value_stats (
+    mrid text,
+    type text,
+    start timestamp,
+    end timestamp,
+    count int,
+    missing int,
+    minimum double,
+    average double,
+    maximum double,
+    stddev double,
+    primary key ((mrid, type), start)
+) with clustering order by (start asc) and comment = '
+Measurement value statistics.
+Statistical properties of measurement_value table aggregated by mrid and type.
+    mrid    - the unique CIM mRID for the element
+    type    - the type of value, e.g. energy, power, voltage, current
+    start   - the first time at which a measurement was taken in GMT
+    end     - the last time at which a measurement was taken in GMT
+    count   - the number of non-zero measurements
+    missing - the number of zero or missing elements between the start and end time
+    minimum - the minimum non-zero measurement value
+    average - the average non-zero measurement value
+    maximum - the maximum non-zero measurement value
+    stddev  - the standard deviation of the non-zero measurement values
+';
+
+create table if not exists cimapplication.measured_value_meta (
+    mrid text,
+    classes map<text,int>,
+    lon double,
+    lat double,
+    primary key (mrid)
+) with comment = '
+Measurement value metadata.
+Auxiliary properties of measurement_value table entries.
+    mrid    - the unique CIM mRID for the element
+    classes - the classifications and meter count, e.g. "Apartment"->6 or "House"->1, of the smart meter installation
+    lon     - the longitude of the location (°)
+    lat     - the latitude of the location (°)
+';
+
+create index if not exists measured_value_meta_cla_idx on cimapplication.measured_value_meta (ENTRIES(classes));
+
 create table if not exists cimapplication.simulated_value (
     simulation text,
     mrid text,
@@ -101,6 +149,12 @@ These are values obtained from load-flow simulations or other analysis software.
     units  - the units for the simulated value
 ';
 
+create index if not exists simulated_value_sim_idx on cimapplication.simulated_value (simulation);
+
+create index if not exists simulated_value_typ_idx on cimapplication.simulated_value (type);
+
+create index if not exists simulated_value_per_idx on cimapplication.simulated_value (period);
+
 create table if not exists cimapplication.synthesized_value (
     synthesis text,
     type text,
@@ -115,7 +169,7 @@ create table if not exists cimapplication.synthesized_value (
     units text,
     primary key ((synthesis, type, period), time)
     ) with clustering order by (time asc) and comment = '
-Sythesized values.
+Synthesized values.
 These are synthesized values from synthetic load-profile software or machine learning algorithms generalizing real data.
     synthesis - the synthetic data set name
     type   - the type of value, e.g. energy, power, voltage, current
@@ -129,6 +183,10 @@ These are synthesized values from synthetic load-profile software or machine lea
     imag_c - the imaginary component of the phase C (or T) value
     units  - the units for the synthesized value
 ';
+
+create index if not exists synthesized_value_typ_idx on cimapplication.synthesized_value (type);
+
+create index if not exists synthesized_value_per_idx on cimapplication.synthesized_value (period);
 
 create table if not exists cimapplication.simulation_event (
     simulation text,
@@ -182,6 +240,7 @@ This is the global events of interest from a post-analysis of the simulated valu
 
 create table if not exists cimapplication.simulation (
     id text,
+    run int,
     name text,
     description text,
     cim text,
@@ -189,14 +248,19 @@ create table if not exists cimapplication.simulation (
     run_time timestamp,
     start_time timestamp,
     end_time timestamp,
+    cim_temperature double,
+    simulation_temperature double,
+    swing text,
+    swing_voltage_factor double,
     input_keyspace text,
     output_keyspace text,
     transformers list<text>,
-    primary key (id)
+    primary key ((id), run)
 ) with comment = '
 Details about a simulation execution.
 Describes each run of the Simulate code.
-    id - the simulation run identifier, UUID
+    id - the simulation run identifier, UUID or user specified
+    run - the simulation run number, distinguishes executions with the same id
     name - the user supplied name of the simulation
     description - the user supplied description of the simulation
     cim - the CIM file(s) used to run the simulation
@@ -204,6 +268,10 @@ Describes each run of the Simulate code.
     run_time - the time at which the simulation was executed
     start_time - the simulation start time in GMT
     end_time - the simulation end time in GMT
+    cim_temperature - the assumed temperature of the CIM file(s) (°C)
+    simulation_temperature - the temperature of the simulation (°C)
+    swing - if "hi" the slack bus is on the primary, if "lo" on the secondary, of the transformer
+    swing_voltage_factor - multiplicative factor to apply to the nominal slack voltage
     input_keyspace - the Cassandra keyspace for measurement data
     output_keyspace - The Cassandra keyspace for simulated results data
     transformers - the list of PowerTransformer mRID used to determine topological islands, an empty list indicates all
@@ -282,7 +350,7 @@ Describes each point object in the simulation, excluding transformers.
     properties        - the attributes for this element from the extra queries
 ';
 
-create index if not exists on cimapplication.geojson_points (transformer);
+create index if not exists geojson_points_tra_idx on cimapplication.geojson_points (transformer);
 
 create table if not exists cimapplication.geojson_lines (
     simulation text,
@@ -305,7 +373,7 @@ Describes each linear object in the simulation.
     properties        - the attributes for this element from the extra queries
 ';
 
-create index if not exists on cimapplication.geojson_lines (transformer);
+create index if not exists geojson_lines_tra_idx on cimapplication.geojson_lines (transformer);
 
 create table if not exists cimapplication.geojson_polygons (
     simulation text,
@@ -355,7 +423,7 @@ create table if not exists cimapplication.geojson_stations (
     type text,
     geometry frozen<cimapplication.polygon_data>,
     properties frozen<map<text,text>>,
-    primary key ((simulation, coordinate_system, transformer), mrid)
+    primary key ((simulation, coordinate_system), mrid, transformer)
     ) with comment = '
 GeoJSON for stations.
 Describes each station polygonal object in the simulation.
@@ -368,7 +436,7 @@ Describes each station polygonal object in the simulation.
     properties        - the attributes for this station from the extra queries
 ';
 
-create index if not exists on cimapplication.geojson_stations (transformer);
+create index if not exists geojson_stations_tra_idx on cimapplication.geojson_stations (transformer);
 
 create table if not exists cimapplication.key_value (
     simulation text,
@@ -384,6 +452,8 @@ Extra query results.
     key        - the key as returned by the query
     value      - the value as returned by the query
 ';
+
+create index if not exists key_value_que_idx on cimapplication.key_value (query);
 
 create table if not exists cimapplication.load_factor_by_day (
    mrid text,
