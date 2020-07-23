@@ -8,13 +8,12 @@ import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.GLMTransformerEdge
-import ch.ninecode.net.TransformerEdge
 
 case class SimulationDirectionGenerator
 (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
-    kreis: SimulationTrafoKreis) extends GLMGenerator (one_phase, 20.0, date_format, true) // ToDo: get simulation temparature from json file
+    kreis: SimulationTrafoKreis) extends GLMGenerator (one_phase, 20.0, date_format, true) // ToDo: get simulation temperature from json file
 {
 
     override def name: String = kreis.name
@@ -40,7 +39,7 @@ case class SimulationDirectionGenerator
         val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match { case e: GLMTransformerEdge => Some (e) case _ => None })
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
-        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
+        configurations.map (config => config.toIterator.next.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
     }
 
     def emit_load (node: SimulationNode): String =
@@ -68,13 +67,41 @@ case class SimulationDirectionGenerator
 
     override def emit_edge (edge: GLMEdge): String =
     {
-        super.emit_edge (edge.asInstanceOf[SimulationEdge].rawedge)
+        edge match
+        {
+            case e: SimulationEdge => super.emit_edge (e.rawedge)
+            case _ => super.emit_edge (edge) // should never happen
+        }
     }
 
     override def emit_node (node: GLMNode): String =
     {
-        emit_load (node.asInstanceOf[SimulationNode])
+        node match
+        {
+            case n: SimulationNode => emit_load (n)
+            case _ => super.emit_node (node) // should never happen
+        }
     }
+
+    /**
+     * Get raw line edges from simulation edges.
+     *
+     * @param edges the edges to process
+     * @return line edges
+     */
+    def rawLineEdges (edges: Iterable[GLMEdge]): Iterable[GLMLineEdge] =
+        edges.flatMap (
+            _ match
+            {
+                case e: SimulationEdge =>
+                    e.rawedge match
+                    {
+                        case l: GLMLineEdge => Some (l)
+                        case _ => None
+                    }
+                case _ => None
+            }
+        )
 
     /**
      * Emit configurations for all groups of edges that are ACLineSegments.
@@ -86,6 +113,6 @@ case class SimulationDirectionGenerator
      */
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf[GLMLineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf[GLMLineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        rawLineEdges (edges).groupBy (_.configurationName).values.map (_.toIterator.next.configuration (this))
     }
 }
