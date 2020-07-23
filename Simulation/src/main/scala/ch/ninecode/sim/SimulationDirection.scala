@@ -16,7 +16,6 @@ import org.apache.log4j.LogManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.net.LineEdge
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
@@ -64,11 +63,12 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
 
     def write_glm (trafo: SimulationTrafoKreis, workdir: String): Unit =
     {
-        log.info ("""generating %s""".format (trafo.directory + trafo.transformer.transformer_name + ".glm"))
+        val filename = s"${trafo.directory}${trafo.transformer.transformer_name}.glm"
+        log.info (s"generating $filename")
         val generator = SimulationDirectionGenerator (one_phase = true, date_format = glm_date_format, trafo)
         val text = generator.make_glm ()
-        val file = new File (workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
-        file.getParentFile.mkdirs
+        val file = new File (s"$workdir$filename")
+        val _ = file.getParentFile.mkdirs
         using (new PrintWriter (file, "UTF-8"))
         {
             writer =>
@@ -78,12 +78,12 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
 
     def gridlabd (trafo: SimulationTrafoKreis, workdir: String): (Boolean, String) =
     {
-        log.info ("""executing GridLAB-D for %s""".format (trafo.name))
+        log.info (s"executing GridLAB-D for ${trafo.name}")
 
         var dir = trafo.directory
         if (dir.takeRight(1) == """\""")
             dir = dir.slice(0, dir.length - 1)
-        val bash = """pushd "%s%s";gridlabd --quiet "%s.glm";popd;""".format (workdir, dir, trafo.name)
+        val bash = s"""pushd "$workdir$dir";gridlabd --quiet "${trafo.name}.glm";popd;"""
         val command = Seq ("bash", "-c", bash)
         val lines = new ListBuffer[String]()
         var warningLines = 0
@@ -92,7 +92,9 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         def check (line: String): Unit =
         {
             if (line.trim != "")
-                lines += line
+            {
+                val _ = lines += line
+            }
             if (line.contains ("WARNING")) warningLines += 1
             if (line.contains ("ERROR")) errorLines += 1
             if (line.contains ("FATAL")) errorLines += 1
@@ -102,13 +104,16 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         val process = Process (command).run (countLogger)
         // wait for the process to finish
         val exit_code = process.exitValue
-        if (0 != errorLines)
-            log.error ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
-        else
-        if (0 != warningLines)
-            log.warn ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
 
-        ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString ("\n\n", "\n", "\n\n") else "gridlabd exit code %d".format (exit_code))
+        def plural (i: Int): String = if (1 == i) "" else "s"
+        def message: String =
+            s"GridLAB-D: $warningLines warning${plural (warningLines)}, $errorLines error${plural (errorLines)}: ${lines.mkString ("\n\n", "\n", "\n\n")}"
+        if (0 != errorLines)
+            log.error (message)
+        else if (0 != warningLines)
+            log.warn (message)
+
+        ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString ("\n\n", "\n", "\n\n") else s"gridlabd exit code $exit_code")
     }
 
     def read_voltage_dump_csv (workdir: String, file: String, time: Long, units: String): Array[ThreePhaseComplexDataElement] =
@@ -116,7 +121,7 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         val name = new File (workdir + file)
         if (!name.exists)
         {
-            log.error ("""voltage dump file %s does not exist""".format (name.getCanonicalPath))
+            log.error (s"voltage dump file ${name.getCanonicalPath} does not exist")
             Array ()
         }
         else
@@ -128,7 +133,13 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
                 line =>
                 {
                     val fields = line.split (",")
-                    ThreePhaseComplexDataElement (fields (0), time, Complex.fromPolar (fields (1).toDouble, fields (2).toDouble), Complex.fromPolar (fields (3).toDouble, fields (4).toDouble), Complex.fromPolar (fields (5).toDouble, fields (6).toDouble), units)
+                    ThreePhaseComplexDataElement (
+                        fields (0),
+                        time,
+                        Complex.fromPolar (fields (1).toDouble, fields (2).toDouble),
+                        Complex.fromPolar (fields (3).toDouble, fields (4).toDouble),
+                        Complex.fromPolar (fields (5).toDouble, fields (6).toDouble),
+                        units)
                 }
             ).toArray
             handle.close
@@ -144,16 +155,17 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         write_glm (trafo, workdir)
 
         // execute gridlabd
-        new File (workdir + trafo.directory + "output_data/").mkdirs
+        val _ = new File (workdir + trafo.directory + "output_data/").mkdirs
         val ret = gridlabd (trafo, workdir)
 
         // read the voltage dump file and convert to direction
         val list = if (ret._1)
         {
-            val records = read_voltage_dump_csv (workdir, trafo.directory + "output_data/" + trafo.name + "_voltdump.csv", trafo.start_time.getTimeInMillis, "V")
+            val file = s"${trafo.directory}output_data/${trafo.name}_voltdump.csv"
+            val records = read_voltage_dump_csv (workdir, file, trafo.start_time.getTimeInMillis, "V")
             val lookup = records.map (x => (x.element, x)).toMap
             trafo.edges
-                .filter (_.rawedge match { case line: LineEdge => true; case _ => false })
+                .filter (_.rawedge match { case _: LineEdge => true; case _ => false })
                 .map (
                     edge =>
                     {
@@ -168,7 +180,7 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         }
         else
         {
-            log.error ("""GridLAB-D failed for %s: %s""".format (trafo.name, ret._2))
+            log.error (s"GridLAB-D failed for ${trafo.name}: ${ret._2}")
             List()
         }
         list.toMap
