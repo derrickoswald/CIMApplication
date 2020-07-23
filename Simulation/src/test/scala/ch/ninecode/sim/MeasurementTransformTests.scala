@@ -30,17 +30,44 @@ case class Generator (
 
 class MeasurementTransformTests
 {
-    @Test def MeasurementTransformTest (): Unit =
+    def generateStuff: Array[SimulationPlayerData] =
     {
         val r = new scala.util.Random
         val data = for (_ <- 0 to 10000) yield r.nextDouble * 1000
 
         val gen = Generator ()
-        val series = data
+        data
             .zipWithIndex
             .map (item => gen.record (item))
             .toArray
+    }
 
+    val transform_class = """
+        MeasurementTransform
+        {
+            val MILLISECONDS_PER_MINUTE: Int = 60 * 1000
+
+            override def transform (data: Array[SimulationPlayerData]): Array[SimulationPlayerData] =
+            {
+                data.map (
+                    reading =>
+                        reading.`type` match
+                        {
+                            case "energy" =>
+                                val factor = MILLISECONDS_PER_HOUR / reading.period
+                                val t = reading.time - (reading.period - MILLISECONDS_PER_MINUTE)
+                                reading.copy (time = t, readings = reading.readings.map (_ * factor), units = "VA")
+                            case _ =>
+                                reading
+                        }
+                )
+            }
+        }
+    """
+
+    @Test def testMeasurementTransform (): Unit =
+    {
+        val series = generateStuff
         val identity = new MeasurementTransform {}
         val original = identity.transform (series)
         // println (original.take (5).mkString ("\n"))
@@ -89,43 +116,42 @@ class MeasurementTransformTests
         )
     }
 
-    @Test def MeasurementTransformStringTest (): Unit =
+    @Test def testMeasurementTransformInstance (): Unit =
     {
-        val r = new scala.util.Random
-        val data = for (_ <- 0 to 10000) yield r.nextDouble * 1000
-
-        val gen = Generator ()
-        val series = data
-            .zipWithIndex
-            .map (item => gen.record (item))
-            .toArray
-
+        val series = generateStuff
         val identity = new MeasurementTransform {}
         val original = identity.transform (series)
         // println (original.take (5).mkString ("\n"))
 
-        val program = """
-        new MeasurementTransform
-        {
-            val MILLISECONDS_PER_MINUTE: Int = 60 * 1000
+        val program = s"new $transform_class"
+        val my_transform = MeasurementTransform.build (program)
+        val player_data = my_transform.transform (series)
+        // println (player_data.take (5).mkString ("\n"))
 
-            override def transform (data: Array[SimulationPlayerData]): Array[SimulationPlayerData] =
+        val MILLISECONDS_PER_MINUTE = 60 * 1000
+        original.zip (player_data).foreach (
+            item =>
             {
-                data.map (
-                    reading =>
-                        reading.`type` match
-                        {
-                            case "energy" =>
-                                val factor = MILLISECONDS_PER_HOUR / reading.period
-                                val t = reading.time - (reading.period - MILLISECONDS_PER_MINUTE)
-                                reading.copy (time = t, readings = reading.readings.map (_ * factor), units = "VA")
-                            case _ =>
-                                reading
-                        }
-                )
+                assert (item._1.time == item._2.time - MILLISECONDS_PER_MINUTE)
+                val array1 = item._1.readings
+                val array2 = item._2.readings
+                for (i <- array1.indices)
+                    assert (array1(i) == array2(i))
+                for (i <- array2.indices)
+                    assert (array1(i) == array2(i))
             }
-        }
-"""
+        )
+    }
+
+    @Test def testMeasurementTransformClass (): Unit =
+    {
+        val series = generateStuff
+        val identity = new MeasurementTransform {}
+        val original = identity.transform (series)
+        // println (original.take (5).mkString ("\n"))
+
+        val program = s"""class MyTransform extends $transform_class
+        classOf[MyTransform]"""
         val my_transform = MeasurementTransform.build (program)
         val player_data = my_transform.transform (series)
         // println (player_data.take (5).mkString ("\n"))

@@ -1,7 +1,11 @@
 package ch.ninecode.sim
 
+import java.lang.reflect.Constructor
+
 import scala.collection.mutable
 import scala.tools.reflect.ToolBox
+
+import org.slf4j.LoggerFactory
 
 /**
  * End user configurable measurement (input) timeseries transformation.
@@ -50,10 +54,18 @@ object MeasurementTransform
         val toolbox = scala.reflect.runtime.currentMirror.mkToolBox ()
         val tree = toolbox.parse ("import ch.ninecode.sim._; import ch.ninecode.gl._; import ch.ninecode.net._; import ch.ninecode.util._; " + program)
         val compiledCode = toolbox.compile (tree)
-        compiledCode() match
+        val code = compiledCode()
+        code match
         {
             case cls: Class[_] =>
-                cls.newInstance ().asInstanceOf[MeasurementTransform]
+                val constructor: Constructor[_] = cls.getConstructor ()
+                constructor.newInstance () match
+                {
+                    case m: MeasurementTransform => m
+                    case _ =>
+                        LoggerFactory.getLogger (getClass).error (s"supplied code cannot be constructed as MeasurementTransform ($program)")
+                        identity
+                }
             case inst: MeasurementTransform =>
                 inst
         }
@@ -70,7 +82,7 @@ object MeasurementTransform
             else
             {
                 val transform = build (program)
-                cache.put (program, transform)
+                val _ = cache.put (program, transform)
                 transform
             }
         }
