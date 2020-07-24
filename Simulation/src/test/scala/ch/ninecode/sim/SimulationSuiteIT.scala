@@ -9,10 +9,12 @@ import scala.collection.JavaConverters.asScalaBufferConverter
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
+import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.cql.Row
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.writer.WriteConf
 
 import org.junit.AfterClass
 import org.junit.BeforeClass
@@ -1196,7 +1198,8 @@ object SimulationSuiteIT extends Unzip with Using
         val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (s"$FILE_DEPOT$FILENAME0.csv")
         val ok = df.rdd.map (row => (row.getString (0), "energy", row.getTimestamp (1), 900000, row.getDouble (2), 0.0, "Wh"))
         println (s"saving to $KEYSPACE.measured_value")
-        ok.saveToCassandra (KEYSPACE, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        val conf = WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
+        ok.saveToCassandra (KEYSPACE, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"), conf)
         println ("stopping Spark session")
         session.stop
     }
