@@ -19,8 +19,8 @@ case class SimulationNode
     override val id: String,
     override val nominal_voltage: Double,
     equipment: String,
-    world_position: (Double, Double) = null,
-    schematic_position: (Double, Double) = null,
+    world_position: Iterable[(Double, Double)] = Seq (),
+    schematic_position: Iterable[(Double, Double)] = Seq (),
     players: Iterable[SimulationPlayer] = null,
     recorders: Iterable[SimulationRecorder] = null
 )
@@ -30,8 +30,5 @@ extends LoadFlowNode (
 )
 with GLMNode
 {
-    override def toString: String =
-    {
-        "%s %s (%sV)".format (id, equipment, nominal_voltage)
-    }
+    override def toString: String = s"$id $equipment (${nominal_voltage}V)"
 }

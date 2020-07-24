@@ -313,15 +313,7 @@ case class SimulationTrafoKreis
                     // the query has been altered to make the parent name for these nodes have the form <mrid>_load_object
                     val my_player_objects = my_players.map (x => s"${x.name}_object").toArray
                     val my_recorders = recorders.filter (x => x.parent == node.id || my_player_objects.contains (x.parent))
-                    SimulationNode (
-                        node.id,
-                        node.nominal_voltage,
-                        node.equipment,
-                        node.world_position,
-                        node.schematic_position,
-                        my_players,
-                        my_recorders
-                    )
+                    node.copy (players = my_players, recorders = my_recorders)
             }
         )
     }

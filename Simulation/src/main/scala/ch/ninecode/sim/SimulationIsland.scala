@@ -7,7 +7,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.gl.GLMLineEdge
-import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GLMSwitchEdge
 import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.model.DiagramObject
@@ -31,25 +30,25 @@ extends Island (spark, storage_level)
     lazy val world_points: RDD[(String, Iterable[PositionPoint])] = get[PositionPoint].groupBy (_.Location)
     lazy val schematic_points: RDD[(String, Iterable[DiagramObjectPoint])] = getOrElse[DiagramObject].keyBy (_.id).join (getOrElse[DiagramObjectPoint].groupBy (_.DiagramObject)).values.map (x => (x._1.IdentifiedObject_attr, x._2))
 
-    def positionPointToCoordinates (points: Option[Iterable[PositionPoint]]): Array[(Double, Double)] =
+    def positionPointToCoordinates (points: Option[Iterable[PositionPoint]]): Iterable[(Double, Double)] =
     {
         points match
         {
             case Some (positions) =>
                 positions.toArray.sortWith (_.sequenceNumber < _.sequenceNumber).map (p => (p.xPosition.toDouble, p.yPosition.toDouble))
             case _ =>
-                null
+                Iterable ()
         }
     }
 
-    def diagramObjectPointToCoordinates (points: Option[Iterable[DiagramObjectPoint]]): Array[(Double, Double)] =
+    def diagramObjectPointToCoordinates (points: Option[Iterable[DiagramObjectPoint]]): Iterable[(Double, Double)] =
     {
         points match
         {
             case Some (positions) =>
                 positions.toArray.sortWith (_.sequenceNumber < _.sequenceNumber).map (p => (p.xPosition.toDouble, p.yPosition.toDouble))
             case _ =>
-                null
+                Iterable ()
         }
     }
 
@@ -61,7 +60,7 @@ extends Island (spark, storage_level)
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates =
             with_world.map (x => (x._1.element.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
-        with_coordinates.map (x => (x._1.id, SimulationNode (x._1.node.id, x._1.voltage, x._1.element.id, if (null != x._2) x._2(0) else null, if (null != x._3) x._3(0) else null)))
+        with_coordinates.map (x => (x._1.id, SimulationNode (x._1.node.id, x._1.voltage, x._1.element.id, x._2.take (1), x._3.take (1))))
     }
 
     override def line_maker (rdd: RDD[(LineData, (identifier, LoadFlowNode))]): RDD[(identifier, LoadFlowEdge)] =

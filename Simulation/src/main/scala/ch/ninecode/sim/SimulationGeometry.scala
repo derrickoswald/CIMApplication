@@ -97,22 +97,22 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                 (x: ((Simulation, Transformer, SimulationNode), Option[KeyValueList])) =>
                 {
                     val node = x._1._3
-                    val world = if (null != node.world_position)
+                    val world = node.world_position.headOption match
                     {
-                        val geometry = ("Point", List (node.world_position._1, node.world_position._2))
-                        val properties = x._2.orNull
-                        Some ((x._1._1, node.equipment, "wgs84", geometry, properties, x._1._2, "Feature"))
+                        case Some (point) =>
+                            val geometry = ("Point", List (point._1, point._2))
+                            val properties = x._2.orNull
+                            Some ((x._1._1, node.equipment, "wgs84", geometry, properties, x._1._2, "Feature"))
+                        case _ => None
                     }
-                    else
-                        None
-                    val schematic =  if (null != node.schematic_position)
+                    val schematic = node.schematic_position.headOption match
                     {
-                        val geometry = ("Point", List (node.schematic_position._1, node.schematic_position._2))
-                        val properties = x._2.orNull
-                        Some ((x._1._1, node.equipment, "pseudo_wgs84", geometry, properties, x._1._2, "Feature"))
+                        case Some (point) =>
+                            val geometry = ("Point", List (point._1, point._2))
+                            val properties = x._2.orNull
+                            Some ((x._1._1, node.equipment, "pseudo_wgs84", geometry, properties, x._1._2, "Feature"))
+                        case _ => None
                     }
-                    else
-                        None
                     (world :: schematic :: Nil).flatten
                 }
             )
@@ -177,9 +177,9 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
             {
                 raw <- trafo.nodes
                 sim_node = raw.asInstanceOf[SimulationNode]
-                if null != sim_node.world_position
+                if sim_node.world_position.nonEmpty
             }
-                yield sim_node.world_position
+                yield sim_node.world_position.toIterator.next
         for
         {
             raw <- trafo.edges
@@ -197,9 +197,9 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
             {
                 raw <- trafo.nodes
                 sim_node = raw.asInstanceOf[SimulationNode]
-                if null != sim_node.schematic_position
+                if sim_node.schematic_position.nonEmpty
             }
-                yield sim_node.schematic_position
+                yield sim_node.schematic_position.toIterator.next
         for
         {
             raw <- trafo.edges

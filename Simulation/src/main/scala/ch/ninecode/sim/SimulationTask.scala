@@ -2,9 +2,6 @@ package ch.ninecode.sim
 
 import java.util.Calendar
 
-import ch.ninecode.net.LoadFlowEdge
-import ch.ninecode.net.LoadFlowNode
-
 /**
  * A work unit to be simulated.
  *
