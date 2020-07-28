@@ -38,6 +38,7 @@ import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
+import ch.ninecode.net.Lines
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.net.TransformerSet
@@ -275,6 +276,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     islands_trafos
 
             val island_helper = new SimulationIsland (session, options.storage_level)
+            Lines.DEFAULT_CABLE_RESISTANCE_LIMIT = options.cable_impedance_limit
             val graph_stuff = island_helper.queryNetwork (islands_to_do.map (_.swap))
             val areas: RDD[(identifier, (Iterable[SimulationNode], Iterable[SimulationEdge]))] =
                 graph_stuff
