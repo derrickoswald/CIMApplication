@@ -126,6 +126,10 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         .action ((_, c) => c.copy (postprocessonly = true))
         .text (s"perform postprocessing operations only [${default.postprocessonly}]")
 
+    opt[Double]("cable_impedance_limit")
+        .action ((x, c) => c.copy (cable_impedance_limit = x))
+        .text ("cables with higher impedances for R1 will not be processed with gridlabd [%g]".format (default.cable_impedance_limit))
+
     arg[String]("<JSON> <JSON>...")
         .optional ()
         .unbounded ()

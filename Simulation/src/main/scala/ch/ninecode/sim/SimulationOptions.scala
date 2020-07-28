@@ -26,6 +26,7 @@ object LogLevels extends Enumeration
  * @param keep If <code>true</code>, keep glm and input/output files in workdir.
  * @param simulationonly If <code>true</code>, only perform simulation, not postprocessing.
  * @param postprocessonly If <code>true</code>, only perform postprocessing, not simulation.
+ * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with too high impedance values
  * @param simulation Simulation JSON files.
  */
 case class SimulationOptions
@@ -49,5 +50,6 @@ case class SimulationOptions
     keep: Boolean = false,
     simulationonly: Boolean = false,
     postprocessonly: Boolean = false,
+    cable_impedance_limit: Double = 5.0,
     simulation: Seq[String] = Seq ()
 )
