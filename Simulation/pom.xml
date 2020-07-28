@@ -203,6 +203,19 @@
                 <version>${version.dependency.build-helper-maven-plugin}</version>
                 <executions>
                     <execution>
+                        <id>check-for-local-cassandra</id>
+                        <goals>
+                            <goal>bsh-property</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <source>skipCassandra = ${localCassandra} || ${skipITs};</source>
+                            <properties>
+                                <property>skipCassandra</property>
+                            </properties>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>reserve-network-port</id>
                         <goals>
                             <goal>reserve-network-port</goal>
@@ -219,6 +232,25 @@
                             </portNames>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>set-cassandra-ports</id>
+                        <goals>
+                            <goal>bsh-property</goal>
+                        </goals>
+                        <phase>generate-test-resources</phase>
+                        <configuration>
+                            <source>jmxPort = ${localCassandra} ? 7199 : ${cassandra.jmxPort};
+                            rpcPort = ${localCassandra} ? 9160 : ${cassandra.rpcPort};
+                            storagePort = ${localCassandra} ? 7000 : ${cassandra.storagePort};
+                            nativeTransportPort = ${localCassandra} ? 9042 : ${cassandra.nativeTransportPort};</source>
+                            <properties>
+                                <property>jmxPort</property>
+                                <property>rpcPort</property>
+                                <property>storagePort</property>
+                                <property>nativeTransportPort</property>
+                            </properties>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
@@ -230,9 +262,9 @@
                     <startNativeTransport>true</startNativeTransport>
                     <cqlVersion>${version.dependency.cql}</cqlVersion>
                     <yaml>
-rpc_port: ${cassandra.rpcPort}
-storage_port: ${cassandra.storagePort}
-native_transport_port: ${cassandra.nativeTransportPort}
+rpc_port: ${rpcPort}
+storage_port: ${storagePort}
+native_transport_port: ${nativeTransportPort}
 enable_user_defined_functions: true
 enable_scripted_user_defined_functions: true
                     </yaml>
@@ -263,7 +295,7 @@ enable_scripted_user_defined_functions: true
                             <goal>start</goal>
                         </goals>
                         <configuration>
-                            <skip>${skipITs}</skip>
+                            <skip>${skipCassandra}</skip>
                         </configuration>
                     </execution>
                     <execution>
@@ -273,7 +305,7 @@ enable_scripted_user_defined_functions: true
                             <goal>stop</goal>
                         </goals>
                         <configuration>
-                            <skip>${skipITs}</skip>
+                            <skip>${skipCassandra}</skip>
                         </configuration>
                     </execution>
                 </executions>
