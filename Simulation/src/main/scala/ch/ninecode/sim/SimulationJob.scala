@@ -575,7 +575,7 @@ object SimulationJob
         val queries: Option[Seq[String]] = parseQuery (name, s"player:$title", player)
         queries match
         {
-            case Some (set) => Some (SimulationPlayerQuery (title, set.lastOption.orNull, transform.orNull))
+            case Some (set) => Some (SimulationPlayerQuery (title, set, transform))
             case None => None
         }
     }
@@ -599,7 +599,7 @@ object SimulationJob
         val queries = parseQuery (name, s"recorder:$title", recorder)
         queries match
         {
-            case Some (set) => Some (SimulationRecorderQuery (title, set.lastOption.orNull, interval, aggregations))
+            case Some (set) => Some (SimulationRecorderQuery (title, set, interval, aggregations))
             case None => None
         }
     }
@@ -610,7 +610,7 @@ object SimulationJob
         val queries = parseQuery (name, s"extra:$title", extra)
         queries match
         {
-            case Some (set) => Some (SimulationExtraQuery (title, set.lastOption.orNull))
+            case Some (set) => Some (SimulationExtraQuery (title, set))
             case None => None
         }
     }

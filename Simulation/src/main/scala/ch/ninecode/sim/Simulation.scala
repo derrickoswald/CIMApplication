@@ -14,7 +14,7 @@ import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.stream.JsonGenerator
 
-import scala.collection.JavaConversions.mapAsJavaMap
+import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
 import scala.collection.JavaConverters.asScalaBufferConverter
 
@@ -145,7 +145,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         val string = new StringWriter
         val properties = Map[String, AnyRef](
             JsonGenerator.PRETTY_PRINTING -> "true")
-        val writer = Json.createWriterFactory (properties).createWriter (string)
+        val writer = Json.createWriterFactory (properties.asJava).createWriter (string)
         writer.write (array.build)
         writer.close ()
         string.toString
@@ -230,7 +230,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     def dupTime (calendar: Calendar): Calendar =
     {
-        calendar.clone.asInstanceOf [Calendar]
+        calendar.clone.asInstanceOf[Calendar]
     }
 
     def plural (number: Int): String = if (1 == number) "" else "s"
@@ -369,12 +369,20 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         SimulationPlayerData (transformer, id, typ, t, period, units, Array (re, im))
     }
 
+    /**
+     * Calendar duplication utility function.
+     *
+     * @param c The Calendar value to be cloned.
+     */
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
+    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
+
     def queryValues (job: SimulationJob, simulations: RDD[SimulationTrafoKreis]): RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] =
     {
         val phases = if (options.three_phase && !options.fake_three_phase) 3 else 1
-        val start = job.start_time.clone ().asInstanceOf[Calendar]
+        val start = dup (job.start_time)
         start.add (Calendar.MILLISECOND, - job.buffer)
-        val end = job.end_time.clone ().asInstanceOf[Calendar]
+        val end = dup (job.end_time)
         end.add (Calendar.MILLISECOND, job.buffer)
         val low = cassandra_date_format.format (start.getTime)
         val high = cassandra_date_format.format (end.getTime)
@@ -408,13 +416,13 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         val queries_measured: RDD[(House, Trafo)] = simulations.flatMap (
             x =>
             {
-                x.players.filter (null == _.synthesis).map (y => (y.mrid, x.name))
+                x.players.filter ("" == _.synthesis).map (y => (y.mrid, x.name))
             }
         )
         val queries_synthesised: RDD[(House, Trafo)] = simulations.flatMap (
             x =>
             {
-                x.players.filter (null != _.synthesis).map (y => (y.synthesis, x.name))
+                x.players.filter ("" != _.synthesis).map (y => (y.synthesis, x.name))
             }
         )
         val ret = raw_measured
@@ -426,12 +434,12 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     .join (queries_synthesised))
             .mapValues (x => x._1.copy (transformer = x._2)) // use real trafo
             .groupByKey
-            .groupBy (_._2.head.transformer)
+            .groupBy (_._2.toIterator.next.transformer)
             .persist (options.storage_level)
             .setName (s"${job.id}_player_data")
         log.info (s"""${ret.count} player data results""")
-        raw_measured.unpersist (false)
-        raw_synthesised.unpersist (false)
+        vanishRDD (raw_measured)
+        vanishRDD (raw_synthesised)
         ret
     }
 
@@ -482,7 +490,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def getTransformers: (Map[String, TransformerSet], Array[TransformerData]) =
     {
-        val transformer_data = new Transformers (session, options.storage_level).getTransformers ()
+        val transformer_data = Transformers (session, options.storage_level).getTransformers ()
         val tx = transformer_data.keyBy (_.node1.id) // (low_voltage_node_name, TransformerData)
             .join (get[TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
             .map (x => (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
@@ -510,7 +518,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     def performGridlabSimulations (job: SimulationJob, simulations: RDD[SimulationTrafoKreis], player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])]): RDD[SimulationResult] =
     {
         val numSimulations = simulations.count ().toInt
-        log.info (s"""performing ${numSimulations} GridLAB-D simulation${plural (numSimulations)}""")
+        log.info (s"""performing $numSimulations GridLAB-D simulation${plural (numSimulations)}""")
         val runner = SimulationRunner (
             options.host, job.output_keyspace, options.workdir,
             options.three_phase, options.fake_three_phase,
@@ -564,7 +572,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 }
             ).persist (options.storage_level).setName (s"${job.id}_simulations")
         val numsimulations = _simulations.count.toInt
-        log.info (s"${numsimulations} GridLAB-D simulation${plural (numsimulations)} to do for simulation ${job.id} batch $batchno")
+        log.info (s"$numsimulations GridLAB-D simulation${plural (numsimulations)} to do for simulation ${job.id} batch $batchno")
 
         var simulations: RDD[SimulationTrafoKreis] = spark.sparkContext.emptyRDD
         if (0 != numsimulations)
@@ -572,7 +580,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             val direction = SimulationDirection (options.workdir, options.verbose)
             simulations = _simulations.map (x => x.copy (directions = direction.execute (x)))
                 .persist (options.storage_level).setName (s"${job.id}_simulations")
-            _simulations.unpersist (false)
+            val _ = _simulations.unpersist (false)
         }
         simulations
     }
@@ -580,7 +588,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     def simulate (batch: Seq[SimulationJob]): Seq[String] =
     {
         log.info ("""starting simulations""")
-        val ajob = batch.head // assumes that all jobs in a batch should have the same cluster state
+        val ajob = batch.toIterator.next // assumes that all jobs in a batch should have the same cluster state
 
         // clean up in case there was a file already loaded
         cleanRDDs ()
@@ -613,7 +621,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
                         // save the results
                         log.info ("""saving GridLAB-D simulation results""")
-                        simulationResults.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = WriteConf (ttl = TTLOption.perRow ("ttl"), consistencyLevel = ConsistencyLevel.ANY))
+                        val conf = WriteConf.fromSparkConf (spark.sparkContext.getConf).copy (ttl = TTLOption.perRow ("ttl"), consistencyLevel = ConsistencyLevel.ANY)
+                        simulationResults.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = conf)
                         log.info ("""saved GridLAB-D simulation results""")
                         vanishRDD (player_rdd)
                     }
@@ -655,7 +664,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose)
                     // ToDo: this isn't quite right, take the first job matching the output keyspace
                     val batches = jobs.groupBy (_.output_keyspace)
-                    val job = batches (output).head
+                    val job = batches (output).toIterator.next
                     job.postprocessors.foreach (
                         processor =>
                         {
@@ -718,26 +727,26 @@ object Simulation
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf [ch.ninecode.sim.Simulation],
-            classOf [ch.ninecode.sim.SimulationAggregate],
-            classOf [ch.ninecode.sim.SimulationDirectionGenerator],
-            classOf [ch.ninecode.sim.SimulationEdge],
-            classOf [ch.ninecode.sim.SimulationExtraQuery],
-            classOf [ch.ninecode.sim.SimulationGLMGenerator],
-            classOf [ch.ninecode.sim.SimulationJob],
-            classOf [ch.ninecode.sim.SimulationNode],
-            classOf [ch.ninecode.sim.SimulationOptions],
-            classOf [ch.ninecode.sim.SimulationPlayer],
-            classOf [ch.ninecode.sim.SimulationPlayerData],
-            classOf [ch.ninecode.sim.SimulationPlayerQuery],
-            classOf [ch.ninecode.sim.SimulationPlayerResult],
-            classOf [ch.ninecode.sim.SimulationRecorder],
-            classOf [ch.ninecode.sim.SimulationRecorderQuery],
-            classOf [ch.ninecode.sim.SimulationRecorderResult],
-            classOf [ch.ninecode.sim.SimulationResult],
-            classOf [ch.ninecode.sim.SimulationSparkQuery],
-            classOf [ch.ninecode.sim.SimulationTask],
-            classOf [ch.ninecode.sim.SimulationTrafoKreis]
+            classOf[ch.ninecode.sim.Simulation],
+            classOf[ch.ninecode.sim.SimulationAggregate],
+            classOf[ch.ninecode.sim.SimulationDirectionGenerator],
+            classOf[ch.ninecode.sim.SimulationEdge],
+            classOf[ch.ninecode.sim.SimulationExtraQuery],
+            classOf[ch.ninecode.sim.SimulationGLMGenerator],
+            classOf[ch.ninecode.sim.SimulationJob],
+            classOf[ch.ninecode.sim.SimulationNode],
+            classOf[ch.ninecode.sim.SimulationOptions],
+            classOf[ch.ninecode.sim.SimulationPlayer],
+            classOf[ch.ninecode.sim.SimulationPlayerData],
+            classOf[ch.ninecode.sim.SimulationPlayerQuery],
+            classOf[ch.ninecode.sim.SimulationPlayerResult],
+            classOf[ch.ninecode.sim.SimulationRecorder],
+            classOf[ch.ninecode.sim.SimulationRecorderQuery],
+            classOf[ch.ninecode.sim.SimulationRecorderResult],
+            classOf[ch.ninecode.sim.SimulationResult],
+            classOf[ch.ninecode.sim.SimulationSparkQuery],
+            classOf[ch.ninecode.sim.SimulationTask],
+            classOf[ch.ninecode.sim.SimulationTrafoKreis]
         )
     }
 }

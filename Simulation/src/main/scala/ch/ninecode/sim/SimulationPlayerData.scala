@@ -16,7 +16,7 @@ import java.util.TimeZone
  * @param readings Array of real and imaginary meter reading values.
  */
 case class SimulationPlayerData (
-    transformer: String = null,
+    transformer: String = "",
     mrid: String = "",
     `type`: String = "",
     time: Long = 0L,

@@ -13,6 +13,18 @@ import ch.ninecode.util.Sequences
  */
 final case class LineData (lines: Iterable[LineDetails])
 {
+    // there should be at least one line
+    require (lines != null, "no LineDetails")
+    require (lines.nonEmpty, "no lines in LineDetails sequence")
+
+    /**
+     * Get typical line details.
+     *
+     * @return the first line
+     */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def aLine: LineDetails = lines.head
+
     /** @return the mRID of the TopologicalNode for one end of the lines */
     lazy val node0: String = lines.map (_.terminal1.TopologicalNode).foldLeft ("")(
         (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */

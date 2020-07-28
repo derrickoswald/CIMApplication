@@ -21,8 +21,8 @@ case class SimulationNode
     equipment: String,
     world_position: Iterable[(Double, Double)] = Seq (),
     schematic_position: Iterable[(Double, Double)] = Seq (),
-    players: Iterable[SimulationPlayer] = null,
-    recorders: Iterable[SimulationRecorder] = null
+    players: Iterable[SimulationPlayer] = Seq (),
+    recorders: Iterable[SimulationRecorder] = Seq ()
 )
 extends LoadFlowNode (
     id,

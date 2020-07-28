@@ -1,6 +1,5 @@
 package ch.ninecode.net
 
-import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.model.EquivalentInjection

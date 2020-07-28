@@ -1,25 +1,24 @@
 package ch.ninecode.sim
 
+/**
+ * Queries to determine which elements to add recorders to.
+ *
+ * @param title The name for the recorder query.
+ * @param query The query to determine what nodes or edges are recorded.
+ *              Must return name, mrid, parent, type, property, unit and island.
+ * @param interval The recording interval in seconds.
+ * @param aggregations The list of aggregations.
+ */
 case class SimulationRecorderQuery
 (
-    /**
-     * The name for the recorder query.
-     */
     title: String,
-
-    /**
-     * The query to determine what nodes or edges are recorded.
-     * Must return name, mrid, parent, type, property, unit and island.
-     */
     query: String,
-
-    /**
-     * The recording interval in seconds.
-     */
     interval: Int,
-
-    /**
-     * The list of aggregations.
-     */
     aggregations: List[SimulationAggregate]
 )
+object SimulationRecorderQuery
+{
+    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+    def apply (title: String, queries: Seq[String], interval: Int, aggregations: List[SimulationAggregate]): SimulationRecorderQuery =
+        SimulationRecorderQuery (title, queries.lastOption.orNull, interval, aggregations)
+}

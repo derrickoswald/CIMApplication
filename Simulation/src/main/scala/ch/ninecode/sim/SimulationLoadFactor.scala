@@ -98,8 +98,8 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate]) (s
         work.saveToCassandra (access.output_keyspace, "load_factor_by_day",
             SomeColumns ("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
         log.info ("""Load Factor: load factor records saved to %s.load_factor_by_day""".format (access.output_keyspace))
-        raw.unpersist (false)
-        trafo_loads.unpersist (false)
+        unpersistDataFrame (raw)
+        unpersistDataFrame (trafo_loads)
     }
 }
 

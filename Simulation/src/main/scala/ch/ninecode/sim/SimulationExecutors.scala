@@ -118,7 +118,7 @@ case class SimulationExecutors (session: SparkSession)
                         val address = host.getHostAddress
                         log.info ("""executing on %s @ %s""".format (executor, address))
                         val v = new ConcurrentHashMap[String, String]()
-                        v.put (executor, address)
+                        val _ = v.put (executor, address)
                         accumulator.add (v)
                     }
                 )

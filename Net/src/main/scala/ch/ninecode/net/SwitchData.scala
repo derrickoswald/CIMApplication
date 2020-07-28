@@ -10,6 +10,18 @@ package ch.ninecode.net;
  */
 final case class SwitchData (switches: Iterable[SwitchDetails])
 {
+    // there should be at least one switch
+    require (switches != null, "no SwitchDetails")
+    require (switches.nonEmpty, "no switches in SwitchDetails sequence")
+
+    /**
+     * Get typical switch details.
+     *
+     * @return the first switch
+     */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def aSwitch: SwitchDetails = switches.head
+
     /** @return the mRID of the TopologicalNode for one end of the switches */
     lazy val node0: String = switches.map (_.terminal1.TopologicalNode).foldLeft ("")(
         (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */

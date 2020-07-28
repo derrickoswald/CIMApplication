@@ -4,6 +4,9 @@ import java.sql.Date
 import java.sql.Timestamp
 
 import javax.json.JsonObject
+import javax.json.JsonValue
+
+import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.reflect.runtime.universe.TypeTag
 
 import org.apache.spark.rdd.RDD
@@ -19,6 +22,9 @@ import org.slf4j.LoggerFactory
 import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
+import com.datastax.spark.connector.types.IntType
+import com.datastax.spark.connector.types.UDTFieldDef
+import com.datastax.spark.connector.types.UserDefinedType
 import com.datastax.spark.connector.writer.WriteConf
 
 // Measurements needed from GridLAB-D recorders:
@@ -262,8 +268,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
     def check (simulation: String, triggers: Iterable[_ <: Trigger])(data: Iterable[(String, Timestamp, Int, Double, Double)]): Iterable[Event] =
     {
         // all the mRID and threshold values are the same
-        val mrid = data.head._1
-        val threshold = data.head._5
+        val (mrid, _, _, _, threshold) = data.toIterator.next
 
         // pare down the data and sort by time
         val values = data.map (x => (x._2.getTime, x._3, x._4)).toArray.sortWith (_._1 < _._1)
@@ -301,8 +306,9 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
     def checkFor (triggers: Iterable[Trigger])(implicit access: SimulationCassandraAccess) : Unit =
     {
         // all the threshold types, geometry tables, reference and default are the same
-        val `type` = triggers.head.`type`
-        val reference = triggers.head.reference
+        val head = triggers.toIterator.next
+        val `type` = head.`type`
+        val reference = head.reference
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
         def maximum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf[Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.max (a, Math.max (b, c)))
@@ -344,7 +350,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
                 .drop ("value", "real_a", "imag_a")
                 .join (references, Seq ("mrid"))
         }
-        values.persist (storage_level)
+        .persist (storage_level)
 
 //        values.printSchema ()
 //        values.show(5)
@@ -391,13 +397,19 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
 
         save (highEvents.union (lowEvents))
 
-        values.unpersist (false)
-        keyvalues.unpersist (false)
-        simulated_values.unpersist (false)
+        { val _ = values.unpersist (false) }
+        { val _ = keyvalues.unpersist (false) }
+        { val _ = simulated_values.unpersist (false) }
     }
 }
 
 //@UDT(name="event_number")
+@UserDefinedType(
+    name="event_number",
+    columns=IndexedSeq[UDTFieldDef](
+        UDTFieldDef ("orange", IntType),
+        UDTFieldDef ("red", IntType)
+    ))
 case class EventNumber (
     orange: Int,
     red: Int)
@@ -410,7 +422,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
         val ret = events
             .withColumn ("date", events ("start_time").cast (DateType))
             .drop ("start_time", "end_time", "message", "ratio")
-        events.unpersist (false)
+        val _ = events.unpersist (false)
         ret
     }
 
@@ -419,7 +431,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
         val recorders = access.recorders
         val ret = recorders
             .drop ("name", "aggregations", "interval", "property", "unit")
-        recorders.unpersist (false)
+        val _ = recorders.unpersist (false)
         ret
     }
 
@@ -531,8 +543,8 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
                 }
             )
 
-            val work2: RDD[Iterable[(Transformer, Day, Type, mRID, Severity)]] = work1.groupBy (row => row._1 + "_" + row._2.getTime).values
-            val work3: RDD[(Transformer, Day, Iterable[(Type, mRID, Severity)])] = work2.map (record => (record.head._1, record.head._2, record.map (event => (event._3, event._4, event._5))))
+            val work2: RDD[Iterable[(Transformer, Day, Type, mRID, Severity)]] = work1.groupBy (row => s"${row._1}_${row._2.getTime.toString}").values
+            val work3: RDD[(Transformer, Day, Iterable[(Type, mRID, Severity)])] = work2.map (record => { val head = record.toIterator.next; (head._1, head._2, record.map (event => (event._3, event._4, event._5))) })
             val work4: RDD[(Transformer, Day, Summary, Total, Summary, Total, Summary, Total)] = work3.map (record => summary (record._1, record._2, record._3))
 
             def toUDT (total: Total): EventNumber =
@@ -588,7 +600,7 @@ case class SimulationEvents (triggers: Iterable[Trigger]) (spark: SparkSession, 
         for (i <- sets.indices)
         {
             val thresholds = sets(i)
-            val `type` = thresholds.head.`type`
+            val `type` = thresholds.toIterator.next.`type`
             log.info ("""%s events""".format (`type`))
             DoubleChecker (spark, options.storage_level, options.three_phase).checkFor (thresholds)
             log.info ("""%s deviation events saved to %s.simulation_event""".format (`type`, access.output_keyspace))
@@ -638,28 +650,42 @@ object SimulationEvents extends SimulationPostProcessorParser
     def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
         post =>
         {
-
             val triggers = if (post.containsKey ("thresholds"))
             {
-                val thresholds = post.getJsonArray ("thresholds")
-                for (i <- 0 until thresholds.size)
-                    yield
+                val value = post.get ("thresholds")
+                if (value.getValueType == JsonValue.ValueType.ARRAY)
+                {
+                    val post_processors: Seq[Option[Trigger]] = value
+                        .asJsonArray
+                        .asScala
+                        .map
                         {
-                            val threshold = thresholds.getJsonObject (i)
-                            val trigger = threshold.getString ("trigger", "high")
-                            val `type` = threshold.getString ("type", "voltage")
-                            val severity = threshold.getInt ("severity", 1)
-                            val reference = threshold.getString ("reference", "ratedS")
-                            val default = threshold.getJsonNumber ("default").doubleValue ()
-                            val ratio = threshold.getJsonNumber ("ratio").doubleValue ()
-                            val duration = threshold.getInt ("duration", 900000)
-                            trigger match
-                            {
-                                case "high" => HighTrigger (`type`, severity, reference, default, ratio, duration)
-                                case "low" => LowTrigger (`type`, severity, reference, default, ratio, duration)
-                                case _ => null
-                            }
+                            case threshold: JsonObject =>
+                                val trigger = threshold.getString ("trigger", "high")
+                                val `type` = threshold.getString ("type", "voltage")
+                                val severity = threshold.getInt ("severity", 1)
+                                val reference = threshold.getString ("reference", "ratedS")
+                                val default = threshold.getJsonNumber ("default").doubleValue ()
+                                val ratio = threshold.getJsonNumber ("ratio").doubleValue ()
+                                val duration = threshold.getInt ("duration", 900000)
+                                trigger match
+                                {
+                                    case "high" =>
+                                        val hi: Trigger = HighTrigger (`type`, severity, reference, default, ratio, duration)
+                                        Some (hi)
+                                    case "low" =>
+                                        val lo: Trigger = LowTrigger (`type`, severity, reference, default, ratio, duration)
+                                        Some (lo)
+                                    case _ => None
+                                }
+                            case _ =>
+                                // ToDo: log.error
+                                None
                         }
+                    post_processors.flatten
+                }
+                else
+                    STANDARD_TRIGGERS
             }
             else
                 STANDARD_TRIGGERS

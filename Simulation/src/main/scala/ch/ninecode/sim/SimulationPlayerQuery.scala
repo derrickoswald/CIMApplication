@@ -15,3 +15,9 @@ case class SimulationPlayerQuery
     query: String,
     transform: String
 )
+object SimulationPlayerQuery
+{
+    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+    def apply (title: String, queries: Seq[String], transform: Option[String]): SimulationPlayerQuery =
+        SimulationPlayerQuery (title, queries.lastOption.orNull, transform.orNull)
+}

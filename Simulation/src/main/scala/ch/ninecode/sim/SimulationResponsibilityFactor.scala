@@ -136,8 +136,8 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
         work.saveToCassandra (access.output_keyspace, "responsibility_by_day",
             SomeColumns ("mrid", "type", "date", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
         log.info ("""Responsibility Factor: responsibility records saved to %s.responsibility_by_day""".format (access.output_keyspace))
-        simulated_values.unpersist (false)
-        players.unpersist (false)
+        unpersistDataFrame (simulated_values)
+        unpersistDataFrame (players)
     }
 }
 

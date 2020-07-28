@@ -1,6 +1,8 @@
 package ch.ninecode.sim
 
 import javax.json.JsonObject
+
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 
 /**
@@ -17,6 +19,11 @@ abstract class SimulationPostProcessor (spark: SparkSession, options: Simulation
      * @param access Access to the simulated data in Cassandra with the simulation id baked in to the queries.
      */
     def run (implicit access: SimulationCassandraAccess): Unit
+
+    def unpersistDataFrame (dataframe: DataFrame): Unit =
+    {
+        val _ = dataframe.unpersist (false)
+    }
 }
 
 /**

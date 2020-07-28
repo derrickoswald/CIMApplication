@@ -50,7 +50,7 @@ case class SimulationSparkQuery (session: SparkSession, storage_level: StorageLe
                     row.getString (`type`),
                     row.getString (property),
                     query.transform,
-                    if (-1 == synthesis) null else row.getString (synthesis))
+                    if (-1 == synthesis) "" else row.getString (synthesis))
             }
         ).coalesce (partitions).persist (storage_level).setName (query.title)
     }

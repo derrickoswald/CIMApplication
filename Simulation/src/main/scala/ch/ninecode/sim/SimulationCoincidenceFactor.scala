@@ -1,16 +1,15 @@
 package ch.ninecode.sim
 
 import javax.json.JsonObject
-
 import scala.reflect.runtime.universe.TypeTag
-
-import com.datastax.spark.connector._
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types.DateType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import com.datastax.spark.connector._
 
 /**
  * Compute the coincidence factors
@@ -124,8 +123,8 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
         work.saveToCassandra (access.output_keyspace, "coincidence_factor_by_day",
             SomeColumns ("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
         log.info ("""Coincidence Factor: coincidence factor records saved to %s.coincidence_factor_by_day""".format (access.output_keyspace))
-        players.unpersist (false)
-        simulated_values.unpersist (false)
+        unpersistDataFrame (players)
+        unpersistDataFrame (simulated_values)
     }
 }
 

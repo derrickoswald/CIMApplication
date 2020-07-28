@@ -37,7 +37,7 @@ case class SimulationRecorder
     /**
      * The file name for recording.
      */
-    file: String = null,
+    file: String,
 
     /**
      * The recording interval in seconds.

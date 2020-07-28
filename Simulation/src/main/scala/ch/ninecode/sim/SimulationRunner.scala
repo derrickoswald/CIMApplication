@@ -100,7 +100,7 @@ case class SimulationRunner (
 
         val text = generator.make_glm ()
         val file = new File (workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
-        file.getParentFile.mkdirs
+        val _ = file.getParentFile.mkdirs
         using (new PrintWriter (file, "UTF-8"))
         {
             writer =>
@@ -120,7 +120,7 @@ case class SimulationRunner (
     def write_player_csv (name: String, text: String): Unit =
     {
         val file = new File (name)
-        file.getParentFile.mkdirs
+        val _ = file.getParentFile.mkdirs
         if (null != text)
             using (new PrintWriter (file, "UTF-8"))
             {
@@ -184,7 +184,9 @@ case class SimulationRunner (
         def check (line: String): Unit =
         {
             if (line.trim != "")
-                lines += line
+            {
+                val _ = lines += line
+            }
             if (line.contains ("WARNING")) warningLines += 1
             if (line.contains ("ERROR")) errorLines += 1
             if (line.contains ("FATAL")) errorLines += 1
@@ -241,7 +243,9 @@ case class SimulationRunner (
             ).toArray
             handle.close
             if (!keep)
-                name.delete
+            {
+                val _ = name.delete
+            }
 
             ret
         }
@@ -401,7 +405,7 @@ case class SimulationRunner (
         // create the player files
         players.foreach (create_player_csv (workdir + trafo.directory))
         // execute gridlabd
-        new File (workdir + trafo.directory + "output_data/").mkdirs
+        val _ = new File (workdir + trafo.directory + "output_data/").mkdirs
         val ret = gridlabd (trafo, workdir)
         // read the recorder files
         if (ret._1)

@@ -42,6 +42,9 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
     type Transformer = String
     type CoordinateSystem = String
 
+    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+    def extract (properties: Option[KeyValueList]): KeyValueList = properties.orNull
+
     /**
      * Gather key-value pairs into groups keyed by simulation_mrid.
      *
@@ -96,31 +99,27 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
             .flatMap (
                 (x: ((Simulation, Transformer, SimulationNode), Option[KeyValueList])) =>
                 {
-                    val node = x._1._3
+                    val ((simulation, transformer, node), properties) = x
                     val world = node.world_position.headOption match
                     {
                         case Some (point) =>
                             val geometry = ("Point", List (point._1, point._2))
-                            val properties = x._2.orNull
-                            Some ((x._1._1, node.equipment, "wgs84", geometry, properties, x._1._2, "Feature"))
+                            Some ((simulation, node.equipment, "wgs84", geometry, extract (properties), transformer, "Feature"))
                         case _ => None
                     }
                     val schematic = node.schematic_position.headOption match
                     {
                         case Some (point) =>
                             val geometry = ("Point", List (point._1, point._2))
-                            val properties = x._2.orNull
-                            Some ((x._1._1, node.equipment, "pseudo_wgs84", geometry, properties, x._1._2, "Feature"))
+                            Some ((simulation, node.equipment, "pseudo_wgs84", geometry, extract (properties), transformer, "Feature"))
                         case _ => None
                     }
                     (world :: schematic :: Nil).flatten
                 }
             )
-        val cc = WriteConf.fromSparkConf (session.sparkContext.getConf)
-        val dd = cc.copy (consistencyLevel = ConsistencyLevel.ANY)
-        val ee = dd.copy (parallelismLevel = 1)
+        val conf = WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY, parallelismLevel = 1)
         val j2 = jsons.repartition (1)
-        j2.saveToCassandra (keyspace, "geojson_points", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"), ee)
+        j2.saveToCassandra (keyspace, "geojson_points", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"), writeConf = conf)
     }
 
     def store_geojson_lines (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
@@ -141,23 +140,23 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
             .flatMap (
                 (x: ((Simulation, Transformer, SimulationEdge), Option[KeyValueList])) =>
                 {
-                    val edge = x._1._3
+                    val ((simulation, transformer, edge), properties) = x
                     edge.rawedge match
                     {
                         case _: GLMLineEdge =>
-                            val world = if (null != edge.world_position)
+                            val world = if (edge.world_position.nonEmpty)
                             {
                                 val coordinates = edge.world_position.map (p => List (p._1, p._2)).toList
                                 val geometry = ("LineString", coordinates)
-                                Some ((x._1._1, edge.rawedge.id, "wgs84", geometry, x._2.orNull, x._1._2, "Feature"))
+                                Some ((simulation, edge.rawedge.id, "wgs84", geometry, extract (properties), transformer, "Feature"))
                             }
                             else
                                 None
-                            val schematic = if (null != edge.schematic_position)
+                            val schematic = if (edge.schematic_position.nonEmpty)
                             {
                                 val coordinates = edge.schematic_position.map (p => List (p._1, p._2)).toList
                                 val geometry = ("LineString", coordinates)
-                                Some ((x._1._1, edge.rawedge.id, "pseudo_wgs84", geometry, x._2.orNull, x._1._2, "Feature"))
+                                Some ((simulation, edge.rawedge.id, "pseudo_wgs84", geometry, extract (properties), transformer, "Feature"))
                             }
                             else
                                 None
@@ -167,7 +166,8 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     }
                 }
             )
-        jsons.saveToCassandra (keyspace, "geojson_lines", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
+        val conf = WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
+        jsons.saveToCassandra (keyspace, "geojson_lines", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"), writeConf = conf)
     }
 
     def get_world_points (trafo: SimulationTrafoKreis): Iterable[(Double, Double)] =
@@ -175,16 +175,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         var points =
             for
             {
-                raw <- trafo.nodes
-                sim_node = raw.asInstanceOf[SimulationNode]
+                sim_node <- trafo.nodes
                 if sim_node.world_position.nonEmpty
             }
                 yield sim_node.world_position.toIterator.next
         for
         {
-            raw <- trafo.edges
-            sim_edge = raw.asInstanceOf[SimulationEdge]
-            if null != sim_edge.world_position
+            sim_edge <- trafo.edges
+            if sim_edge.world_position.nonEmpty
         }
             points = points ++ sim_edge.world_position
         points
@@ -195,16 +193,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         var points =
             for
             {
-                raw <- trafo.nodes
-                sim_node = raw.asInstanceOf[SimulationNode]
+                sim_node <- trafo.nodes
                 if sim_node.schematic_position.nonEmpty
             }
                 yield sim_node.schematic_position.toIterator.next
         for
         {
-            raw <- trafo.edges
-            sim_edge = raw.asInstanceOf[SimulationEdge]
-            if null != sim_edge.schematic_position
+            sim_edge <- trafo.edges
+            if sim_edge.schematic_position.nonEmpty
         }
             points = points ++ sim_edge.schematic_position
         points
@@ -216,15 +212,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
             .flatMap (
                 (x: (SimulationTrafoKreis, Option[KeyValueList])) =>
                 {
-                    val trafo = x._1
+                    val (trafo, properties) = x
                     val world_points = get_world_points (trafo).toList
                     val world = if (world_points.nonEmpty)
                     {
                         val hull = Hull.scan (world_points).map (p => List (p._1, p._2))
                         val coordinates: List[List[List[Double]]] = List (hull)
                         val geometry = ("Polygon", coordinates)
-                        val properties = x._2.orNull
-                        Some ((trafo.simulation, trafo.transformer.transformer_name, "wgs84", geometry, properties, "Feature"))
+                        Some ((trafo.simulation, trafo.transformer.transformer_name, "wgs84", geometry, extract (properties), "Feature"))
                     }
                     else
                         None
@@ -234,15 +229,15 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                         val hull = Hull.scan (schematic_points).map (p => List (p._1, p._2))
                         val coordinates: List[List[List[Double]]] = List (hull)
                         val geometry = ("Polygon", coordinates)
-                        val properties = x._2.orNull
-                        Some ((trafo.simulation, trafo.transformer.transformer_name, "pseudo_wgs84", geometry, properties, "Feature"))
+                        Some ((trafo.simulation, trafo.transformer.transformer_name, "pseudo_wgs84", geometry, extract (properties), "Feature"))
                     }
                     else
                         None
                     (world :: schematic :: Nil).flatten
                 }
         )
-        jsons.saveToCassandra (keyspace, "geojson_polygons", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "type"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
+        val conf = WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
+        jsons.saveToCassandra (keyspace, "geojson_polygons", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "type"), writeConf = conf)
     }
 
     def store_geojson_transformers (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
@@ -296,22 +291,21 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                     None
             }
         )
-        def make_trafo (stuff: ((SimulationTrafoKreis, Option[KeyValueList]), Option[((Double, Double), Option[(Double, Double)])])):
+        def make_trafo (args: ((SimulationTrafoKreis, Option[KeyValueList]), Option[((Double, Double), Option[(Double, Double)])])):
             List[(Simulation, String, Value, Set[Transformer], String, (Value, List[Double]), KeyValueList)] =
         {
-            stuff._2 match
+            val ((trafo, properties), points) = args
+            points match
             {
                 case Some (x) =>
-                    val trafo = stuff._1._1
                     val geometry = ("Point", List (x._1._1, x._1._2))
-                    val properties = stuff._1._2.orNull
                     val trafos = trafo.transformer.transformers.map (_.transformer.id).toSet
-                    val one = (trafo.simulation, "wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry, properties)
+                    val one = (trafo.simulation, "wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry, extract (properties))
                     val two = x._2 match
                     {
                         case Some (coords) =>
                             val geometry2 = ("Point", List (coords._1, coords._2))
-                            Some ((trafo.simulation, "pseudo_wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry2, properties))
+                            Some ((trafo.simulation, "pseudo_wgs84", trafo.transformer.transformer_name, trafos, "Feature", geometry2, extract (properties)))
                         case None =>
                             None
                     }
@@ -321,7 +315,8 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         }
         val with_properties = trafos.keyBy (_.transformer.transformer_name).leftOuterJoin (extra).values
         val jsons = with_properties.keyBy (_._1.name).leftOuterJoin (world_positions.leftOuterJoin (schematic_points)).values.flatMap (make_trafo)
-        jsons.saveToCassandra (keyspace, "geojson_transformers", SomeColumns ("simulation", "coordinate_system", "mrid", "transformers", "type", "geometry", "properties"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
+        val conf = WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
+        jsons.saveToCassandra (keyspace, "geojson_transformers", SomeColumns ("simulation", "coordinate_system", "mrid", "transformers", "type", "geometry", "properties"), writeConf = conf)
     }
 
     def store_geojson_stations (trafos: RDD[SimulationTrafoKreis], extra: RDD[Properties]): Unit =
@@ -351,17 +346,14 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         val geojson_station: RDD[(Simulation, CoordinateSystem, StationmRID, Transformer, String, (String, List[List[List[Double]]]), KeyValueList)] = rearranged2.map (
             x =>
             {
-                val simulation = x._1
-                val station = x._2
-                val transformer = x._3
-                val coords = x._4
+                val (simulation, station, transformer, coords, properties) = x
                 val coordinates = List (coords.toList.sortWith (_.sequenceNumber < _.sequenceNumber).map (y => List (y.xPosition, y.yPosition)))
                 val geometry = ("Polygon", coordinates)
-                val properties = x._5.orNull
-                (simulation, "pseudo_wgs84", station, transformer, "Feature", geometry, properties)
+                (simulation, "pseudo_wgs84", station, transformer, "Feature", geometry, extract (properties))
             }
         )
-        geojson_station.saveToCassandra (keyspace, "geojson_stations", SomeColumns ("simulation", "coordinate_system", "mrid", "transformer", "type", "geometry", "properties"), WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY))
+        val conf = WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
+        geojson_station.saveToCassandra (keyspace, "geojson_stations", SomeColumns ("simulation", "coordinate_system", "mrid", "transformer", "type", "geometry", "properties"), writeConf = conf)
     }
 
     def storeGeometry (simulation: String, trafos: RDD[SimulationTrafoKreis]): Unit =

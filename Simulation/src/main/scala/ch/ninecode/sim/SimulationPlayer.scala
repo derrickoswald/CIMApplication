@@ -13,7 +13,7 @@ package ch.ninecode.sim
  * @param start     Starting time as unix epoch for filtering.
  * @param end       Ending time as unix epoch for filtering.
  * @param transform Transformation to apply to the measurements.
- * @param synthesis Primary key in synthesized_value table.
+ * @param synthesis Primary key in synthesized_value table, or "" if using mrid from measured_value table.
  */
 case class SimulationPlayer
 (
@@ -21,8 +21,8 @@ case class SimulationPlayer
     parent: String,
     `type`: String,
     property: String,
-    file: String = null,
-    mrid: String = null,
+    file: String,
+    mrid: String,
     start: Long,
     end: Long,
     transform: String,
