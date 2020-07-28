@@ -170,6 +170,9 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
         jsons.saveToCassandra (keyspace, "geojson_lines", SomeColumns ("simulation", "mrid", "coordinate_system", "geometry", "properties", "transformer", "type"), writeConf = conf)
     }
 
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def firstPoint (arg: Iterable[(Double, Double)]): (Double, Double) = arg.head
+
     def get_world_points (trafo: SimulationTrafoKreis): Iterable[(Double, Double)] =
     {
         var points =
@@ -178,7 +181,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                 sim_node <- trafo.nodes
                 if sim_node.world_position.nonEmpty
             }
-                yield sim_node.world_position.toIterator.next
+                yield firstPoint (sim_node.world_position)
         for
         {
             sim_edge <- trafo.edges
@@ -196,7 +199,7 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
                 sim_node <- trafo.nodes
                 if sim_node.schematic_position.nonEmpty
             }
-                yield sim_node.schematic_position.toIterator.next
+                yield firstPoint (sim_node.schematic_position)
         for
         {
             sim_edge <- trafo.edges

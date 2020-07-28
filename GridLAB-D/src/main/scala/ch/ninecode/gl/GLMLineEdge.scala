@@ -20,7 +20,7 @@ with GLMEdge
     override def emit (generator: GLMGenerator): String =
     {
         // ToDo: with parallel cables of different length or type this is a problem:
-        val conductor = lines.toIterator.next.Conductor
+        val conductor = data.aLine.line.Conductor
         // ToDo: use ProductAssetModel.usageKind (from AssetInfo.AssetModel)
         val typ = if (conductor.ConductingEquipment.Equipment.PowerSystemResource.PSRType == "PSRType_Underground")
             "underground_line"
@@ -85,7 +85,7 @@ with GLMEdge
      */
     def configuration (generator: GLMGenerator): String =
     {
-        val pli = data.perLengthImpedanceAt (generator.targetTemperature, data.lines.toIterator.next.CIMBaseTemperature)
+        val pli = data.perLengthImpedanceAt (generator.targetTemperature, data.aLine.CIMBaseTemperature)
         make_line_configuration (configurationName, pli, data.perLengthImpedanceIsDefault, generator)
     }
 }

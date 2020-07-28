@@ -255,6 +255,20 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
     }
 
     /**
+     * Get mRID and threshold.
+     *
+     * @param data simulated values
+     *             (all the mRID and threshold values are the same)
+     * @return (mRID, threshold)
+     */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def getConstants (data: Iterable[(String, Timestamp, Int, Double, Double)]): (String, Double) =
+    {
+        val first = data.head
+        (first._1, first._5)
+    }
+
+    /**
      * Perform checking over time periods.
      *
      * Arrange the ('best' case) prefiltered values in time order and call stateful Checker(s) for each
@@ -267,8 +281,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      */
     def check (simulation: String, triggers: Iterable[_ <: Trigger])(data: Iterable[(String, Timestamp, Int, Double, Double)]): Iterable[Event] =
     {
-        // all the mRID and threshold values are the same
-        val (mrid, _, _, _, threshold) = data.toIterator.next
+        val (mrid, threshold) = getConstants (data)
 
         // pare down the data and sort by time
         val values = data.map (x => (x._2.getTime, x._3, x._4)).toArray.sortWith (_._1 < _._1)
@@ -298,6 +311,20 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
     }
 
     /**
+     * Get the type and reference value.
+     *
+     * @param triggers trigger defeinitions
+     *                 (all the threshold types, geometry tables, reference and default are the same)
+     * @return (mRID, threshold)
+     */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def getTriggerDetails (triggers: Iterable[Trigger]): (String, String) =
+    {
+        val first = triggers.head
+        (first.`type`, first.reference)
+    }
+
+    /**
      * Apply a set of thresholds (with the same type, table, reference and default) to the data.
      *
      * @param triggers the trigger thresholds in the set
@@ -305,10 +332,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      */
     def checkFor (triggers: Iterable[Trigger])(implicit access: SimulationCassandraAccess) : Unit =
     {
-        // all the threshold types, geometry tables, reference and default are the same
-        val head = triggers.toIterator.next
-        val `type` = head.`type`
-        val reference = head.reference
+        val (typ, reference) = getTriggerDetails (triggers)
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
         def maximum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf[Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.max (a, Math.max (b, c)))
@@ -319,7 +343,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
             Seq("simulation", "type", "units")
         else
             Seq("simulation", "type", "real_b", "imag_b", "real_c", "imag_c", "units")
-        val simulated_values = access.raw_values (`type`, to_drop)
+        val simulated_values = access.raw_values (typ, to_drop)
         val keyvalues = access.key_value (reference)
 
 //        keyvalues.printSchema ()
@@ -495,9 +519,11 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
         total.foldLeft (Map[Color, Count] ()) ((map: Total, tot: Sum) => tot._2.foldLeft (map) (accumulate))
     }
 
-    def summary (transformer: Transformer, day: Day, records: Iterable[(Type, mRID, Severity)]):
+    def summary (arg: (Transformer, Day, Iterable[(Type, mRID, Severity)])):
         (Transformer, Day, Summary, Total, Summary, Total, Summary, Total) =
     {
+        val (transformer, day, records) = arg
+
         val voltage_events: Iterable[(mRID, Severity)] = records.filter (_._1 == "voltage").map (event => (event._2, event._3))
         val voltage_summary: Summary = aggregate (voltage_events)
         val voltage_totals: Total = severities (voltage_summary)
@@ -543,9 +569,16 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
                 }
             )
 
+            @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+            def normalize (arg: Iterable[(Transformer, Day, Type, mRID, Severity)]): (Transformer, Day, Iterable[(Type, mRID, Severity)]) =
+            {
+                val head = arg.head
+                (head._1, head._2, arg.map (event => (event._3, event._4, event._5)))
+            }
+
             val work2: RDD[Iterable[(Transformer, Day, Type, mRID, Severity)]] = work1.groupBy (row => s"${row._1}_${row._2.getTime.toString}").values
-            val work3: RDD[(Transformer, Day, Iterable[(Type, mRID, Severity)])] = work2.map (record => { val head = record.toIterator.next; (head._1, head._2, record.map (event => (event._3, event._4, event._5))) })
-            val work4: RDD[(Transformer, Day, Summary, Total, Summary, Total, Summary, Total)] = work3.map (record => summary (record._1, record._2, record._3))
+            val work3: RDD[(Transformer, Day, Iterable[(Type, mRID, Severity)])] = work2.map (normalize)
+            val work4: RDD[(Transformer, Day, Summary, Total, Summary, Total, Summary, Total)] = work3.map (summary)
 
             def toUDT (total: Total): EventNumber =
             {
@@ -593,23 +626,22 @@ case class SimulationEvents (triggers: Iterable[Trigger]) (spark: SparkSession, 
     def run (implicit access: SimulationCassandraAccess): Unit =
     {
         // organize the triggers by type, table, reference and default
-        val sets = triggers.groupBy (trigger => (trigger.`type`, trigger.reference, trigger.default)).values.toArray
-        log.info ("""checking for events in %s (input keyspace: %s, output keyspace: %s)""".format (access.simulation, access.input_keyspace, access.output_keyspace))
+        val sets = triggers.groupBy (trigger => (trigger.`type`, trigger.reference, trigger.default)).toArray
+        log.info (s"checking for events in ${access.simulation} (input keyspace: ${access.input_keyspace}, output keyspace: ${access.output_keyspace})")
 
         // handle each trigger set
         for (i <- sets.indices)
         {
-            val thresholds = sets(i)
-            val `type` = thresholds.toIterator.next.`type`
-            log.info ("""%s events""".format (`type`))
+            val ((typ, ref, default), thresholds) = sets(i)
+            log.info (s"$typ events with reference $ref and default $default")
             DoubleChecker (spark, options.storage_level, options.three_phase).checkFor (thresholds)
-            log.info ("""%s deviation events saved to %s.simulation_event""".format (`type`, access.output_keyspace))
+            log.info (s"$typ deviation events saved to ${access.output_keyspace}.simulation_event")
         }
 
         // perform the summary
-        log.info ("""summarizing events""")
+        log.info ("summarizing events")
         Summarizer (spark, options.storage_level).summarize ()
-        log.info ("""event summary saved to %s.simulation_event_summary""".format (access.output_keyspace))
+        log.info (s"event summary saved to ${access.output_keyspace}.simulation_event_summary")
     }
 }
 

@@ -377,6 +377,16 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
 
+    /**
+     * Get the transformer from a set of mRID player data.
+     *
+     * @param arg the grouped player data
+     *            assumes they all have the same transformer
+     * @return the transformer name from the player data
+     */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def theTransformer (arg: (String, Iterable[SimulationPlayerData])): String = arg._2.head.transformer
+
     def queryValues (job: SimulationJob, simulations: RDD[SimulationTrafoKreis]): RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] =
     {
         val phases = if (options.three_phase && !options.fake_three_phase) 3 else 1
@@ -434,7 +444,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     .join (queries_synthesised))
             .mapValues (x => x._1.copy (transformer = x._2)) // use real trafo
             .groupByKey
-            .groupBy (_._2.toIterator.next.transformer)
+            .groupBy (theTransformer)
             .persist (options.storage_level)
             .setName (s"${job.id}_player_data")
         log.info (s"""${ret.count} player data results""")
@@ -585,10 +595,20 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         simulations
     }
 
+    /**
+     * Pick a job out of the batch.
+     *
+     * @param batch the batch of similar jobs
+     *              assumes that all jobs in a batch should have the same cluster state
+     * @return the first job in the batch
+     */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def aJob (batch: Seq[SimulationJob]): SimulationJob = batch.head
+
     def simulate (batch: Seq[SimulationJob]): Seq[String] =
     {
         log.info ("""starting simulations""")
-        val ajob = batch.toIterator.next // assumes that all jobs in a batch should have the same cluster state
+        val ajob = aJob (batch)
 
         // clean up in case there was a file already loaded
         cleanRDDs ()
@@ -664,7 +684,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose)
                     // ToDo: this isn't quite right, take the first job matching the output keyspace
                     val batches = jobs.groupBy (_.output_keyspace)
-                    val job = batches (output).toIterator.next
+                    val job = aJob (batches (output))
                     job.postprocessors.foreach (
                         processor =>
                         {

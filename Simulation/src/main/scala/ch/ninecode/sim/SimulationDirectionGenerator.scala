@@ -34,12 +34,13 @@ case class SimulationDirectionGenerator
 
     override def extra: Iterable[String] = List ("")
 
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
         val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match { case e: GLMTransformerEdge => Some (e) case _ => None })
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
-        configurations.map (config => config.toIterator.next.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
+        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
     }
 
     def emit_load (node: SimulationNode): String =
@@ -111,8 +112,9 @@ case class SimulationDirectionGenerator
      * @param edges The edges in the model.
      * @return The configuration elements as a single string.
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        rawLineEdges (edges).groupBy (_.configurationName).values.map (_.toIterator.next.configuration (this))
+        rawLineEdges (edges).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 }
