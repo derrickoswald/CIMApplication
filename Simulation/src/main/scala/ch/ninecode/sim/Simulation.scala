@@ -95,6 +95,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
         LogManager.getLogger ("ch.ninecode.gl.TransformerServiceArea").setLevel (org.apache.log4j.Level.INFO)
         LogManager.getLogger ("ch.ninecode.sim.SimulationSparkQuery").setLevel (org.apache.log4j.Level.INFO)
+        LogManager.getLogger ("ch.ninecode.sim.SimulationGeometry").setLevel (org.apache.log4j.Level.INFO)
         LogManager.getLogger ("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel (org.apache.log4j.Level.INFO)
     }
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
