@@ -33,6 +33,7 @@ private_data/
 simulation/
 simulation_three_phase/
 results/
+**/pipe.sh
 
 # Misc #
 glslogs/
