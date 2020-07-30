@@ -15,8 +15,8 @@ import javax.ws.rs.MatrixParam
 import javax.ws.rs.Path
 import javax.ws.rs.Produces
 
-import scala.collection.JavaConversions.collectionAsScalaIterable
-import scala.collection.JavaConversions.mapAsScalaMap
+import scala.collection.JavaConverters.collectionAsScalaIterableConverter
+import scala.collection.JavaConverters.mapAsScalaMapConverter
 
 import ch.ninecode.cim.connector.CIMConnectionMetaData
 import ch.ninecode.cim.connector.CIMConnectionSpec
@@ -109,8 +109,8 @@ class Pong extends PingPong
                 factory.getDefaultConnectionSpec match
                 {
                     case connection_spec: CIMConnectionSpec =>
-                        val properties = connection_spec.getProperties.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2))
-                        val jars = connection_spec.getJars.foldLeft (Json.createArrayBuilder)((b, j) => b.add (j))
+                        val properties = connection_spec.getProperties.asScala.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2))
+                        val jars = connection_spec.getJars.asScala.foldLeft (Json.createArrayBuilder)((b, j) => b.add (j))
                         val default_connection_spec = Json.createObjectBuilder
                             .add ("username", connection_spec.getUserName)
                             .add ("password", connection_spec.getPassword)

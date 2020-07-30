@@ -1,25 +1,18 @@
 package ch.ninecode.sp
 
+/**
+ * Options for spatial operations.
+ *
+ * @param clazz the name of the class of interest
+ * @param lon longitude of center point
+ * @param lat latitude of center point
+ * @param n number of elements to get
+ */
 case class SpatialOperationParameters
 (
-    /**
-     * The name of the class of interest.
-     */
     clazz: String = "EnergyConsumer",
-
-    /**
-     * Longitude of center point.
-     */
     lon: Double = 7.281558,
-
-    /**
-     * Latitude of center point.
-     */
     lat: Double = 47.124142,
-
-    /**
-     * Number of elements to get.
-     */
     n: Int = 1
 )
 

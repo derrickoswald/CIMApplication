@@ -8,7 +8,7 @@ import java.net.URLDecoder
 import javax.json.Json
 import javax.json.JsonStructure
 
-import scala.collection.JavaConversions.seqAsJavaList
+import scala.collection.JavaConverters.seqAsJavaListConverter
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
@@ -87,7 +87,7 @@ abstract class CIMWebFunction extends CIMFunction
     override def executeResultSet (spark: SparkSession): Dataset[Row] =
     {
         val schema = StructType (Seq (StructField (name = "error", dataType = StringType, nullable = false)))
-        spark.sqlContext.createDataFrame (Seq (Row ("execute called on wrong method signature")), schema)
+        spark.sqlContext.createDataFrame (Seq (Row ("execute called on wrong method signature")).asJava, schema)
     }
 
     override def executeString (spark: SparkSession): String =

@@ -11,7 +11,7 @@ import javax.naming.NamingException
 import javax.resource.ResourceException
 import javax.resource.cci.MappedRecord
 
-import scala.collection.JavaConversions.mapAsJavaMap
+import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.util.Failure
 import scala.util.Success
 import scala.util.Try
@@ -53,7 +53,7 @@ class RESTful ()
             val properties = specification.getProperties
             properties.putAll (Map (
                 "spark.driver.memory" -> "1g",
-                "spark.executor.memory" -> "2g"))
+                "spark.executor.memory" -> "2g").asJava)
             Some (factory.getConnection (specification).asInstanceOf[CIMConnection])
         }
         else

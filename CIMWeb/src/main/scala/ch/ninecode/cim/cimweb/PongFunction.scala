@@ -7,8 +7,7 @@ import javax.json.Json
 import javax.json.JsonObjectBuilder
 import javax.json.JsonStructure
 
-import scala.collection.JavaConversions.asScalaIterator
-import scala.collection.JavaConversions.iterableAsScalaIterable
+import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 
 import org.apache.spark.sql.SparkSession
 
@@ -18,7 +17,7 @@ case class PongFunction () extends CIMWebFunction
     def filesystemConfiguration: JsonObjectBuilder =
     {
         val filesystem_configuration = Json.createObjectBuilder
-        for (entry <- hdfs_configuration.iterator)
+        for (entry <- hdfs_configuration.asScala)
             filesystem_configuration.add (entry.getKey, entry.getValue)
         filesystem_configuration
     }
@@ -67,7 +66,7 @@ case class PongFunction () extends CIMWebFunction
     def hadoopConfiguration (spark: SparkSession): JsonObjectBuilder =
     {
         val hadoop_configuration = Json.createObjectBuilder
-        for (entry <- spark.sparkContext.hadoopConfiguration)
+        for (entry <- spark.sparkContext.hadoopConfiguration.asScala)
             hadoop_configuration.add (entry.getKey, entry.getValue)
         hadoop_configuration
     }

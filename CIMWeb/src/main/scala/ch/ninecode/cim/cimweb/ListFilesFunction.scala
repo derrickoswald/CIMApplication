@@ -3,7 +3,7 @@ package ch.ninecode.cim.cimweb
 import javax.json.Json
 import javax.json.JsonStructure
 
-import scala.collection.JavaConversions.iterableAsScalaIterable
+import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 
 import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.fs.Path
@@ -26,7 +26,7 @@ case class ListFilesFunction (path: String, debug: Boolean) extends CIMWebFuncti
         if (debug)
         {
             val configuration = Json.createObjectBuilder
-            for (pair <- hdfs_configuration)
+            for (pair <- hdfs_configuration.asScala)
                 configuration.add (pair.getKey, pair.getValue)
             val _ = response.add ("configuration", configuration)
         }

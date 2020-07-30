@@ -14,7 +14,7 @@ import javax.ws.rs.Path
 import javax.ws.rs.PathParam
 import javax.ws.rs.Produces
 
-import scala.collection.JavaConversions.iterableAsScalaIterable
+import scala.collection.JavaConverters.asScalaSetConverter
 
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMMappedRecord
@@ -52,7 +52,7 @@ class LoadFile extends RESTful
                                         ret.status = RESTfulJSONResult.FAIL
                                         ret.message = json.getString ("error")
                                         val result = Json.createObjectBuilder
-                                        for (key <- json.keySet)
+                                        for (key <- json.keySet.asScala)
                                             if (key != "error")
                                                 result.add (key, json.get (key))
                                         ret.setResult (result.build)

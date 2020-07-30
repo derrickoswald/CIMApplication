@@ -24,8 +24,8 @@ class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
     /**
      * Get the location reference from a PowerSystemResource.
      *
-     * @param element The element to get the location from
-     * @return The location (if any) or <code>null</code> if the element is not a PowerSystemResource.
+     * @param element the element to get the location from
+     * @return the location (if any) or <code>""</code> if the element is not a PowerSystemResource
      */
     def location (element: Element): String =
     {
@@ -34,68 +34,70 @@ class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
         while ((null != e) && (e.getClass.getName != psr))
             e = e.sup
 
-        val ret = if (null == e)
-            null
-        else
-            e.asInstanceOf[PowerSystemResource].Location
-        ret
+        e match
+        {
+            case p: PowerSystemResource => p.Location
+            case _ => ""
+        }
     }
+
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
+    def asElement (e: Any): Element = e.asInstanceOf[Element]
 
     def nearest (args: SpatialOperationParameters): DataFrame =
     {
         // get the subsetter
         val chim = new CHIM ("")
-        val clz = chim.classes.find (_.subsetter.cls == args.clazz).orNull
+        val cls = chim.classes.find (_.subsetter.cls == args.clazz)
 
-        if (null != clz)
+        cls match
         {
-            // do the fucking Scala type voodoo
-            val subsetter = clz.subsetter
-            type T = subsetter.basetype
-            implicit val tag: TypeTag[T] = subsetter.tag.asInstanceOf[TypeTag[T]]
+            case Some (clz) =>
+                // do the fucking Scala type voodoo
+                val subsetter = clz.subsetter
+                type T = subsetter.basetype
+                implicit val tag: TypeTag[T] = subsetter.tag.asInstanceOf[TypeTag[T]]
 
-            // get the RDD of desired objects
-            val rdd: RDD[T] = getOrElse[T](subsetter.cls)
+                // get the RDD of desired objects
+                val rdd: RDD[T] = getOrElse[T](subsetter.cls)
 
-            // get the points
-            val points = getOrElse[PositionPoint]
+                // get the points
+                val points = getOrElse[PositionPoint]
 
-            // join
-            val targets: RDD[(T, PositionPoint)] = rdd.keyBy (x => location (x.asInstanceOf[Element])).join (points.keyBy (_.Location)).values
+                // join
+                val targets: RDD[(T, PositionPoint)] = rdd.keyBy (x => location (asElement (x))).join (points.keyBy (_.Location)).values
 
-            object nearestOrdering extends Ordering[(T, PositionPoint)]
-            {
-                def dist2 (point: PositionPoint): Double =
+                object nearestOrdering extends Ordering[(T, PositionPoint)]
                 {
-                    val dx = args.lon - point.xPosition.toDouble
-                    val dy = args.lat - point.yPosition.toDouble
-                    dx * dx + dy * dy
+                    def dist2 (point: PositionPoint): Double =
+                    {
+                        val dx = args.lon - point.xPosition.toDouble
+                        val dy = args.lat - point.yPosition.toDouble
+                        dx * dx + dy * dy
+                    }
+
+                    /** Returns an integer whose sign communicates how x compares to y.
+                     *
+                     * The result sign has the following meaning:
+                     *
+                     *  - negative if x < y
+                     *  - positive if x > y
+                     *  - zero otherwise (if x == y)
+                     */
+                    def compare (x: (T, PositionPoint), y:(T, PositionPoint)): Int =
+                    {
+                        Math.signum (dist2 (x._2) - dist2 (y._2)).toInt
+                    }
                 }
 
-                /** Returns an integer whose sign communicates how x compares to y.
-                 *
-                 * The result sign has the following meaning:
-                 *
-                 *  - negative if x < y
-                 *  - positive if x > y
-                 *  - zero otherwise (if x == y)
-                 */
-                def compare (x: (T, PositionPoint), y:(T, PositionPoint)): Int =
-                {
-                    Math.signum (dist2 (x._2) - dist2 (y._2)).toInt
-                }
-            }
+                // sort by distance using implicit ordering
+                val result = targets.takeOrdered (args.n)(nearestOrdering).map (_._1)
 
-            // sort by distance using implicit ordering
-            val result = targets.takeOrdered (args.n)(nearestOrdering).map (_._1)
-
-            // make a DataFrame
-            session.sqlContext.sparkSession.createDataFrame (result)
-        }
-        else
-        {
-            log.error ("class %s not found".format (args.clazz))
-            null
+                // make a DataFrame
+                session.sqlContext.sparkSession.createDataFrame (result)
+            case None =>
+                log.error (s"class ${args.clazz} not found")
+                spark.emptyDataFrame
         }
     }
 }

@@ -18,9 +18,9 @@ class SpatialSuite extends TestUtil with BeforeAndAfter
     def readFile (context: SQLContext, filename: String): DataFrame =
     {
         val files = filename.split (",")
-        val options = new java.util.HashMap[String, String]().asInstanceOf[java.util.Map[String, String]]
-        options.put ("path", filename)
-        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
+        val options = Map[String, String](
+            "path" -> filename,
+            "StorageLevel" -> "MEMORY_AND_DISK_SER")
         context.read.format ("ch.ninecode.cim").options (options).load (files: _*)
     }
 
@@ -65,7 +65,7 @@ class SpatialSuite extends TestUtil with BeforeAndAfter
             text = array2 (0).toString ()
             assert (text.contains ("USR0023"))
 
-            println ("read : " + (read - start) / 1e9 + " seconds")
+            println (s"read : ${(read - start) / 1e9} seconds")
             println (s"process first location: ${(process1 - read) / 1e9} seconds")
             println (s"process second location: ${(process2 - process1) / 1e9} seconds")
     }

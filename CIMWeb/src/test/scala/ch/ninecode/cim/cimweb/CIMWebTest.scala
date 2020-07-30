@@ -38,7 +38,7 @@ object CIMWebTest
         {
             val war = ShrinkWrap.create (classOf[WebArchive], "CIMWeb.war")
                 .setWebXML (new File (WEBAPP_SRC, "WEB-INF/web.xml"))
-                .addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb")) // getClass().getPackage()
+                .addPackage (getClass.getPackage) // deprecated: (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb"))
                 .deleteClass (classOf[CIMWebTest])
                 .addAsWebResource (new File (WEBAPP_SRC, "index.html"))
                 .addManifest ()

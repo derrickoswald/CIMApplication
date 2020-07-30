@@ -10,7 +10,7 @@ import javax.json.JsonStructure
 import javax.json.JsonWriterFactory
 import javax.json.stream.JsonGenerator
 
-import scala.collection.JavaConversions.mapAsJavaMap
+import scala.collection.JavaConverters.mapAsJavaMapConverter
 
 case class RESTfulJSONResult (var status: String, var message: String, var result: JsonStructure)
 {
@@ -22,7 +22,7 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
         {
             val properties = Map[String, AnyRef](
                 JsonGenerator.PRETTY_PRINTING -> "true")
-            FACTORY_INSTANCE = Json.createWriterFactory (properties)
+            FACTORY_INSTANCE = Json.createWriterFactory (properties.asJava)
         }
         FACTORY_INSTANCE
     }

@@ -6,14 +6,14 @@ import javax.json.Json
 import javax.json.JsonArrayBuilder
 import javax.json.JsonObjectBuilder
 
-import scala.collection.JavaConversions.mapAsScalaMap
-import scala.collection.JavaConversions.propertiesAsScalaMap
+import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.collection.JavaConverters.propertiesAsScalaMapConverter
 
 abstract class PingPong extends RESTful
 {
-    def getEnvironment: JsonObjectBuilder = System.getenv.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2))
+    def getEnvironment: JsonObjectBuilder = System.getenv.asScala.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2))
 
-    def getProperties: JsonObjectBuilder = System.getProperties.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2))
+    def getProperties: JsonObjectBuilder = System.getProperties.asScala.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2))
 
     def classLoaderFrom (element: StackTraceElement): Option[ClassLoader] =
     {
