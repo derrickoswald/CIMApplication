@@ -44,7 +44,7 @@ object TimeSeries
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val name = s"/tmp/${Random.nextInt (99999999).toString}.jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
             writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
             writer.close ()
@@ -100,7 +100,7 @@ object TimeSeries
                     //Engine.init
 
                     val setup = System.nanoTime ()
-                    log.info ("setup: " + (setup - begin) / 1e9 + " seconds")
+                    log.info (s"setup: ${(setup - begin) / 1e9} seconds")
 
                     options.operation match
                     {
@@ -127,7 +127,7 @@ object TimeSeries
                                 model.generateMetaTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh, options.classes)
                     }
                     val calculate = System.nanoTime ()
-                    log.info ("execution: " + (calculate - setup) / 1e9 + " seconds")
+                    log.info (s"execution: ${(calculate - setup) / 1e9} seconds")
                 }
                 if (!options.unittest)
                     sys.exit (0)

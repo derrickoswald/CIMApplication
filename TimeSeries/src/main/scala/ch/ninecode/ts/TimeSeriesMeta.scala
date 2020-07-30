@@ -12,6 +12,146 @@ import com.datastax.spark.connector._
 
 case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
 {
+    import TimeSeriesMeta._
+
+    val map: Map[String, Classifier] = common.map (x => (x.keyword, x)).toMap
+    val apt_map: Map[String, Classifier] = apts.map (x => (x.keyword, x)).toMap
+    def classify (in: String, addr: String): Option[Classifier] =
+    {
+        val splits = in.split ("[ ,()-/]")
+        map.get (splits(0)) match
+        {
+            case Some (lookup) =>
+                lookup.count = lookup.count + 1
+                Some (lookup)
+            case None =>
+                val options = splits.flatMap (x => map.get (x))
+                if (options.length > 0)
+                {
+                    val item = options(0)
+                    item.count = item.count + 1
+                    Some (item)
+                }
+                else
+                {
+                    val extra = addr.split ("[ ,()-/]")
+                    val address = extra.flatMap (x => map.get (x))
+                    if (address.length > 0)
+                    {
+                        val item = address(0)
+                        item.count = item.count + 1
+                        Some (item)
+                    }
+                    else
+                    {
+                        val a = splits.flatMap (x => apt_map.get (x))
+                        val b = extra.flatMap (x => apt_map.get (x))
+                        if (a.length > 0)
+                        {
+                            val item = a(0)
+                            item.count = item.count + 1
+                            Some (item)
+                        }
+                        else if (b.length > 0)
+                        {
+                            val item = b(0)
+                            item.count = item.count + 1
+                            Some (item)
+                        }
+                        else
+                        {
+                            unknown.count = unknown.count + 1
+                            None
+                        }
+                    }
+                }
+        }
+    }
+
+    def mrid (col: Array[String]): String = if ("" != col(3)) col(3) else col(12)
+    def meter (col: Array[String]): String = col(7)
+
+    // write to Cassandra
+    def toClasses (classnames: Iterable[String]): mutable.Map[String, Int] =
+    {
+        val col = mutable.Map[String, Int] ()
+        classnames.foreach (
+            x =>
+            {
+                col.get (x) match
+                {
+                    case Some (existing) =>
+                        col.update (x, existing + 1)
+                    case None =>
+                        col.put (x, 1)
+                }
+            }
+        )
+        col
+    }
+
+    type sum = mutable.Map[String,(Int,mutable.Set[Classifier])]
+    def process (m: sum, ss: Classifier): sum =
+    {
+        m.get (ss.cls) match
+        {
+            case Some (lookup) => m.updated (ss.cls, (lookup._1 + ss.count, lookup._2 += ss))
+            case None => m.updated (ss.cls, (ss.count, mutable.Set (ss)))
+        }
+    }
+
+    def run ()
+    {
+        var matched = 0
+        var unmatched = 0
+        val source = scala.io.Source.fromFile (options.meta_file)
+        val lines = source.getLines
+        val classified = lines.flatMap (
+            line =>
+            {
+                if (!line.contains ("Messpunktbezeichnung"))
+                {
+                    val splits = line.split ("[;]")
+                    val mRID = mrid (splits)
+                    if ("" != mRID) // has a NIS number
+                    {
+                        val cls = classify (splits(16), splits(15))
+                        cls match
+                        {
+                            case Some (classifier) =>
+                                matched = matched + 1
+                                Some ((mRID, classifier.cls))
+                            case None =>
+                                unmatched = unmatched + 1
+                                println (mRID + " " + splits(7) + " " + splits(16) + " ==== " + splits(15))
+                                Some ((mRID, unknown.cls))
+                        }
+                    }
+                    else
+                        None
+                }
+                else
+                    None
+            }
+        )
+
+        val rdd = session.sparkContext.parallelize (classified.toSeq)
+        val raw: RDD[(String, mutable.Map[String, Int])] = rdd.groupByKey.mapValues (toClasses)
+        val columns = SomeColumns ("mrid", "classes")
+        val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
+        raw.saveToCassandra  (options.keyspace, "measured_value_meta", columns, writeConf)
+
+        // summarize
+        val arranged = all.foldLeft (mutable.Map[String,(Int,mutable.Set[Classifier])]())(process)
+
+        println (s"$unmatched unmatched, matched $matched of ${matched + unmatched} = ${100.0 * (matched.toDouble / (matched.toDouble + unmatched.toDouble))}%")
+        arranged.foreach (println (_))
+
+        source.close ()
+    }
+}
+object TimeSeriesMeta
+{
     case class Classifier (var count: Int, keyword: String, cls: String)
     {
         override def toString: String = s"$keyword×$count"
@@ -186,150 +326,13 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
             Classifier (0, "Baugeschäft", "Factory"),
             Classifier (0, "Brennerei", "Factory")
         )
-    val apts = Array (
+    val apts: Array[Classifier] = Array (
         Classifier (0, "Erdgeschoss", "Apartment"),
         Classifier (0, "Obergeschoss", "Apartment"),
         Classifier (0, "Untergeschoss", "Apartment"),
         Classifier (0, "Dachgeschoss", "Apartment"))
-    val unknown = Classifier (0, "", "unknown")
+    val unknown: Classifier = Classifier (0, "", "unknown")
 
     lazy val all: Array[Classifier] = Array.concat (common, apts, Array(unknown))
     lazy val classes: Array[String] = all.map (_.cls).distinct.sortWith (_ < _)
-
-    val map: Map[String, Classifier] = common.map (x => (x.keyword, x)).toMap
-    val apt_map: Map[String, Classifier] = apts.map (x => (x.keyword, x)).toMap
-    def classify (in: String, addr: String): Option[Classifier] =
-    {
-        val splits = in.split ("[ ,()-/]")
-        val lookup = map.getOrElse (splits(0), null)
-        if (null == lookup)
-        {
-            val options = splits.map (x => map.getOrElse (x, null)).filter (_ != null)
-            if (options.length > 0)
-            {
-                val item = options(0)
-                item.count = item.count + 1
-                Some (item)
-            }
-            else
-            {
-                val extra = addr.split ("[ ,()-/]")
-                val address = extra.map (x => map.getOrElse (x, null)).filter (_ != null)
-                if (address.length > 0)
-                {
-                    val item = address(0)
-                    item.count = item.count + 1
-                    Some (item)
-                }
-                else
-                {
-                    val a = splits.map (x => apt_map.getOrElse (x, null)).filter (_ != null)
-                    val b = extra.map (x => apt_map.getOrElse (x, null)).filter (_ != null)
-                    if (a.length > 0)
-                    {
-                        val item = a(0)
-                        item.count = item.count + 1
-                        Some (item)
-                    }
-                    else if (b.length > 0)
-                    {
-                        val item = b(0)
-                        item.count = item.count + 1
-                        Some (item)
-                    }
-                    else
-                    {
-                        unknown.count = unknown.count + 1
-                        None
-                    }
-                }
-            }
-        }
-        else
-        {
-            lookup.count = lookup.count + 1
-            Some (lookup)
-        }
-    }
-
-    def mrid (col: Array[String]): String = if ("" != col(3)) col(3) else col(12)
-    def meter (col: Array[String]): String = col(7)
-
-    def run ()
-    {
-        var matched = 0
-        var unmatched = 0
-        val source = scala.io.Source.fromFile (options.meta_file)
-        val lines = source.getLines
-        val classified = lines.flatMap (
-            line =>
-            {
-                if (!line.contains ("Messpunktbezeichnung"))
-                {
-                    val splits = line.split ("[;]")
-                    val mRID = mrid (splits)
-                    if ("" != mRID) // has a NIS number
-                    {
-                        val cls = classify (splits(16), splits(15))
-                        cls match
-                        {
-                            case Some (classifier) =>
-                                matched = matched + 1
-                                Some ((mRID, classifier.cls))
-                            case None =>
-                                unmatched = unmatched + 1
-                                println (mRID + " " + splits(7) + " " + splits(16) + " ==== " + splits(15))
-                                Some ((mRID, unknown.cls))
-                        }
-                    }
-                    else
-                        None
-                }
-                else
-                    None
-            }
-        )
-
-        // write to Cassandra
-        def toClasses (classnames: Iterable[String]): mutable.Map[String, Int] =
-        {
-            val col = mutable.Map[String, Int] ()
-            classnames.foreach (
-                x =>
-                {
-                    col.get (x) match
-                    {
-                        case Some (existing) =>
-                            col.update (x, existing + 1)
-                        case None =>
-                            col.put (x, 1)
-                    }
-                }
-            )
-            col
-        }
-        val rdd = session.sparkContext.parallelize (classified.toSeq)
-        val raw: RDD[(String, mutable.Map[String, Int])] = rdd.groupByKey.mapValues (toClasses)
-        val columns = SomeColumns ("mrid", "classes")
-        val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
-        raw.saveToCassandra  (options.keyspace, "measured_value_meta", columns, writeConf)
-
-        // summarize
-        type sum = mutable.Map[String,(Int,mutable.Set[Classifier])]
-        def process (m: sum, ss: Classifier): sum =
-        {
-            val lookup = m.getOrElse (ss.cls, null)
-            if (null == lookup)
-                m.updated (ss.cls, (ss.count, mutable.Set (ss)))
-            else
-                m.updated (ss.cls, (lookup._1 + ss.count, lookup._2 += ss))
-        }
-
-        val arranged = all.foldLeft (mutable.Map[String,(Int,mutable.Set[Classifier])]())(process)
-
-        println (s"$unmatched unmatched, matched $matched of ${matched + unmatched} = ${100.0 * (matched.toDouble / (matched.toDouble + unmatched.toDouble))}%")
-        arranged.foreach (println (_))
-
-        source.close ()
-    }
 }

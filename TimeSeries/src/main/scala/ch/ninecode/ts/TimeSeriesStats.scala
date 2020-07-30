@@ -46,7 +46,7 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
         iterator.toSeq
     }
 
-    def Range (mrid: String, `type`: String): (String, String, Date, Date, Long, Int, Double, Double, Double, Double) =
+    def Range (mrid: String, `type`: String): Option[(String, String, Date, Date, Long, Int, Double, Double, Double, Double)] =
     {
         // assumes the period is always the same
         val sql = s"""select mrid, type, min(period) as period, min(time) as min, max(time) as max, count(mrid) as count, min(real_a) as min, avg(real_a) as avg, max(real_a) as max, ${options.keyspace}.standard_deviation (real_a) as standard_deviation from ${options.keyspace}.measured_value where mrid='$mrid' and real_a > 0.0 and type = '${`type`}' group by mrid, type allow filtering"""
@@ -64,10 +64,10 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
                     val expected = (end - start + period) / period
                     val count = row.getLong (5)
                     val missing = (expected - count).toInt
-                    (row.getString (0), row.getString (1), new Date (start), new Date (end), count, missing, row.getDouble (6), row.getDouble (7), row.getDouble (8), row.getDouble (9))
+                    Some ((row.getString (0), row.getString (1), new Date (start), new Date (end), count, missing, row.getDouble (6), row.getDouble (7), row.getDouble (8), row.getDouble (9)))
                 }
                 else
-                    null
+                    None
         }
         range
     }
@@ -80,7 +80,7 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
         log.info ("%s distinct mrid and type".format (count))
         val range = for ((mrid, typ) <- scope)
             yield Range (mrid, typ)
-        val stats = for (r <- range if null != r)
+        val stats = for (r <- range.flatten)
         yield
         {
             log.info ("%s:%s %s⇒%s %8d %6d %10.3f %10.3f %10.3f %10.3f".format (

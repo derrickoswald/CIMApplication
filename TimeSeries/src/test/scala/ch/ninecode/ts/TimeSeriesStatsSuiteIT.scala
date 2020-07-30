@@ -1,13 +1,7 @@
 package ch.ninecode.ts
 
-import java.io.BufferedOutputStream
-import java.io.Closeable
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
 import java.util.Properties
-import java.util.zip.ZipInputStream
 
 import scala.collection.immutable
 
@@ -23,23 +17,13 @@ import org.junit.Test
 import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.main
+import ch.ninecode.testutil.Using
+import ch.ninecode.testutil.Unzip
 import ch.ninecode.util.Schema
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class TimeSeriesStatsSuiteIT
 {
-    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
-    {
-        try
-        {
-            block (resource)
-        }
-        finally
-        {
-            resource.close ()
-        }
-    }
-
     def cassandra_port: String =
     {
         val properties: Properties =
@@ -70,88 +54,11 @@ class TimeSeriesStatsSuiteIT
     }
 }
 
-object TimeSeriesStatsSuiteIT
+object TimeSeriesStatsSuiteIT extends Unzip with Using
 {
     val KEYSPACE = "test"
     val FILE_DEPOT = "data/"
     val FILENAME0 = "measurement_data"
-
-    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
-    {
-        try
-        {
-            block (resource)
-        }
-        finally
-        {
-            resource.close ()
-        }
-    }
-
-    /**
-     * This utility extracts files and directories of a standard zip file to a destination directory.
-     *
-     * @author www.codejava.net
-     *
-     */
-    class Unzip
-    {
-        /**
-         * Extracts a zip file specified by the file to a directory.
-         *
-         * The directory will be created if does not exist.
-         *
-         * @param file the zip file
-         * @param directory the directory to extract it to
-         * @throws IOException if there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        def unzip (file: String, directory: String): Unit =
-        {
-            val dir = new File (directory)
-            if (!dir.exists)
-                dir.mkdir
-            using (new ZipInputStream (new FileInputStream (file)))
-            {
-                zip =>
-                    var entry = zip.getNextEntry
-                    // iterates over entries in the zip file
-                    while (null != entry)
-                    {
-                        val path = directory + entry.getName
-                        if (!entry.isDirectory)
-                        // if the entry is a file, extracts it
-                            extractFile (zip, path)
-                        else
-                        // if the entry is a directory, make the directory
-                            new File (path).mkdir
-                        zip.closeEntry ()
-                        entry = zip.getNextEntry
-                    }
-            }
-
-        }
-
-        /**
-         * Extracts a zip entry (file entry).
-         *
-         * @param zip  The Zip input stream for the file.
-         * @param path The path to extract he file to.
-         * @throws IOException If there is a problem with the zip extraction
-         */
-        @throws[IOException]
-        private def extractFile (zip: ZipInputStream, path: String): Unit =
-        {
-            using (new BufferedOutputStream (new FileOutputStream (path)))
-            {
-                bos =>
-                    val bytes = new Array[Byte](4096)
-                    var read = -1
-                    while ({ read = zip.read (bytes); read != -1 })
-                        bos.write (bytes, 0, read)
-            }
-        }
-    }
 
     def cassandra_port: String =
     {
@@ -172,14 +79,14 @@ object TimeSeriesStatsSuiteIT
 
         // create the configuration
         val configuration = new SparkConf (false)
-        configuration.setAppName ("TimeSeriesStatsSuiteIT")
-        configuration.setMaster ("local[*]")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "2g")
-        configuration.set ("spark.ui.port", "4041")
-        configuration.set ("spark.ui.showConsoleProgress", "false")
-        configuration.set ("spark.cassandra.connection.host", "localhost")
-        configuration.set ("spark.cassandra.connection.port", cassandra_port)
+            .setAppName ("TimeSeriesStatsSuiteIT")
+            .setMaster ("local[*]")
+            .set ("spark.driver.memory", "2g")
+            .set ("spark.executor.memory", "2g")
+            .set ("spark.ui.port", "4041")
+            .set ("spark.ui.showConsoleProgress", "false")
+            .set ("spark.cassandra.connection.host", "localhost")
+            .set ("spark.cassandra.connection.port", cassandra_port)
 
         val session = SparkSession.builder.config (configuration).getOrCreate
         session.sparkContext.setLogLevel ("WARN")
@@ -224,6 +131,6 @@ object TimeSeriesStatsSuiteIT
     @AfterClass def after ()
     {
         // erase the unpacked file
-        new File (s"$FILE_DEPOT$FILENAME0.csv").delete
+        val _ = new File (s"$FILE_DEPOT$FILENAME0.csv").delete
     }
 }

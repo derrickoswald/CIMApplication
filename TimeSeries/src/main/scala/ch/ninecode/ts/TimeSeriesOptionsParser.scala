@@ -279,7 +279,7 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
             opt[Map[String, Int]]("classes").valueName ("cls1=#,cls2=#")
                 .action ((x, c) => c.copy (classes = c.classes ++ x))
-                .text (s"meta class & count, one or more of ${TimeSeriesMeta (null, null).classes.mkString (COMMA)} with instance count [${default.classes.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
+                .text (s"meta class & count, one or more of ${TimeSeriesMeta.classes.mkString (COMMA)} with instance count [${default.classes.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
         )
 
     help ("help")

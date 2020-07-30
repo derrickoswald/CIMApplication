@@ -63,6 +63,7 @@ class DLTest
     }
 }
 
+@SuppressWarnings (Array ("org.wartremover.warts.Null"))
 object DLTest
 {
     val KEYSPACE = "cimapplication"
@@ -73,28 +74,23 @@ object DLTest
         println ("creating Spark session")
 
         // create the configuration
-        val configuration = Engine.createSparkConf ()
-        configuration.setAppName ("DLSuite")
-        configuration.setMaster ("spark://sandbox:7077")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "2g")
-        configuration.set ("spark.executor.cores", "1")
-        configuration.set ("spark.cores.max", "2")
-        configuration.set ("spark.ui.port", "4041")
-        configuration.set ("spark.ui.showConsoleProgress", "false")
-        configuration.set ("spark.cassandra.connection.host", "beach")
-        configuration.set ("spark.cassandra.connection.port", "9042")
         val s1 = jarForObject (ch.ninecode.ts.TimeSeriesOptions ())
         val s2 = jarForObject (com.datastax.spark.connector.SomeColumns ())
         val s3 = jarForObject (new org.apache.spark.mllib.stat.test.BinarySample (true, 1.0))
         val s4 = jarForObject (new com.intel.analytics.bigdl.utils.LayerException (null, null))
         val s5 = jarForObject (com.intel.analytics.bigdl.models.utils.DistriOptimizerPerfParam())
-        configuration.setJars (Array (
-            s1,
-            s2,
-            s3,
-            s4,
-            s5))
+        val configuration = Engine.createSparkConf ()
+            .setAppName ("DLSuite")
+            .setMaster ("spark://sandbox:7077")
+            .set ("spark.driver.memory", "2g")
+            .set ("spark.executor.memory", "2g")
+            .set ("spark.executor.cores", "1")
+            .set ("spark.cores.max", "2")
+            .set ("spark.ui.port", "4041")
+            .set ("spark.ui.showConsoleProgress", "false")
+            .set ("spark.cassandra.connection.host", "beach")
+            .set ("spark.cassandra.connection.port", "9042")
+            .setJars (Array (s1, s2, s3, s4, s5))
 
         session = SparkSession.builder.config (configuration).getOrCreate
         session.sparkContext.setLogLevel ("WARN")

@@ -66,16 +66,16 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         ("sat", 7))
     lazy val day_names: Seq[String] = for (d <- day_ordinals) yield d._1
 
-    val class_names: Seq[String] = TimeSeriesMeta (session, options).classes.toSeq
+    val class_names: Seq[String] = TimeSeriesMeta.classes.toSeq
 
-    def eraseModelFile (suffix: String = "")
+    def eraseModelFile (suffix: String = ""): Unit =
     {
         val hdfs_configuration = new Configuration ()
         hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
         hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
         val hdfs = FileSystem.get (URI.create (model_file_uri), hdfs_configuration)
         val directory = new Path (s"${options.model_file}$suffix")
-        hdfs.delete (directory, true)
+        val _ = hdfs.delete (directory, true)
     }
 
     def tick[Type_t: TypeTag, Type_period: TypeTag]: UserDefinedFunction = udf[Int, Timestamp, Int](
@@ -245,8 +245,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .setMaxBins (32)
             .setCacheNodeIds (true)
             .setCheckpointInterval (10)
-        if (-1L != options.seed)
-            regressor.setSeed (options.seed)
+            .setSeed (if (-1L != options.seed) options.seed else getClass.getName.hashCode.toLong)
 
         // straight forward training
         // val model = regressor.fit (train_df)
@@ -313,8 +312,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .setMaxBins (32)
             .setCacheNodeIds (true)
             .setCheckpointInterval (10)
-        if (-1L != options.seed)
-            regressor.setSeed (options.seed)
+            .setSeed (if (-1L != options.seed) options.seed else getClass.getName.hashCode.toLong)
 
         val evaluator = new RegressionEvaluator ()
             .setLabelCol ("value")
@@ -360,7 +358,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 
     def makeSingleMetaDecisionTreeRegressorModel (): Unit =
     {
-        for (cls <- TimeSeriesMeta (session, options).classes)
+        for (cls <- TimeSeriesMeta.classes)
         {
             // split the data into training and test sets (30% held out for testing)
             val raw = getSingleMetaRawData (cls)
@@ -385,8 +383,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
                 .setMaxBins (32)
                 .setCacheNodeIds (true)
                 .setCheckpointInterval (10)
-            if (-1L != options.seed)
-                regressor.setSeed (options.seed)
+                .setSeed (if (-1L != options.seed) options.seed else getClass.getName.hashCode.toLong)
 
             val evaluator = new RegressionEvaluator ()
                 .setLabelCol ("value")
@@ -630,7 +627,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
                 .select ("time")
                 .withColumn ("sum", lit (0.0))
 
-        for (cls <- TimeSeriesMeta (session, options).classes
+        for (cls <- TimeSeriesMeta.classes
              if types.contains (cls))
         {
             // load the model

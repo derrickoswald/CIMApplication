@@ -9,7 +9,6 @@ import org.apache.spark.sql.SparkSession
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.FixMethodOrder
-import org.junit.Test
 import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.jarForObject
@@ -53,6 +52,7 @@ class MetaTest
     }
 }
 
+@SuppressWarnings (Array ("org.wartremover.warts.Null"))
 object MetaTest
 {
     val KEYSPACE = "subsample"
@@ -63,20 +63,18 @@ object MetaTest
         println ("creating Spark session")
 
         // create the configuration
-        val configuration = new SparkConf (false)
-        configuration.setAppName ("MetaSuite")
-        configuration.setMaster ("spark://sandbox:7077")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "2g")
-        configuration.set ("spark.ui.port", "4041")
-        configuration.set ("spark.ui.showConsoleProgress", "false")
-        configuration.set ("spark.cassandra.connection.host", "beach")
-        configuration.set ("spark.cassandra.connection.port", "9042")
         val s1 = jarForObject (ch.ninecode.ts.TimeSeriesOptions ())
         val s2 = jarForObject (com.datastax.spark.connector.SomeColumns ())
-        configuration.setJars (Array (
-            s1,
-            s2))
+        val configuration = new SparkConf (false)
+            .setAppName ("MetaSuite")
+            .setMaster ("spark://sandbox:7077")
+            .set ("spark.driver.memory", "2g")
+            .set ("spark.executor.memory", "2g")
+            .set ("spark.ui.port", "4041")
+            .set ("spark.ui.showConsoleProgress", "false")
+            .set ("spark.cassandra.connection.host", "beach")
+            .set ("spark.cassandra.connection.port", "9042")
+            .setJars (Array (s1, s2))
 
         session = SparkSession.builder.config (configuration).getOrCreate
         session.sparkContext.setLogLevel ("WARN")
