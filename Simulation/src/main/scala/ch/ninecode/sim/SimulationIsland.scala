@@ -52,8 +52,11 @@ extends Island (spark, storage_level)
         }
     }
 
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
-    def getOne (terminals: Iterable[TerminalPlus]): TerminalPlus = terminals.head
+    def getOne (terminals: Iterable[TerminalPlus]): TerminalPlus =
+    {
+        val sorted = terminals.toArray.sortBy (_.element.id)
+        sorted(0)
+    }
 
     override def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
     {
