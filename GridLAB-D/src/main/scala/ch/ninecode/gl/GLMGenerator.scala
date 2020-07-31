@@ -240,6 +240,7 @@ class GLMGenerator
      * @param edges The edges in the model.
      * @return The configuration elements as strings.
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
         val lines = edges.flatMap (_ match { case line: GLMLineEdge => Some (line); case _ => None })
@@ -254,6 +255,7 @@ class GLMGenerator
      * @param transformers The transformers in the model.
      * @return The configuration elements as strings.
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
         val configurations = transformers.groupBy (_.configurationName).values

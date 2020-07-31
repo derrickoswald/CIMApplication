@@ -4,7 +4,7 @@ import java.io.StringWriter
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import java.util
-import java.util.HashMap
+
 import javax.json.Json
 import javax.json.JsonWriterFactory
 import javax.json.stream.JsonGenerator
@@ -40,10 +40,15 @@ import ch.ninecode.model.TopologicalNode
 import ch.ninecode.model.UserAttribute
 import ch.ninecode.model.WireInfo
 
-class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), topological_nodes: Boolean) extends CIMRDD with Serializable
+class SmartMeter (
+    session: SparkSession,
+    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
+    topological_nodes: Boolean)
+extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val level: StorageLevel = storage_level
 
     /**
      * Get the edge length
@@ -53,16 +58,11 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
      */
     def span (element: Element): Double =
     {
-        val clazz = element.getClass.getName
-        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        cls match
+        element match
         {
-            case "ACLineSegment" =>
-                element.asInstanceOf[ACLineSegment].Conductor.len
-            case "Conductor" =>
-                element.asInstanceOf[Conductor].len
-            case _ =>
-                0.0
+            case line: ACLineSegment => line.Conductor.len
+            case cond: Conductor => cond.len
+            case _ => 0.0
         }
     }
 
@@ -90,65 +90,65 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         var c = e
         while ((null != c) && !c.getClass.getName.endsWith (".ConductingEquipment"))
             c = c.sup
-        if (null != c)
+        c match
         {
-            // sort terminals by sequence number (and hence the primary is index 0)
-            val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
-            // get the equipment
-            val equipment = c.asInstanceOf[ConductingEquipment]
-            // make a list of voltages
-            val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
-            val volts =
-                pte_op match
-                {
-                    case Some (x: Iterable[PowerTransformerEnd]) =>
-                        // sort ends by end number
-                        // ToDo: handle the case where terminal sequence and end sequence aren't the same
-                        val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
-                        tends.map (e => 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
-                    case None =>
-                        Array[Double](volt, volt)
-                }
-            // Note: we eliminate 230V edges because transformer information doesn't exist and
-            // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
-            if (!volts.contains (230.0))
-            // make a pre-edge for each pair of terminals
-                ret = terminals.length match
-                {
-                    case 1 =>
-                        ret :+
-                            PreEdge (
-                                terminals (0).ACDCTerminal.id,
-                                node_name (terminals (0)),
-                                volts (0),
-                                "",
-                                "",
-                                volts (0),
-                                terminals (0).ConductingEquipment,
-                                ratedCurrent,
-                                equipment,
-                                e,
-                                span (e))
-                    case _ =>
-                        for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                        {
-                            ret = ret :+ PreEdge (
-                                terminals (0).ACDCTerminal.id,
-                                node_name (terminals (0)),
-                                volts (0),
-                                terminals (i).ACDCTerminal.id,
-                                node_name (terminals (i)),
-                                volts (i),
-                                terminals (0).ConductingEquipment,
-                                ratedCurrent,
-                                equipment,
-                                e,
-                                span (e))
-                        }
-                        ret
-                }
+            case equipment: ConductingEquipment =>
+                // sort terminals by sequence number (and hence the primary is index 0)
+                val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
+                // make a list of voltages
+                val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
+                val volts =
+                    pte_op match
+                    {
+                        case Some (x: Iterable[PowerTransformerEnd]) =>
+                            // sort ends by end number
+                            // ToDo: handle the case where terminal sequence and end sequence aren't the same
+                            val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+                            tends.map (e => 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
+                        case None =>
+                            Array[Double](volt, volt)
+                    }
+                // Note: we eliminate 230V edges because transformer information doesn't exist and
+                // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
+                if (!volts.contains (230.0))
+                // make a pre-edge for each pair of terminals
+                    ret = terminals.length match
+                    {
+                        case 1 =>
+                            ret :+
+                                PreEdge (
+                                    terminals (0).ACDCTerminal.id,
+                                    node_name (terminals (0)),
+                                    volts (0),
+                                    "",
+                                    "",
+                                    volts (0),
+                                    terminals (0).ConductingEquipment,
+                                    ratedCurrent,
+                                    equipment,
+                                    e,
+                                    span (e))
+                        case _ =>
+                            for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                            {
+                                ret = ret :+ PreEdge (
+                                    terminals (0).ACDCTerminal.id,
+                                    node_name (terminals (0)),
+                                    volts (0),
+                                    terminals (i).ACDCTerminal.id,
+                                    node_name (terminals (i)),
+                                    volts (i),
+                                    terminals (0).ConductingEquipment,
+                                    ratedCurrent,
+                                    equipment,
+                                    e,
+                                    span (e))
+                            }
+                            ret
+                    }
+            case _ =>
+                // shouldn't happen, terminals always reference ConductingEquipment, right?
         }
-        //else // shouldn't happen, terminals always reference ConductingEquipment, right?
 
         ret
     }
@@ -203,8 +203,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
         val cables = keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent))
 
-        cables.persist (storage_level)
-        if (session.sparkContext.getCheckpointDir.isDefined) cables.checkpoint ()
+        put (cables, "cables", false)
 
         cables
     }
@@ -213,10 +212,10 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
     def prepare: Graph[PreNode, PreEdge] =
     {
         // get a map of voltages
-        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get[BaseVoltage].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals
-        val terminals = get ("Terminal").asInstanceOf[RDD[Terminal]].filter (null != _.ConnectivityNode)
+        val terminals = get[Terminal].filter (null != _.ConnectivityNode)
 
         // get the terminals keyed by equipment
         val terms = terminals.groupBy (_.ConductingEquipment)
@@ -239,7 +238,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         })
 
         // get the transformer ends keyed by transformer
-        val ends = get ("PowerTransformerEnd").asInstanceOf[RDD[PowerTransformerEnd]].groupBy (_.PowerTransformer)
+        val ends = get[PowerTransformerEnd].groupBy (_.PowerTransformer)
 
         // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
         val elementsplus = joined_elements.leftOuterJoin (ends)
@@ -257,7 +256,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         val nodes = if (topological_nodes)
         {
             // get the topological nodes RDD
-            val tnodes = get ("TopologicalNode").asInstanceOf[RDD[TopologicalNode]]
+            val tnodes = get[TopologicalNode]
 
             // map the topological nodes to prenodes with voltages
             tnodes.keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
@@ -265,7 +264,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         else
         {
             // get the connectivity nodes RDD
-            val connectivitynodes = get ("ConnectivityNode").asInstanceOf[RDD[ConnectivityNode]]
+            val connectivitynodes = get[ConnectivityNode]
 
             // map the connectivity nodes to prenodes with voltages
             connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (connectivity_node_operator).distinct
@@ -274,14 +273,8 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
         // persist edges and nodes to avoid recompute
         val xedges = real_edges.map (make_graph_edges)
         val xnodes = nodes.map (make_graph_vertices)
-        xedges.name = "xedges"
-        xedges.persist (storage_level)
-        xnodes.name = "xnodes"
-        xnodes.persist (storage_level)
-        if (session.sparkContext.getCheckpointDir.isDefined)
-        {
-            xedges.checkpoint (); xnodes.checkpoint ()
-        }
+        put (xedges, "xedges", false)
+        put (xnodes, "xnodes", false)
 
         // construct the initial graph from the real edges and nodes
         Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0), storage_level, storage_level)
@@ -291,7 +284,7 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
     lazy val FACTORY_INSTANCE: JsonWriterFactory =
     {
         val properties: util.Map[String, AnyRef] = new util.HashMap[String, AnyRef](1)
-        properties.put (JsonGenerator.PRETTY_PRINTING, "true")
+        val _ = properties.put (JsonGenerator.PRETTY_PRINTING, "true")
         Json.createWriterFactory (properties)
     }
 
@@ -299,16 +292,16 @@ class SmartMeter (session: SparkSession, storage_level: StorageLevel = StorageLe
     {
         val string = new StringWriter
         val writer = FACTORY_INSTANCE.createWriter (string)
-        val data = Json.createObjectBuilder
-        data.add ("name", node.name)
         val ao = Json.createArrayBuilder ()
         node.ao_id.foreach (id => ao.add (id))
-        data.add ("ao_id", ao)
-        data.add ("voltage", node.voltage)
-        data.add ("neighbor", node.neighbor)
-        data.add ("parent", node.parent)
-        data.add ("total_distance", node.total_distance)
-        data.add ("nearest_distance", node.nearest_distance)
+        val data = Json.createObjectBuilder
+            .add ("name", node.name)
+            .add ("ao_id", ao)
+            .add ("voltage", node.voltage)
+            .add ("neighbor", node.neighbor)
+            .add ("parent", node.parent)
+            .add ("total_distance", node.total_distance)
+            .add ("nearest_distance", node.nearest_distance)
         writer.write (data.build)
         writer.close ()
         string.toString
@@ -408,7 +401,7 @@ object SmartMeter
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = "/tmp/" + Random.nextInt (99999999) + ".jar"
+            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
             writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
             writer.close ()
@@ -435,22 +428,22 @@ object SmartMeter
         val start = System.nanoTime ()
 
         // create the configuration
-        val configuration = new SparkConf (false)
-        configuration.setAppName ("SmartMeter")
-        configuration.setMaster ("spark://sandbox:7077")
-        configuration.setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6/")
-        configuration.set ("spark.driver.memory", "2g")
-        configuration.set ("spark.executor.memory", "4g")
-        configuration.set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
         // get the necessary jar files to send to the cluster
         val s1 = jarForObject (new DefaultSource ())
         val s2 = jarForObject (this)
-        configuration.setJars (Array (s1, s2))
+        val configuration = new SparkConf (false)
+            .setAppName ("SmartMeter")
+            .setMaster ("spark://sandbox:7077")
+            .setSparkHome ("/home/derrick/spark-1.6.0-bin-hadoop2.6/")
+            .set ("spark.driver.memory", "2g")
+            .set ("spark.executor.memory", "4g")
+            .set ("spark.executor.extraJavaOptions", "-XX:+UseCompressedOops -XX:+PrintGCDetails -XX:+PrintGCTimeStamps")
+            .setJars (Array (s1, s2))
 
-        // register CIMReader classes
-        configuration.registerKryoClasses (CIMClasses.list)
-        // use the custom registrator
-        configuration.set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
+            // register CIMReader classes
+            .registerKryoClasses (CIMClasses.list)
+            // use the custom registrator
+            .set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
 
         // make a Spark session
         val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
@@ -459,10 +452,10 @@ object SmartMeter
         val setup = System.nanoTime ()
 
         val files = filename.split (",")
-        val options = new HashMap[String, String]().asInstanceOf[java.util.Map[String, String]]
-        options.put ("path", filename)
-        options.put ("StorageLevel", "MEMORY_AND_DISK_SER")
-        options.put ("ch.ninecode.cim.do_topo_islands", "true")
+        val options = Map[String, String](
+            "path" -> filename,
+            "StorageLevel" -> "MEMORY_AND_DISK_SER",
+            "ch.ninecode.cim.do_topo_islands" -> "true")
         val elements = session.sqlContext.read.format ("ch.ninecode.cim").options (options).load (files: _*)
         val count = elements.count
 
@@ -476,10 +469,10 @@ object SmartMeter
 
         println (result)
 
-        println ("" + count + " elements")
-        println ("setup : " + (setup - start) / 1e9 + " seconds")
-        println ("read : " + (read - setup) / 1e9 + " seconds")
-        println ("graph: " + (graph - read) / 1e9 + " seconds")
+        println (s"$count elements")
+        println (s"setup : ${(setup - start) / 1e9} seconds")
+        println (s"read : ${(read - setup) / 1e9} seconds")
+        println (s"graph: ${(graph - read) / 1e9} seconds")
         println ()
     }
 }

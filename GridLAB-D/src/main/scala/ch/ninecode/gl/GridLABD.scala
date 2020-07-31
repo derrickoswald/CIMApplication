@@ -183,7 +183,7 @@ class GridLABD
                 if (cable.r >= cable_impedance_limit) // ToDo: use PSRType_Bogus
                     "invalid element (%s r=%s > limit=%s)".format (cable.id, cable.r, cable_impedance_limit)
                 else
-                    null
+                    ""
             case _: PowerTransformer =>
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
                 if (num_terminals > 2)
@@ -193,9 +193,9 @@ class GridLABD
                     if (v1 == v2)
                         "voltage (%sV) regulator edge %s".format (v1, element.id)
                     else
-                        null
+                        ""
             case _ =>
-                null
+                ""
         }
     }
 
@@ -211,65 +211,65 @@ class GridLABD
         var c = e
         while ((null != c) && !c.getClass.getName.endsWith (".ConductingEquipment"))
             c = c.sup
-        if (null != c)
+        c match
         {
-            // get the equipment
-            val equipment = c.asInstanceOf[ConductingEquipment]
-            // sort terminals by sequence number (and hence the primary is index 0)
-            val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
-            // make a list of voltages
-            val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
-            val volts =
-                pte_op match
-                {
-                    case Some (x: Iterable[PowerTransformerEnd]) =>
-                        // sort ends by end number
-                        // ToDo: handle the case where terminal sequence and end sequence aren't the same
-                        val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
-                        tends.map (e => 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
-                    case None =>
-                        Array[Double](volt, volt)
-                }
-            // Note: we eliminate 230V edges because transformer information doesn't exist and
-            // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
-            if (!volts.contains (230.0))
-                // make a pre-edge for each pair of terminals
-                ret = terminals.length match
-                {
-                    case 1 =>
-                        ret :+
-                            PreEdge (
-                                terminals (0).id,
-                                node_name (terminals (0)),
-                                volts (0),
-                                "",
-                                "",
-                                volts (0),
-                                terminals (0).ConductingEquipment,
-                                connected = true,
-                                null,
-                                ratedCurrent,
-                                e)
-                    case _ =>
-                        for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                        {
-                            ret = ret :+ PreEdge (
-                                terminals (0).id,
-                                node_name (terminals (0)),
-                                volts (0),
-                                terminals (i).id,
-                                node_name (terminals (i)),
-                                volts (i),
-                                terminals (0).ConductingEquipment,
-                                connected (e, volts (0), volts (i)),
-                                hasIssues (e, terminals.length, volts (0), volts (i)),
-                                ratedCurrent,
-                                e)
-                        }
-                        ret
-                }
+            case equipment: ConductingEquipment =>
+                // sort terminals by sequence number (and hence the primary is index 0)
+                val terminals = t_it.toArray.sortWith (_.ACDCTerminal.sequenceNumber < _.ACDCTerminal.sequenceNumber)
+                // make a list of voltages
+                val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
+                val volts =
+                    pte_op match
+                    {
+                        case Some (x: Iterable[PowerTransformerEnd]) =>
+                            // sort ends by end number
+                            // ToDo: handle the case where terminal sequence and end sequence aren't the same
+                            val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+                            tends.map (e => 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
+                        case None =>
+                            Array[Double](volt, volt)
+                    }
+                // Note: we eliminate 230V edges because transformer information doesn't exist and
+                // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
+                if (!volts.contains (230.0))
+                    // make a pre-edge for each pair of terminals
+                    ret = terminals.length match
+                    {
+                        case 1 =>
+                            ret :+
+                                PreEdge (
+                                    terminals (0).id,
+                                    node_name (terminals (0)),
+                                    volts (0),
+                                    "",
+                                    "",
+                                    volts (0),
+                                    terminals (0).ConductingEquipment,
+                                    connected = true,
+                                    "",
+                                    ratedCurrent,
+                                    e)
+                        case _ =>
+                            for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                            {
+                                ret = ret :+ PreEdge (
+                                    terminals (0).id,
+                                    node_name (terminals (0)),
+                                    volts (0),
+                                    terminals (i).id,
+                                    node_name (terminals (i)),
+                                    volts (i),
+                                    terminals (0).ConductingEquipment,
+                                    connected (e, volts (0), volts (i)),
+                                    hasIssues (e, terminals.length, volts (0), volts (i)),
+                                    ratedCurrent,
+                                    e)
+                            }
+                            ret
+                    }
+            case _ =>
+                // shouldn't happen, terminals always reference ConductingEquipment, right?
         }
-        //else // shouldn't happen, terminals always reference ConductingEquipment, right?
 
         ret
     }
@@ -361,15 +361,17 @@ class GridLABD
             .map (topological_node_operator)
             .distinct
 
+        @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
         def worst (x: (VertexId, Iterable[PreNode])): (VertexId, PreNode) =
         {
-            (x._1,
+            val (id, prenodes) = x
+            (id,
                 {
-                    val m = x._2.filter (null != _.problem)
-                    if (m.nonEmpty)
-                        m.head
-                    else
-                        x._2.head
+                    prenodes.find ("" != _.problem) match
+                    {
+                        case Some (node) => node
+                        case None => prenodes.head
+                    }
                 }
             )
         }
@@ -397,15 +399,15 @@ class GridLABD
     {
         eraseInputFile (generator.directory)
         writeInputFile (generator.directory, generator.name + ".glm", generator.make_glm ().getBytes (StandardCharsets.UTF_8))
-        writeInputFile (generator.directory, "input_data/dummy", null) // mkdir
-        writeInputFile (generator.directory, "output_data/dummy", null) // mkdir
+        createInputFileDirectory (generator.directory, "input_data/dummy")
+        createInputFileDirectory (generator.directory, "output_data/dummy")
     }
 
     def check (input: String): Option[GridlabFailure] =
     {
         val criticalErrors = List ("FATAL", "ERROR", "FAIL", "command not found", "Cannot fork", "pthread_create")
         val allLines = input.split ('|').toList
-        val trafoID = allLines.headOption.orNull (null)
+        val trafoID = allLines.headOption.getOrElse ("")
         val criticalLines = allLines.filter (line => criticalErrors.exists (line.contains (_)))
         if (criticalLines.nonEmpty)
         {
@@ -561,7 +563,7 @@ class GridLABD
             var element = ""
             val content = f.split ("\n").filter (s => s.startsWith ("# file") || ((s.length > 0) && s.charAt (0).isDigit))
 
-            def makeResult (c: String): ThreePhaseComplexDataElement =
+            def makeResult (c: String): Option[ThreePhaseComplexDataElement] =
             {
                 if (c.startsWith ("# file"))
                 {
@@ -570,7 +572,7 @@ class GridLABD
                     val (e, u) = filenameparser (filename)
                     element = e
                     units = u
-                    null
+                    None
                 }
                 else
                 {
@@ -579,34 +581,34 @@ class GridLABD
                         if (c_arr.length > 3)
                         {
                             val fd = FlowDirection (c_arr (3))
-                            ThreePhaseComplexDataElement (element, toTimeStamp (c_arr (0)), fd.a * Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (0.0), Complex (0.0), units)
+                            Some (ThreePhaseComplexDataElement (element, toTimeStamp (c_arr (0)), fd.a * Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (0.0), Complex (0.0), units))
                         }
                         else
                             if (c_arr.length == 3)
-                                ThreePhaseComplexDataElement (element, toTimeStamp (c_arr (0)), Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (0.0), Complex (0.0), units)
+                                Some (ThreePhaseComplexDataElement (element, toTimeStamp (c_arr (0)), Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (0.0), Complex (0.0), units))
                             else
                             {
                                 log.error ("""%s recorder text "%s" cannot be interpreted as one phase complex %s""".format (element, c, units))
-                                null
+                                None
                             }
                     else
                         if (c_arr.length > 7)
                         {
                             val fd = FlowDirection (c_arr (7))
-                            ThreePhaseComplexDataElement (element, toTimeStamp (c_arr (0)), fd.a * Complex (c_arr (1).toDouble, c_arr (2).toDouble), fd.b * Complex (c_arr (3).toDouble, c_arr (4).toDouble), fd.c * Complex (c_arr (5).toDouble, c_arr (6).toDouble), units)
+                            Some (ThreePhaseComplexDataElement (element, toTimeStamp (c_arr (0)), fd.a * Complex (c_arr (1).toDouble, c_arr (2).toDouble), fd.b * Complex (c_arr (3).toDouble, c_arr (4).toDouble), fd.c * Complex (c_arr (5).toDouble, c_arr (6).toDouble), units))
                         }
                         else
                             if (c_arr.length == 7)
-                                ThreePhaseComplexDataElement (element, toTimeStamp (c_arr (0)), Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (c_arr (3).toDouble, c_arr (4).toDouble), Complex (c_arr (5).toDouble, c_arr (6).toDouble), units)
+                                Some (ThreePhaseComplexDataElement (element, toTimeStamp (c_arr (0)), Complex (c_arr (1).toDouble, c_arr (2).toDouble), Complex (c_arr (3).toDouble, c_arr (4).toDouble), Complex (c_arr (5).toDouble, c_arr (6).toDouble), units))
                             else
                             {
                                 log.error ("""%s recorder text "%s" cannot be interpreted as three phase complex %s""".format (element, c, units))
-                                null
+                                None
                             }
                 }
             }
 
-            content.map (makeResult).filter (_ != null)
+            content.flatMap (makeResult)
         }
 
         files.map (extract_trafo).flatMapValues (read)
@@ -628,6 +630,14 @@ class GridLABD
         )
     }
 
+    def getHDFS: FileSystem =
+    {
+        val hdfs_configuration = new Configuration ()
+        hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+        hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+        FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
+    }
+
     /**
      * Make directories with permissions.
      *
@@ -645,7 +655,22 @@ class GridLABD
         }
     }
 
-    def writeInputFile (directory: String, path: String, bytes: Array[Byte], permissions: String = null): Unit =
+    def createInputFileDirectory (directory: String, path: String): Unit =
+    {
+        if ((workdir_scheme == "file") || (workdir_scheme == ""))
+        {
+            // ToDo: check for IOException
+            val file = Paths.get (workdir_path + directory + "/" + path)
+            val _ = Files.createDirectories (file.getParent)
+        }
+        else
+        {
+            val file = new Path (s"$workdir_slash$directory/$path")
+            mkdirs (getHDFS, file)
+        }
+    }
+
+    def writeInputFile (directory: String, path: String, bytes: Array[Byte], permissions: Option[String] = None): Unit =
     {
         if ((workdir_scheme == "file") || (workdir_scheme == ""))
         {
@@ -655,19 +680,17 @@ class GridLABD
             if (null != bytes)
             {
                 val _ = Files.write (file, bytes)
-                if (null != permissions)
+                permissions match
                 {
-                    val _ = Files.setPosixFilePermissions (file, parsePermissions (permissions).asJava)
+                    case Some (string) =>
+                        val _ = Files.setPosixFilePermissions (file, parsePermissions (string).asJava)
+                    case None =>
                 }
             }
         }
         else
         {
-            val hdfs_configuration = new Configuration ()
-            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
-
+            val hdfs = getHDFS
             val file = new Path (s"$workdir_slash$directory/$path")
             mkdirs (hdfs, file)
 
@@ -676,8 +699,12 @@ class GridLABD
                 val out = hdfs.create (file)
                 out.write (bytes)
                 out.close ()
-                if (null != permissions)
-                    hdfs.setPermission (file, new FsPermission (permissions))
+                permissions match
+                {
+                    case Some (string) =>
+                        hdfs.setPermission (file, new FsPermission (string))
+                    case None =>
+                }
             }
         }
     }
@@ -690,13 +717,8 @@ class GridLABD
         }
         else
         {
-            val hdfs_configuration = new Configuration ()
-            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
-
             val directory = new Path (workdir_slash + equipment)
-            val _ = hdfs.delete (directory, true)
+            val _ = getHDFS.delete (directory, true)
         }
     }
 
@@ -713,7 +735,7 @@ class GridLABD
                 eraseInputFile (equipment + "/output_data/")
                 eraseInputFile (equipment + "/output.txt")
                 eraseInputFile (equipment + "/" + equipment + ".out")
-                writeInputFile (equipment, "/output_data/dummy", null) // mkdir
+                createInputFileDirectory (equipment, "/output_data/dummy")
             }
         }
     }

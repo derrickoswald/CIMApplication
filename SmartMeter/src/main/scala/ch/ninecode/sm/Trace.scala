@@ -15,6 +15,7 @@ import ch.ninecode.model.Fuse
 import ch.ninecode.model.GroundDisconnector
 import ch.ninecode.model.Jumper
 import ch.ninecode.model.LoadBreakSwitch
+import ch.ninecode.model.PowerTransformer
 import ch.ninecode.model.ProtectedSwitch
 import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser
@@ -66,42 +67,52 @@ case class FinalNodeData
  */
 class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
 {
+    import Trace._
+
     def vertexProgram (id: VertexId, v: NodeData, message: NodeData): NodeData =
     {
         if (v.total_distance > message.total_distance) message
         else v
     }
 
+    /**
+     * Method to determine if a switch is closed (both terminals are the same topological node).
+     *
+     * If the switch has the <code>open</code> attribute set, use that.
+     * Otherwise if it has the <code>normalOpen</code> attribute set, use that.
+     * Otherwise assume it is closed.
+     *
+     * @param switch The switch object to test.
+     * @return <code>true</code> if the switch is closed, <code>false</code> otherwise.
+     */
+    def switchClosed (switch: Switch): Boolean =
+    {
+        if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
+            !switch.open // open valid
+        else
+            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+                !switch.normalOpen
+            else
+                true
+    }
+
     // function to see if the Pregel algorithm should continue tracing or not
     def shouldContinue (element: Element): Boolean =
     {
-        val clazz = element.getClass.getName
-        val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
-        cls match
+        element match
         {
-            case "Switch" =>
-                !element.asInstanceOf[Switch].normalOpen
-            case "Cut" =>
-                !element.asInstanceOf[Cut].Switch.normalOpen
-            case "Disconnector" =>
-                !element.asInstanceOf[Disconnector].Switch.normalOpen
-            case "Fuse" =>
-                !element.asInstanceOf[Fuse].Switch.normalOpen
-            case "GroundDisconnector" =>
-                !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
-            case "Jumper" =>
-                !element.asInstanceOf[Jumper].Switch.normalOpen
-            case "ProtectedSwitch" =>
-                !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
-            case "Sectionaliser" =>
-                !element.asInstanceOf[Sectionaliser].Switch.normalOpen
-            case "Breaker" =>
-                !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
-            case "LoadBreakSwitch" =>
-                !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-            case "Recloser" =>
-                !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
-            case "PowerTransformer" =>
+            case switch: Switch => switchClosed (switch)
+            case cut: Cut => switchClosed (cut.Switch)
+            case disconnector: Disconnector => switchClosed (disconnector.Switch)
+            case fuse: Fuse => switchClosed (fuse.Switch)
+            case gd: GroundDisconnector => switchClosed (gd.Switch)
+            case jumper: Jumper => switchClosed (jumper.Switch)
+            case ps: ProtectedSwitch => switchClosed (ps.Switch)
+            case sectionaliser: Sectionaliser => switchClosed (sectionaliser.Switch)
+            case breaker: Breaker => switchClosed (breaker.ProtectedSwitch.Switch)
+            case lbs: LoadBreakSwitch => switchClosed (lbs.ProtectedSwitch.Switch)
+            case recloser: Recloser => switchClosed (recloser.ProtectedSwitch.Switch)
+            case _: PowerTransformer =>
                 false
             case _ =>
                 true
@@ -112,10 +123,11 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
     {
         var ret: Iterator[(VertexId, NodeData)] = Iterator.empty
 
-        if (triplet.dstAttr != null && triplet.dstAttr.id_seq != null && starting_id.contains (triplet.dstId) && triplet.dstAttr.total_distance != 0.0)
+        if (triplet.dstAttr != null && triplet.dstAttr.id_seq != "" && starting_id.contains (triplet.dstId) && triplet.dstAttr.total_distance != 0.0)
         {
             ret = Iterator ((triplet.dstId, NodeData (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, "", "", 0.0, 0.0)))
-        } else
+        }
+        else
         {
 
             if (shouldContinue (triplet.attr.element))
@@ -173,7 +185,7 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
         val tree = initial.mapVertices ((_, vertex: PreNode) => NodeData (vertex.id_seq, vertex.voltage, "", "", Double.PositiveInfinity, Double.PositiveInfinity))
 
         // perform the trace, marking all traced nodes with the distance from the starting nodes
-        val default_message = NodeData (null, 0, "", "", Double.PositiveInfinity, Double.PositiveInfinity)
+        val default_message = NodeData ("", 0, "", "", Double.PositiveInfinity, Double.PositiveInfinity)
         val tracedGraph = tree.pregel[NodeData](default_message, 10000, EdgeDirection.Either)(
             vertexProgram,
             sendMessage (starting_id),
@@ -183,4 +195,17 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
         tracedGraph
     }
 
+}
+
+object Trace
+{
+    /**
+     * Index of normalOpen field in Switch bitmask.
+     */
+    val normalOpenMask: Int = Switch.fields.indexOf ("normalOpen")
+
+    /**
+     * Index of open field in Switch bitmask.
+     */
+    val openMask: Int = Switch.fields.indexOf ("open")
 }

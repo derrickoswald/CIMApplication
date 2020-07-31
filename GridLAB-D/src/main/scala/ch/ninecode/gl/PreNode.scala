@@ -13,5 +13,5 @@ case class PreNode
 (
     override val id: String,
     override val nominal_voltage: Double,
-    problem: String = null)
+    problem: String = "")
 extends LoadFlowNode (id, nominal_voltage)

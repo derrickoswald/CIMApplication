@@ -63,8 +63,7 @@ class LowVoltageGLMGenerator
                                 null,
                                 null,
                                 0.0,
-                                Double.PositiveInfinity,
-                                null)).toSeq)
+                                Double.PositiveInfinity)).toSeq)
     }
 
     override def emit_node (node: GLMNode): String =

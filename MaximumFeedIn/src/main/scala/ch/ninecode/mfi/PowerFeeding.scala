@@ -96,7 +96,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
             s"low voltage (${to.nominal_voltage}V:${from.nominal_voltage}V) subtransmission edge ${edge.id}"
                 else if (from.hasIssues) from.problem
             else if (to.hasIssues) to.problem
-            else if (null != edge.problem) edge.problem
+            else if ("" != edge.problem) edge.problem
             else from.problem
         val message = PowerFeedingNode(to.id, from.id, null, to.nominal_voltage, from.source_obj, feeder, sum_z, min_ir, problem)
         if (log.isDebugEnabled)
@@ -150,7 +150,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val graph = pregraph.outerJoinVertices (starting_nodes.keyBy (_.nsPin))(starting_map).persist (storage_level)
 
         // run Pregel
-        val default_message = PowerFeedingNode (null, null, null, 0, null.asInstanceOf[StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
+        val default_message = PowerFeedingNode (null, null, null, 0, null.asInstanceOf[StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity)
         graph.pregel[PowerFeedingNode](default_message, 10000, EdgeDirection.Either)(
             vertexProgram,
             sendMessage,
@@ -158,11 +158,10 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         )
     }
 
-    def calc_max_feeding_power (options: EinspeiseleistungOptions)(args: (PowerFeedingNode, Option[(String, String)])): MaxPowerFeedingNodeEEA =
+    def calc_max_feeding_power (options: EinspeiseleistungOptions)(a: (PowerFeedingNode, Option[(String, String)])): MaxPowerFeedingNodeEEA =
     {
-        val node: PowerFeedingNode = args._1
-        val mrid = args._2.map (_._1).orNull
-        val psrtype = args._2.map (_._2).orNull
+        val (node, equipment) = a
+        val (mrid, psrtype) = equipment.getOrElse ((null, null))
         val z = node.sum_z
         val v = node.nominal_voltage
         val min_ir = node.min_ir
@@ -191,7 +190,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val p_max_i = math.sqrt (3) * min_ir * (v + z_summe.modulus * min_ir)
 
         val (p_max, reason, details) =
-            if (null != node.problem)
+            if ("" != node.problem)
             {
                 // ToDo: this sum is not quite correct, and only works for identical edges
                 // Edges should be merged to get the parallel impedance before calculating the voltage drop
