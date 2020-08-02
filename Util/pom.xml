@@ -18,6 +18,13 @@
     <dependencies>
 
         <dependency>
+            <groupId>ch.ninecode.cim</groupId>
+            <artifactId>CIMReader</artifactId>
+            <version>${version.dependency.cimreader}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.datastax.spark</groupId>
             <artifactId>spark-cassandra-connector_${version.dependency.scala}</artifactId>
             <version>${version.dependency.cassandra_spark}</version>
@@ -28,6 +35,13 @@
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
             <version>${version.dependency.joda-time}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.scopt</groupId>
+            <artifactId>scopt_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.scopt}</version>
             <scope>compile</scope>
         </dependency>
 
@@ -84,6 +98,12 @@
                 <filtering>true</filtering>
             </resource>
         </resources>
+        <testResources>
+            <testResource>
+                <directory>${basedir}/src/test/resources</directory>
+                <filtering>true</filtering>
+            </testResource>
+        </testResources>
         <plugins>
             <!-- disable surefire -->
             <plugin>
@@ -103,7 +123,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>ComplexSuite.txt</filereports>
-                    <suites>ch.ninecode.util.ComplexSuite</suites>
+                    <suites>ch.ninecode.util.ComplexSuite,ch.ninecode.util.OptionsSuite</suites>
                 </configuration>
                 <executions>
                     <execution>
