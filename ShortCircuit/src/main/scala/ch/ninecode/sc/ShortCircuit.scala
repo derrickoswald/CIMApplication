@@ -1044,36 +1044,40 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             val results = remedial (simulations, options.low_temperature, isMax = true).persist (storage_level)
             log.info ("""ran %s experiments""".format (results.count ()))
             // map to the type returned by the trace, use the existing value where possible
-            val original_keyed = original_results.keyBy (x => x.tx + "_" + x.node)
+            val original_keyed = original_results.keyBy (x => s"${x.tx}_${x.node}")
             // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
-            val new_nodes = results.keyBy (x => x._1 + "_" + x._2).leftOuterJoin (original_keyed).values.map (
+            results.keyBy (x => s"${x._1}_${x._2}").fullOuterJoin (original_keyed).values.map (
                 x =>
                 {
-                    val v = x._1._4
-                    val branches = x._1._6
-                    val ztrafo = x._1._5
-                    val z = if (null == branches) ztrafo else branches.z (ztrafo)
-                    x._2 match
+                    val (computed, existing) = x
+                    computed match
                     {
-                        case Some (original) =>
-                            (
-                                ScNode (original.node, v, original.tx, original.tx_impedance, original.prev, z, branches, List (ScError (fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
-                                original.terminal, original.equipment, original.container
-                            )
+                        case Some ((transformer, node, equipment, v, ztrafo, branches)) =>
+                            existing match
+                            {
+                                case Some (original) => // node with existing trace result
+                                    val z = if (null == branches) ztrafo else branches.z (ztrafo)
+                                    calculate_short_circuit ((
+                                        ScNode (original.node, v, original.tx, original.tx_impedance, original.prev, z, branches, List (ScError (fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
+                                        original.terminal, original.equipment, original.container
+                                    ))
+                                case None => // node without existing trace result
+                                    calculate_short_circuit ((
+                                        ScNode (node, v, transformer, Complex (0), null, ztrafo, null, List (ScError (fatal = false, invalid = false, "computed by load-flow"))),
+                                        1, equipment, ""
+                                    ))
+                            }
                         case None =>
-                            (
-                                ScNode (x._1._2, v, x._1._1, Complex (0), null, ztrafo, null, List (ScError (fatal = false, invalid = false, "computed by load-flow"))),
-                                1, x._1._3, ""
-                            )
+                            existing match
+                            {
+                                case Some (original) =>
+                                    original // only existing trace result
+                                case None =>
+                                    throw new IllegalArgumentException ("full outer join can't possibly have neither left nor right")
+                            }
                     }
                 }
-            )
-            // calculate new short circuit result records
-            val replacements = new_nodes.map (calculate_short_circuit).persist (storage_level)
-            // replace the bad elements
-            val bad_transformers = problem_transformers.flatMap (_.transformers.map (_.transformer_name)).collect.toSet
-            val some = original_results.filter (x => !bad_transformers.contains (x.tx))
-            some.union (replacements)
+            ).persist (storage_level)
         }
         else
         {
@@ -1119,7 +1123,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val starting_nodes = transformers.flatMap (trafo_mapping)
         log.info ("%s starting transformers".format (starting_nodes.count))
 
-        var results = calculateTraceResults (starting_nodes)
+        val trace_results = calculateTraceResults (starting_nodes)
 
         // find transformers where there are non-radial networks and fix them
         def need_load_flow (error: String): Boolean =
@@ -1127,7 +1131,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 error.startsWith ("INVALID: 3 transformer windings") ||
                 error.startsWith ("INVALID: low voltage")
 
-        val problem_trafos = results
+        val problem_trafos = trace_results
             .filter (result => result.errors.exists (need_load_flow))
             .map (_.tx)
             .distinct
@@ -1141,7 +1145,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 s.startsWith ("INVALID: low voltage")) &&
                 s.startsWith ("INVALID")
 
-        val verboten_trafos = results
+        val verboten_trafos = trace_results
             .filter (result => result.errors.exists (other_error))
             .map (result => (result.tx, result.errors.filter (other_error).head))
             .distinct
@@ -1156,23 +1160,29 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             .distinct
 
         // ensure that each element of a transformer service area has an error and 0.0 for all current/fuse values
-        if (0 != verboten_trafos.count)
-            results = zero (verboten_trafos, results)
+        val cleaned_results =
+            if (0 != verboten_trafos.count)
+                zero (verboten_trafos, trace_results)
+            else
+                trace_results
 
-        if (0 != problem_islands.count)
-        {
-            def subtransmission (trafo: TransformerData): Boolean =
+        val fixed_cleaned_results =
+            if (0 != problem_islands.count)
             {
-                trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) || // ToDo: don't hard code these voltage values
-                    trafo.ends.length > 2 ||
-                    (options.calculate_public_lighting && trafo.voltages.exists (v => v._2 == 230.0))
+                def subtransmission (trafo: TransformerData): Boolean =
+                {
+                    trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) || // ToDo: don't hard code these voltage values
+                        trafo.ends.length > 2 ||
+                        (options.calculate_public_lighting && trafo.voltages.exists (v => v._2 == 230.0))
+                }
+
+                val subtransmission_trafos = transformer_data.filter (subtransmission).collect
+                fix (problem_islands, cleaned_results, subtransmission_trafos)
+            } else
+            {
+                cleaned_results
             }
-
-            val subtransmission_trafos = transformer_data.filter (subtransmission).collect
-            results = fix (problem_islands, results, subtransmission_trafos)
-        }
-
-        results
+        fixed_cleaned_results
     }
 }
 
