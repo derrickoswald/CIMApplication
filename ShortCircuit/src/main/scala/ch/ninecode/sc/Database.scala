@@ -144,7 +144,7 @@ object Database
         statement.close ()
     }
 
-    def store (options: ShortCircuitOptions)(records: RDD[ScResult]): Int = synchronized
+    def store (options: ShortCircuitOptions, filename: String ="shortcircuit.db")(records: RDD[ScResult]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("results/dummy")
@@ -157,7 +157,7 @@ object Database
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection ("jdbc:sqlite:results/shortcircuit.db")
+            connection = DriverManager.getConnection (s"jdbc:sqlite:results/$filename")
             connection.setAutoCommit (false)
 
             // create schema
