@@ -6,6 +6,7 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.PreparedStatement
 import java.sql.SQLException
+import java.sql.Statement
 import java.sql.Timestamp
 import java.sql.Types
 import java.util.Calendar
@@ -14,19 +15,64 @@ import org.apache.spark.rdd.RDD
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class Database (options: ShortCircuitOptions, filename: String ="shortcircuit.db")
-{
-    val log: Logger = LoggerFactory.getLogger (getClass)
+class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.db") extends Serializable {
+    val log: Logger = LoggerFactory.getLogger(getClass)
 
-    def makeSchema (connection: Connection)
-    {
-        val statement = connection.createStatement ()
-        val resultset1 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'shortcircuit_run'")
-        val exists1 = resultset1.next ()
-        resultset1.close ()
-        if (!exists1)
-        {
-            statement.executeUpdate (
+    def store (records: RDD[ScResult]): Int = synchronized {
+        if (records.isEmpty()) {
+            log.error("no results to store in database")
+            0
+        } else {
+            // make the directory
+            val file = Paths.get("results/dummy")
+            Files.createDirectories(file.getParent)
+
+            // load the sqlite-JDBC driver using the current class loader
+            Class.forName("org.sqlite.JDBC")
+
+            var connection: Connection = null
+            try {
+                // create a database connection
+                connection = DriverManager.getConnection(s"jdbc:sqlite:results/$filename")
+                connection.setAutoCommit(false)
+
+                makeSchema(connection)
+                val id = storeData(connection, records)
+                connection.commit()
+                id
+            } catch {
+                // if the error message is "out of memory",
+                // it probably means no database file is found
+                case e: SQLException ⇒ log.error("exception caught: " + e)
+                    -1
+            } finally {
+                try {
+                    if (connection != null)
+                        connection.close()
+                }
+                catch {
+                    // connection close failed
+                    case e: SQLException ⇒ log.error("exception caught: " + e)
+                }
+            }
+        }
+    }
+
+    private def makeSchema (connection: Connection) {
+        val statement = connection.createStatement()
+        createTableShortcircuitrun(statement)
+        createTableShortcircuit(statement)
+        createTableNullungsbedingung(statement)
+        createTableFusesummary(statement)
+        statement.close()
+    }
+
+    private def createTableShortcircuitrun(statement: Statement): Unit = {
+        val resultset1 = statement.executeQuery("select name from sqlite_master where type = 'table' and name = 'shortcircuit_run'")
+        val exists1 = resultset1.next()
+        resultset1.close()
+        if (!exists1) {
+            statement.executeUpdate(
                 """create table shortcircuit_run
                   |    -- table of parameters used for each program execution
                   |(
@@ -47,14 +93,16 @@ class Database (options: ShortCircuitOptions, filename: String ="shortcircuit.db
                   |    worstcasepf boolean,                         -- worst case motor power factor assumed (cos term = 1.0, cosphi ignored)
                   |    cosphi double                                -- power factor of (motor) load (dimensionless)
                   |)""".stripMargin)
-            statement.executeUpdate ("create index if not exists epoc on shortcircuit_run (time)")
+            statement.executeUpdate("create index if not exists epoc on shortcircuit_run (time)")
         }
-        val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'shortcircuit'")
-        val exists2 = resultset2.next ()
-        resultset2.close ()
-        if (!exists2)
-        {
-            statement.executeUpdate (
+    }
+
+    private def createTableShortcircuit(statement: Statement): Unit = {
+        val resultset2 = statement.executeQuery("select name from sqlite_master where type = 'table' and name = 'shortcircuit'")
+        val exists2 = resultset2.next()
+        resultset2.close()
+        if (!exists2) {
+            statement.executeUpdate(
                 """create table shortcircuit
                   |    -- table of maximum fault level values (impedances at low_temperature)
                   |(
@@ -83,15 +131,17 @@ class Database (options: ShortCircuitOptions, filename: String ="shortcircuit.db
                   |    imax_1ph_med double,                  -- maximum inrush current (1 phase, line to neutral) for 0.01 ≤ repetition_rate < 0.1 /min (A)
                   |    imax_2ph_med double                   -- maximum inrush current (1 phase, line to line) for 0.01 ≤ repetition_rate < 0.1 /min (A)
                   |)""".stripMargin)
-            statement.executeUpdate ("create index if not exists sc_equipment_index on shortcircuit (equipment)")
-            statement.executeUpdate ("create index if not exists sc_run_index on shortcircuit (run)")
+            statement.executeUpdate("create index if not exists sc_equipment_index on shortcircuit (equipment)")
+            statement.executeUpdate("create index if not exists sc_run_index on shortcircuit (run)")
         }
-        val resultset3 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'nullungsbedingung'")
-        val exists3 = resultset3.next ()
-        resultset3.close ()
-        if (!exists3)
-        {
-            statement.executeUpdate (
+    }
+
+    private def createTableNullungsbedingung(statement: Statement): Unit = {
+        val resultset3 = statement.executeQuery("select name from sqlite_master where type = 'table' and name = 'nullungsbedingung'")
+        val exists3 = resultset3.next()
+        resultset3.close()
+        if (!exists3) {
+            statement.executeUpdate(
                 """create table nullungsbedingung
                   |    -- table of minimum fault level values (impedances at high_temperature)
                   |(
@@ -119,15 +169,17 @@ class Database (options: ShortCircuitOptions, filename: String ="shortcircuit.db
                   |    fusemax text,                         -- maximum recommended fuse value(s) for the calculated fault current(s) (A)
                   |    fuseok boolean                        -- evaluation of whether the fuse(s) has(have) appropriate value(s) (true) or not (false)
                   |)""".stripMargin)
-            statement.executeUpdate ("create index if not exists nu_equipment_index on nullungsbedingung (equipment)")
-            statement.executeUpdate ("create index if not exists nu_run_index on nullungsbedingung (run)")
+            statement.executeUpdate("create index if not exists nu_equipment_index on nullungsbedingung (equipment)")
+            statement.executeUpdate("create index if not exists nu_run_index on nullungsbedingung (run)")
         }
-        val resultset4 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'fusesummary'")
-        val exists4 = resultset4.next ()
-        resultset4.close ()
-        if (!exists4)
-        {
-            statement.executeUpdate (
+    }
+
+    private def createTableFusesummary(statement: Statement): Unit = {
+        val resultset4 = statement.executeQuery("select name from sqlite_master where type = 'table' and name = 'fusesummary'")
+        val exists4 = resultset4.next()
+        resultset4.close()
+        if (!exists4) {
+            statement.executeUpdate(
                 """create table fusesummary
                   |    -- table summarizing fuse results
                   |(
@@ -139,59 +191,8 @@ class Database (options: ShortCircuitOptions, filename: String ="shortcircuit.db
                   |    bad integer,                          -- number of inappropriate fuse values in the container
                   |    unknown integer                       -- number of unknown fuse status values in the container
                   |)""".stripMargin)
-            statement.executeUpdate ("create index if not exists fs_container_index on fusesummary (container)")
-            statement.executeUpdate ("create index if not exists fs_run_index on nullungsbedingung (run)")
-        }
-        statement.close ()
-    }
-
-    def store (records: RDD[ScResult]): Int = synchronized
-    {
-        // make the directory
-        val file = Paths.get ("results/dummy")
-        Files.createDirectories (file.getParent)
-
-        // load the sqlite-JDBC driver using the current class loader
-        Class.forName ("org.sqlite.JDBC")
-
-        var connection: Connection = null
-        try
-        {
-            // create a database connection
-            connection = DriverManager.getConnection (s"jdbc:sqlite:results/$filename")
-            connection.setAutoCommit (false)
-
-            // create schema
-            makeSchema (connection)
-
-            if (!records.isEmpty)
-            {
-                val id = storeData(connection, records)
-                connection.commit ()
-                id
-            }
-            else
-                0
-        }
-        catch
-        {
-            // if the error message is "out of memory",
-            // it probably means no database file is found
-            case e: SQLException ⇒ log.error ("exception caught: " + e)
-                -1
-        }
-        finally
-        {
-            try
-            {
-                if (connection != null)
-                    connection.close ()
-            }
-            catch
-            {
-                // connection close failed
-                case e: SQLException ⇒ log.error ("exception caught: " + e)
-            }
+            statement.executeUpdate("create index if not exists fs_container_index on fusesummary (container)")
+            statement.executeUpdate("create index if not exists fs_run_index on nullungsbedingung (run)")
         }
     }
 
@@ -203,20 +204,14 @@ class Database (options: ShortCircuitOptions, filename: String ="shortcircuit.db
         val insertShortcircuit = connection.prepareStatement(sqlShortcircuit)
         val sqlNullungsbedingung = "insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, last_fuses_id, iksplit, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         val insertNullungsbedingung = connection.prepareStatement(sqlNullungsbedingung)
-        val zipped = records.zipWithIndex
+        val zipped: RDD[(ScResult, Long)] = records.zipWithIndex
         var index = 0L
         var done = false
-        do
-        {
-            val batch = zipped.filter (x ⇒ x._2 >= index && x._2 < index + options.batchsize).map (_._1).collect
-            for (i <- batch.indices)
-            {
+        do {
+            val batch = zipped.filter(x ⇒ x._2 >= index && x._2 < index + options.batchsize).map(_._1).collect
+            for (i <- batch.indices) {
                 val result = batch(i)
                 storeShortcircuitTable(insertShortcircuit, id, result)
-            }
-            for (i <- batch.indices)
-            {
-                val result = batch(i)
                 storeNullungsbedingungTable(insertNullungsbedingung, id, result)
             }
             if (0 == batch.length || batch.length < options.batchsize)
@@ -225,24 +220,31 @@ class Database (options: ShortCircuitOptions, filename: String ="shortcircuit.db
                 index = index + options.batchsize
         }
         while (!done)
-        insertShortcircuit.close ()
-        insertNullungsbedingung.close ()
+
+        insertShortcircuit.close()
+        insertNullungsbedingung.close()
 
         storeFusesummaryTable(connection, id)
         id
     }
 
-    private def storeFusesummaryTable(connection: Connection, id: Int) = {
+    private def storeFusesummaryTable(connection: Connection, id: Int): Unit = {
         // add fuse summary
-        val datainsert3 = connection.prepareStatement("insert into fusesummary (id, run, container, allok, ok, bad, unknown) select NULL, ?, container, cast (0 = (total (not fuseOK) + total (fuseOK is NULL)) as boolean), cast (total (fuseOK) as integer), cast (total (not fuseOK) as integer), cast (total (fuseOK is NULL) as integer) from nullungsbedingung where run = ? and container is not null group by container")
-        datainsert3.setInt(1, id)
-        datainsert3.setInt(2, id)
-        datainsert3.executeUpdate()
-        datainsert3.close()
+        val sql =
+            """insert into fusesummary (id, run, container, allok, ok, bad, unknown)
+              |select NULL, ?, container, cast (0 = (total (not fuseOK) + total (fuseOK is NULL)) as boolean), cast (total (fuseOK) as integer), cast (total (not fuseOK) as integer), cast (total (fuseOK is NULL) as integer)
+              |from nullungsbedingung where run = ? and container is not null group by container""".stripMargin
+        val insert = connection.prepareStatement(sql)
+        insert.setInt(1, id)
+        insert.setInt(2, id)
+        insert.executeUpdate()
+        insert.close()
     }
 
     private def storeNullungsbedingungTable(insert: PreparedStatement, id: Int, result: ScResult): Int = {
-        // "insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, last_fuses_id, iksplit, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        // "insert into
+        // nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, last_fuses_id, iksplit, fusemax, fuseok)
+        // values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         insert.setNull(1, Types.INTEGER)
         insert.setInt(2, id)
         insert.setString(3, result.node)
@@ -325,7 +327,25 @@ class Database (options: ShortCircuitOptions, filename: String ="shortcircuit.db
 
     private def storeShortcircuitrunTable(connection: Connection): Int = {
         val now = Calendar.getInstance()
-        val sql = "insert into shortcircuit_run (id, description, time, max_default_short_circuit_power, max_default_short_circuit_resistance, max_default_short_circuit_reactance, min_default_short_circuit_power, min_default_short_circuit_resistance, min_default_short_circuit_reactance, base_temperature, low_temperature, high_temperature, cmax, cmin, worstcasepf, cosphi) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        val sql =
+            """insert into
+              |shortcircuit_run (id,
+              |                  description,
+              |                  time,
+              |                  max_default_short_circuit_power,
+              |                  max_default_short_circuit_resistance,
+              |                  max_default_short_circuit_reactance,
+              |                  min_default_short_circuit_power,
+              |                  min_default_short_circuit_resistance,
+              |                  min_default_short_circuit_reactance,
+              |                  base_temperature,
+              |                  low_temperature,
+              |                  high_temperature,
+              |                  cmax,
+              |                  cmin,
+              |                  worstcasepf,
+              |                  cosphi)
+              |values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""".stripMargin
         val insert = connection.prepareStatement(sql)
         insert.setNull(1, Types.INTEGER)
         insert.setString(2, options.description)
