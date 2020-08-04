@@ -394,7 +394,7 @@ object Main
                 val results = shortcircuit.run ()
 
                 // output SQLite database
-                Database.store (options)(results)
+                new Database (options).store (results)
 
                 val calculate = System.nanoTime ()
                 log.info ("total: " + (calculate - begin) / 1e9 + " seconds, " + results.count + " node results calculated")
