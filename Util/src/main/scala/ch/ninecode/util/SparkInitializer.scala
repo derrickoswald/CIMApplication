@@ -31,7 +31,6 @@ trait SparkInitializer[T <: Mainable with Sparkable]
         ret
     }
 
-
     // get the containing jar name for an object
     def jarForObject (obj: Object): String =
     {
@@ -82,7 +81,8 @@ trait SparkInitializer[T <: Mainable with Sparkable]
                 new SparkConf (false)
                     .setAppName (options.main_options.application)
                     .setMaster (options.spark_options.master)
-                    .setJars (options.spark_options.jars.toArray)
+                    .setJars (options.spark_options.jars)
+                    .registerKryoClasses (options.spark_options.kryo)
             options.spark_options.options.foreach ((pair: (String, String)) => configuration.set (pair._1, pair._2))
 
             // make a Spark session

@@ -6,15 +6,14 @@ import org.apache.log4j.Level
  * Parser for command line operation of programs using Spark.
  */
 @SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
-class SparkOptionsParser[T <: Mainable with Sparkable] (default: T)
-    extends MainOptionsParser[T](default)
+class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends MainOptionsParser[T](default)
 {
     val COMMA = ","
     val EQUAL = "="
 
     implicit val logRead: scopt.Read[Level] = scopt.Read.reads (Level.toLevel (_, default.spark_options.log))
 
-    lazy val logLevels = List (
+    val logLevels = List (
         "OFF",
         "FATAL",
         "ERROR",
@@ -25,7 +24,7 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T)
         "ALL"
     )
 
-    implicit val setRead: scopt.Read[Set[String]] = scopt.Read.reads (_.split (COMMA).toSet)
+    implicit val arrayRead: scopt.Read[Array[String]] = scopt.Read.reads (_.split (COMMA))
 
     opt[String]("master")
         .valueName ("<master_url>")
@@ -42,7 +41,7 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T)
         .action ((x, c) => { c.spark_options = c.spark_options.copy (log = x); c })
         .text (s"log level, one of ${logLevels.mkString (",")} [${default.spark_options.log}]")
 
-    opt[Set[String]]("jars")
+    opt[Array[String]]("jars")
         .valueName ("<list>")
         .action ((x, c) => { c.spark_options = c.spark_options.copy (jars = x); c })
         .text (s"names of jars to send to Spark [${default.spark_options.jars.mkString (COMMA)}]")

@@ -52,7 +52,7 @@ trait OptionsSuiteMain extends CIMInitializer[OptionsSuiteOptions] with Main wit
         else
         {
             // get the necessary jar files to send to the cluster
-            val jars = Set (
+            val jars = Array (
                 jarForObject (com.datastax.spark.connector.mapper.ColumnMapper)
             )
 
