@@ -13,12 +13,9 @@ import org.apache.spark.graphx.Graph
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
-import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.gl.PreNode
 import ch.ninecode.gl.PreEdge
@@ -31,9 +28,20 @@ import ch.ninecode.mfi.Trafokreis
 import ch.ninecode.net.Transformers
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
-import scala.collection.mutable
 import scala.io.Source
-import scala.xml.Node
+
+import org.apache.log4j.Level
+import org.apache.log4j.LogManager
+
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.DefaultSource
+import ch.ninecode.mfi.Einspeiseleistung
+import ch.ninecode.net.Net
+import ch.ninecode.util.CIMInitializer
+import ch.ninecode.util.Main
+import ch.ninecode.util.MainOptions
+import ch.ninecode.util.SparkOptions
+import ch.ninecode.util.Util
 
 //  <md:FullModel rdf:about="sias_current">
 //        <md:Model.created>2017-06-01T23:00:20</md:Model.created>
@@ -77,7 +85,9 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
 
     def getCIMheader (gridlabd: GridLABD): String =
     {
-        val file = options.files.head.split (",")(0) // need to watch out for comma separated file list
+        // need to watch out for comma separated file list
+        // only handle first file
+        val file = Array.concat (options.cim_options.files.map (_.split (",")).toArray:_ *)(scala.reflect.classTag[String])(0)
         val lead = "<md:FullModel"
         val trail = "</md:FullModel>"
 
@@ -85,7 +95,7 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
         {
             val in = Files.newInputStream (java.nio.file.FileSystems.getDefault.getPath (file))
             val buffer = new Array[Byte](4 * 1024)
-            in.read (buffer)
+            val _ = in.read (buffer)
             in.close ()
             new String (buffer, java.nio.charset.StandardCharsets.UTF_8)
         }
@@ -98,7 +108,7 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
 
             val in = hdfs.open (new Path (file))
             val buffer = new Array[Byte](4 * 1024)
-            in.read (0L, buffer, 0, buffer.length)
+            val _ = in.read (0L, buffer, 0, buffer.length)
             in.close ()
             new String (buffer, java.nio.charset.StandardCharsets.UTF_8)
         }
@@ -152,7 +162,7 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
         }
         catch
         {
-            case e: Exception => log.error ("exception caught parsing rdf header: " + e)
+            case e: Exception => log.error (s"exception caught parsing rdf header: ${e.getLocalizedMessage}")
                 val now = Calendar.getInstance ()
                 Header (now, "no description", "no modeling authority", "no profile", now, "no version")
         }
@@ -167,7 +177,7 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
 
         val output = new Path (gridlabd.workdir_slash)
         val target = new Path ("/" + new_name + "/")
-        hdfs.rename (output, target)
+        val _ = hdfs.rename (output, target)
     }
 
     def generate (gridlabd: GridLABD, trafokreise: RDD[Trafokreis]): Unit =
@@ -195,53 +205,38 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
         val start = System.nanoTime ()
 
         // determine transformer list if any
-        val trafos = if ("" != options.trafos)
-        // do all transformers listed in the file
-            Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
+        val trafos: Array[String] = if ("" != options.trafos)
+        {
+            // do all transformers listed in the file
+            val source = Source.fromFile (options.trafos, "UTF-8")
+            val lines = source.getLines ().filter (_ != "").toArray
+            if (0 == lines.length)
+            {
+                log.error ("no transformers to process")
+                sys.exit (1)
+            }
+            lines
+        }
         else
-            null
-        if ((null != trafos) && (0 == trafos.length))
-        {
-            log.error ("no transformers to process")
-            sys.exit (1)
-        }
-
-        // read the file
-        val reader_options = Map[String, String] (
-            "path" -> options.files.mkString (","),
-            "StorageLevel"-> options.storage,
-            "ch.ninecode.cim.do_deduplication" -> options.dedup.toString) ++
-            options.cim_reader_options
-        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files: _*)
-        val count = elements.count ()
-        log.info (s"$count elements")
-
-        val read = System.nanoTime ()
-        log.info (s"read: ${(read - start) / 1e9} seconds")
-
-        val storage_level = options.cim_reader_options.find (_._1 == "StorageLevel") match
-        {
-            case Some ((_, storage)) => StorageLevel.fromString (storage)
-            case _ => StorageLevel.fromString ("MEMORY_AND_DISK_SER")
-        }
+            Array ()
 
         // prepare for precalculation
-        val gridlabd = new GridLABD (session, storage_level, options.workdir)
+        val gridlabd = new GridLABD (session, options.cim_options.storage, options.getWorkDir)
 
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
-        val _transformers = new Transformers (session, storage_level)
+        val _transformers = Transformers (session, options.cim_options.storage)
         val transformer_data = _transformers.getTransformers ()
 
         // get the existing photo-voltaic installations keyed by terminal
-        val solar = Solar (session, topologicalnodes = true, storage_level)
+        val solar = Solar (session, topologicalnodes = true, options.cim_options.storage)
         val sdata = solar.getSolarInstallations
 
         def island (td: TransformerData): String = td.node1.TopologicalIsland
 
         // determine the set of transformers to work on
-        val transformers = if (null != trafos)
+        val transformers = if (0 != trafos.length)
         {
             val selected = transformer_data.filter (x => trafos.contains (x.transformer.id)).distinct
             selected.groupBy (island).values.map (TransformerIsland.apply)
@@ -252,19 +247,21 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
             val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
             niederspannug.groupBy (island).values.map (TransformerIsland.apply)
         }
-        transformers.persist (storage_level)
+        .persist (options.cim_options.storage)
         transformers.name = "Transformers"
 
         val prepare = System.nanoTime ()
-        log.info ("prepare: " + (prepare - read) / 1e9 + " seconds")
+        log.info (s"prepare: ${(prepare - start) / 1e9} seconds")
+
+        val storage = options.cim_options.storage
 
         // do the pre-calculation
         val precalc_results =
         {
             // construct the initial graph from the real edges and nodes
-            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, ""), storage, storage)
             val options = EinspeiseleistungOptions()
-            val pf = new PowerFeeding (session, storage_level, options.base_temperature, options.sim_temperature)
+            val pf = new PowerFeeding (session, storage, options.base_temperature, options.sim_temperature)
             pf.threshold_calculation (initial, sdata, transformers, EinspeiseleistungOptions (cosphi = 1.0))
         }
 
@@ -272,23 +269,15 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
 
         val trafo_island = transformers.flatMap (island => island.transformers.map (trafo => (trafo.transformer_name, island)))
         val trafo_list = houses.keyBy (_.source_obj).groupByKey.join (trafo_island).values.map (_._2)
-        log.info ("" + trafo_list.count + " transformers to process")
+        log.info (s"${trafo_list.count} transformers to process")
 
         val precalc = System.nanoTime ()
-        log.info ("precalculation: " + (precalc - prepare) / 1e9 + " seconds")
+        log.info (s"precalculation: ${(precalc - prepare) / 1e9} seconds")
 
         val vertices = precalc_results.vertices.filter (_.source_obj != null).keyBy (_.source_obj.trafo_id)
         val edges = precalc_results.edges.filter (_._1 != null)
         val has = precalc_results.has.keyBy (_.source_obj)
         val grouped_precalc_results = vertices.groupWith (edges, has)
-
-        val trafokreise = trafo_list
-            .flatMap (x => x.transformers.map (y => (y.transformer_name, x)))
-            .join (grouped_precalc_results)
-            .values
-            .groupBy (_._1.island_name)
-            .map (
-                x => (x._1, (x._2.head._1, (x._2.flatMap (y => y._2._1), x._2.flatMap (y => y._2._2), x._2.flatMap (y => y._2._3)))))
 
         val raw = getCIMheader (gridlabd)
         val header = if ("" != raw)
@@ -297,23 +286,109 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
             Header (Calendar.getInstance (), "generated header", "", "", Calendar.getInstance (), "")
         val t0 = header.scenarioTime
 
-        def makeTrafokreis (start: Calendar)(arg: (String, (TransformerIsland, (Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])))): Trafokreis =
+        @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+        def makeTrafokreis (start: Calendar)(arg: (String, Iterable[(TransformerIsland, (Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA]))])): Trafokreis =
         {
-            val (trafokreise, (transformers, (nodes, edges, mpfne))) = arg
-            Trafokreis (start, trafokreise, transformers, nodes, edges, mpfne, EinspeiseleistungOptions ())
+            val (trafokreise, iter) = arg
+            val island: TransformerIsland = iter.head._1
+            val nodes = iter.flatMap (_._2._1)
+            val edges = iter.flatMap (_._2._2)
+            val mpfne = iter.flatMap (_._2._3)
+            Trafokreis (start, trafokreise, island, nodes, edges, mpfne, EinspeiseleistungOptions ())
         }
 
-        val filtered_trafos = trafokreise.map (makeTrafokreis (t0))
-        log.info ("filtered_trafos: " + filtered_trafos.count)
-        generate (gridlabd, filtered_trafos)
+        val trafokreise = trafo_list
+            .flatMap (x => x.transformers.map (y => (y.transformer_name, x)))
+            .join (grouped_precalc_results)
+            .values
+            .groupBy (_._1.island_name)
+            .map (makeTrafokreis (t0))
+
+        log.info (s"filtered_trafos: ${trafokreise.count}")
+        generate (gridlabd, trafokreise)
 
         // rename to the created date
         val format = new java.text.SimpleDateFormat ("yyyyMMdd")
         val timestamp = format.format (header.created.getTime)
         rename (gridlabd, timestamp)
 
-        log.info ("finished " + trafo_list.count + " trafokreis")
+        log.info (s"finished ${trafo_list.count} trafokreis")
 
         trafo_list.count
+    }
+}
+object LowVoltage extends CIMInitializer[LowVoltageOptions] with Main
+{
+    def run (options: LowVoltageOptions): Unit =
+    {
+        if (options.verbose)
+            LogManager.getLogger (getClass).setLevel (Level.INFO)
+        if (options.main_options.valid)
+        {
+            if (options.cim_options.files.nonEmpty)
+            {
+                val session: SparkSession = createSession (options)
+                readCIM (session, options)
+                time ("execution: %s seconds")
+                {
+                    val lv = LowVoltage (session, options)
+                    val _ = lv.run ()
+                }
+            }
+            else
+                log.error ("no CIM files specified")
+        }
+    }
+
+    def main (args: Array[String])
+    {
+        val have = util.Properties.versionNumberString
+        val need = scala_library_version
+        if (have != need)
+        {
+            log.error (s"Scala version ($have) does not match the version ($need) used to build $application_name")
+            sys.exit (1)
+        }
+        else
+        {
+            // get the necessary jar files to send to the cluster
+            val jars = Array (
+                jarForObject (new DefaultSource ()),
+                jarForObject (LowVoltageOptions ())
+            )
+
+            // compose the classes to be registered with Kryo
+            val kryo = Array.concat (
+                // register CIMReader classes
+                CIMClasses.list,
+                // register Net classes
+                Net.classes,
+                // register GridLAB-D classes
+                GridLABD.classes,
+                // register Einspeiseleistung classes
+                Einspeiseleistung.classes,
+                // register Util classes
+                Util.classes)
+
+            // initialize the default options
+            val temp = LowVoltageOptions ()
+            val default = LowVoltageOptions (
+                main_options = MainOptions (application_name, application_version),
+                spark_options = SparkOptions (jars = jars, kryo = kryo),
+                cim_options = temp.cim_options.copy (options = temp.cim_options.toMap)
+            )
+
+            // parse the command line arguments
+            new LowVoltageOptionsParser (default).parse (args, default) match
+            {
+                case Some (options) =>
+                    // execute the main program if everything checks out
+                    run (options)
+                    if (!options.main_options.unittest)
+                        sys.exit (0)
+                case None =>
+                    sys.exit (1)
+            }
+        }
     }
 }
