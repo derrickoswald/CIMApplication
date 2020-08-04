@@ -4,6 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.PreparedStatement
 import java.sql.SQLException
 import java.sql.Timestamp
 import java.sql.Types
@@ -13,7 +14,7 @@ import org.apache.spark.rdd.RDD
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-object Database
+class Database (options: ShortCircuitOptions, filename: String ="shortcircuit.db")
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -144,7 +145,7 @@ object Database
         statement.close ()
     }
 
-    def store (options: ShortCircuitOptions, filename: String ="shortcircuit.db")(records: RDD[ScResult]): Int = synchronized
+    def store (records: RDD[ScResult]): Int = synchronized
     {
         // make the directory
         val file = Paths.get ("results/dummy")
@@ -165,142 +166,8 @@ object Database
 
             if (!records.isEmpty)
             {
-                // insert the simulation
-                val now = Calendar.getInstance ()
-                val insert = connection.prepareStatement ("insert into shortcircuit_run (id, description, time, max_default_short_circuit_power, max_default_short_circuit_resistance, max_default_short_circuit_reactance, min_default_short_circuit_power, min_default_short_circuit_resistance, min_default_short_circuit_reactance, base_temperature, low_temperature, high_temperature, cmax, cmin, worstcasepf, cosphi) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                insert.setNull (1, Types.INTEGER)
-                insert.setString (2, options.description)
-                insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
-                insert.setDouble (4, options.default_short_circuit_power_max)
-                insert.setDouble (5, options.default_short_circuit_impedance_max.re)
-                insert.setDouble (6, options.default_short_circuit_impedance_max.im)
-                insert.setDouble (7, options.default_short_circuit_power_min)
-                insert.setDouble (8, options.default_short_circuit_impedance_min.re)
-                insert.setDouble (9, options.default_short_circuit_impedance_min.im)
-                insert.setDouble (10, options.base_temperature)
-                insert.setDouble (11, options.low_temperature)
-                insert.setDouble (12, options.high_temperature)
-                insert.setDouble (13, options.cmax)
-                insert.setDouble (14, options.cmin)
-                insert.setBoolean (15, options.worstcasepf)
-                insert.setDouble (16, options.cosphi)
-                insert.executeUpdate ()
-                val statement = connection.createStatement ()
-                val resultset = statement.executeQuery ("select last_insert_rowid() id")
-                resultset.next ()
-                val id = resultset.getInt ("id")
-                resultset.close ()
-                statement.close ()
-
-                // insert the results
-                val datainsert1 = connection.prepareStatement ("insert into shortcircuit (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, costerm, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                val datainsert2 = connection.prepareStatement ("insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, last_fuses_id, iksplit, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                val zipped = records.zipWithIndex
-                var index = 0L
-                var done = false
-                do
-                {
-                    val batch = zipped.filter (x => x._2 >= index && x._2 < index + options.batchsize).map (_._1).collect
-                    for (i <- batch.indices)
-                    {
-                        datainsert1.setNull (1, Types.INTEGER)
-                        datainsert1.setInt (2, id)
-                        datainsert1.setString (3, batch (i).node)
-                        datainsert1.setString (4, batch (i).equipment)
-                        datainsert1.setInt (5, batch (i).terminal)
-                        if ((null == batch (i).container) || ("" == batch (i).container))
-                            datainsert1.setNull (6, Types.VARCHAR)
-                        else
-                            datainsert1.setString (6, batch (i).container)
-                        if (null == batch (i).errors)
-                            datainsert1.setNull (7, Types.VARCHAR)
-                        else
-                            datainsert1.setString (7, batch (i).errors.mkString (","))
-                        datainsert1.setString (8, batch (i).tx)
-                        datainsert1.setString (9, batch (i).prev)
-                        datainsert1.setDouble (10, batch (i).low_r)
-                        datainsert1.setDouble (11, batch (i).low_x)
-                        datainsert1.setDouble (12, batch (i).low_r0)
-                        datainsert1.setDouble (13, batch (i).low_x0)
-                        datainsert1.setDouble (14, batch (i).low_ik)
-                        datainsert1.setDouble (15, batch (i).low_ik3pol)
-                        datainsert1.setDouble (16, batch (i).low_ip)
-                        datainsert1.setDouble (17, batch (i).low_sk)
-                        datainsert1.setDouble (18, batch (i).costerm)
-                        datainsert1.setDouble (19, batch (i).imax_3ph_low)
-                        datainsert1.setDouble (20, batch (i).imax_1ph_low)
-                        datainsert1.setDouble (21, batch (i).imax_2ph_low)
-                        datainsert1.setDouble (22, batch (i).imax_3ph_med)
-                        datainsert1.setDouble (23, batch (i).imax_1ph_med)
-                        datainsert1.setDouble (24, batch (i).imax_2ph_med)
-                        datainsert1.executeUpdate ()
-                    }
-                    for (i <- batch.indices)
-                    {
-                        datainsert2.setNull (1, Types.INTEGER)
-                        datainsert2.setInt (2, id)
-                        datainsert2.setString (3, batch (i).node)
-                        datainsert2.setString (4, batch (i).equipment)
-                        datainsert2.setInt (5, batch (i).terminal)
-                        if ((null == batch (i).container) || ("" == batch (i).container))
-                            datainsert2.setNull (6, Types.VARCHAR)
-                        else
-                            datainsert2.setString (6, batch (i).container)
-                        if (null == batch (i).errors)
-                            datainsert2.setNull (7, Types.VARCHAR)
-                        else
-                            datainsert2.setString (7, batch (i).errors.mkString (","))
-                        datainsert2.setString (8, batch (i).tx)
-                        datainsert2.setString (9, batch (i).prev)
-                        datainsert2.setDouble (10, batch (i).high_r)
-                        datainsert2.setDouble (11, batch (i).high_x)
-                        datainsert2.setDouble (12, batch (i).high_r0)
-                        datainsert2.setDouble (13, batch (i).high_x0)
-                        datainsert2.setDouble (14, batch (i).high_ik)
-                        datainsert2.setDouble (15, batch (i).high_ik3pol)
-                        datainsert2.setDouble (16, batch (i).high_ip)
-                        datainsert2.setDouble (17, batch (i).high_sk)
-                        if (null == batch (i).branches)
-                        {
-                            datainsert2.setNull (18, Types.VARCHAR)
-                            datainsert2.setNull (19, Types.VARCHAR)
-                            datainsert2.setNull (20, Types.VARCHAR)
-                            datainsert2.setNull (21, Types.VARCHAR)
-                            datainsert2.setNull (22, Types.VARCHAR)
-                            datainsert2.setNull (23, Types.BOOLEAN)
-                        }
-                        else
-                        {
-                            datainsert2.setString (18, batch (i).fuseString)
-                            datainsert2.setString (19, batch (i).lastFusesString)
-                            datainsert2.setString (20, batch (i).lastFusesId)
-                            datainsert2.setString (21, batch (i).iksplitString)
-                            datainsert2.setString (22, batch (i).fuseMax)
-                            if (batch (i).lastFuseHasMissingValues)
-                                datainsert2.setNull (23, Types.BOOLEAN)
-                            else
-                                datainsert2.setBoolean (23, batch (i).fuseOK (options.cmin))
-                        }
-                        datainsert2.executeUpdate ()
-                    }
-                    if (0 == batch.length || batch.length < options.batchsize)
-                        done = true
-                    else
-                        index = index + options.batchsize
-                }
-                while (!done)
-                datainsert1.close ()
-                datainsert2.close ()
-
-                // add fuse summary
-                val datainsert3 = connection.prepareStatement ("insert into fusesummary (id, run, container, allok, ok, bad, unknown) select NULL, ?, container, cast (0 = (total (not fuseOK) + total (fuseOK is NULL)) as boolean), cast (total (fuseOK) as integer), cast (total (not fuseOK) as integer), cast (total (fuseOK is NULL) as integer) from nullungsbedingung where run = ? and container is not null group by container")
-                datainsert3.setInt (1, id)
-                datainsert3.setInt (2, id)
-                datainsert3.executeUpdate ()
-                datainsert3.close ()
-
+                val id = storeData(connection, records)
                 connection.commit ()
-
                 id
             }
             else
@@ -310,7 +177,7 @@ object Database
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException => log.error ("exception caught: " + e)
+            case e: SQLException ⇒ log.error ("exception caught: " + e)
                 -1
         }
         finally
@@ -323,8 +190,167 @@ object Database
             catch
             {
                 // connection close failed
-                case e: SQLException => log.error ("exception caught: " + e)
+                case e: SQLException ⇒ log.error ("exception caught: " + e)
             }
         }
+    }
+
+    private def storeData(connection: Connection, records: RDD[ScResult]): Int = {
+        val id: Int = storeShortcircuitrunTable(connection)
+
+        // insert the results
+        val sqlShortcircuit = "insert into shortcircuit (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, costerm, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        val insertShortcircuit = connection.prepareStatement(sqlShortcircuit)
+        val sqlNullungsbedingung = "insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, last_fuses_id, iksplit, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        val insertNullungsbedingung = connection.prepareStatement(sqlNullungsbedingung)
+        val zipped = records.zipWithIndex
+        var index = 0L
+        var done = false
+        do
+        {
+            val batch = zipped.filter (x ⇒ x._2 >= index && x._2 < index + options.batchsize).map (_._1).collect
+            for (i <- batch.indices)
+            {
+                val result = batch(i)
+                storeShortcircuitTable(insertShortcircuit, id, result)
+            }
+            for (i <- batch.indices)
+            {
+                val result = batch(i)
+                storeNullungsbedingungTable(insertNullungsbedingung, id, result)
+            }
+            if (0 == batch.length || batch.length < options.batchsize)
+                done = true
+            else
+                index = index + options.batchsize
+        }
+        while (!done)
+        insertShortcircuit.close ()
+        insertNullungsbedingung.close ()
+
+        storeFusesummaryTable(connection, id)
+        id
+    }
+
+    private def storeFusesummaryTable(connection: Connection, id: Int) = {
+        // add fuse summary
+        val datainsert3 = connection.prepareStatement("insert into fusesummary (id, run, container, allok, ok, bad, unknown) select NULL, ?, container, cast (0 = (total (not fuseOK) + total (fuseOK is NULL)) as boolean), cast (total (fuseOK) as integer), cast (total (not fuseOK) as integer), cast (total (fuseOK is NULL) as integer) from nullungsbedingung where run = ? and container is not null group by container")
+        datainsert3.setInt(1, id)
+        datainsert3.setInt(2, id)
+        datainsert3.executeUpdate()
+        datainsert3.close()
+    }
+
+    private def storeNullungsbedingungTable(insert: PreparedStatement, id: Int, result: ScResult): Int = {
+        // "insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, last_fuses_id, iksplit, fusemax, fuseok) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        insert.setNull(1, Types.INTEGER)
+        insert.setInt(2, id)
+        insert.setString(3, result.node)
+        insert.setString(4, result.equipment)
+        insert.setInt(5, result.terminal)
+        if ((null == result.container) || ("" == result.container))
+            insert.setNull(6, Types.VARCHAR)
+        else
+            insert.setString(6, result.container)
+        if (null == result.errors)
+            insert.setNull(7, Types.VARCHAR)
+        else
+            insert.setString(7, result.errors.mkString(","))
+        insert.setString(8, result.tx)
+        insert.setString(9, result.prev)
+        insert.setDouble(10, result.high_r)
+        insert.setDouble(11, result.high_x)
+        insert.setDouble(12, result.high_r0)
+        insert.setDouble(13, result.high_x0)
+        insert.setDouble(14, result.high_ik)
+        insert.setDouble(15, result.high_ik3pol)
+        insert.setDouble(16, result.high_ip)
+        insert.setDouble(17, result.high_sk)
+        if (null == result.branches) {
+            insert.setNull(18, Types.VARCHAR)
+            insert.setNull(19, Types.VARCHAR)
+            insert.setNull(20, Types.VARCHAR)
+            insert.setNull(21, Types.VARCHAR)
+            insert.setNull(22, Types.VARCHAR)
+            insert.setNull(23, Types.BOOLEAN)
+        }
+        else {
+            insert.setString(18, result.fuseString)
+            insert.setString(19, result.lastFusesString)
+            insert.setString(20, result.lastFusesId)
+            insert.setString(21, result.iksplitString)
+            insert.setString(22, result.fuseMax)
+            if (result.lastFuseHasMissingValues)
+                insert.setNull(23, Types.BOOLEAN)
+            else
+                insert.setBoolean(23, result.fuseOK(options.cmin))
+        }
+        insert.executeUpdate()
+    }
+
+    private def storeShortcircuitTable(insert: PreparedStatement, id: Int, result: ScResult): Int = {
+        // "insert into shortcircuit (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, costerm, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        insert.setNull(1, Types.INTEGER)
+        insert.setInt(2, id)
+        insert.setString(3, result.node)
+        insert.setString(4, result.equipment)
+        insert.setInt(5, result.terminal)
+        if ((null == result.container) || ("" == result.container))
+            insert.setNull(6, Types.VARCHAR)
+        else
+            insert.setString(6, result.container)
+        if (null == result.errors)
+            insert.setNull(7, Types.VARCHAR)
+        else
+            insert.setString(7, result.errors.mkString(","))
+        insert.setString(8, result.tx)
+        insert.setString(9, result.prev)
+        insert.setDouble(10, result.low_r)
+        insert.setDouble(11, result.low_x)
+        insert.setDouble(12, result.low_r0)
+        insert.setDouble(13, result.low_x0)
+        insert.setDouble(14, result.low_ik)
+        insert.setDouble(15, result.low_ik3pol)
+        insert.setDouble(16, result.low_ip)
+        insert.setDouble(17, result.low_sk)
+        insert.setDouble(18, result.costerm)
+        insert.setDouble(19, result.imax_3ph_low)
+        insert.setDouble(20, result.imax_1ph_low)
+        insert.setDouble(21, result.imax_2ph_low)
+        insert.setDouble(22, result.imax_3ph_med)
+        insert.setDouble(23, result.imax_1ph_med)
+        insert.setDouble(24, result.imax_2ph_med)
+        insert.executeUpdate()
+    }
+
+    private def storeShortcircuitrunTable(connection: Connection): Int = {
+        val now = Calendar.getInstance()
+        val sql = "insert into shortcircuit_run (id, description, time, max_default_short_circuit_power, max_default_short_circuit_resistance, max_default_short_circuit_reactance, min_default_short_circuit_power, min_default_short_circuit_resistance, min_default_short_circuit_reactance, base_temperature, low_temperature, high_temperature, cmax, cmin, worstcasepf, cosphi) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        val insert = connection.prepareStatement(sql)
+        insert.setNull(1, Types.INTEGER)
+        insert.setString(2, options.description)
+        insert.setTimestamp(3, new Timestamp(now.getTimeInMillis))
+        insert.setDouble(4, options.default_short_circuit_power_max)
+        insert.setDouble(5, options.default_short_circuit_impedance_max.re)
+        insert.setDouble(6, options.default_short_circuit_impedance_max.im)
+        insert.setDouble(7, options.default_short_circuit_power_min)
+        insert.setDouble(8, options.default_short_circuit_impedance_min.re)
+        insert.setDouble(9, options.default_short_circuit_impedance_min.im)
+        insert.setDouble(10, options.base_temperature)
+        insert.setDouble(11, options.low_temperature)
+        insert.setDouble(12, options.high_temperature)
+        insert.setDouble(13, options.cmax)
+        insert.setDouble(14, options.cmin)
+        insert.setBoolean(15, options.worstcasepf)
+        insert.setDouble(16, options.cosphi)
+        insert.executeUpdate()
+
+        val statement = connection.createStatement()
+        val resultset = statement.executeQuery("select last_insert_rowid() id")
+        resultset.next()
+        val id = resultset.getInt("id")
+        resultset.close()
+        statement.close()
+        id
     }
 }
