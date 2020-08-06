@@ -1,5 +1,8 @@
 package ch.ninecode.mscons
 
+import ch.ninecode.util.MainOptions
+import ch.ninecode.util.Mainable
+
 object LogLevels extends Enumeration
 {
     type LogLevels = Value
@@ -9,21 +12,19 @@ object LogLevels extends Enumeration
 /**
  * Options for MSCONS processing.
  *
- * @param valid False if either help or version requested (i.e. don't proceed with execution).
- * @param unittest If <code>true</code>, don't call sys.exit().
- * @param verbose If <code>true</code>, emit progress messages.
- * @param log_level Logging level.
- * @param output_file The name of the output file to write.
- * @param delimiter The character to insert between record fields.
- * @param mscons MSCONS files.
+ * @param main_options main() program options
+ * @param verbose if <code>true</code>, emit progress messages
+ * @param log_level logging level
+ * @param output_file name of the output file to write
+ * @param delimiter the character to insert between record fields
+ * @param mscons MSCONS files
  */
 case class MSCONSOptions
 (
-    var valid: Boolean = true,
-    unittest: Boolean = false,
+    var main_options: MainOptions = MainOptions (),
     verbose: Boolean = false,
     log_level: LogLevels.Value = LogLevels.OFF,
-    output_file: String = null,
+    output_file: String = "",
     delimiter: String = " ",
     mscons: Seq[String] = Seq ()
-)
+)  extends Mainable

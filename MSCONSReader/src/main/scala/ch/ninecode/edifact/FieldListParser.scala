@@ -5,9 +5,10 @@ import scala.util.parsing.input.Reader
 
 case class FieldListParser (list: List[Field]) extends Reader[Field]
 {
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     override def first: Field = list.head
 
-    override def rest: Reader[Field] = FieldListParser (list.tail)
+    override def rest: Reader[Field] = FieldListParser (list.drop (1))
 
     override def pos: Position = new Position { val line = 0; val column = 0; val lineContents: String = "" }
 

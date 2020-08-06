@@ -6,6 +6,7 @@ import java.nio.file.StandardOpenOption
 
 import org.scalatest.funsuite.AnyFunSuite
 
+@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
 class EDIFACTSuite extends AnyFunSuite
 {
     test ("UNA 1 - default")
@@ -49,7 +50,7 @@ class EDIFACTSuite extends AnyFunSuite
         assert (scanner.una.release_character == '?')
         assert (scanner.una.segment_terminator == ';')
         val seg = scanner.first
-        assertResult ("XYZ", "segment incorrect")(seg)
+        assert (seg == "XYZ", "segment incorrect")
         assert (!scanner.atEnd)
     }
 
@@ -94,7 +95,7 @@ class EDIFACTSuite extends AnyFunSuite
         assert (scanner.una.release_character == '?')
         assert (scanner.una.segment_terminator == '\'')
         val seg = scanner.first
-        assertResult ("XY'Z", "segment incorrect")(seg)
+        assert (seg == "XY'Z", "segment incorrect")
         assert (!scanner.atEnd)
     }
 
@@ -107,7 +108,7 @@ class EDIFACTSuite extends AnyFunSuite
         assert (scanner.una.release_character == '\\')
         assert (scanner.una.segment_terminator == '\'')
         val seg = scanner.first
-        assertResult ("XY'Z", "segment incorrect")(seg)
+        assert (seg == "XY'Z", "segment incorrect")
         assert (!scanner.atEnd)    }
 
     test ("ParseMultipleSegments")
@@ -118,9 +119,14 @@ class EDIFACTSuite extends AnyFunSuite
         segments.apply (scanner) match
         {
             case message.Success (result: List[Segment], rest) =>
-                assert (result.length == 2)
-                assert (result.head.name == "FOO")
-                assert (result.tail.head.name == "BAR")
+                result match
+                {
+                    case foo :: bar :: Nil =>
+                        assert (foo.name == "FOO")
+                        assert (bar.name == "BAR")
+                    case _ =>
+                        fail ("wrong segment list")
+                }
                 assert (rest.atEnd)
             case message.Failure (msg, _) =>
                 fail (s"parse failure: $msg")
@@ -154,19 +160,27 @@ class EDIFACTSuite extends AnyFunSuite
         segments.apply (scanner) match
         {
             case message.Success (result: List[Segment], rest) =>
-                assert (result.length == 1)
+                result match
+                {
+                    case segment :: Nil =>
+                        assert (segment.name == "DTM")
+                        segment.fields match
+                        {
+                            case field :: Nil =>
+                                assert (field.text == "163:200901010000+01:303")
+                                field.submembers match
+                                {
+                                    case a :: b :: c :: Nil =>
+                                        assert (a.text == "163")
+                                        assert (b.text == "200901010000+01")
+                                        assert (c.text == "303")
+                                    case _ => fail ("wrong submembers list")
+                                }
+                            case _ => fail ("wrong fields list")
+                        }
+                    case _ => fail ("wrong segment list")
+                }
                 assert (rest.atEnd)
-                val segment = result.head
-                assert (segment.name == "DTM")
-                assert (segment.fields != null)
-                assert (segment.fields.length == 1)
-                val field = segment.fields.head
-                assert (field.text == "163:200901010000+01:303")
-                assert (field.submembers != null)
-                assert (field.submembers.length == 3)
-                assert (field.submembers.head.text == "163")
-                assert (field.submembers.tail.head.text == "200901010000+01")
-                assert (field.submembers.tail.tail.head.text == "303")
             case message.Failure (msg, _) =>
                 fail (s"parse failure: $msg")
             case message.Error (msg, _) =>
@@ -194,7 +208,12 @@ class EDIFACTSuite extends AnyFunSuite
         segments.apply (scanner) match
         {
             case message.Success (result: List[Segment], _) =>
-                assertResult ("UNB", "name incorrect") (result.head.name)
+                result match
+                {
+                    case unb :: _ =>
+                        assert (unb.name == "UNB", "name incorrect")
+                    case _ =>
+                }
             case message.Failure (msg, _) =>
                 fail (msg)
             case message.Error (msg, _) =>
@@ -202,7 +221,7 @@ class EDIFACTSuite extends AnyFunSuite
         }
 
         val after = System.nanoTime
-        info ("reading %d bytes took %g seconds".format (size, (after - before) / 1e9))
+        info (s"reading $size bytes took ${(after - before) / 1e9} seconds")
     }
 }
 

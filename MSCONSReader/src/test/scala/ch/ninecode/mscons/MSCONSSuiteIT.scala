@@ -9,6 +9,7 @@ import org.junit.Test
 
 import ch.ninecode.mscons.MSCONS.main
 
+@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
 class MSCONSSuiteIT
 {
     val FILE_DEPOT = "data/"
@@ -33,7 +34,7 @@ class MSCONSSuiteIT
         val source = Source.fromFile (file, "UTF-8")
         val text = source.getLines.toArray
         source.close
-        file.delete
+        val _ = file.delete
 
         assert (text.length == 96, text)
         assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 CET 900000 36300.0+0.0j Wh")
@@ -52,7 +53,7 @@ class MSCONSSuiteIT
         val source = Source.fromFile (file, "UTF-8")
         val text = source.getLines.toArray
         source.close
-        file.delete
+        val _ = file.delete
 
         assert (text.length == 96, text)
         assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 MEZ 900000 36300.0+0.0j Wh")
@@ -92,7 +93,7 @@ class MSCONSSuiteIT
         val source = Source.fromFile (file, "UTF-8")
         val text = source.getLines.toArray
         source.close
-        file.delete
+        val _ = file.delete
 
         assert (text.length == 96 * 6)
         assert (text(0)  == "CH1008801234500000000000000113813 energy 2019-12-14 00:15:00 CET 900000 36300.0+0.0j Wh")

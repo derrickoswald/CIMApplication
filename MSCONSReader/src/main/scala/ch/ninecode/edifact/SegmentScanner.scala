@@ -32,7 +32,7 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
 
         while ((0 < buffer.remaining) && !stop)
         {
-            c = buffer.get.asInstanceOf[Int]
+            c = buffer.get.toInt
             size += 1
             stop = false
             if (skip)
@@ -61,13 +61,14 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
         intervals.foreach (
             item =>
             {
-                buffer.position (item._1)
-                buffer.get (bytes, offset, item._2)
+                val _ = buffer.position (item._1).get (bytes, offset, item._2)
                 offset += item._2
             }
         )
         if (stop)
-            buffer.get // discard terminator
+        {
+            val _ = buffer.get // discard terminator
+        }
         new String (bytes)
     }
 
@@ -107,10 +108,10 @@ object SegmentScanner
     {
         if (buffer.limit () >= 9)
         {
-            buffer.mark ()
+            val _ = buffer.mark ()
             val buna = new Array[Char] (9)
             for (i <- 0 until 9)
-                buna(i) = buffer.get.asInstanceOf[Char]
+                buna(i) = buffer.get.toChar
             val una = new String (buna)
             if (("UNA" == una.substring (0, 3)) && (" " == una.substring (7, 8)))
             {
@@ -124,7 +125,7 @@ object SegmentScanner
             }
             else
             {
-                buffer.reset
+                val _ = buffer.reset
                 UNA ()
             }
         }

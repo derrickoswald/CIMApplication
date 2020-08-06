@@ -6,18 +6,18 @@ object UNH
 {
     def apply (fields: List[Field]): UNH =
     {
-        val reference = fields.head
-        val identifier = fields.tail.head
-        UNH (
-            reference.text,
-            identifier.submembers.head.text,
-            identifier.submembers.tail.head.text,
-            identifier.submembers.tail.tail.head.text,
-            identifier.submembers.tail.tail.tail.head.text,
-            if (identifier.submembers.length >= 5)
-                identifier.submembers.tail.tail.tail.tail.head.text
-            else
-                null
-        )
+        fields match
+        {
+            case reference :: identifier :: _ =>
+                identifier.submembers match
+                {
+                    case typ :: version :: release :: agency :: code :: _ =>
+                        UNH (reference.text, typ.text, version.text, release.text, agency.text, code.text)
+                    case typ :: version :: release :: agency :: _ =>
+                        UNH (reference.text, typ.text, version.text, release.text, agency.text, "")
+                    case _ => UNH ("error", "in subfields", "", "", "", "")
+                }
+            case _ => UNH ("error", "in fields", "", "", "", "")
+        }
     }
 }

@@ -1,10 +1,10 @@
 package ch.ninecode.edifact
 
-case class Field (text: String, submembers: List[Field] = null)
+case class Field (text: String, submembers: List[Field] = List ())
 {
     override def toString: String =
-    if (null == submembers)
-        s"[$text]"
-    else
-        s"[${submembers.mkString (",")}]"
+        if (submembers.isEmpty)
+            s"[$text]"
+        else
+            s"[${submembers.mkString (",")}]"
 }

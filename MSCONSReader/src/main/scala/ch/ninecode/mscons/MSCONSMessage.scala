@@ -51,7 +51,7 @@ trait MSCONSMessage extends Parsers
                                     Error (s"$num repetitions exceeded ${p0.toString}", in0)
                                 else
                                 {
-                                    elems += x
+                                    val _ = elems += x
                                     applyp (rest)
                                 }
                             case e @ Error (_, _)  => e  // still have to propagate error

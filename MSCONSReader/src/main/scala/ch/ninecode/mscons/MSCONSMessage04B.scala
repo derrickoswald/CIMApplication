@@ -110,21 +110,27 @@ case class Group10 (
     def getValue: Option[(Calendar, Int, Double)] =
     {
         val value = qty.quantity.toDouble
-        if (dtm.isDefined)
+        dtm match
         {
-            val start = dtm.get.find (x => x.functionCodeQualifier == "163")
-            val end = dtm.get.find (x => x.functionCodeQualifier == "164")
-            if (start.isDefined && end.isDefined)
-            {
-                val s = start.get.getTime
-                val e = end.get.getTime
-                Some ((e, (e.getTimeInMillis - s.getTimeInMillis).toInt, value))
-            }
-            else
+            case Some (list) =>
+                list.find (x => x.functionCodeQualifier == "163") match
+                {
+                    case Some (start) =>
+                        list.find (x => x.functionCodeQualifier == "164") match
+                        {
+                            case Some (end) =>
+                                val s = start.getTime
+                                val e = end.getTime
+                                Some ((e, (e.getTimeInMillis - s.getTimeInMillis).toInt, value))
+                            case _ =>
+                                None
+                        }
+                    case _ =>
+                        None
+                }
+            case _ =>
                 None
         }
-        else
-            None
     }
 }
 
@@ -347,7 +353,7 @@ case class MSCONSMessage04B (
                 }
             }
             else
-            error (s"'$code' is not an electric OBIS code")
+                error (s"'$code' is not an electric OBIS code")
         }
         else
             error (s"'$code' has an OBIS code format error")
@@ -355,85 +361,113 @@ case class MSCONSMessage04B (
 
     def getReadings: List[(ID, Quantity, Time, Period, Real, Imaginary, Units)] =
     {
-        group5.flatMap (_.group6.flatMap (
-            x =>
-            {
-                val id = x.loc.locationIdentification.get.locationIdentifier.getOrElse ("")
-                val readings = x.group9.get.flatMap (
-                    y =>
+        group5.flatMap (
+            _.group6.flatMap (
+                x =>
+                {
+                    val id: ID = x.loc.locationIdentification match
                     {
-                        val pia = y.pia.get.head.itemNumberIdentification1.itemIdentifier.get
-                        val fn = decode_obis (pia)
-                        val quantities = y.group10.flatMap (_.getValue)
-                        quantities.map (
-                            z =>
-                            {
-                                val (typ, real, imaginary, units) = fn (z._3)
-                                (typ, z._1, z._2, real, imaginary, units)
-                            }
-                        )
+                        case Some (loc) => loc.locationIdentifier match
+                        {
+                            case Some (id) => id
+                            case _ => ""
+                        }
+                        case _ => ""
                     }
-                )
-                readings.map (y => (id, y._1, y._2, y._3, y._4, y._5, y._6))
-            }
-        )
+                    val readings: Seq[(Quantity, Time, Period, Real, Imaginary, Units)] = x.group9 match
+                    {
+                        case Some (groups) =>
+                            groups.flatMap (
+                                y =>
+                                {
+                                    val pia = y.pia match
+                                    {
+                                        case Some (head :: _) => // ToDo: only look at the first?
+                                            head.itemNumberIdentification1.itemIdentifier match
+                                            {
+                                                case Some (value) => value
+                                                case None => ""
+                                            }
+                                        case _ => ""
+                                    }
+                                    val fn = decode_obis (pia)
+                                    val quantities = y.group10.flatMap (_.getValue)
+                                    quantities.map (
+                                        z =>
+                                        {
+                                            val (typ, real, imaginary, units) = fn (z._3)
+                                            (typ, z._1, z._2, real, imaginary, units)
+                                        }
+                                    )
+                                }
+                            )
+                        case _ =>
+                            Seq ()
+                    }
+                    readings.map (y => (id, y._1, y._2, y._3, y._4, y._5, y._6))
+                }
+            )
         )
     }
 }
 
 object MSCONSMessage04B extends MSCONSMessage
 {
+    def listNonEmpty[T] (list: Option[List[T]]): Option[List[T]] =
+    {
+        list match
+        {
+            case Some (_ :: _) => list
+            case Some (Nil) => None
+            case None => None
+        }
+    }
     lazy val bgm: Parser[BGM] = expect ("BGM", x => BGM (x))
     lazy val dtm: Parser[DTM] = expect ("DTM", x => DTM (x))
-    lazy val dtms: Parser[Option[List[DTM]]] = repAtMostN (9, false, dtm).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get) else None)
+    lazy val dtms: Parser[Option[List[DTM]]] = repAtMostN (9, false, dtm).? ^^ (x => listNonEmpty (x))
     lazy val cux: Parser[Option[CUX]] = expect ("CUX", x => CUX (x)).?
     lazy val rff: Parser[RFF] = expect ("RFF", x => RFF (x))
     lazy val group1: Parser[Option[List[Group1]]] = repAtMostN (9, false, rff ~ dtms).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get.map ({ case rff ~ dtms => Group1 (rff, dtms) })) else None)
+        (x => listNonEmpty (x).map (y => y.map ({ case rff ~ dtms => Group1 (rff, dtms) })))
 
     lazy val nad: Parser[NAD] = expect ("NAD", x => NAD (x))
     lazy val group3: Parser[Option[List[Group3]]] = repAtMostN (9, false, rff ~ dtms).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get.map ({ case rff ~ dtms => Group3 (rff, dtms) })) else None)
+        (x => listNonEmpty (x).map (y => y.map ({ case rff ~ dtms => Group3 (rff, dtms) })))
 
     lazy val cta: Parser[CTA] = expect ("CTA", x => CTA (x))
     lazy val com: Parser[COM] = expect ("COM", x => COM (x))
-    lazy val coms: Parser[Option[List[COM]]] = repAtMostN (9, false, com).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get) else None)
+    lazy val coms: Parser[Option[List[COM]]] = repAtMostN (9, false, com).? ^^ (x => listNonEmpty (x))
     lazy val group4: Parser[Option[List[Group4]]] = repAtMostN (9, false, cta ~ coms).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get.map ({ case cta ~ coms => Group4 (cta, coms) })) else None)
+        (x => listNonEmpty (x).map (y => y.map ({ case cta ~ coms => Group4 (cta, coms) })))
 
     lazy val group2: Parser[Option[List[Group2]]] = repAtMostN (99, false, nad ~ group3 ~ group4).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get.map ({ case nad ~ g3 ~ g4 => Group2 (nad, g3, g4) })) else None)
+        (x => listNonEmpty (x).map (y => y.map ({ case nad ~ g3 ~ g4 => Group2 (nad, g3, g4) })))
 
     lazy val uns: Parser[UNS] = expect ("UNS", x => UNS (x))
 
     lazy val group7: Parser[Option[List[Group7]]] = repAtMostN (99, false, rff ~ dtms).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get.map ({ case rff ~ dtms => Group7 (rff, dtms) })) else None)
+        (x => listNonEmpty (x).map (y => y.map ({ case rff ~ dtms => Group7 (rff, dtms) })))
 
     lazy val group8: Parser[Option[List[Group8]]] = repAtMostN (99, false, cci ~ dtms).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get.map ({ case cci ~ dtms => Group8 (cci, dtms) })) else None)
+        (x => listNonEmpty (x).map (y => y.map ({ case cci ~ dtms => Group8 (cci, dtms) })))
 
     lazy val qty: Parser[QTY] = expect ("QTY", x => QTY (x))
     lazy val sts: Parser[STS] = expect ("STS", x => STS (x))
-    lazy val stss: Parser[Option[List[STS]]] = repAtMostN (9, false, sts).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get) else None)
+    lazy val stss: Parser[Option[List[STS]]] = repAtMostN (9, false, sts).? ^^ (x => listNonEmpty (x))
     lazy val group10: Parser[List[Group10]] = repAtMostN (9999, true, qty ~ dtms ~ stss) ^^
         (g => g.map ({ case qty ~ dtms ~ stss => Group10 (qty, dtms, stss) }))
 
     lazy val cci: Parser[CCI] = expect ("CCI", x => CCI (x))
     lazy val mea: Parser[MEA] = expect ("MEA", x => MEA (x))
-    lazy val meas: Parser[Option[List[MEA]]] = repAtMostN (99, false, mea).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get) else None)
+    lazy val meas: Parser[Option[List[MEA]]] = repAtMostN (99, false, mea).? ^^ (x => listNonEmpty (x))
     lazy val group11: Parser[Option[List[Group11]]] = repAtMostN (99, false, cci ~ meas ~ dtms).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get.map ({ case cci ~ meas ~ dtms => Group11 (cci, meas, dtms) })) else None)
+        (x => listNonEmpty (x).map (y => y.map ({ case cci ~ meas ~ dtms => Group11 (cci, meas, dtms) })))
 
     lazy val lin: Parser[LIN] = expect ("LIN", x => LIN (x))
     lazy val pia: Parser[PIA] = expect ("PIA", x => PIA (x))
-    lazy val pias: Parser[Option[List[PIA]]] = repAtMostN (9, false, pia).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get) else None)
+    lazy val pias: Parser[Option[List[PIA]]] = repAtMostN (9, false, pia).? ^^ (x => listNonEmpty (x))
     lazy val group9: Parser[Option[List[Group9]]] = repAtMostN (99999, false, lin ~ pias ~ /* ... */ group10 ~ group11).? ^^
-        (g => if (g.isDefined && 0 < g.get.length) Some (g.get.map ({ case lin ~ pias ~ group10 ~ group11 => Group9 (lin, pias, group10, group11) })) else None)
+        (x => listNonEmpty (x).map (y => y.map ({ case lin ~ pias ~ group10 ~ group11 => Group9 (lin, pias, group10, group11) })))
 
     lazy val loc: Parser[LOC] = expect ("LOC", x => LOC (x))
     lazy val group6: Parser[List[Group6]] = repAtMostN (99999, true, loc ~ dtms ~ group7 ~ group8 ~ group9) ^^

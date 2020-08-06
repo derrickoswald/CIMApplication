@@ -137,7 +137,7 @@ case class DTM (
                         {
                             case pe: ParseException =>
 //                                log.warning (s"DTM text '$value' cannot be parsed (${pe.getLocalizedMessage}) as format code ${formatCode.get} = '$code'")
-                                println (s"DTM text '$value' cannot be parsed (${pe.getLocalizedMessage}) as format code ${formatCode.get} = '$code'")
+                                println (s"DTM text '$value' cannot be parsed (${pe.getLocalizedMessage}) as format code 203 = '$code'")
                                 Calendar.getInstance.getTime
                         }
                         val calendar = Calendar.getInstance ()
@@ -184,7 +184,7 @@ case class DTM (
                         {
                             case pe: ParseException =>
 //                                log.warning (s"DTM text '$string' cannot be parsed (${pe.getLocalizedMessage}) as format code {formatCode.get} = '$code'")
-                                println (s"DTM text '$string' cannot be parsed (${pe.getLocalizedMessage}) as format code ${formatCode.get} = '$code'")
+                                println (s"DTM text '$string' cannot be parsed (${pe.getLocalizedMessage}) as format code 303 = '$code'")
                                 Calendar.getInstance.getTime
                         }
                         val calendar = Calendar.getInstance ()

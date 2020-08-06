@@ -10,6 +10,7 @@ import ch.ninecode.edifact.SegmentParser
 import ch.ninecode.edifact.SegmentScanner
 import ch.ninecode.edifact.ServiceSegmentParser
 
+@SuppressWarnings (Array ("org.wartremover.warts.OptionPartial", "org.wartremover.warts.TraversableOps"))
 class SegmentSuite extends AnyFunSuite
 {
     abstract class Mock[T] extends MSCONSMessage

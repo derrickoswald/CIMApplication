@@ -6,8 +6,16 @@ object UNB
 {
     def apply (fields: List[Field]): UNB =
     {
-        val syntax = fields.head
-        UNB (syntax.submembers.head.text, syntax.submembers.tail.head.text)
+        fields match
+        {
+            case syntax :: _ =>
+                syntax.submembers match
+                {
+                    case id :: version :: _ => UNB (id.text, version.text)
+                    case _ => UNB ("error", "in subfields")
+                }
+            case _ => UNB ("error", "in fields")
+        }
     }
 }
 
