@@ -153,7 +153,7 @@ class FileOperations extends RESTful
                 }
                 finally
                     try
-                        connection.close ()
+                    connection.close ()
                     catch
                     {
                         case resourceexception: ResourceException =>
@@ -216,7 +216,7 @@ class FileOperations extends RESTful
                 }
                 finally
                     try
-                        connection.close ()
+                    connection.close ()
                     catch
                     {
                         case resourceexception: ResourceException =>
@@ -277,7 +277,7 @@ class FileOperations extends RESTful
                 }
                 finally
                     try
-                        connection.close ()
+                    connection.close ()
                     catch
                     {
                         case resourceexception: ResourceException =>

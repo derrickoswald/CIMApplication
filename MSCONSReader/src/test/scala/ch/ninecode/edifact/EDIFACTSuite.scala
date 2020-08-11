@@ -109,7 +109,8 @@ class EDIFACTSuite extends AnyFunSuite
         assert (scanner.una.segment_terminator == '\'')
         val seg = scanner.first
         assert (seg == "XY'Z", "segment incorrect")
-        assert (!scanner.atEnd)    }
+        assert (!scanner.atEnd)
+    }
 
     test ("ParseMultipleSegments")
     {

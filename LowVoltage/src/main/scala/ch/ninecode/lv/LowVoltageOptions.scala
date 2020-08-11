@@ -13,15 +13,15 @@ import ch.ninecode.util.Sparkable
 /**
  * Low voltage GLM generation options.
  *
- * @param main_options main() program options
+ * @param main_options  main() program options
  * @param spark_options Spark session options
- * @param cim_options CIMReader options
- * @param verbose if <code>true</code> output informational messages
- * @param three if <code>true</code> generate three phase .glm files, else one phase.
- * @param trafos the list of transformers to process,
- *               default is an empty list which means all low voltage transformers in the input file(s) are processed
- * @param workdir the shared directory (among Spark executors) to use for staging GridLAB-D simulations,
- *                each simulation is created in a subdirectory of this directory
+ * @param cim_options   CIMReader options
+ * @param verbose       if <code>true</code> output informational messages
+ * @param three         if <code>true</code> generate three phase .glm files, else one phase.
+ * @param trafos        the list of transformers to process,
+ *                      default is an empty list which means all low voltage transformers in the input file(s) are processed
+ * @param workdir       the shared directory (among Spark executors) to use for staging GridLAB-D simulations,
+ *                      each simulation is created in a subdirectory of this directory
  */
 case class LowVoltageOptions (
     var main_options: MainOptions = MainOptions (),

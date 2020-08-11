@@ -47,7 +47,7 @@ class Ingest extends RESTful
                                 case _ =>
                                     ret.setResultException (new ResourceException ("IngestFunction result is not a JsonObject"), "unhandled result type")
                             }
-                        case _  =>
+                        case _ =>
                             ret.setResultException (new ResourceException ("IngestFunction interaction result is not a MappedRecord"), "unhandled interaction result")
                     }
                 }

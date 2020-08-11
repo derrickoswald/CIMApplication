@@ -11,6 +11,7 @@ import ch.ninecode.testutil.Unzip
 
 class LowVoltageTests
 {
+
     import LowVoltageTests.FILE_DEPOT
     import LowVoltageTests.FILENAME
 
@@ -29,6 +30,7 @@ class LowVoltageTests
         assert (new File ("./target/TX0001/TX0001.glm").exists, "TX0001")
     }
 }
+
 object LowVoltageTests extends Unzip
 {
     val FILE_DEPOT = "data/"

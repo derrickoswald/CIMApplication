@@ -4,9 +4,9 @@ package ch.ninecode.sp
  * Options for spatial operations.
  *
  * @param clazz the name of the class of interest
- * @param lon longitude of center point
- * @param lat latitude of center point
- * @param n number of elements to get
+ * @param lon   longitude of center point
+ * @param lat   latitude of center point
+ * @param n     number of elements to get
  */
 case class SpatialOperationParameters
 (

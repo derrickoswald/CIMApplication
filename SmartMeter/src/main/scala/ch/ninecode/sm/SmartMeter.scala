@@ -44,7 +44,7 @@ class SmartMeter (
     session: SparkSession,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
     topological_nodes: Boolean)
-extends CIMRDD with Serializable
+    extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -80,7 +80,7 @@ extends CIMRDD with Serializable
 
     def edge_operator (voltages: Map[String, Double])(arg: (((Element, Double), Option[Iterable[PowerTransformerEnd]]), Iterable[Terminal])): List[PreEdge] =
     {
-        var ret = List[PreEdge]()
+        var ret = List [PreEdge]()
 
         val e = arg._1._1._1
         val ratedCurrent = arg._1._1._2
@@ -106,48 +106,48 @@ extends CIMRDD with Serializable
                             val tends = x.toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
                             tends.map (e => 1000.0 * voltages.getOrElse (e.TransformerEnd.BaseVoltage, 0.0))
                         case None =>
-                            Array[Double](volt, volt)
+                            Array [Double](volt, volt)
                     }
                 // Note: we eliminate 230V edges because transformer information doesn't exist and
                 // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
                 if (!volts.contains (230.0))
                 // make a pre-edge for each pair of terminals
-                    ret = terminals.length match
-                    {
-                        case 1 =>
-                            ret :+
-                                PreEdge (
-                                    terminals (0).ACDCTerminal.id,
-                                    node_name (terminals (0)),
-                                    volts (0),
-                                    "",
-                                    "",
-                                    volts (0),
-                                    terminals (0).ConductingEquipment,
-                                    ratedCurrent,
-                                    equipment,
-                                    e,
-                                    span (e))
-                        case _ =>
-                            for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                            {
-                                ret = ret :+ PreEdge (
-                                    terminals (0).ACDCTerminal.id,
-                                    node_name (terminals (0)),
-                                    volts (0),
-                                    terminals (i).ACDCTerminal.id,
-                                    node_name (terminals (i)),
-                                    volts (i),
-                                    terminals (0).ConductingEquipment,
-                                    ratedCurrent,
-                                    equipment,
-                                    e,
-                                    span (e))
-                            }
-                            ret
-                    }
+                ret = terminals.length match
+                {
+                    case 1 =>
+                        ret :+
+                            PreEdge (
+                                terminals (0).ACDCTerminal.id,
+                                node_name (terminals (0)),
+                                volts (0),
+                                "",
+                                "",
+                                volts (0),
+                                terminals (0).ConductingEquipment,
+                                ratedCurrent,
+                                equipment,
+                                e,
+                                span (e))
+                    case _ =>
+                        for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                        {
+                            ret = ret :+ PreEdge (
+                                terminals (0).ACDCTerminal.id,
+                                node_name (terminals (0)),
+                                volts (0),
+                                terminals (i).ACDCTerminal.id,
+                                node_name (terminals (i)),
+                                volts (i),
+                                terminals (0).ConductingEquipment,
+                                ratedCurrent,
+                                equipment,
+                                e,
+                                span (e))
+                        }
+                        ret
+                }
             case _ =>
-                // shouldn't happen, terminals always reference ConductingEquipment, right?
+            // shouldn't happen, terminals always reference ConductingEquipment, right?
         }
 
         ret
@@ -198,8 +198,8 @@ extends CIMRDD with Serializable
      */
     def getCableMaxCurrent: RDD[(String, Double)] =
     {
-        val wireinfos = get[WireInfo]
-        val lines = get[ACLineSegment]
+        val wireinfos = get [WireInfo]
+        val lines = get [ACLineSegment]
         val keyed = lines.keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet)
         val cables = keyed.join (wireinfos.keyBy (_.id)).values.map (x => (x._1.id, x._2.ratedCurrent))
 
@@ -212,16 +212,16 @@ extends CIMRDD with Serializable
     def prepare: Graph[PreNode, PreEdge] =
     {
         // get a map of voltages
-        val voltages = get[BaseVoltage].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = get [BaseVoltage].map ((v) => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals
-        val terminals = get[Terminal].filter (null != _.ConnectivityNode)
+        val terminals = get [Terminal].filter (null != _.ConnectivityNode)
 
         // get the terminals keyed by equipment
         val terms = terminals.groupBy (_.ConductingEquipment)
 
         // get all elements
-        val elements = get[Element]("Elements")
+        val elements = get [Element]("Elements")
 
         // join with WireInfo to get ratedCurrent (only for ACLineSegments)
         val cableMaxCurrent = getCableMaxCurrent
@@ -238,7 +238,7 @@ extends CIMRDD with Serializable
         })
 
         // get the transformer ends keyed by transformer
-        val ends = get[PowerTransformerEnd].groupBy (_.PowerTransformer)
+        val ends = get [PowerTransformerEnd].groupBy (_.PowerTransformer)
 
         // handle transformers specially, by attaching all PowerTransformerEnd objects to the elements
         val elementsplus = joined_elements.leftOuterJoin (ends)
@@ -256,7 +256,7 @@ extends CIMRDD with Serializable
         val nodes = if (topological_nodes)
         {
             // get the topological nodes RDD
-            val tnodes = get[TopologicalNode]
+            val tnodes = get [TopologicalNode]
 
             // map the topological nodes to prenodes with voltages
             tnodes.keyBy (_.id).join (terminals.keyBy (_.TopologicalNode)).values.keyBy (_._2.id).join (tv).values.map (topological_node_operator).distinct
@@ -264,7 +264,7 @@ extends CIMRDD with Serializable
         else
         {
             // get the connectivity nodes RDD
-            val connectivitynodes = get[ConnectivityNode]
+            val connectivitynodes = get [ConnectivityNode]
 
             // map the connectivity nodes to prenodes with voltages
             connectivitynodes.keyBy (_.id).join (terminals.keyBy (_.ConnectivityNode)).values.keyBy (_._2.id).join (tv).values.map (connectivity_node_operator).distinct
@@ -329,8 +329,8 @@ extends CIMRDD with Serializable
         val initial = prepare
 
         // get the ConnectivityNode corresponding to the given starting node
-        val terminal = get[Terminal].filter (terminal => terminal.ConductingEquipment == starting_node).first
-        val start_at = Array[VertexId](pn.vertex_id (if (topological_nodes) terminal.TopologicalNode else terminal.ConnectivityNode))
+        val terminal = get [Terminal].filter (terminal => terminal.ConductingEquipment == starting_node).first
+        val start_at = Array [VertexId](pn.vertex_id (if (topological_nodes) terminal.TopologicalNode else terminal.ConnectivityNode))
 
         val trace = new Trace (initial)
         val tracedGraph = trace.run (start_at)
@@ -359,8 +359,8 @@ extends CIMRDD with Serializable
             withoutEmptyLeafes = filterEmptyLeaves (tracedRenamedVertices)
         }
 
-        val name = get[Name]
-        val userAttr = get[UserAttribute]
+        val name = get [Name]
+        val userAttr = get [UserAttribute]
         // legacy
         //      val joinedMst = name.keyBy(_.IdentifiedObject).join(userAttr.keyBy(_.name))
         val joinedMst = name.keyBy (_.IdentifiedObject).join (userAttr.keyBy (_.name))
@@ -452,7 +452,7 @@ object SmartMeter
         val setup = System.nanoTime ()
 
         val files = filename.split (",")
-        val options = Map[String, String](
+        val options = Map [String, String](
             "path" -> filename,
             "StorageLevel" -> "MEMORY_AND_DISK_SER",
             "ch.ninecode.cim.do_topo_islands" -> "true")

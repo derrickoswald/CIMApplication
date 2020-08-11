@@ -8,8 +8,8 @@ final case class GLMLineEdge
 (
     override val data: LineData
 )
-extends LineEdge (data)
-with GLMEdge
+    extends LineEdge (data)
+        with GLMEdge
 {
     /**
      * Emit a overhead or underground line.
@@ -30,16 +30,16 @@ with GLMEdge
         val config = configurationName
         val phases = if (generator.isSinglePhase) "AN" else "ABCN"
         s"""
-          |        object $typ
-          |        {
-          |            name "$id";
-          |            phases $phases;
-          |            from "$cn1";
-          |            to "$cn2";
-          |            length ${length}m;
-          |            configuration "$config";
-          |        };
-          |""".stripMargin
+           |        object $typ
+           |        {
+           |            name "$id";
+           |            phases $phases;
+           |            from "$cn1";
+           |            to "$cn2";
+           |            length ${length}m;
+           |            configuration "$config";
+           |        };
+           |""".stripMargin
     }
 
     /**
@@ -59,22 +59,22 @@ with GLMEdge
                 sequence2z (pli.z0, pli.z1)
         val dia = diag.asString (8) + " Ohm/m"
         val off = offd.asString (8) + " Ohm/m"
-        val comment =  lines.map (line => s"            // ${line.id}").mkString ("\n", "\n", "")
+        val comment = lines.map (line => s"            // ${line.id}").mkString ("\n", "\n", "")
         s"""
-          |$warning        object line_configuration
-          |        {$comment
-          |            name "$config";
-          |            z11 $dia;
-          |            z12 $off;
-          |            z13 $off;
-          |            z21 $off;
-          |            z22 $dia;
-          |            z23 $off;
-          |            z31 $off;
-          |            z32 $off;
-          |            z33 $dia;
-          |        };
-          |""".stripMargin
+           |$warning        object line_configuration
+           |        {$comment
+           |            name "$config";
+           |            z11 $dia;
+           |            z12 $off;
+           |            z13 $off;
+           |            z21 $off;
+           |            z22 $dia;
+           |            z23 $off;
+           |            z31 $off;
+           |            z32 $off;
+           |            z33 $dia;
+           |        };
+           |""".stripMargin
     }
 
     /**

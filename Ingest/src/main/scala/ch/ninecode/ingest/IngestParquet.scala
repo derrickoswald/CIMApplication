@@ -102,7 +102,7 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
                 .options (readOptions)
                 .load (thisFiles: _*)
                 .persist (StorageLevel.MEMORY_AND_DISK_SER)
-            println (s"${ elements.count } elements")
+            println (s"${elements.count} elements")
         }
     }
 }

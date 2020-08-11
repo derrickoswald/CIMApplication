@@ -28,20 +28,20 @@ trait GLMEdge extends LoadFlowEdge
      */
     def emit (generator: GLMGenerator): String =
         s"""
-        |        object link
-        |        {
-        |            name "$id";
-        |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
-        |            from "$cn1";
-        |            to "$cn2";
-        |        };
-        |""".stripMargin
+           |        object link
+           |        {
+           |            name "$id";
+           |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
+           |            from "$cn1";
+           |            to "$cn2";
+           |        };
+           |""".stripMargin
 }
 
 object GLMEdge
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
-    val rootClass:String = ConductingEquipment.getClass.getName.replace ("$", "")
+    val rootClass: String = ConductingEquipment.getClass.getName.replace ("$", "")
 
     def classname (element: Element): String =
     {
@@ -85,8 +85,8 @@ object GLMEdge
      *   - multi-island trace results
      *
      * @param elements the CIM elements comprising the edge
-     * @param cn1 the TopologicalNode id of one end of the edge
-     * @param cn2 the TopologicalNode id of the other end of the edge
+     * @param cn1      the TopologicalNode id of one end of the edge
+     * @param cn2      the TopologicalNode id of the other end of the edge
      * @return a type of edge
      */
     def toGLMEdge (elements: Iterable[Element], cn1: String, cn2: String,
@@ -107,9 +107,9 @@ object GLMEdge
             case "Switch" =>
                 GLMSwitchEdge (cn1, cn2, elements)
             case "Conductor" =>
-                val t1 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID="terminal_1"))), TopologicalNode = cn1)
+                val t1 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID = "terminal_1"))), TopologicalNode = cn1)
                 t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
-                val t2 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID="terminal_2"))), TopologicalNode = cn2)
+                val t2 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID = "terminal_2"))), TopologicalNode = cn2)
                 t2.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
                 implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
                 GLMLineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None, tbase))))

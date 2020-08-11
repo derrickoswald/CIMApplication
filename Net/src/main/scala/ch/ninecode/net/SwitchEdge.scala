@@ -4,11 +4,11 @@ class SwitchEdge
 (
     data: SwitchData
 )
-extends LoadFlowEdge (
-    data.switches.map (_.element.id).toArray.sortWith (_ < _).mkString ("_"),
-    data.node0,
-    data.node1
-)
+    extends LoadFlowEdge (
+        data.switches.map (_.element.id).toArray.sortWith (_ < _).mkString ("_"),
+        data.node0,
+        data.node1
+    )
 {
     def closed: Boolean = data.closed
 

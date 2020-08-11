@@ -7,16 +7,18 @@ object LogLevels extends Enumeration
 {
     type LogLevels = Value
     val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
+
     def toLog4j (level: Value): org.apache.log4j.Level =
-        level match {
-            case ALL   => org.apache.log4j.Level.ALL
+        level match
+        {
+            case ALL => org.apache.log4j.Level.ALL
             case DEBUG => org.apache.log4j.Level.DEBUG
             case ERROR => org.apache.log4j.Level.ERROR
             case FATAL => org.apache.log4j.Level.FATAL
-            case INFO  => org.apache.log4j.Level.INFO
-            case OFF   => org.apache.log4j.Level.ALL
+            case INFO => org.apache.log4j.Level.INFO
+            case OFF => org.apache.log4j.Level.ALL
             case TRACE => org.apache.log4j.Level.ALL
-            case WARN  => org.apache.log4j.Level.WARN
+            case WARN => org.apache.log4j.Level.WARN
         }
 }
 

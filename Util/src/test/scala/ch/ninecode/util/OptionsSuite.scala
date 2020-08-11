@@ -50,7 +50,7 @@ class OptionsSuite extends AnyFunSuite
         val COMMA = ","
         val EQUAL = "="
         val FILES = "file1.rdf,file2.rdf"
-        val required = Map[String,String] (
+        val required = Map [String, String](
             "StorageLevel" -> "MEMORY_AND_DISK_SER_2",
             "ch.ninecode.cim.do_topo" -> "true",
             "ch.ninecode.cim.do_topo_islands" -> "true",

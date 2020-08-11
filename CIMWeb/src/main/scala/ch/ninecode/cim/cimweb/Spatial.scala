@@ -57,6 +57,7 @@ class Spatial extends RESTful
                         else
                             Failure (new ResourceException (s"""method $method not recognized"""))
                     }
+
                     function match
                     {
                         case Success (near) =>
@@ -118,7 +119,7 @@ class Spatial extends RESTful
                 }
                 finally
                     try
-                        connection.close ()
+                    connection.close ()
                     catch
                     {
                         case resourceexception: ResourceException =>

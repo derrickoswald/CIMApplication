@@ -73,39 +73,39 @@ import ch.ninecode.edifact.UNZ
 //    00440   UNT Message trailer                          M   1
 
 case class Group1 (
-                      rff: RFF,
-                      dtm_p: Option[List[DTM]])
+    rff: RFF,
+    dtm_p: Option[List[DTM]])
 
 case class Group3 (
-                      rff: RFF,
-                      dtm_p: Option[List[DTM]]
-                  )
+    rff: RFF,
+    dtm_p: Option[List[DTM]]
+)
 
 case class Group4 (
-                      cta: CTA,
-                      com: Option[List[COM]])
+    cta: CTA,
+    com: Option[List[COM]])
 
 case class Group2 (
-                      nad: NAD,
-                      group3: Option[List[Group3]],
-                      group4: Option[List[Group4]]
-                  )
+    nad: NAD,
+    group3: Option[List[Group3]],
+    group4: Option[List[Group4]]
+)
 
 case class Group7 (
-                      reference: RFF,
-                      dateTimePeriod: Option[List[DTM]]
-                  )
+    reference: RFF,
+    dateTimePeriod: Option[List[DTM]]
+)
 
 case class Group8 (
-                      characteristicClassId: CCI,
-                      dateTimePeriod: Option[List[DTM]]
-                  )
+    characteristicClassId: CCI,
+    dateTimePeriod: Option[List[DTM]]
+)
 
 case class Group10 (
-                       qty: QTY,
-                       dtm: Option[List[DTM]],
-                       sts: Option[List[STS]]
-                   )
+    qty: QTY,
+    dtm: Option[List[DTM]],
+    sts: Option[List[STS]]
+)
 {
     def getValue: Option[(Calendar, Int, Double)] =
     {
@@ -135,47 +135,47 @@ case class Group10 (
 }
 
 case class Group11 (
-                       cci: CCI,
-                       mea: Option[List[MEA]],
-                       DTM: Option[List[DTM]]
-                   )
+    cci: CCI,
+    mea: Option[List[MEA]],
+    DTM: Option[List[DTM]]
+)
 
 case class Group9 (
-                      lin: LIN,
-                      pia: Option[List[PIA]],
-                      //    imd: Option[List[IMD]],
-                      //    pri: Option[List[PRI]],
-                      //    nad: Option[List[NAD]],
-                      //    moa: Option[List[MOA]],
-                      group10: List[Group10],
-                      group11: Option[List[Group11]]
-                  )
+    lin: LIN,
+    pia: Option[List[PIA]],
+    //    imd: Option[List[IMD]],
+    //    pri: Option[List[PRI]],
+    //    nad: Option[List[NAD]],
+    //    moa: Option[List[MOA]],
+    group10: List[Group10],
+    group11: Option[List[Group11]]
+)
 
 case class Group6 (
-                      loc: LOC,
-                      dtm: Option[List[DTM]],
-                      group7: Option[List[Group7]],
-                      group8: Option[List[Group8]],
-                      group9: Option[List[Group9]]
-                  )
+    loc: LOC,
+    dtm: Option[List[DTM]],
+    group7: Option[List[Group7]],
+    group8: Option[List[Group8]],
+    group9: Option[List[Group9]]
+)
 
 case class Group5 (
-                      nad: NAD,
-                      group6: List[Group6]
-                  )
+    nad: NAD,
+    group6: List[Group6]
+)
 
 case class MSCONSMessage04B (
-                                bgm: BGM,
-                                dtm: DTM,
-                                cux: Option[CUX],
-                                group1: Option[List[Group1]],
-                                group2: Option[List[Group2]],
-                                uns: UNS,
-                                group5: List[Group5],
-                                cnt: Option[CNT],
-                                unt: UNT,
-                                unz: UNZ
-                            )
+    bgm: BGM,
+    dtm: DTM,
+    cux: Option[CUX],
+    group1: Option[List[Group1]],
+    group2: Option[List[Group2]],
+    uns: UNS,
+    group5: List[Group5],
+    cnt: Option[CNT],
+    unt: UNT,
+    unz: UNZ
+)
 {
     /**
      * Parse an OBIS code in the additional product id (PIA) segment.
@@ -189,17 +189,17 @@ case class MSCONSMessage04B (
      * A-B:C.D.E*F
      *
      *   - The A group defines the medium
-     * (0=abstract objects, 1=electricity, 6=heat, 7=gas, 8=water, ...)
+     *     (0=abstract objects, 1=electricity, 6=heat, 7=gas, 8=water, ...)
      *   - The B group defines the channel.
-     * Each device with multiple channels generating measurement results,
-     * can separate the results into the channels.
+     *     Each device with multiple channels generating measurement results,
+     *     can separate the results into the channels.
      *   - The C group defines the physical value
-     * (current, voltage, energy, level, temperature, ...)
+     *     (current, voltage, energy, level, temperature, ...)
      *   - The D group defines the quantity computation output of specific algorithm
      *   - The E group specifies the measurement type defined by
-     * groups A to D into individual measurements (e.g. switching ranges)
+     *     groups A to D into individual measurements (e.g. switching ranges)
      *   - The F group separates the results partly defined by groups A to E.
-     * The typical usage is the specification of individual time ranges.
+     *     The typical usage is the specification of individual time ranges.
      *
      * Reduced ID codes (e.g. for IEC 62056-21 )
      * To comply with the syntax defined for protocol modes A to D of IEC 62056-21, the range of ID
@@ -264,95 +264,95 @@ case class MSCONSMessage04B (
         if (matcher.find)
         {
             if (1 == matcher.group (2).toInt) // Electricity related objects
-            {
-                val quantity = matcher.group (5).toInt
-                val what = matcher.group (6).toInt
-                quantity match
                 {
-                    // active power + = ΣL i Active power+
-                    case 1 =>
-                        what match
-                        {
-                            // last average
-                            case 5 =>
-                                value: Double => (defaultPowerName, mul (value, dMulti), 0.0, defaultPowerUnit)
-                            // time integral 1 or Time integral 5
-                            case 8 | 29 =>
-                                value: Double => (defaultEnergyName, mul (value, dMulti), 0.0, defaultEnergyUnit)
-                            case _ =>
-                                error (s"unrecognized Value group D $what in $code")
-                        }
-                    // active power - = ΣL i Active power–
-                    case 2 =>
-                        what match
-                        {
-                            // last average
-                            case 5 =>
-                                value: Double => (defaultPowerName, mul (value, -dMulti), 0.0, defaultPowerUnit)
-                            // Time integral 1 or Time integral 5
-                            case 8 | 29 =>
-                                value: Double => (defaultEnergyName, mul (value, -dMulti), 0.0, defaultEnergyUnit)
-                            case _ =>
-                                error (s"unrecognized Value group D $what in $code")
-                        }
-                    // reactive power Q I = ΣL i Reactive power QI
-                    case 5 =>
-                        what match
-                        {
-                            // last average
-                            case 5 =>
-                                value: Double => (defaultPowerName, 0.0, mul (value, dMulti), defaultPowerUnit)
-                            // Time integral 1 or Time integral 5
-                            case 8 | 29 =>
-                                value: Double => (defaultEnergyName, 0.0, mul (value, dMulti), defaultEnergyUnit)
-                            case _ =>
-                                error (s"unrecognized Value group D $what in $code")
-                        }
-                    // reactive power Q II = ΣL i Reactive power QII
-                    case 6 =>
-                        what match
-                        {
-                            // last average
-                            case 5 =>
-                                value: Double => (defaultPowerName, 0.0, mul (value, dMulti), defaultPowerUnit)
-                            // Time integral 1 or Time integral 5
-                            case 8 | 29 =>
-                                value: Double => (defaultEnergyName, 0.0, mul (value, dMulti), defaultEnergyUnit)
-                            case _ =>
-                                error (s"unrecognized Value group D $what in $code")
-                        }
-                    // reactive power Q III = ΣL i Reactive power QIII
-                    case 7 =>
-                        what match
-                        {
-                            // last average
-                            case 5 =>
-                                value: Double => (defaultPowerName, 0.0, mul (value, -dMulti), defaultPowerUnit)
-                            // Time integral 1 or Time integral 5
-                            case 8 | 29 =>
-                                value: Double => (defaultEnergyName, 0.0, mul (value, -dMulti), defaultEnergyUnit)
-                            case _ =>
-                                error (s"unrecognized Value group D $what in $code")
-                        }
-                    // reactive power Q IV = ΣL i Reactive power QIV
-                    case 8 =>
-                        what match
-                        {
-                            // last average
-                            case 5 =>
-                                value: Double => (defaultPowerName, 0.0, mul (value, -dMulti), defaultPowerUnit)
-                            // Time integral 1 or Time integral 5
-                            case 8 | 29 =>
-                                value: Double => (defaultEnergyName, 0.0, mul (value, -dMulti), defaultEnergyUnit)
-                            case _ =>
-                                error (s"unrecognized Value group D $what in $code")
-                        }
-                    // error
-                    case _ =>
-                        error (s"unrecognized Value group C $quantity in $code")
+                    val quantity = matcher.group (5).toInt
+                    val what = matcher.group (6).toInt
+                    quantity match
+                    {
+                        // active power + = ΣL i Active power+
+                        case 1 =>
+                            what match
+                            {
+                                // last average
+                                case 5 =>
+                                    value: Double => (defaultPowerName, mul (value, dMulti), 0.0, defaultPowerUnit)
+                                // time integral 1 or Time integral 5
+                                case 8 | 29 =>
+                                    value: Double => (defaultEnergyName, mul (value, dMulti), 0.0, defaultEnergyUnit)
+                                case _ =>
+                                    error (s"unrecognized Value group D $what in $code")
+                            }
+                        // active power - = ΣL i Active power–
+                        case 2 =>
+                            what match
+                            {
+                                // last average
+                                case 5 =>
+                                    value: Double => (defaultPowerName, mul (value, -dMulti), 0.0, defaultPowerUnit)
+                                // Time integral 1 or Time integral 5
+                                case 8 | 29 =>
+                                    value: Double => (defaultEnergyName, mul (value, -dMulti), 0.0, defaultEnergyUnit)
+                                case _ =>
+                                    error (s"unrecognized Value group D $what in $code")
+                            }
+                        // reactive power Q I = ΣL i Reactive power QI
+                        case 5 =>
+                            what match
+                            {
+                                // last average
+                                case 5 =>
+                                    value: Double => (defaultPowerName, 0.0, mul (value, dMulti), defaultPowerUnit)
+                                // Time integral 1 or Time integral 5
+                                case 8 | 29 =>
+                                    value: Double => (defaultEnergyName, 0.0, mul (value, dMulti), defaultEnergyUnit)
+                                case _ =>
+                                    error (s"unrecognized Value group D $what in $code")
+                            }
+                        // reactive power Q II = ΣL i Reactive power QII
+                        case 6 =>
+                            what match
+                            {
+                                // last average
+                                case 5 =>
+                                    value: Double => (defaultPowerName, 0.0, mul (value, dMulti), defaultPowerUnit)
+                                // Time integral 1 or Time integral 5
+                                case 8 | 29 =>
+                                    value: Double => (defaultEnergyName, 0.0, mul (value, dMulti), defaultEnergyUnit)
+                                case _ =>
+                                    error (s"unrecognized Value group D $what in $code")
+                            }
+                        // reactive power Q III = ΣL i Reactive power QIII
+                        case 7 =>
+                            what match
+                            {
+                                // last average
+                                case 5 =>
+                                    value: Double => (defaultPowerName, 0.0, mul (value, -dMulti), defaultPowerUnit)
+                                // Time integral 1 or Time integral 5
+                                case 8 | 29 =>
+                                    value: Double => (defaultEnergyName, 0.0, mul (value, -dMulti), defaultEnergyUnit)
+                                case _ =>
+                                    error (s"unrecognized Value group D $what in $code")
+                            }
+                        // reactive power Q IV = ΣL i Reactive power QIV
+                        case 8 =>
+                            what match
+                            {
+                                // last average
+                                case 5 =>
+                                    value: Double => (defaultPowerName, 0.0, mul (value, -dMulti), defaultPowerUnit)
+                                // Time integral 1 or Time integral 5
+                                case 8 | 29 =>
+                                    value: Double => (defaultEnergyName, 0.0, mul (value, -dMulti), defaultEnergyUnit)
+                                case _ =>
+                                    error (s"unrecognized Value group D $what in $code")
+                            }
+                        // error
+                        case _ =>
+                            error (s"unrecognized Value group C $quantity in $code")
+                    }
                 }
-            }
-            else
+                else
                 error (s"'$code' is not an electric OBIS code")
         }
         else
@@ -422,6 +422,7 @@ object MSCONSMessage04B extends MSCONSMessage
             case None => None
         }
     }
+
     lazy val bgm: Parser[BGM] = expect ("BGM", x => BGM (x))
     lazy val dtm: Parser[DTM] = expect ("DTM", x => DTM (x))
     lazy val dtms: Parser[Option[List[DTM]]] = repAtMostN (9, false, dtm).? ^^ (x => listNonEmpty (x))

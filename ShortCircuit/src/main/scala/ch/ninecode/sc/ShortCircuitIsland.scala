@@ -27,8 +27,8 @@ import ch.ninecode.net.TransformerSet
 import ch.ninecode.net.Transformers
 
 class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, options: ShortCircuitOptions)
-extends
-    Island (session, storageLevel)
+    extends
+        Island (session, storageLevel)
 {
     override implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -37,7 +37,6 @@ extends
      *
      * @note The use of high impedance cables in GridLAB-D leads to long convergence times and
      *       often failures to converge. We use a rule of thumb that drops these cables from consideration.
-     *
      * @param data the ACLineSegment data to check
      * @return <code>true</code> if all cable per length impedances are less than the limit
      */

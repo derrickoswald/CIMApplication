@@ -11,7 +11,7 @@ class SmartMeterSuite extends TestUtil
     def readFile (context: SQLContext, filename: String, use_topolocial_nodes: Boolean): DataFrame =
     {
         val files = filename.split (",")
-        val options = Map[String, String](
+        val options = Map [String, String](
             "path" -> filename,
             "StorageLevel" -> "MEMORY_AND_DISK_SER",
             "ch.ninecode.cim.make_edges" -> "false",

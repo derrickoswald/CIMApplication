@@ -92,8 +92,9 @@ case class ScEdge
                 case trafo: PowerTransformer =>
                     if (v1 < 230.0 || v2 < 230.0)
                         return false
-                    else if ( !calculate_public_lighting && (v1 == 230.0 || v2 == 230.0) )
-                        return false
+                    else
+                        if (!calculate_public_lighting && (v1 == 230.0 || v2 == 230.0))
+                            return false
                     val id_cn = node.id_seq // continue if voltage decreases or it stays below 1000.0
                     if (id_cn == id_cn_1)
                         v1 <= v2 || v1 <= 1000.0
@@ -144,12 +145,12 @@ case class ScEdge
                     // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
                     else
                         if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
-                        {
-                            val error = ScError (fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
-                            ScError.combine_errors (errors, List (error), options.messagemax)
-                        }
-                    else
-                        errors
+                            {
+                                val error = ScError (fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
+                                ScError.combine_errors (errors, List (error), options.messagemax)
+                            }
+                            else
+                            errors
             case _ =>
                 errors
         }

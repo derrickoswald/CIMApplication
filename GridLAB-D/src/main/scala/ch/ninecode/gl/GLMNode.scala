@@ -14,13 +14,13 @@ trait GLMNode extends LoadFlowNode
      */
     def emit (generator: GLMGenerator): String =
         s"""
-        |        object meter
-        |        {
-        |            name "$id";
-        |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
-        |            bustype PQ;
-        |            nominal_voltage ${nominal_voltage}V;
-        |        };
-        |""".stripMargin
+           |        object meter
+           |        {
+           |            name "$id";
+           |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
+           |            bustype PQ;
+           |            nominal_voltage ${nominal_voltage}V;
+           |        };
+           |""".stripMargin
 }
 

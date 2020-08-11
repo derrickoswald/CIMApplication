@@ -120,7 +120,7 @@ class Pong extends PingPong
                 }
             }
 
-            getConnection (result) match  // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
+            getConnection (result) match // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
             {
                 case Some (connection) =>
                     if (verbose)
@@ -129,7 +129,7 @@ class Pong extends PingPong
                         connection.getMetaData match
                         {
                             case meta: CIMConnectionMetaData =>
-                               val _ = ret.add ("connection_metadata", getConnectionmetaData (meta))
+                                val _ = ret.add ("connection_metadata", getConnectionmetaData (meta))
                         }
                     }
 

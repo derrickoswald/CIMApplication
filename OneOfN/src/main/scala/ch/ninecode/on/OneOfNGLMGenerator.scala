@@ -31,11 +31,11 @@ case class OneOfNGLMGenerator
 
     override def header: String = feeder.metadata.description
 
-    override def edges: Iterable[GLMEdge] = feeder.edges.filter (!_.isInstanceOf[GLMTransformerEdge])
+    override def edges: Iterable[GLMEdge] = feeder.edges.filter (!_.isInstanceOf [GLMTransformerEdge])
 
     override def nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder == null)
 
-    override def transformers: Iterable[GLMTransformerEdge] = feeder.edges.filter (_.isInstanceOf[GLMTransformerEdge]).map (_.asInstanceOf[GLMTransformerEdge])
+    override def transformers: Iterable[GLMTransformerEdge] = feeder.edges.filter (_.isInstanceOf [GLMTransformerEdge]).map (_.asInstanceOf [GLMTransformerEdge])
 
     override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder != null)
         .groupBy (_._id).values.map (_.head) // take only one feeder per node
@@ -93,7 +93,7 @@ case class OneOfNGLMGenerator
      */
     override def emit_slack (node: GLMNode): String =
     {
-        val swing = node.asInstanceOf[FeederNode]
+        val swing = node.asInstanceOf [FeederNode]
         """
           |        object meter
           |        {

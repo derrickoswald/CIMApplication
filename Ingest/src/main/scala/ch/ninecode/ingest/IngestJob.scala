@@ -39,19 +39,19 @@ object Modes extends Enumeration
 
 /**
  *
- * @param mapping Mapping CSV file or RDF file name.
- * @param metercol Mapping CSV measurement identifier column name (column containing CH############################### values).
- * @param mridcol Mapping CSV mRID column name (column containing HAS##### values).
- * @param timezone Time zone for the measurement files.
- * @param mintime Minimum time for ingestion timespan.
- *                The default is the minimum representable time in the Linux epoch.
- * @param maxtime Maximum time for ingestion timespan.
- *                The default is the maximum representable time in the Linux epoch.
- * @param format Type of data file, either Belvis, LPEx or MSCONS.
- * @param mode Ingest Mode: 'Overwrite' or 'Append'. Overwrite: overwrites existing values in database. Append: adds values to existing ones.
- * @param nocopy If <code>true</code>, use the file names provided directly, without unzipping or transferring them to HDFS.
- * @param datafiles Source Belvis/LPEx/MSCONS files.
- * @param keyspace Cassandra keyspace.
+ * @param mapping     Mapping CSV file or RDF file name.
+ * @param metercol    Mapping CSV measurement identifier column name (column containing CH############################### values).
+ * @param mridcol     Mapping CSV mRID column name (column containing HAS##### values).
+ * @param timezone    Time zone for the measurement files.
+ * @param mintime     Minimum time for ingestion timespan.
+ *                    The default is the minimum representable time in the Linux epoch.
+ * @param maxtime     Maximum time for ingestion timespan.
+ *                    The default is the maximum representable time in the Linux epoch.
+ * @param format      Type of data file, either Belvis, LPEx or MSCONS.
+ * @param mode        Ingest Mode: 'Overwrite' or 'Append'. Overwrite: overwrites existing values in database. Append: adds values to existing ones.
+ * @param nocopy      If <code>true</code>, use the file names provided directly, without unzipping or transferring them to HDFS.
+ * @param datafiles   Source Belvis/LPEx/MSCONS files.
+ * @param keyspace    Cassandra keyspace.
  * @param replication Cassandra keyspace replication factor only if the keyspace is created.
  */
 case class IngestJob
@@ -80,7 +80,7 @@ case class IngestJob
         {
             case Some (writer) => writer
             case None =>
-                val writer = Json.createWriterFactory (Map[String, AnyRef](JsonGenerator.PRETTY_PRINTING -> "true").asJava)
+                val writer = Json.createWriterFactory (Map [String, AnyRef](JsonGenerator.PRETTY_PRINTING -> "true").asJava)
                 FACTORY_INSTANCE = Some (writer)
                 writer
         }
@@ -273,14 +273,14 @@ object IngestJob
             else
             {
                 log.error (s"""unexpected JSON type for $member ("${typeString (value)}")""")
-                Seq()
+                Seq ()
             }
         }
         else
-            Seq()
+            Seq ()
     }
 
-    def parseJob (options: IngestOptions) (json: JsonObject): Option[IngestJob] =
+    def parseJob (options: IngestOptions)(json: JsonObject): Option[IngestJob] =
     {
         val mapping = json.getString ("mapping", "")
         if ("" == mapping)
@@ -318,7 +318,7 @@ object IngestJob
                 replication = replication,
                 aws_s3a_access_key = aws_s3a_access_key,
                 aws_s3a_secret_key = aws_s3a_secret_key
-                )
+            )
             )
         }
     }

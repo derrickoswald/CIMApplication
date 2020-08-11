@@ -1,4 +1,6 @@
-package ch.ninecode.net;
+package ch.ninecode.net
+
+;
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
@@ -23,6 +25,7 @@ final case class Lines (
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
 ) extends CIMRDD
 {
+
     import Lines._
 
     implicit val spark: SparkSession = session
@@ -54,15 +57,15 @@ final case class Lines (
 
     @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     lazy val per_length_impedance: RDD[Element] = session.sparkContext.union (
-        getOrElse[PerLengthSequenceImpedance].asInstanceOf[RDD[Element]],
-        getOrElse[PerLengthPhaseImpedance].asInstanceOf[RDD[Element]] // ToDo: pick up PhaseImpedanceData
+        getOrElse [PerLengthSequenceImpedance].asInstanceOf [RDD[Element]],
+        getOrElse [PerLengthPhaseImpedance].asInstanceOf [RDD[Element]] // ToDo: pick up PhaseImpedanceData
     )
 
     @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     lazy val wire_info: RDD[Element] = session.sparkContext.union (
-        getOrElse[OverheadWireInfo].asInstanceOf[RDD[Element]],
-        getOrElse[ConcentricNeutralCableInfo].asInstanceOf[RDD[Element]],
-        getOrElse[TapeShieldCableInfo].asInstanceOf[RDD[Element]]
+        getOrElse [OverheadWireInfo].asInstanceOf [RDD[Element]],
+        getOrElse [ConcentricNeutralCableInfo].asInstanceOf [RDD[Element]],
+        getOrElse [TapeShieldCableInfo].asInstanceOf [RDD[Element]]
     )
 
     def refPerLengthImpedance (lt: LineTerminals): String = lt.line.PerLengthImpedance
@@ -99,25 +102,25 @@ final case class Lines (
     def getLines (line_filter: LineData => Boolean = filter): RDD[LineData] =
     {
         // get ac lines with two terminals
-        val tt = getOrElse[Terminal].keyBy (_.ConductingEquipment).groupByKey
+        val tt = getOrElse [Terminal].keyBy (_.ConductingEquipment).groupByKey
         val lines_terminals =
-            getOrElse[ACLineSegment]
-            .keyBy (_.id)
-            .leftOuterJoin (tt)
-            .values
-            .flatMap (unpack)
+            getOrElse [ACLineSegment]
+                .keyBy (_.id)
+                .leftOuterJoin (tt)
+                .values
+                .flatMap (unpack)
 
         // append parameters if any
         val lines_terminals_parameters: RDD[(LineTerminals, Option[Element])] =
             lines_terminals.keyBy (x => refPerLengthImpedance (x)).leftOuterJoin (per_length_impedance.keyBy (_.id))
-            .values
-            .map (x => (x._1, x._2))
+                .values
+                .map (x => (x._1, x._2))
 
         // append asset info if any
         val lines_terminals_parameters_info: RDD[(LineTerminals, Option[Element], Option[Element])] =
             lines_terminals_parameters.keyBy (x => refAssetDataSheet (x._1)).leftOuterJoin (wire_info.keyBy (_.id))
-            .values
-            .map (x => (x._1._1, x._1._2, x._2))
+                .values
+                .map (x => (x._1._1, x._1._2, x._2))
 
         // find parallel lines by grouping by alphabetically concatenated node id strings
         lines_terminals_parameters_info
@@ -142,7 +145,6 @@ object Lines
      *
      * @note The use of high impedance cables in GridLAB-D leads to long convergence times and
      *       often failures to converge. We use a rule of thumb that drops these cables from consideration.
-     *
      * @param data the ACLineSegment data to check
      * @return <code>true</code> if all cable per length resistances are less than the limit
      */
@@ -160,7 +162,6 @@ object Lines
      *       hard-coded mRID for (the one) SvStatus that has SvStatus.inService == false.
      *       ToDo: This should be changed to get a list of SvStatus mRID where inService == "false"
      *       or add the SvStatus to the LineDetails via join when the CIM export is corrected.
-     *
      * @param data the ACLineSegment data to check
      * @return <code>true</code> if this is an "in use" line segment
      */
@@ -186,7 +187,6 @@ object Lines
      *       and a non-zero impedance (ACLineSegment.r + ACLineSegment.x j) which collapses some
      *       erroneous ACLineSegments to start and end on the same TopologicalNode.
      *       When the CIMNetworkTopologyProcessor is changed to be smarter, this can be removed.
-     *
      * @param data the ACLineSegment data to check
      * @return <code>true</code> if this is a valid edge in the topology
      */

@@ -26,11 +26,11 @@ class Estimation extends RESTful
     @POST
     @Produces (Array (MediaType.APPLICATION_JSON))
     def estimate (
-         @DefaultValue ("false") @MatrixParam ("verbose") _verbose: String,
-         @DefaultValue ("false") @MatrixParam ("keep") _keep: String,
-         data: Array[Byte]): String =
+        @DefaultValue ("false") @MatrixParam ("verbose") _verbose: String,
+        @DefaultValue ("false") @MatrixParam ("keep") _keep: String,
+        data: Array[Byte]): String =
     {
-        val verbose = asBoolean ( _verbose)
+        val verbose = asBoolean (_verbose)
         val keep = asBoolean (_keep)
         val json = new String (data, "UTF-8")
         _Logger.info ("""estimation verbose=%s, keep=%s, json=%s""".format (verbose, keep, json))
@@ -72,7 +72,7 @@ class Estimation extends RESTful
                 }
                 finally
                     try
-                        connection.close ()
+                    connection.close ()
                     catch
                     {
                         case resourceexception: ResourceException =>

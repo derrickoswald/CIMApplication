@@ -7,11 +7,11 @@ class LineEdge
 (
     _data: LineData
 )
-extends LoadFlowEdge (
-    LineEdge.lineName (_data),
-    _data.node0,
-    _data.node1
-)
+    extends LoadFlowEdge (
+        LineEdge.lineName (_data),
+        _data.node0,
+        _data.node1
+    )
 {
     val data: LineData = _data
 
@@ -54,7 +54,7 @@ extends LoadFlowEdge (
      * The length (of the longest) line.
      */
     lazy val length: Double = lines.map (_.Conductor.len)
-        .fold (0.0) ((l1, l2) => if (l1 > l2) l1 else l2) // instead of .max
+        .fold (0.0)((l1, l2) => if (l1 > l2) l1 else l2) // instead of .max
 
     /**
      * Zero ohms.

@@ -118,7 +118,7 @@ case class SimulationTrafoKreis
                 mRID = new_node,
                 name = node.IdentifiedObject.name)
             idobj.bitfields = node.IdentifiedObject.bitfields.clone
-            IdentifiedObject.fieldsToBitfields ("mRID").zipWithIndex.foreach (x => idobj.bitfields(x._2) |= x._1)
+            IdentifiedObject.fieldsToBitfields ("mRID").zipWithIndex.foreach (x => idobj.bitfields (x._2) |= x._1)
             val n = TopologicalNode (
                 idobj,
                 BaseVoltage = node.BaseVoltage,
@@ -184,7 +184,7 @@ case class SimulationTrafoKreis
      * Determine if an edge is incoming or not.
      *
      * @param start the starting node
-     * @param edge the edge to check
+     * @param edge  the edge to check
      * @return <code>Some(true)</code> if incoming, <code>Some(false)</code> if outgoing, <code>None</code> if we can't tell.
      */
     def minitrace_incoming (start: String, edge: GLMEdge): Option[Boolean] =
@@ -205,7 +205,7 @@ case class SimulationTrafoKreis
             {
                 val votes = connected.map (e => minitrace_incoming (other, e))
                 val initial: Option[Boolean] = None
-                votes.foldLeft(initial)(vote (other))
+                votes.foldLeft (initial)(vote (other))
             }
             else
                 None
@@ -219,7 +219,7 @@ case class SimulationTrafoKreis
             recorder =>
             {
                 val directed = attached (recorder.parent).map (e => (e, minitrace_incoming (recorder.parent, e)))
-                val incoming = directed.filter (_._2.fold (false) (identity)).map (_._1)
+                val incoming = directed.filter (_._2.fold (false)(identity)).map (_._1)
                 incoming.toList match
                 {
                     case Nil =>
@@ -262,13 +262,13 @@ case class SimulationTrafoKreis
         // step 2) make the incoming edges use the new nodes
         val edge_node_map = incoming_node_edges.map (x => (x._2.id, x._1.parent)).toMap
         val modified_edges = raw_edges.map (
-            edge => edge_node_map.get (edge.id).fold (edge) (node => alterEdgeNode (edge, node, s"${node}_pseudo")))
+            edge => edge_node_map.get (edge.id).fold (edge)(node => alterEdgeNode (edge, node, s"${node}_pseudo")))
         val modified_transformer = // the transformer is not part of the edge list and needs to be handled specially
-            edge_node_map.get (transformer_edge.id).fold (transformer_edge) (
+            edge_node_map.get (transformer_edge.id).fold (transformer_edge)(
                 node => GLMTransformerEdge (transformer_edge.transformer.copy (
-                            transformer_edge.transformer.transformers.map (
-                                (x: TransformerData) => x.copy (
-                                    nodes = x.nodes.map (y => alterNode (y, node, s"${node}_pseudo")))))))
+                    transformer_edge.transformer.transformers.map (
+                        (x: TransformerData) => x.copy (
+                            nodes = x.nodes.map (y => alterNode (y, node, s"${node}_pseudo")))))))
 
         // step 3) create the new edges from the new node to the original node
         val new_edges = incoming_node_edges.map (
@@ -284,7 +284,7 @@ case class SimulationTrafoKreis
         val new_recorders = power_recorders.map (
             recorder =>
             {
-                incoming_node_edges.find (_._1.name == recorder.name).fold (recorder) (
+                incoming_node_edges.find (_._1.name == recorder.name).fold (recorder)(
                     x => x._1.copy (parent = s"${x._1.parent}_switch", property = "power_in"))
             }
         )
@@ -297,14 +297,14 @@ case class SimulationTrafoKreis
     def nodes: Iterable[SimulationNode] =
     {
         if (!hacked && directions.nonEmpty) // when performing the directionality simulation, the directions are not set yet
-        {
-            val (_n, _e, _r, _t) = kludge
-            raw_nodes = _n
-            raw_edges = _e
-            recorders = _r
-            transformer_edge = _t
-            hacked = true
-        }
+            {
+                val (_n, _e, _r, _t) = kludge
+                raw_nodes = _n
+                raw_edges = _e
+                recorders = _r
+                transformer_edge = _t
+                hacked = true
+            }
         (raw_nodes ++ Seq (SimulationNode (transformer_edge.cn1, transformer_edge.transformer.v0, transformer_edge.transformer.transformer_name))).map (
             {
                 case node: SimulationNode =>
@@ -322,14 +322,14 @@ case class SimulationTrafoKreis
     def edges: Iterable[SimulationEdge] =
     {
         if (!hacked && directions.nonEmpty) // when performing the directionality simulation, the directions are not set yet
-        {
-            val (_n, _e, _r, _t) = kludge
-            raw_nodes = _n
-            raw_edges = _e
-            recorders = _r
-            transformer_edge = _t
-            hacked = true
-        }
+            {
+                val (_n, _e, _r, _t) = kludge
+                raw_nodes = _n
+                raw_edges = _e
+                recorders = _r
+                transformer_edge = _t
+                hacked = true
+            }
 
         def notTheTransformer (edge: GLMEdge): Boolean =
             edge match

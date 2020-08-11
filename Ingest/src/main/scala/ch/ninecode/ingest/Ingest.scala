@@ -30,7 +30,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
     def readFile (file: String): Array[Byte] =
     {
         try
-            Files.readAllBytes (Paths.get (file))
+        Files.readAllBytes (Paths.get (file))
         catch
         {
             case e: Exception =>
@@ -68,7 +68,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
                         val processor: IngestProcessor = job.format.toString match
                         {
                             case "Belvis" => IngestBelvis (session, options)
-                            case "LPEx" =>   IngestLPEx   (session, options)
+                            case "LPEx" => IngestLPEx (session, options)
                             case "MSCONS" => IngestMSCONS (session, options)
                             case "Custom" => IngestCustom (session, options)
                             case "Parquet" => IngestParquet (session, options)

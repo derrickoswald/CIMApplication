@@ -15,12 +15,12 @@ object RFF extends FieldExtractor[RFF]
 {
     // RFF+Z13:13008
 
-//    010    C506 REFERENCE                                  M    1
-//    1153  Reference code qualifier                  M      an..3
-//    1154  Reference identifier                      C      an..70
-//    1156  Document line identifier                  C      an..6
-//    4000  Reference version identifier              C      an..35
-//    1060  Revision identifier                       C      an..6
+    //    010    C506 REFERENCE                                  M    1
+    //    1153  Reference code qualifier                  M      an..3
+    //    1154  Reference identifier                      C      an..70
+    //    1156  Document line identifier                  C      an..6
+    //    4000  Reference version identifier              C      an..35
+    //    1060  Revision identifier                       C      an..6
 
     private lazy val C506_1153 = alphanumeric (3)
     private lazy val C506_1154 = alphanumeric_? (70)

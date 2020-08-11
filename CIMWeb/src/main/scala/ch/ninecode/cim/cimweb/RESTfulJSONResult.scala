@@ -14,13 +14,14 @@ import scala.collection.JavaConverters.mapAsJavaMapConverter
 
 case class RESTfulJSONResult (var status: String, var message: String, var result: JsonStructure)
 {
+
     import RESTfulJSONResult._
 
     protected def getPrettyJsonWriterFactory: JsonWriterFactory =
     {
         if (null == FACTORY_INSTANCE)
         {
-            val properties = Map[String, AnyRef](
+            val properties = Map [String, AnyRef](
                 JsonGenerator.PRETTY_PRINTING -> "true")
             FACTORY_INSTANCE = Json.createWriterFactory (properties.asJava)
         }
@@ -50,7 +51,7 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
     def setResult (string: String): Unit =
     {
         try
-            result = Json.createReader (new StringReader (string)).readObject
+        result = Json.createReader (new StringReader (string)).readObject
         catch
         {
             case je: JsonException =>

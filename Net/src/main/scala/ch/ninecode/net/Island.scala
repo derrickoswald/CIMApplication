@@ -15,22 +15,22 @@ import ch.ninecode.model.TopologicalNode
  * Composite terminal object
  *
  * @param terminal the terminal
- * @param node the node it is connected to
- * @param voltage the voltage of the terminal if available, otherwise zero
- * @param element the conducting equipment
+ * @param node     the node it is connected to
+ * @param voltage  the voltage of the terminal if available, otherwise zero
+ * @param element  the conducting equipment
  */
 case class TerminalPlus (id: Island.island_id, terminal: Terminal, node: TopologicalNode, voltage: Double, element: Element)
 
 /**
  * A topological island utility class to get edges and nodes.
  *
- * @param spark                 The current spark session.
- * @param storage_level         The storage level to use in persisting the edges and nodes.
+ * @param spark         The current spark session.
+ * @param storage_level The storage level to use in persisting the edges and nodes.
  */
 class Island (
     spark: SparkSession,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
-extends CIMRDD with Serializable
+    extends CIMRDD with Serializable
 {
     implicit val session: SparkSession = spark
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -49,7 +49,7 @@ extends CIMRDD with Serializable
     // we only need the TopologicalNode that have associated edges we care about
     lazy val line_nodes: RDD[node_id] = lines.flatMap (x => List (x.node0, x.node1))
     lazy val switch_nodes: RDD[node_id] = switches.flatMap (x => List (x.node0, x.node1))
-    lazy val transformer_nodes: RDD[node_id] = transformers.flatMap (x => x.transformers(0).nodes.map (_.id))
+    lazy val transformer_nodes: RDD[node_id] = transformers.flatMap (x => x.transformers (0).nodes.map (_.id))
     lazy val all_nodes: RDD[(node_id, node_id)] = session.sparkContext
         .union (line_nodes, switch_nodes, transformer_nodes)
         .distinct
@@ -61,42 +61,42 @@ extends CIMRDD with Serializable
      * Terminals have two pieces of information that we want:
      *  - the identifier (transformer service area, feeder) they are in by joining through TopologicalNode.TopologicalIsland
      *  - the ConductingEquipment they belong to
-     * The mRID of the TopologicalNode is used to name the network nodes
-     * Note that the desired equipment for a node may not be an edge, but rather a single terminal Busbar, EnergyConsumer, etc.
+     *    The mRID of the TopologicalNode is used to name the network nodes
+     *    Note that the desired equipment for a node may not be an edge, but rather a single terminal Busbar, EnergyConsumer, etc.
      */
     def terminals_plus (islands_identifiers: RDD[(island_id, identifier)]): RDD[TerminalPlus] =
     {
         val voltages = Voltages (session).getVoltages
         islands_identifiers
-        .join (
-            getOrElse[Terminal]
-            .keyBy (terminal => terminal.TopologicalNode)
-            .join (getOrElse[TopologicalNode].keyBy (_.id))
+            .join (
+                getOrElse [Terminal]
+                    .keyBy (terminal => terminal.TopologicalNode)
+                    .join (getOrElse [TopologicalNode].keyBy (_.id))
+                    .values
+                    .keyBy (_._1.ConductingEquipment)
+                    .join (getOrElse [Element]("Elements").keyBy (_.id))
+                    .values
+                    .keyBy (_._1._2.TopologicalIsland)
+            )
             .values
-            .keyBy (_._1.ConductingEquipment)
-            .join (getOrElse[Element]("Elements").keyBy (_.id))
-            .values
-            .keyBy (_._1._2.TopologicalIsland)
-        )
-        .values
-        .map (
-            x =>
-            {
-                val (id, ((terminal, node), element)) = x
-                TerminalPlus (id, terminal, node, voltages.getOrElse (node.BaseVoltage, 0.0), element)
-            }
-        )
+            .map (
+                x =>
+                {
+                    val (id, ((terminal, node), element)) = x
+                    TerminalPlus (id, terminal, node, voltages.getOrElse (node.BaseVoltage, 0.0), element)
+                }
+            )
     }
 
     // for these network nodes, find single terminal equipment if possible
     lazy val one_terminal_equipment: RDD[(String, Iterable[Terminal])] =
-        getOrElse[Terminal]
+        getOrElse [Terminal]
             .groupBy (_.ConductingEquipment)
             .values
             .flatMap (
                 _.toList match
                 {
-                    case t :: Nil => Some(t) // only one terminal
+                    case t :: Nil => Some (t) // only one terminal
                     case _ => None
                 }
             )
@@ -180,7 +180,7 @@ extends CIMRDD with Serializable
                 .values
                 .map (keep_one)
         )
-        .persist (storage_level)
+            .persist (storage_level)
     }
 
     // for cables, they are always in the same island, so it's easy
@@ -188,9 +188,9 @@ extends CIMRDD with Serializable
     {
         line_maker (
             lines
-            .map (x => (x.node0, x))
-            .join (keyed_nodes)
-            .values
+                .map (x => (x.node0, x))
+                .join (keyed_nodes)
+                .values
         )
     }
 
@@ -199,13 +199,13 @@ extends CIMRDD with Serializable
     {
         switch_maker (
             switches
-            .flatMap (x => List ((x.node0, x), (x.node1, x)))
-            .join (keyed_nodes)
-            .values
-            .groupBy (x => s"${x._1.switches.map (_.element.id).mkString ("||")}${x._2._1}")
-            .values
-            // keep only switches with both terminals in this island
-            .filter (_.size > 1)
+                .flatMap (x => List ((x.node0, x), (x.node1, x)))
+                .join (keyed_nodes)
+                .values
+                .groupBy (x => s"${x._1.switches.map (_.element.id).mkString ("||")}${x._2._1}")
+                .values
+                // keep only switches with both terminals in this island
+                .filter (_.size > 1)
         )
     }
 
@@ -214,11 +214,11 @@ extends CIMRDD with Serializable
     {
         transformer_maker (
             transformers
-            .flatMap (x => x.transformers.head.nodes.map (y => (y.id, x)))
-            .join (keyed_nodes)
-            .values
-            .groupBy (x => s"${x._1.transformer_name}${x._2._1}")
-            .values
+                .flatMap (x => x.transformers.head.nodes.map (y => (y.id, x)))
+                .join (keyed_nodes)
+                .values
+                .groupBy (x => s"${x._1.transformer_name}${x._2._1}")
+                .values
         )
     }
 
@@ -235,9 +235,9 @@ extends CIMRDD with Serializable
 
         val net_nodes: RDD[TerminalPlus] =
             all_nodes
-            .join (terminals.keyBy (_.node.id))
-            .values
-            .values
+                .join (terminals.keyBy (_.node.id))
+                .values
+                .values
 
         val nodes = makeNodes (net_nodes)
 

@@ -12,8 +12,8 @@ case class PlayerSwitchEdge
     switch: Switch,
     fuse: Boolean
 )
-extends LoadFlowEdge (switch.id, cn1, cn2)
-with GLMEdge
+    extends LoadFlowEdge (switch.id, cn1, cn2)
+        with GLMEdge
 {
     /**
      * Emit a switch or fuse.
@@ -29,30 +29,30 @@ with GLMEdge
         // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
         val details = if (fuse)
             s"""
-              |            mean_replacement_time 3600.0;
-              |            current_limit ${current}A;
-              |            object player
-              |            {
-              |                property "status";
-              |                file "input_data/$id.csv";
-              |            };""".stripMargin
+               |            mean_replacement_time 3600.0;
+               |            current_limit ${current}A;
+               |            object player
+               |            {
+               |                property "status";
+               |                file "input_data/$id.csv";
+               |            };""".stripMargin
         else
             s"""
-              |            object player
-              |            {
-              |                property "status";
-              |                file "input_data/$id.csv";
-              |            };""".stripMargin
+               |            object player
+               |            {
+               |                property "status";
+               |                file "input_data/$id.csv";
+               |            };""".stripMargin
 
-            s"""
-              |        object $obj
-              |        {
-              |            name "$id";
-              |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
-              |            from "$cn1";
-              |            to "$cn2";$details
-              |        };
-              |""".stripMargin
-        }
+        s"""
+           |        object $obj
+           |        {
+           |            name "$id";
+           |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
+           |            from "$cn1";
+           |            to "$cn2";$details
+           |        };
+           |""".stripMargin
+    }
 }
 

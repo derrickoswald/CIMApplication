@@ -13,12 +13,13 @@ import org.junit.runners.MethodSorters
 import com.intel.analytics.bigdl.utils.Engine
 import ch.ninecode.ts.TimeSeries.jarForObject
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@FixMethodOrder (MethodSorters.NAME_ASCENDING)
 class DLTest
 {
+
     import ch.ninecode.ts.DLTest._
 
-    def time[R](template: String)(block: => R): R =
+    def time[R] (template: String)(block: => R): R =
     {
         val t0 = System.nanoTime ()
         val ret = block
@@ -78,7 +79,7 @@ object DLTest
         val s2 = jarForObject (com.datastax.spark.connector.SomeColumns ())
         val s3 = jarForObject (new org.apache.spark.mllib.stat.test.BinarySample (true, 1.0))
         val s4 = jarForObject (new com.intel.analytics.bigdl.utils.LayerException (null, null))
-        val s5 = jarForObject (com.intel.analytics.bigdl.models.utils.DistriOptimizerPerfParam())
+        val s5 = jarForObject (com.intel.analytics.bigdl.models.utils.DistriOptimizerPerfParam ())
         val configuration = Engine.createSparkConf ()
             .setAppName ("DLSuite")
             .setMaster ("spark://sandbox:7077")

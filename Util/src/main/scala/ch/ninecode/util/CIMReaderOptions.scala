@@ -8,19 +8,19 @@ import ch.ninecode.cim.State
 /**
  * Options for the CIMReader.
  *
- * @param options map equivalent of the following options
- * @param topology <code>true</true> if topology processing is enabled
+ * @param options          map equivalent of the following options
+ * @param topology         <code>true</true> if topology processing is enabled
  * @param topology_options topology processing options
- * @param about <code>true</true> if rdf:about processing is enabled
- * @param normalize <code>true</true> if normalizytion processing is enabled
- * @param dedup <code>true</true> if deduplication processing is enabled
- * @param edges <code>true</true> if edge creation processing is enabled
- * @param join <code>true</true> if ServiceLocation merging is enabled
- * @param debug <code>true</true> if debug message logging is enabled
- * @param splitsize the file split size (determined the number of partitions) in bytes
- * @param cache the cache directory that will be created or used
- * @param storage the RDD storage level
- * @param files the CIM RDF files to be read
+ * @param about            <code>true</true> if rdf:about processing is enabled
+ * @param normalize        <code>true</true> if normalizytion processing is enabled
+ * @param dedup            <code>true</true> if deduplication processing is enabled
+ * @param edges            <code>true</true> if edge creation processing is enabled
+ * @param join             <code>true</true> if ServiceLocation merging is enabled
+ * @param debug            <code>true</true> if debug message logging is enabled
+ * @param splitsize        the file split size (determined the number of partitions) in bytes
+ * @param cache            the cache directory that will be created or used
+ * @param storage          the RDD storage level
+ * @param files            the CIM RDF files to be read
  */
 case class CIMReaderOptions (
     options: Map[String, String] = Map (),
@@ -78,7 +78,7 @@ case class CIMReaderOptions (
             "ch.ninecode.cim.force_switch_separate_islands" -> topology_options.force_switch_separate_islands.toString,
             "ch.ninecode.cim.force_fuse_separate_islands" -> topology_options.force_fuse_separate_islands.toString,
             "ch.ninecode.cim.default_switch_open_state" -> topology_options.default_switch_open_state.toString,
-            "ch.ninecode.cim.do_about"-> about.toString,
+            "ch.ninecode.cim.do_about" -> about.toString,
             "ch.ninecode.cim.do_normalize" -> normalize.toString,
             "ch.ninecode.cim.do_deduplication" -> dedup.toString,
             "ch.ninecode.cim.make_edges" -> edges.toString,
@@ -142,11 +142,11 @@ object CIMReaderOptions
     /**
      * Convert an options map into the options case class.
      *
-     * @param src the map to read from
+     * @param src      the map to read from
      * @param template the template to use for default values
      * @return the option case class corresponding to the map entries
      */
-    def apply (src: Map[String,String], template: Option[CIMReaderOptions]): CIMReaderOptions =
+    def apply (src: Map[String, String], template: Option[CIMReaderOptions]): CIMReaderOptions =
     {
         var hasTopoOption = false // true when a topology entry is encountered
         def asBoolean (flag: Option[String], otherwise: Boolean): Boolean =
@@ -159,6 +159,7 @@ object CIMReaderOptions
                 case _ => otherwise
             }
         }
+
         def asState (state: Option[String], otherwise: State): State =
         {
             state match
@@ -173,7 +174,7 @@ object CIMReaderOptions
         val o = template match
         {
             case Some (options) => options
-            case None => CIMReaderOptions()
+            case None => CIMReaderOptions ()
         }
         val t = o.topology_options
 

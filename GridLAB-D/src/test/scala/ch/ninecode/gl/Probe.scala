@@ -17,7 +17,7 @@ case class Probe (session: SparkSession)
     def stringify (line: LineData): (String, String) =
     {
         val id = line.lines.map (_.line.id).toArray.sortWith (_ < _).mkString ("_")
-        val z = line.lines.map (_.impedance.toString).mkString("_")
+        val z = line.lines.map (_.impedance.toString).mkString ("_")
         (id, z)
     }
 

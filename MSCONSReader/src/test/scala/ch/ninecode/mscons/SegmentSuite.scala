@@ -13,10 +13,13 @@ import ch.ninecode.edifact.ServiceSegmentParser
 @SuppressWarnings (Array ("org.wartremover.warts.OptionPartial", "org.wartremover.warts.TraversableOps"))
 class SegmentSuite extends AnyFunSuite
 {
+
     abstract class Mock[T] extends MSCONSMessage
     {
-        def parse(p: Parser[T], in: SegmentListParser): ParseResult[T] = p(in)
+        def parse (p: Parser[T], in: SegmentListParser): ParseResult[T] = p (in)
+
         def phrase: Parser[T]
+
         def parseAndCheck (text: String, check: T => Unit): Unit =
         {
             val scanner = SegmentScanner (text)
@@ -59,7 +62,7 @@ class SegmentSuite extends AnyFunSuite
                 x match
                 {
                     case ServiceSegmentParser.Success (r, rest) =>
-                        if (   (r.unh.Type == "MSCONS")
+                        if ((r.unh.Type == "MSCONS")
                             && (r.unh.Version == "D"))
                         {
                             r.unh.Release match
@@ -93,7 +96,10 @@ class SegmentSuite extends AnyFunSuite
 
     test ("BGM")
     {
-        new Mock[BGM] { def phrase: Parser[BGM] = MSCONSMessage04B.bgm.asInstanceOf[Parser[BGM]] }
+        new Mock[BGM]
+        {
+            def phrase: Parser[BGM] = MSCONSMessage04B.bgm.asInstanceOf [Parser[BGM]]
+        }
             .parseAndCheck (
                 "BGM+7+slevu14572840D+9'",
                 bgm =>
@@ -108,7 +114,10 @@ class SegmentSuite extends AnyFunSuite
 
     test ("DTM")
     {
-        new Mock[DTM] { def phrase: Parser[DTM] = MSCONSMessage04B.dtm.asInstanceOf[Parser[DTM]] }
+        new Mock[DTM]
+        {
+            def phrase: Parser[DTM] = MSCONSMessage04B.dtm.asInstanceOf [Parser[DTM]]
+        }
             .parseAndCheck (
                 "DTM+137:201912140000:203'",
                 dtm =>
@@ -128,7 +137,10 @@ class SegmentSuite extends AnyFunSuite
 
     test ("RFF")
     {
-        new Mock[RFF] { def phrase: Parser[RFF] = MSCONSMessage04B.rff.asInstanceOf[Parser[RFF]] }
+        new Mock[RFF]
+        {
+            def phrase: Parser[RFF] = MSCONSMessage04B.rff.asInstanceOf [Parser[RFF]]
+        }
             .parseAndCheck (
                 "RFF+Z13:13008'",
                 rff =>
@@ -144,7 +156,10 @@ class SegmentSuite extends AnyFunSuite
 
     test ("Group1")
     {
-        new Mock[Option[List[Group1]]] { def phrase: Parser[Option[List[Group1]]] = MSCONSMessage04B.group1.asInstanceOf[Parser[Option[List[Group1]]]] }
+        new Mock[Option[List[Group1]]]
+        {
+            def phrase: Parser[Option[List[Group1]]] = MSCONSMessage04B.group1.asInstanceOf [Parser[Option[List[Group1]]]]
+        }
             .parseAndCheck (
                 "RFF+Z13:13008'",
                 group1 =>
@@ -164,7 +179,10 @@ class SegmentSuite extends AnyFunSuite
 
     test ("NAD")
     {
-        new Mock[NAD] { def phrase: Parser[NAD] = MSCONSMessage04B.nad.asInstanceOf[Parser[NAD]] }
+        new Mock[NAD]
+        {
+            def phrase: Parser[NAD] = MSCONSMessage04B.nad.asInstanceOf [Parser[NAD]]
+        }
             .parseAndCheck (
                 "NAD+MS+12X-SAK-N------6::293'",
                 nad =>
@@ -181,7 +199,10 @@ class SegmentSuite extends AnyFunSuite
 
     test ("Group2")
     {
-        new Mock[Option[List[Group2]]] { def phrase: Parser[Option[List[Group2]]] = MSCONSMessage04B.group2.asInstanceOf[Parser[Option[List[Group2]]]] }
+        new Mock[Option[List[Group2]]]
+        {
+            def phrase: Parser[Option[List[Group2]]] = MSCONSMessage04B.group2.asInstanceOf [Parser[Option[List[Group2]]]]
+        }
             .parseAndCheck (
                 "NAD+MS+12X-SAK-N------6::293'",
                 group2 =>
@@ -204,7 +225,10 @@ class SegmentSuite extends AnyFunSuite
 
     test ("Group5")
     {
-        new Mock[List[Group5]] { def phrase: Parser[List[Group5]] = MSCONSMessage04B.group5.asInstanceOf[Parser[List[Group5]]] }
+        new Mock[List[Group5]]
+        {
+            def phrase: Parser[List[Group5]] = MSCONSMessage04B.group5.asInstanceOf [Parser[List[Group5]]]
+        }
             .parseAndCheck (
                 "NAD+DP'LOC+172+CH1008801234500000000000000113813'DTM+163:201912140000?+01:303'DTM+164:201912140000?+01:303'LIN+1'PIA+5+1-1?:1.29.0*255:SRW'QTY+220:36.300'DTM+163:201912140000?+01:303'DTM+164:201912140015?+01:303'",
                 group5 =>

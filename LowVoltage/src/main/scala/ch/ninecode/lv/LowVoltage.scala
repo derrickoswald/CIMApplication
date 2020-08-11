@@ -87,7 +87,7 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
     {
         // need to watch out for comma separated file list
         // only handle first file
-        val file = Array.concat (options.cim_options.files.map (_.split (",")).toArray:_ *)(scala.reflect.classTag[String])(0)
+        val file = Array.concat (options.cim_options.files.map (_.split (",")).toArray: _ *)(scala.reflect.classTag [String])(0)
         val lead = "<md:FullModel"
         val trail = "</md:FullModel>"
 
@@ -242,12 +242,12 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
             selected.groupBy (island).values.map (TransformerIsland.apply)
         }
         else
-        {
-            // do all low voltage power transformers
-            val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
-            niederspannug.groupBy (island).values.map (TransformerIsland.apply)
-        }
-        .persist (options.cim_options.storage)
+            {
+                // do all low voltage power transformers
+                val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
+                niederspannug.groupBy (island).values.map (TransformerIsland.apply)
+            }
+                .persist (options.cim_options.storage)
         transformers.name = "Transformers"
 
         val prepare = System.nanoTime ()
@@ -260,7 +260,7 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
         {
             // construct the initial graph from the real edges and nodes
             val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, ""), storage, storage)
-            val options = EinspeiseleistungOptions()
+            val options = EinspeiseleistungOptions ()
             val pf = new PowerFeeding (session, storage, options.base_temperature, options.sim_temperature)
             pf.threshold_calculation (initial, sdata, transformers, EinspeiseleistungOptions (cosphi = 1.0))
         }
@@ -317,6 +317,7 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
         trafo_list.count
     }
 }
+
 object LowVoltage extends CIMInitializer[LowVoltageOptions] with Main
 {
     def run (options: LowVoltageOptions): Unit =

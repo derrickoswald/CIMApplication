@@ -21,7 +21,7 @@ import ch.ninecode.testutil.Using
 import ch.ninecode.testutil.Unzip
 import ch.ninecode.util.Schema
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@FixMethodOrder (MethodSorters.NAME_ASCENDING)
 class TimeSeriesStatsSuiteIT
 {
     def cassandra_port: String =

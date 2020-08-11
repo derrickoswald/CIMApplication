@@ -1,4 +1,6 @@
-package ch.ninecode.net;
+package ch.ninecode.net
+
+;
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -14,11 +16,11 @@ import ch.ninecode.util.Sequences
 /**
  * One element of a line between two nodes.
  *
- * @param line the ACLineSegment for this element
- * @param terminal1 associated Terminal one
- * @param terminal2 associated Terminal two
+ * @param line                 the ACLineSegment for this element
+ * @param terminal1            associated Terminal one
+ * @param terminal2            associated Terminal two
  * @param per_length_impedance impedance description on a per meter basis
- * @param wire_info asset information for this line segment
+ * @param wire_info            asset information for this line segment
  */
 final case class LineDetails (
     line: ACLineSegment,
@@ -29,6 +31,7 @@ final case class LineDetails (
     CIMBaseTemperature: Double = LineDetails.CIM_BASE_TEMPERATURE,
     Alpha: Double = LineDetails.ALPHA)
 {
+
     import LineDetails._
 
     /**
@@ -59,7 +62,7 @@ final case class LineDetails (
      * @return the temperature compensated resistance (Ω)
      */
     def resistanceAt (r: Double, temperature: Double = CIMBaseTemperature, base: Double =
-        CIMBaseTemperature): Double = (1.0 + (Alpha * (temperature - base))) * r
+    CIMBaseTemperature): Double = (1.0 + (Alpha * (temperature - base))) * r
 
     /**
      * Temperature adjusted per length impedance.
@@ -140,13 +143,14 @@ object LineDetails
     /**
      * Default per meter sequence impedances.
      * Used if the ACLineSegment has no PerLengthImpedance specified and the properties are not set directly.
+     *
      * @example The default value corresponds to a medium sized cable (GKN 3x95se/95 1/0.6 kV), but this can easily
-     * be set programmatically to small (GKN 3x16rm/16 1/0.6 kV), or large (GKN 3x240se/240 1/0.6 kV) cables sizes,
-     * like so:
-     * LineDetails.DEFAULT_PER_LENGTH_IMPEDANCE = Sequences (LineDetails.DEFAULT_Z1_SMALL, LineDetails.DEFAULT_Z0_SMALL)
-     * LineDetails.DEFAULT_PER_LENGTH_IMPEDANCE = Sequences (LineDetails.DEFAULT_Z1_LARGE, LineDetails.DEFAULT_Z0_LARGE)
-     * One can also change it to a bespoke value like so:
-     * LineDetails.DEFAULT_PER_LENGTH_IMPEDANCE = Sequences (Complex (r1, x1), Complex (r0, x0))
+     *          be set programmatically to small (GKN 3x16rm/16 1/0.6 kV), or large (GKN 3x240se/240 1/0.6 kV) cables sizes,
+     *          like so:
+     *          LineDetails.DEFAULT_PER_LENGTH_IMPEDANCE = Sequences (LineDetails.DEFAULT_Z1_SMALL, LineDetails.DEFAULT_Z0_SMALL)
+     *          LineDetails.DEFAULT_PER_LENGTH_IMPEDANCE = Sequences (LineDetails.DEFAULT_Z1_LARGE, LineDetails.DEFAULT_Z0_LARGE)
+     *          One can also change it to a bespoke value like so:
+     *          LineDetails.DEFAULT_PER_LENGTH_IMPEDANCE = Sequences (Complex (r1, x1), Complex (r0, x0))
      */
     var DEFAULT_PER_LENGTH_IMPEDANCE: Sequences = Sequences (DEFAULT_Z1_MEDIUM, DEFAULT_Z0_MEDIUM)
 
@@ -170,7 +174,7 @@ object LineDetails
     lazy val r1Mask: Int = ACLineSegment.fields.indexOf ("r")
 
     /**
-     *  Index of x field in ACLineSegment bitmask.
+     * Index of x field in ACLineSegment bitmask.
      */
     lazy val x1Mask: Int = ACLineSegment.fields.indexOf ("x")
 
@@ -180,7 +184,7 @@ object LineDetails
     lazy val r0Mask: Int = ACLineSegment.fields.indexOf ("r0")
 
     /**
-     *  Index of x0 field in ACLineSegment bitmask.
+     * Index of x0 field in ACLineSegment bitmask.
      */
     lazy val x0Mask: Int = ACLineSegment.fields.indexOf ("x0")
 
@@ -211,6 +215,7 @@ object LineDetails
 
     /**
      * Predicate to determine if the ACLineSegment has values for r, x, r0, or x0.
+     *
      * @param details the line details to check
      * @return
      */
@@ -290,12 +295,12 @@ object LineDetails
     /**
      * Defaults for physical constants included in the closure sent to executors.
      *
-     * @param DefaultPerLengthImpedance the supplied per meter impedance if the ACLineSegment doesn't have one
-     * @param EmitWarningWhenDefault the flag to show a warning message when a cable has no per length impedance
-     *        (or it is invalid or an un-supported subclass)
+     * @param DefaultPerLengthImpedance            the supplied per meter impedance if the ACLineSegment doesn't have one
+     * @param EmitWarningWhenDefault               the flag to show a warning message when a cable has no per length impedance
+     *                                             (or it is invalid or an un-supported subclass)
      * @param PropertiesAreErroneouslyPerKilometer the flag indicating r and x properties are actually per kilometer values
-     * @param CIMBaseTemperature the temperature of the per unit resistance values found in the CIM file
-     * @param Alpha the temperature coefficient of resistance used to calculate the resistance at a temperature other than the above
+     * @param CIMBaseTemperature                   the temperature of the per unit resistance values found in the CIM file
+     * @param Alpha                                the temperature coefficient of resistance used to calculate the resistance at a temperature other than the above
      */
     case class StaticLineDetails (
         DefaultPerLengthImpedance: Sequences = DEFAULT_PER_LENGTH_IMPEDANCE,

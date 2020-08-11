@@ -9,6 +9,7 @@ case class FieldParser (una: UNA) extends Parsers
     override type Input = Reader[Field]
     val parser: MemberParser = MemberParser (una)
     val members: parser.Parser[List[Field]] = parser.member.*
+
     implicit def field: Parser[Field] = new Parser[Field]
     {
         override def apply (in: Input): ParseResult[Field] =
@@ -31,5 +32,6 @@ case class FieldParser (una: UNA) extends Parsers
             }
         }
     }
-    def parse[T](p: Parser[T], in: FieldScanner): ParseResult[T] = p(in)
+
+    def parse[T] (p: Parser[T], in: FieldScanner): ParseResult[T] = p (in)
 }

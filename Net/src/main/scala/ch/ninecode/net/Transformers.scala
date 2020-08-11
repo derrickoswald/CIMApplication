@@ -1,4 +1,6 @@
-package ch.ninecode.net;
+package ch.ninecode.net
+
+;
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
@@ -30,14 +32,14 @@ import ch.ninecode.util.Complex
  * Get information about transformers.
  * Joins PowerTransformer, PowerTransformerEnd, Terminal and BaseVoltage objects to form complete details about transformers.
  *
- * @param session       the Spark session
- * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
- * @param default_supply_network_short_circuit_power_max maximum primary side network equivalent power under short circuit conditions
+ * @param session                                            the Spark session
+ * @param storage_level                                      specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
+ * @param default_supply_network_short_circuit_power_max     maximum primary side network equivalent power under short circuit conditions
  * @param default_supply_network_short_circuit_impedance_max equivalent impedance for maximum primary side network equivalent power under short circuit conditions
- * @param default_supply_network_short_circuit_angle_max power factor angle for maximum primary side network equivalent power under short circuit conditions, overrides impedance value if specified, (°)
- * @param default_supply_network_short_circuit_power_min minimum primary side network equivalent power under short circuit conditions
+ * @param default_supply_network_short_circuit_angle_max     power factor angle for maximum primary side network equivalent power under short circuit conditions, overrides impedance value if specified, (°)
+ * @param default_supply_network_short_circuit_power_min     minimum primary side network equivalent power under short circuit conditions
  * @param default_supply_network_short_circuit_impedance_min equivalent impedance for minimum primary side network equivalent power under short circuit conditions
- * @param default_supply_network_short_circuit_angle_min power factor angle for minimum primary side network equivalent power under short circuit conditions, overrides impedance value if specified, (°)
+ * @param default_supply_network_short_circuit_angle_min     power factor angle for minimum primary side network equivalent power under short circuit conditions, overrides impedance value if specified, (°)
  *
  */
 final case class Transformers (
@@ -49,7 +51,7 @@ final case class Transformers (
     default_supply_network_short_circuit_power_min: Double = 100.0e6,
     default_supply_network_short_circuit_impedance_min: Complex = Complex (0.875571570, -2.405613110),
     default_supply_network_short_circuit_angle_min: Double = Double.NaN
-    ) extends CIMRDD
+) extends CIMRDD
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -86,9 +88,9 @@ final case class Transformers (
     /**
      * Compute equivalent impedance given the power, voltage and power factor angle
      *
-     * @param power network equivalent power under short circuit conditions (VA)
+     * @param power   network equivalent power under short circuit conditions (VA)
      * @param voltage nominal voltage (V)
-     * @param angle power factor angle (°)
+     * @param angle   power factor angle (°)
      * @return the impedance
      */
     def z (power: Double, voltage: Double, angle: Double): Complex =
@@ -143,8 +145,8 @@ final case class Transformers (
      * Builds a object that models the network at the primary of the transformer.
      *
      * @param transformer the PowerTransformer mRID
-     * @param station the containing Substation
-     * @param voltage the nominal primary voltage
+     * @param station     the containing Substation
+     * @param voltage     the nominal primary voltage
      * @return the EquivalentInjection with the primary network model
      */
     def default_injection (transformer: String, station: Option[Substation], voltage: (String, Double)): EquivalentInjection =
@@ -156,7 +158,11 @@ final case class Transformers (
         obj.bitfields = IdentifiedObject.fieldsToBitfields ("description", "mRID")
         val psr = PowerSystemResource (obj)
         psr.bitfields = PowerSystemResource.fieldsToBitfields ()
-        val s = station match { case Some (s) => s.id case _ => "" }
+        val s = station match
+        {
+            case Some (s) => s.id
+            case _ => ""
+        }
         val equipment = Equipment (psr, inService = true, normallyInService = true, EquipmentContainer = s)
         equipment.bitfields = Equipment.fieldsToBitfields ("inService", "normallyInService", "EquipmentContainer")
         val conducting = ConductingEquipment (equipment, BaseVoltage = voltage._1)
@@ -231,7 +237,7 @@ final case class Transformers (
      * Create an RDD of composite transformer objects.
      *
      * @param transformer_filter the filter to apply that eliminates undesired transformers
-     * @param substation_filter the filter to apply that eliminates undesired substations
+     * @param substation_filter  the filter to apply that eliminates undesired substations
      * @return the RDD of transformer instances
      */
     def getTransformers
@@ -241,11 +247,11 @@ final case class Transformers (
     ): RDD[TransformerData] =
     {
         // get ends and terminals
-        val ends_terminals = getOrElse[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal).join (getOrElse[Terminal].keyBy (_.id)).values
+        val ends_terminals = getOrElse [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal).join (getOrElse [Terminal].keyBy (_.id)).values
 
         // get a map of voltages
         // ToDo: fix this 1kV multiplier on the voltages
-        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
+        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
 
         // attach them to the ends
         val ends_terminals_voltages: RDD[(PowerTransformerEnd, Terminal, (String, Double))] = ends_terminals
@@ -261,7 +267,7 @@ final case class Transformers (
         // attach the nodes
         val ends_terminals_voltages_nodes: RDD[(PowerTransformerEnd, Terminal, (String, Double), TopologicalNode)] = ends_terminals_voltages
             .keyBy (_._2.TopologicalNode)
-            .join (getOrElse[TopologicalNode].keyBy (_.id))
+            .join (getOrElse [TopologicalNode].keyBy (_.id))
             .values
             .map (
                 x =>
@@ -272,24 +278,24 @@ final case class Transformers (
 
         // get the transformers of interest and join to end information (filter out transformers with less than 2 ends)
         val ends = ends_terminals_voltages_nodes.keyBy (_._1.PowerTransformer).groupByKey.filter (_._2.size >= 2)
-        val transformers = getOrElse[PowerTransformer]
+        val transformers = getOrElse [PowerTransformer]
             .keyBy (_.id).join (ends)
             .values.map (to_transformer_data)
             .filter (transformer_filter)
 
         // add station if any
         // ToDo: should we invent a dummy station?
-        val substations_by_id = getOrElse[Substation].filter (substation_filter).keyBy (_.id)
+        val substations_by_id = getOrElse [Substation].filter (substation_filter).keyBy (_.id)
         val transformers_stations = transformers.keyBy (_.transformer.ConductingEquipment.Equipment.EquipmentContainer)
-            .leftOuterJoin (get[Element]("Elements").keyBy (_.id)).values
+            .leftOuterJoin (get [Element]("Elements").keyBy (_.id)).values
             .map (x => (station_fn (x._2), x._1))
             .leftOuterJoin (substations_by_id).values
             .map (x => x._1.copy (station = x._2))
 
         // add equivalent injection, or default
         @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
-        val injections_by_node = getOrElse[EquivalentInjection].keyBy (_.id)
-            .join (getOrElse[Terminal].keyBy (_.ConductingEquipment)).values
+        val injections_by_node = getOrElse [EquivalentInjection].keyBy (_.id)
+            .join (getOrElse [Terminal].keyBy (_.ConductingEquipment)).values
             .map (x => (x._2.TopologicalNode, x._1))
             .groupByKey.mapValues (_.head) // ToDo: should really sum the (different) EquivalentInjection?
         transformers_stations.keyBy (_.node0.id)

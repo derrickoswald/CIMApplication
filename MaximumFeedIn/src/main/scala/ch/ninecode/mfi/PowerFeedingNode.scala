@@ -30,21 +30,21 @@ case class PowerFeedingNode
     min_ir: Double,
     problem: String = ""
 ) extends LoadFlowNode (id, nominal_voltage)
-with GLMNode
+    with GLMNode
 {
     def asString: String = "[%s %gV %s@%s %sΩ %gA %s]".format (id, nominal_voltage, if (null == source_obj) "" else source_obj.asString, if (null == feeder) "" else feeder.feeder_id, if (null == sum_z) "" else sum_z.toString, min_ir, problem)
 
     def hasNonRadial: Boolean =
         ("" != problem) &&
-        (
-            problem.indexOf ("non-radial network") != -1
-        )
+            (
+                problem.indexOf ("non-radial network") != -1
+                )
 
     def hasIssues: Boolean =
         ("" != problem) &&
-        (
-            problem.indexOf ("invalid element") != -1 ||
-            problem.indexOf ("regulator edge") != -1 ||
-            problem.indexOf ("subtransmission edge") != -1
-        )
+            (
+                problem.indexOf ("invalid element") != -1 ||
+                    problem.indexOf ("regulator edge") != -1 ||
+                    problem.indexOf ("subtransmission edge") != -1
+                )
 }

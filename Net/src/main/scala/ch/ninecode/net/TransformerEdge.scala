@@ -6,11 +6,11 @@ class TransformerEdge
 (
     _transformer: TransformerSet
 )
-extends LoadFlowEdge (
-    _transformer.transformer_name,
-    _transformer.node0,
-    _transformer.node1
-)
+    extends LoadFlowEdge (
+        _transformer.transformer_name,
+        _transformer.node0,
+        _transformer.node1
+    )
 {
     val transformer: TransformerSet = _transformer
 
@@ -18,7 +18,7 @@ extends LoadFlowEdge (
 
     // check if this is a multi-winding transformer
     lazy val lv_windings: Array[PowerTransformerEnd] =
-        for (winding <- transformer.transformers(0).ends
+        for (winding <- transformer.transformers (0).ends
              if winding.TransformerEnd.endNumber > 1)
             yield winding
     lazy val multiwinding: Boolean = lv_windings.length > 1

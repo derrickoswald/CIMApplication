@@ -61,7 +61,10 @@ case class LoadCIMFileFunction (paths: Array[String], options: Option[Iterable[(
             {
                 // read the file(s)
                 val prefix = hdfs.getUri.toString
-                val files = paths.map (s => { val file = if (s.startsWith ("/")) s else s"/$s"; new Path (prefix, file).toString })
+                val files = paths.map (s =>
+                {
+                    val file = if (s.startsWith ("/")) s else s"/$s"; new Path (prefix, file).toString
+                })
                 val filelist = files.foldLeft (Json.createArrayBuilder)((b, f) => b.add (f))
 
                 // establish default options if needed
@@ -86,8 +89,8 @@ case class LoadCIMFileFunction (paths: Array[String], options: Option[Iterable[(
                     ).toIterable
                 )(identity)
 
-                val reader_options = Map[String, String] ("path" -> files.mkString (",")) ++ op
-                val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)
+                val reader_options = Map [String, String]("path" -> files.mkString (",")) ++ op
+                val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files: _*)
                 val count = elements.count
 
                 // echo options to the response
@@ -114,7 +117,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Option[Iterable[(
             catch
             {
                 case e: Exception =>
-                    Json.createObjectBuilder.add ("error", e.getMessage )
+                    Json.createObjectBuilder.add ("error", e.getMessage)
             }
         response.build
     }

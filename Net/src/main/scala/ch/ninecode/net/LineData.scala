@@ -1,4 +1,6 @@
-package ch.ninecode.net;
+package ch.ninecode.net
+
+;
 
 import ch.ninecode.net.LineDetails.CIM_BASE_TEMPERATURE
 import ch.ninecode.util.Sequences
@@ -27,12 +29,14 @@ final case class LineData (lines: Iterable[LineDetails])
 
     /** @return the mRID of the TopologicalNode for one end of the lines */
     lazy val node0: String = lines.map (_.terminal1.TopologicalNode).foldLeft ("")(
-        (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */
+        (n1, n2) => if ("" == n1) n2 else
+            if (n1 == n2) n1 else n1 /* ToDo: log error */
     )
 
     /** @return the mRID of the TopologicalNode for the other end of the lines */
     lazy val node1: String = lines.map (_.terminal2.TopologicalNode).foldLeft ("")(
-        (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */
+        (n1, n2) => if ("" == n1) n2 else
+            if (n1 == n2) n1 else n1 /* ToDo: log error */
     )
 
     /** @return a summary string for the lines */
@@ -44,7 +48,7 @@ final case class LineData (lines: Iterable[LineDetails])
      * @return the positive and zero sequence impedance between the two nodes
      */
     def perLengthImpedance: Sequences =
-        lines.map (_.perLengthImpedance).foldLeft (Sequences ()) ((x, y) => x + y.reciprocal).reciprocal
+        lines.map (_.perLengthImpedance).foldLeft (Sequences ())((x, y) => x + y.reciprocal).reciprocal
 
     /**
      * Calculate the parallel impedance at the specified temperature.
@@ -53,7 +57,7 @@ final case class LineData (lines: Iterable[LineDetails])
      * @return the positive and zero sequence impedance between the two nodes
      */
     def perLengthImpedanceAt (temperature: Double = CIM_BASE_TEMPERATURE, base: Double = CIM_BASE_TEMPERATURE): Sequences =
-        lines.map (_.perLengthImpedanceAt (temperature, base)).foldLeft (Sequences ()) ((x, y) => x + y.reciprocal).reciprocal
+        lines.map (_.perLengthImpedanceAt (temperature, base)).foldLeft (Sequences ())((x, y) => x + y.reciprocal).reciprocal
 
     /**
      * Predicate to determine if the <code>perLengthImpedanceAt</code> method is using default impedance values.

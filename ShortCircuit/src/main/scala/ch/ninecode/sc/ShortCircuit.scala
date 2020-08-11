@@ -64,7 +64,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
     def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
     {
-        var ret = List[ScEdge]()
+        var ret = List [ScEdge]()
 
         val element = arg._1
         val t_it = arg._2
@@ -77,7 +77,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         if (null != c)
         {
             // get the equipment
-            val equipment = c.asInstanceOf[ConductingEquipment]
+            val equipment = c.asInstanceOf [ConductingEquipment]
 
             // sort terminals by sequence number
             // except if it has ends, and then sort so the primary is index 0
@@ -185,22 +185,22 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def get_inital_graph (): Graph[ScNode, ScEdge] =
     {
         // get a map of voltages
-        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals in the topology
-        val terminals = getOrElse[Terminal].filter (null != _.TopologicalNode)
+        val terminals = getOrElse [Terminal].filter (null != _.TopologicalNode)
 
         // handle transformers specially, by attaching PowerTransformerEnd objects to the terminals
 
         // get the transformer ends keyed by terminal, only one end can reference any one terminal
-        val ends = getOrElse[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
+        val ends = getOrElse [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
         // attach the ends to terminals
         val t = terminals.keyBy (_.id).leftOuterJoin (ends).values.map (make_ends_meet)
         // get the terminals keyed by equipment and filter for two (or more) terminals
         val terms = t.groupBy (_._1.ConductingEquipment).filter (_._2.size > 1)
 
         // map the terminal 'pairs' to edges
-        val edges = getOrElse[Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
+        val edges = getOrElse [Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
 
         // get the nodes and voltages from the edges
         val nodes = edges.flatMap (
@@ -221,7 +221,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             xnodes.checkpoint ()
         }
 
-        Graph[ScNode, ScEdge](xnodes, xedges, default_node, storage_level, storage_level)
+        Graph [ScNode, ScEdge](xnodes, xedges, default_node, storage_level, storage_level)
     }
 
     def calculate_one (voltage: Double, impedanz: Complex, null_impedanz: Complex): ScIntermediate =
@@ -765,10 +765,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      *         nominal node voltage, and impedance at the node
      */
     def solve_and_analyse (
-                              gridlabd: GridLABD,
-                              one_phase: Boolean,
-                              isMax: Boolean,
-                              simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Impedanzen, Branch)] =
+        gridlabd: GridLABD,
+        one_phase: Boolean,
+        isMax: Boolean,
+        simulations: RDD[SimulationTransformerServiceArea]): RDD[(String, String, String, Double, Impedanzen, Branch)] =
     {
         val b4_solve = System.nanoTime ()
         val trafos = simulations.map (_.island.island_name)
@@ -934,7 +934,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 if (trafo.transformer.total_impedance._2)
                     List (ScError (fatal = false, invalid = false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
                 else
-                    null.asInstanceOf[List[ScError]]
+                    null.asInstanceOf [List[ScError]]
             val problems = edges.foldLeft (errors)((errors, edge) => edge.hasIssues (errors, options))
             ScNode (node.id_seq, node.voltage, trafo.transformer.transformer_name, trafo.transformer.total_impedance._1, "self", trafo.lv_impedance (node.voltage), null, problems)
         }
@@ -952,10 +952,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         log.info ("computing results")
         // join results with terminals to get equipment
-        val d = result.keyBy (_.id_seq).join (getOrElse[Terminal].keyBy (_.TopologicalNode)).values
+        val d = result.keyBy (_.id_seq).join (getOrElse [Terminal].keyBy (_.TopologicalNode)).values
         // join with equipment to get containers
-        val e = d.keyBy (_._2.ConductingEquipment).join (getOrElse[ConductingEquipment].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._2))
-        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (getOrElse[Element]("Elements").keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
+        val e = d.keyBy (_._2.ConductingEquipment).join (getOrElse [ConductingEquipment].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._2))
+        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (getOrElse [Element]("Elements").keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
 
         // resolve to top level containers
         // the equipment container for a transformer could be a Station or a Bay or VoltageLevel ... the last two of which have a reference to their station
@@ -1031,7 +1031,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 .map (
                     x =>
                     {
-                        val ((nodes, edges), island) = x.asInstanceOf[((Iterable[SimulationNode], Iterable[GLMEdge]), TransformerIsland)]
+                        val ((nodes, edges), island) = x.asInstanceOf [((Iterable[SimulationNode], Iterable[GLMEdge]), TransformerIsland)]
                         SimulationTransformerServiceArea (
                             island = island,
                             nodes = nodes,
@@ -1089,7 +1089,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def run (): RDD[ScResult] =
     {
         FData.fuse_sizing_table (options.fuse_table)
-        assert (null != getOrElse[TopologicalNode], "no topology")
+        assert (null != getOrElse [TopologicalNode], "no topology")
 
         val transformer_data = Transformers (
             spark,
@@ -1114,7 +1114,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 .map (TransformerIsland.apply)
         }
         else
-            // do all low voltage power transformers
+        // do all low voltage power transformers
             transformer_data
                 .filter (td => (td.v0 > 1000.0) && (td.v1 <= 1000.0)) // ToDo: don't hard code this rule
                 .groupBy (_.node1.TopologicalIsland)
@@ -1194,16 +1194,16 @@ object ShortCircuit
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf[ch.ninecode.sc.Impedanzen],
-            classOf[ch.ninecode.sc.ScEdge],
-            classOf[ch.ninecode.sc.ScError],
-            classOf[ch.ninecode.sc.ScIntermediate],
-            classOf[ch.ninecode.sc.ScMessage],
-            classOf[ch.ninecode.sc.ScNode],
-            classOf[ch.ninecode.sc.ScResult],
-            classOf[ch.ninecode.sc.ShortCircuit],
-            classOf[ch.ninecode.sc.ShortCircuitOptions],
-            classOf[ch.ninecode.sc.StartingTrafos]
+            classOf [ch.ninecode.sc.Impedanzen],
+            classOf [ch.ninecode.sc.ScEdge],
+            classOf [ch.ninecode.sc.ScError],
+            classOf [ch.ninecode.sc.ScIntermediate],
+            classOf [ch.ninecode.sc.ScMessage],
+            classOf [ch.ninecode.sc.ScNode],
+            classOf [ch.ninecode.sc.ScResult],
+            classOf [ch.ninecode.sc.ShortCircuit],
+            classOf [ch.ninecode.sc.ShortCircuitOptions],
+            classOf [ch.ninecode.sc.StartingTrafos]
         )
     }
 }

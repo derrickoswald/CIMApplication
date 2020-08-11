@@ -15,8 +15,8 @@ case class FeederNode
     _id: String,
     override val nominal_voltage: Double,
     feeder: Element)
-extends LoadFlowNode (if (null == feeder) _id else feeder.id, nominal_voltage)
-with GLMNode
+    extends LoadFlowNode (if (null == feeder) _id else feeder.id, nominal_voltage)
+        with GLMNode
 
 object FeederNode
 {

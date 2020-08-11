@@ -37,7 +37,11 @@ case class SimulationDirectionGenerator
     @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match { case e: GLMTransformerEdge => Some (e) case _ => None })
+        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match
+        {
+            case e: GLMTransformerEdge => Some (e)
+            case _ => None
+        })
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
@@ -49,20 +53,20 @@ case class SimulationDirectionGenerator
             "            constant_power_A 1000.0+0j;"
         else
         {
-          """            constant_power_A 333.33333333+0j;
-            |            constant_power_B 333.33333333+0j;
-            |            constant_power_C 333.33333333+0j;""".stripMargin
+            """            constant_power_A 333.33333333+0j;
+              |            constant_power_B 333.33333333+0j;
+              |            constant_power_C 333.33333333+0j;""".stripMargin
         }
         val phases = if (one_phase) "AN" else "ABCN"
         val voltage = node.nominal_voltage
         s"""
-        |        object load
-        |        {
-        |            name "${node.id}";
-        |$power
-        |            phases $phases;
-        |            nominal_voltage ${voltage}V;
-        |        };
+           |        object load
+           |        {
+           |            name "${node.id}";
+           |$power
+           |            phases $phases;
+           |            nominal_voltage ${voltage}V;
+           |        };
         """.stripMargin
     }
 

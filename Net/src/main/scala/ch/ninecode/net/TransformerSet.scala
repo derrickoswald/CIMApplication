@@ -41,8 +41,11 @@ case class TransformerSet (
     require (transformers.length > 0, "no transformers in TransformerData array")
 
     def strings (fn: TransformerData => String, sep: String = " "): String = transformers.map (fn).mkString (sep)
+
     def dstrings (fn: TransformerData => Double, sep: String = " "): String = strings (x => fn (x).toString, sep)
+
     def cstrings (fn: TransformerData => Complex, sep: String = " "): String = strings (x => fn (x).toString, sep)
+
     def raw_name (sep: String): String = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString (sep)
 
     // get the transformer name (of the parallel transformers)
@@ -154,7 +157,7 @@ case class TransformerSet (
 
     /**
      * Return the total impedance at the secondary and a flag indicating if it is the default value (some impedance was zero).
-     *  i.e. (total_impedance, default)
+     * i.e. (total_impedance, default)
      *
      * Calculate the impedance as 1 / sum (1/Zi)
      */
@@ -328,7 +331,7 @@ case class TransformerSet (
 
     /**
      * Return the total impedance and a flag indicating if it includes a default value (an impedance was zero)
-     *  i.e. (total_impedance, default)
+     * i.e. (total_impedance, default)
      * calculate the impedance as 1 / sum (1/Zi)
      */
     lazy val total_impedance_per_unit: (Complex, Boolean) =

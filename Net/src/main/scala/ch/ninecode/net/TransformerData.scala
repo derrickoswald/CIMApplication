@@ -1,4 +1,6 @@
-package ch.ninecode.net;
+package ch.ninecode.net
+
+;
 
 import ch.ninecode.model.EquivalentInjection
 import ch.ninecode.model.PowerTransformer
@@ -12,12 +14,12 @@ import ch.ninecode.model.TopologicalNode
  *
  * Everything you need to know about a transformer.
  *
- * @param transformer  The PowerTransformer object.
- * @param ends         The associated PowerTransformerEnd objects ordered by endNumber (which by convention is descending by voltage).
- * @param terminals    The terminals ordered the same as the ends.
- * @param nodes        The nodes ordered the same as the ends.
- * @param voltages     The voltages ordered the same as the ends (V).
- * @param station      The Substation object where the transformer is located.
+ * @param transformer The PowerTransformer object.
+ * @param ends The associated PowerTransformerEnd objects ordered by endNumber (which by convention is descending by voltage).
+ * @param terminals The terminals ordered the same as the ends.
+ * @param nodes The nodes ordered the same as the ends.
+ * @param voltages The voltages ordered the same as the ends (V).
+ * @param station The Substation object where the transformer is located.
  * @param shortcircuit The EquivalentInjection object with the available short circuit power and impedance at the primary.
  */
 case class TransformerData
@@ -72,5 +74,11 @@ case class TransformerData
     def node1: TopologicalNode = nodes (secondary)
 
     /** @return a summary string for the transformer */
-    def asString: String = s"${transformer.id} ${station match { case Some (s) => s.id case _ => "" }} ${(end0.ratedS / 1000.0).toInt.toString}kVA ${voltages.map (_._2.toInt).mkString (":")} ${nodes.map (_.id).mkString (":")}"
+    def asString: String = s"${transformer.id} ${
+        station match
+        {
+            case Some (s) => s.id
+            case _ => ""
+        }
+    } ${(end0.ratedS / 1000.0).toInt.toString}kVA ${voltages.map (_._2.toInt).mkString (":")} ${nodes.map (_.id).mkString (":")}"
 }

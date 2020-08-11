@@ -27,12 +27,12 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
      * Make a three phase data element from record returned by MSCONS parser.
      *
      * @param join_table the mapping from meter id to mRID
-     * @param record a reading from the MSCONS parser
+     * @param record     a reading from the MSCONS parser
      */
     def to_data_element (join_table: Map[String, String])
         (record: (String, String, Calendar, Int, Double, Double, String)): Option[ThreePhaseComplexDataElement] =
     {
-        join_table.get(record._1) match
+        join_table.get (record._1) match
         {
             case Some (mrid) =>
                 Some (ThreePhaseComplexDataElement (mrid, record._3.getTimeInMillis, Complex (record._5, record._6), record._7))
@@ -47,7 +47,7 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
      * @param filename the file to parse
      * @return the sequence of data elements found in the file
      */
-    def processOneFile (join_table: Map[String, String], job: IngestJob) (filename: String): Seq[ThreePhaseComplexDataElement] =
+    def processOneFile (join_table: Map[String, String], job: IngestJob)(filename: String): Seq[ThreePhaseComplexDataElement] =
     {
         val parser = MSCONSParser (MSCONSOptions ())
         parser.parse (filename)
@@ -87,7 +87,7 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
 
     def process (filename: String, job: IngestJob): Unit =
     {
-        val join_table = loadCsvMapping(session, filename, job)
+        val join_table = loadCsvMapping (session, filename, job)
         val all_files = job.datafiles.flatMap (getFiles (job, options.workdir))
         val some_files = all_files.take (6).mkString (",")
         val more_files = all_files.length > 6
@@ -98,29 +98,32 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
             // read all files into one RDD
             val raw = mscons_files.flatMap (processOneFile (join_table, job))
             // combine real and imaginary parts
-            if (job.mode == Modes.Append) {
+            if (job.mode == Modes.Append)
+            {
                 val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
                 implicit val configuration: ReadConf =
                     ReadConf
                         .fromSparkConf (session.sparkContext.getConf)
                         .copy (splitCount = Some (executors))
-                val df= session
+                val df = session
                     .sparkContext
                     .cassandraTable (job.keyspace, "measured_value")
-                    .select("mrid", "time", "period", "real_a", "imag_a", "units")
+                    .select ("mrid", "time", "period", "real_a", "imag_a", "units")
                     .map (
-                        row => {
-                            ThreePhaseComplexDataElement(
+                        row =>
+                        {
+                            ThreePhaseComplexDataElement (
                                 row.getString ("mrid"),
                                 row.getLong ("time"),
-                                Complex (row.getDouble ("real_a"),row.getDouble ("imag_a")),
+                                Complex (row.getDouble ("real_a"), row.getDouble ("imag_a")),
                                 row.getString ("units"))
                         }
                     )
-                val unioned= raw.union(df)
+                val unioned = raw.union (df)
                 val grouped = unioned.groupBy (x => (x.element, x.millis)).values.flatMap (complex2).map (split)
                 grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-            } else {
+            } else
+            {
                 val grouped = raw.groupBy (x => (x.element, x.millis)).values.flatMap (complex2).map (split)
                 grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
             }

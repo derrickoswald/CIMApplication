@@ -48,7 +48,7 @@ object CUX extends FieldExtractor[CUX]
     private lazy val c504 =
         subfields (
             c504_6347 ~ c504_6345 ~ c504_6343 ~ c504_6348 ^^
-                { case c504_6347 ~ c504_6345 ~ c504_6343 ~ c504_6348  => Currency_Details (c504_6347, c504_6345, c504_6343, c504_6348) }
+                { case c504_6347 ~ c504_6345 ~ c504_6343 ~ c504_6348 => Currency_Details (c504_6347, c504_6345, c504_6343, c504_6348) }
         )
 
     //    030    5402 CURRENCY EXCHANGE RATE                     C    1 n..12

@@ -22,7 +22,7 @@ trait SparkInitializer[T <: Mainable with Sparkable]
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     // utility timing block
-    def time[R](template: String)(block: => R): R =
+    def time[R] (template: String)(block: => R): R =
     {
         val t0 = System.nanoTime ()
         val ret = block
@@ -61,7 +61,7 @@ trait SparkInitializer[T <: Mainable with Sparkable]
     {
         val version = options.main_options.version.split ("-")
         if (3 == version.length)
-            version(1)
+            version (1)
         else
             "unknown"
     }

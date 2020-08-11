@@ -14,6 +14,7 @@ case class SimulationExtraQuery
     title: String,
     query: String
 )
+
 object SimulationExtraQuery
 {
     @SuppressWarnings (Array ("org.wartremover.warts.Null"))

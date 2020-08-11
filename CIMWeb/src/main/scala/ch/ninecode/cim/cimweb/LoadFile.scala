@@ -121,15 +121,15 @@ class LoadFile extends RESTful
         @DefaultValue ("yyyy-MM-dd'T'HH:mm:ss.SSSXXX") @MatrixParam ("timestampFormat") timestampFormat: String,
         @DefaultValue ("PERMISSIVE") @MatrixParam ("mode") mode: String,
         @DefaultValue ("false") @MatrixParam ("inferSchema") inferSchema: String
-        ): String =
+    ): String =
     {
         val ret = new RESTfulJSONResult
         val files = path.split (',').map (f => if (f.startsWith ("/")) f else s"/$f")
         // based on the type execute load
-        if (files(0).endsWith (".rdf") || files(0).endsWith (".xml"))
+        if (files (0).endsWith (".rdf") || files (0).endsWith (".xml"))
         {
             // see https://github.com/derrickoswald/CIMReader#reader-api
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "StorageLevel" -> storage,
                 "ch.ninecode.cim.do_about" -> do_about,
                 "ch.ninecode.cim.do_normalize" -> do_normalize,
@@ -150,34 +150,35 @@ class LoadFile extends RESTful
             _Logger.info (s"load CIM ${files.mkString (",")} ${options.toString}")
             load (ret, LoadCIMFileFunction (files, Some (options)))
         }
-        else if (files(0).endsWith (".csv"))
-        {
-            // see https://spark.apache.org/docs/2.4.5/api/scala/index.html#org.apache.spark.sql.DataFrameReader
-            val options = Map[String, String] (
-                "header" -> header,
-                "ignoreLeadingWhiteSpace" -> ignoreLeadingWhiteSpace,
-                "ignoreTrailingWhiteSpace" -> ignoreTrailingWhiteSpace,
-                "sep" -> sep,
-                "quote" -> quote,
-                "escape" -> escape,
-                "encoding" -> encoding,
-                "comment" -> comment,
-                "nullValue" -> nullValue,
-                "nanValue" -> nanValue,
-                "positiveInf" -> positiveInf,
-                "negativeInf" -> negativeInf,
-                "dateFormat" -> dateFormat,
-                "timestampFormat" -> timestampFormat,
-                "mode" -> mode,
-                "inferSchema" -> inferSchema
-            )
-            _Logger.info (s"load CSV ${files.mkString (",")} ${options.toString}")
-            load (ret, LoadCSVFileFunction (files, options))
-        }
         else
-        {
-            ret.setResultException (new ResourceException ("unrecognized file format (%s)".format (files(0))), "ResourceException on input")
-        }
+            if (files (0).endsWith (".csv"))
+            {
+                // see https://spark.apache.org/docs/2.4.5/api/scala/index.html#org.apache.spark.sql.DataFrameReader
+                val options = Map [String, String](
+                    "header" -> header,
+                    "ignoreLeadingWhiteSpace" -> ignoreLeadingWhiteSpace,
+                    "ignoreTrailingWhiteSpace" -> ignoreTrailingWhiteSpace,
+                    "sep" -> sep,
+                    "quote" -> quote,
+                    "escape" -> escape,
+                    "encoding" -> encoding,
+                    "comment" -> comment,
+                    "nullValue" -> nullValue,
+                    "nanValue" -> nanValue,
+                    "positiveInf" -> positiveInf,
+                    "negativeInf" -> negativeInf,
+                    "dateFormat" -> dateFormat,
+                    "timestampFormat" -> timestampFormat,
+                    "mode" -> mode,
+                    "inferSchema" -> inferSchema
+                )
+                _Logger.info (s"load CSV ${files.mkString (",")} ${options.toString}")
+                load (ret, LoadCSVFileFunction (files, options))
+            }
+            else
+            {
+                ret.setResultException (new ResourceException ("unrecognized file format (%s)".format (files (0))), "ResourceException on input")
+            }
 
         ret.toString
     }

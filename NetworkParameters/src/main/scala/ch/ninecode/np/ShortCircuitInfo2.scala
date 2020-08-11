@@ -44,8 +44,9 @@ case class ShortCircuitInfo2 (
     session: SparkSession,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
 )
-extends CIMRDD
+    extends CIMRDD
 {
+
     import session.sqlContext.implicits._
 
     implicit val spark: SparkSession = session
@@ -158,8 +159,8 @@ extends CIMRDD
             val sk_max = row.getDouble (19) * 1e6
             val sk_min = row.getDouble (20) * 1e6
             val ratioZ0Z1_max = row.getDouble (27)
-            val wik1_max = - row.getDouble (31) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
-            val wik1_min = - row.getDouble (32) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
+            val wik1_max = -row.getDouble (31) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
+            val wik1_min = -row.getDouble (32) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
             val ratioX0R0_max = row.getDouble (33)
             val wik0_max = -((Math.PI / 2.0) - Math.atan (ratioX0R0_max))
 
@@ -403,7 +404,7 @@ extends CIMRDD
     {
         val chim = new CHIM ("")
         val subsetters: List[String] = chim.classes.map (info => info.name)
-        val old_elements = get[Element]("Elements")
+        val old_elements = get [Element]("Elements")
 
         // get the list of classes that need to be merged
         def supers (element: Element): List[String] =
@@ -430,11 +431,11 @@ extends CIMRDD
         // merge each class
         def add[T <: Product] (subsetter: CIMSubsetter[T]): Unit =
         {
-            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T] (subsetter.runtime_class)
+            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T](subsetter.runtime_class)
             implicit val tag: universe.TypeTag[T] = subsetter.tag
             val subrdd: RDD[T] = elements.flatMap (subsetter.asThisClass)
-            val existing: RDD[T] = getOrElse[subsetter.basetype] (subsetter.cls)
-            val _ = put[T] (subrdd.union (existing))
+            val existing: RDD[T] = getOrElse [subsetter.basetype](subsetter.cls)
+            val _ = put [T](subrdd.union (existing))
         }
 
         for (info <- list)

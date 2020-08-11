@@ -19,6 +19,7 @@ import ch.ninecode.edifact.ServiceSegmentParser
 
 /**
  * MSCONS file parser.
+ *
  * @param options options for parsing
  */
 case class MSCONSParser (options: MSCONSOptions)

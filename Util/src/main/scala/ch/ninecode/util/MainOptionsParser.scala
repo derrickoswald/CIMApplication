@@ -20,7 +20,7 @@ class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](defa
 
     head (default.main_options.application, default.main_options.version)
 
-    opt[Unit]("unittest")
+    opt [Unit]("unittest")
         .hidden
         .action (
             (_, c) =>
@@ -34,19 +34,28 @@ class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](defa
 
     help ("help")
         .hidden
-        .validate (Unit => { helpout = true; Right (Unit) })
+        .validate (Unit =>
+        {
+            helpout = true; Right (Unit)
+        })
 
     version ("version")
-        .validate (Unit => { versionout = true; Right (Unit) })
+        .validate (Unit =>
+        {
+            versionout = true; Right (Unit)
+        })
         .text (
             {
                 val version = default.main_options.version.split ("-")
                 if (3 == version.length)
-                    s"Scala: ${version(0)}, Spark: ${version(1)}, ${default.main_options.application}: ${version(2)}"
+                    s"Scala: ${version (0)}, Spark: ${version (1)}, ${default.main_options.application}: ${version (2)}"
                 else
                     default.main_options.version
             }
         )
 
-    checkConfig (o => { o.main_options = o.main_options.copy (valid = !(helpout || versionout)); Right (Unit) })
+    checkConfig (o =>
+    {
+        o.main_options = o.main_options.copy (valid = !(helpout || versionout)); Right (Unit)
+    })
 }

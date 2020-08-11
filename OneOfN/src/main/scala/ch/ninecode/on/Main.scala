@@ -63,7 +63,7 @@ object Main
         ret
     }
 
-    def time[R](template: String)(block: => R): R =
+    def time[R] (template: String)(block: => R): R =
     {
         val t0 = System.nanoTime ()
         val ret = block
@@ -146,7 +146,10 @@ object Main
                     if (options.verbose) LogManager.getLogger (getClass).setLevel (Level.INFO)
                     if (options.files.nonEmpty)
                     {
-                        val session = time ("setup: %s seconds") { createSession (options) }
+                        val session = time ("setup: %s seconds")
+                        {
+                            createSession (options)
+                        }
                         time ("execution: %s seconds")
                         {
                             val opts = if ("" == options.workdir)

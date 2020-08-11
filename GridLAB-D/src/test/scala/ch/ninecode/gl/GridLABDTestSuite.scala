@@ -36,23 +36,23 @@ case class TestNode
     override val nominal_voltage: Double,
     equipment: Iterable[Element]
 )
-extends LoadFlowNode (id, nominal_voltage)
-with GLMNode
+    extends LoadFlowNode (id, nominal_voltage)
+        with GLMNode
 {
     override def emit (generator: GLMGenerator): String =
     {
         val load = equipment.headOption.map
         {
             case _: EnergyConsumer =>
-             s"""
-                |        object load
-                |        {
-                |            name "${ id }_load";
-                |            parent "${ id }";
-                |            phases "${ if (generator.isSinglePhase) "AN" else "ABCN" }";
-                |            nominal_voltage ${ nominal_voltage }V;
-                |            ${ if (generator.isSinglePhase) "constant_power_A" else "constant_power_ABCN" } 1000+0j;
-                |        };""".stripMargin
+                s"""
+                   |        object load
+                   |        {
+                   |            name "${id}_load";
+                   |            parent "${id}";
+                   |            phases "${if (generator.isSinglePhase) "AN" else "ABCN"}";
+                   |            nominal_voltage ${nominal_voltage}V;
+                   |            ${if (generator.isSinglePhase) "constant_power_A" else "constant_power_ABCN"} 1000+0j;
+                   |        };""".stripMargin
             case _ => ""
         }
         s"${super.emit (generator)}$load"
@@ -94,7 +94,7 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename1.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename1,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -155,7 +155,7 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename1.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename1,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -289,7 +289,7 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename1.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename1,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -324,8 +324,8 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
             assert (results.nonEmpty, "should have errors")
             assert (results.length == 2, "should have 2 results")
-            assert (results(0).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method"), "foo")
-            assert (results(1).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method"), "bar")
+            assert (results (0).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method"), "foo")
+            assert (results (1).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method"), "bar")
 
             info (s"total: ${(solve - start) / 1e9} seconds")
     }
@@ -336,7 +336,7 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
             val start = System.nanoTime
             val files = filename2.split (",")
-            val options = Map[String, String] (
+            val options = Map [String, String](
                 "path" -> filename2,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -362,6 +362,7 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
             // determine the set of transformers to work on
             def heavy (transformer: GLMTransformerEdge): Boolean =
                 (transformer.transformer.v0 > 1000.0) && (transformer.transformer.v1 == 400.0)
+
             val transformers: Array[(identifier, GLMTransformerEdge)] =
                 edges
                     .flatMap
@@ -373,25 +374,26 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
                                 None
                         case _ => None
                     }
-                .collect
+                    .collect
 
-            def notTheTransformer (transformer: GLMTransformerEdge) (edge: LoadFlowEdge): Boolean =
+            def notTheTransformer (transformer: GLMTransformerEdge)(edge: LoadFlowEdge): Boolean =
                 edge match
                 {
                     case tx: GLMTransformerEdge => if (heavy (tx)) false else true
                     case _ => true
                 }
+
             val glms = for
-            {
+                {
                 (id, trafo) <- transformers
-                n = nodes.filter (_._1 == id).map (_._2).collect.collect ({ case l: GLMNode => l})
-                e = edges.filter (_._1 == id).map (_._2).filter (notTheTransformer (trafo)).collect.collect ({ case e: GLMEdge => e})
+                n = nodes.filter (_._1 == id).map (_._2).collect.collect ({ case l: GLMNode => l })
+                e = edges.filter (_._1 == id).map (_._2).filter (notTheTransformer (trafo)).collect.collect ({ case e: GLMEdge => e })
             }
-            yield
-            {
-                gridlabd.export (Generator (id, n, e, List(trafo), List(TestNode (trafo.cn1, trafo.primary.toDouble, trafo.transformer.transformers.map (_.transformer)))))
-                trafo.transformer.transformer_name
-            }
+                yield
+                    {
+                        gridlabd.export (Generator (id, n, e, List (trafo), List (TestNode (trafo.cn1, trafo.primary.toDouble, trafo.transformer.transformers.map (_.transformer)))))
+                        trafo.transformer.transformer_name
+                    }
 
             val generate = System.nanoTime ()
             info (s"generate: ${(generate - read) / 1e9} seconds")

@@ -4,6 +4,7 @@ import org.apache.spark.sql.SparkSession
 
 /**
  * Common functionality to read CIM files in a main program.
+ *
  * @tparam T the type of options needed for CIM reading
  */
 trait CIMInitializer[T <: Mainable with Sparkable with CIMAble] extends SparkInitializer[T]

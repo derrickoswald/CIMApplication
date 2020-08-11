@@ -1,4 +1,6 @@
-package ch.ninecode.net;
+package ch.ninecode.net
+
+;
 
 /**
  * Switch data.
@@ -24,12 +26,14 @@ final case class SwitchData (switches: Iterable[SwitchDetails])
 
     /** @return the mRID of the TopologicalNode for one end of the switches */
     lazy val node0: String = switches.map (_.terminal1.TopologicalNode).foldLeft ("")(
-        (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */
+        (n1, n2) => if ("" == n1) n2 else
+            if (n1 == n2) n1 else n1 /* ToDo: log error */
     )
 
     /** @return the mRID of the TopologicalNode for the other end of the switches */
     lazy val node1: String = switches.map (_.terminal2.TopologicalNode).foldLeft ("")(
-        (n1, n2) => if ("" == n1) n2 else if (n1 == n2) n1 else n1 /* ToDo: log error */
+        (n1, n2) => if ("" == n1) n2 else
+            if (n1 == n2) n1 else n1 /* ToDo: log error */
     )
 
     /**

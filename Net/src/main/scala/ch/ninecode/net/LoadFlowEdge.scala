@@ -7,7 +7,7 @@ import ch.ninecode.util.Graphable
  *
  * Base class for extension by load-flow engine implementing classes.
  *
- * @param _id the unique edge identifier, usually the mRID of the electrical element
+ * @param _id  the unique edge identifier, usually the mRID of the electrical element
  * @param _cn1 node id connected to the first end, refers to a LoadFlowNode id
  * @param _cn2 node id connected to the second end, refers to a LoadFlowNode id
  */
@@ -16,11 +16,13 @@ class LoadFlowEdge (
     _cn1: String,
     _cn2: String
 )
-extends Graphable
-with Serializable
+    extends Graphable
+        with Serializable
 {
     def id: String = _id
+
     def cn1: String = _cn1
+
     def cn2: String = _cn2
 
     /**

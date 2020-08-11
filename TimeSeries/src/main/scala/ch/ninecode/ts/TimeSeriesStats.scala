@@ -41,7 +41,7 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
             session =>
                 val resultset: ResultSet = session.execute (sql)
                 for (row: Row <- resultset.iterator.asScala)
-                    yield (row.getString(0), row.getString(1))
+                    yield (row.getString (0), row.getString (1))
         }
         iterator.toSeq
     }
@@ -53,12 +53,12 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
         val range = CassandraConnector (session.sparkContext.getConf).withSessionDo
         {
             session =>
-                val row = session.execute (sql).one()
+                val row = session.execute (sql).one ()
                 if (null != row)
                 {
                     val period = row.getInt (2)
-//                    val start = row.getTimestamp (3).getTime
-//                    val end = row.getTimestamp (4).getTime
+                    //                    val start = row.getTimestamp (3).getTime
+                    //                    val end = row.getTimestamp (4).getTime
                     val start = row.getInstant (3).toEpochMilli
                     val end = row.getInstant (4).toEpochMilli
                     val expected = (end - start + period) / period
@@ -81,24 +81,24 @@ case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
         val range = for ((mrid, typ) <- scope)
             yield Range (mrid, typ)
         val stats = for (r <- range.flatten)
-        yield
-        {
-            log.info ("%s:%s %s⇒%s %8d %6d %10.3f %10.3f %10.3f %10.3f".format (
-                StringUtils.leftPad (r._1, 7, " "),
-                StringUtils.rightPad (r._2, 6, " "),
-                StringUtils.leftPad (r._3.toString, 30, " "),
-                StringUtils.rightPad (r._4.toString, 30, " "),
-                r._5,
-                r._6,
-                r._7,
-                r._8,
-                r._9,
-                r._10))
-            r
-        }
+            yield
+                {
+                    log.info ("%s:%s %s⇒%s %8d %6d %10.3f %10.3f %10.3f %10.3f".format (
+                        StringUtils.leftPad (r._1, 7, " "),
+                        StringUtils.rightPad (r._2, 6, " "),
+                        StringUtils.leftPad (r._3.toString, 30, " "),
+                        StringUtils.rightPad (r._4.toString, 30, " "),
+                        r._5,
+                        r._6,
+                        r._7,
+                        r._8,
+                        r._9,
+                        r._10))
+                    r
+                }
         val columns = SomeColumns ("mrid", "type", "start", "end", "count", "missing", "minimum", "average", "maximum", "stddev")
         val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
-        session.sparkContext.parallelize (stats).saveToCassandra  (options.keyspace, "measured_value_stats", columns, writeConf)
+        session.sparkContext.parallelize (stats).saveToCassandra (options.keyspace, "measured_value_stats", columns, writeConf)
         val end = System.nanoTime ()
         log.info ("process: %s seconds".format ((end - begin) / 1e9))
     }

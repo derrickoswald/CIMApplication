@@ -13,11 +13,11 @@ package ch.ninecode.util
 case class ThreePhaseComplexDataElement
 (
     element: String,
-    millis:  Long,
+    millis: Long,
     value_a: Complex,
     value_b: Complex,
     value_c: Complex,
-    units:   String)
+    units: String)
 
 object ThreePhaseComplexDataElement
 {

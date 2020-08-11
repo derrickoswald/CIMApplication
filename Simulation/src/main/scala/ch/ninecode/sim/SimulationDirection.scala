@@ -30,8 +30,8 @@ import ch.ninecode.util.ThreePhaseComplexDataElement
  * the current through each cable is simulated and given a sign value (±1)
  * according to whether the simulated value is negative or positive.
  *
- * @param workdir   the directory to create the .glm and location of /input_data and /output_data directories
- * @param verbose   when <code>true</code> set the log level for this class as INFO
+ * @param workdir the directory to create the .glm and location of /input_data and /output_data directories
+ * @param verbose when <code>true</code> set the log level for this class as INFO
  */
 case class SimulationDirection (workdir: String, verbose: Boolean = false)
 {
@@ -81,8 +81,8 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         log.info (s"executing GridLAB-D for ${trafo.name}")
 
         var dir = trafo.directory
-        if (dir.takeRight(1) == """\""")
-            dir = dir.slice(0, dir.length - 1)
+        if (dir.takeRight (1) == """\""")
+            dir = dir.slice (0, dir.length - 1)
         val bash = s"""pushd "$workdir$dir";gridlabd --quiet "${trafo.name}.glm";popd;"""
         val command = Seq ("bash", "-c", bash)
         val lines = new ListBuffer[String]()
@@ -106,12 +106,15 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         val exit_code = process.exitValue
 
         def plural (i: Int): String = if (1 == i) "" else "s"
+
         def message: String =
             s"GridLAB-D: $warningLines warning${plural (warningLines)}, $errorLines error${plural (errorLines)}: ${lines.mkString ("\n\n", "\n", "\n\n")}"
+
         if (0 != errorLines)
             log.error (message)
-        else if (0 != warningLines)
-            log.warn (message)
+        else
+            if (0 != warningLines)
+                log.warn (message)
 
         ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString ("\n\n", "\n", "\n\n") else s"gridlabd exit code $exit_code")
     }
@@ -165,23 +168,26 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
             val records = read_voltage_dump_csv (workdir, file, trafo.start_time.getTimeInMillis, "V")
             val lookup = records.map (x => (x.element, x)).toMap
             trafo.edges
-                .filter (_.rawedge match { case _: LineEdge => true; case _ => false })
+                .filter (_.rawedge match
+                { case _: LineEdge => true;
+                    case _ => false
+                })
                 .map (
                     edge =>
                     {
                         val v1 = lookup (edge.cn1)
                         val v2 = lookup (edge.cn2)
                         if (v1.value_a.modulus > v2.value_a.modulus) // ToDo: three phase ?
-                            (edge.id, +1)
-                        else
+                        (edge.id, +1)
+                            else
                             (edge.id, -1)
                     }
-            ) ++ Seq ((trafo.transformer.transformer_name, +1))
+                ) ++ Seq ((trafo.transformer.transformer_name, +1))
         }
         else
         {
             log.error (s"GridLAB-D failed for ${trafo.name}: ${ret._2}")
-            List()
+            List ()
         }
         list.toMap
     }

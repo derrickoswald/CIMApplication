@@ -103,7 +103,7 @@ class LineSuite extends TestUtil with BeforeAndAfter
             source.close
 
             val filename = s"hdfs://sandbox:8020/$FILENAME.rdf"
-            readCIMElements (session, filename, Map[String, String] ("ch.ninecode.cim.do_topo" -> "true"))
+            readCIMElements (session, filename, Map [String, String]("ch.ninecode.cim.do_topo" -> "true"))
 
             LineDetails.PROPERTIES_ARE_ERRONEOUSLY_PER_KM = true // should be default value anyway
 

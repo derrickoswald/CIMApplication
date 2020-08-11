@@ -26,15 +26,15 @@ class ApplicationConfig extends Application
     override def getClasses: util.Set[Class[_]] =
     {
         new util.HashSet[Class[_]](util.Arrays.asList (
-            classOf[Estimation],
-            classOf[FileOperations],
-            classOf[Ingest],
-            classOf[LoadFile],
-            classOf[Ping],
-            classOf[Pong],
-            classOf[Query],
-            classOf[ShortCircuitCalculation],
-            classOf[Spatial],
-            classOf[View]))
+            classOf [Estimation],
+            classOf [FileOperations],
+            classOf [Ingest],
+            classOf [LoadFile],
+            classOf [Ping],
+            classOf [Pong],
+            classOf [Query],
+            classOf [ShortCircuitCalculation],
+            classOf [Spatial],
+            classOf [View]))
     }
 }

@@ -12,12 +12,12 @@ import ch.ninecode.gl.GLMTransformerEdge
 /**
  * GridLAB-D glm file generator.
  *
- * @param one_phase            If <code>true</code> generate a single phase .glm file.
- * @param date_format          The date format to use within the .glm file.
- * @param cim_temperature      The temperature of the elements in the CIM file (°C).
+ * @param one_phase              If <code>true</code> generate a single phase .glm file.
+ * @param date_format            The date format to use within the .glm file.
+ * @param cim_temperature        The temperature of the elements in the CIM file (°C).
  * @param simulation_temperature The temperature of the elements in the .glm file (°C).
- * @param swing_voltage_factor Factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal.
- * @param kreis                The transformer service area to generate a .glm file for.
+ * @param swing_voltage_factor   Factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal.
+ * @param kreis                  The transformer service area to generate a .glm file for.
  */
 case class SimulationGLMGenerator (
     one_phase: Boolean,
@@ -26,10 +26,10 @@ case class SimulationGLMGenerator (
     simulation_temperature: Double,
     swing_voltage_factor: Double,
     kreis: SimulationTrafoKreis) extends GLMGenerator (
-        one_phase = one_phase,
-        temperature = cim_temperature,
-        date_format = date_format,
-        swing_voltage_factor = swing_voltage_factor)
+    one_phase = one_phase,
+    temperature = cim_temperature,
+    date_format = date_format,
+    swing_voltage_factor = swing_voltage_factor)
 {
 
     override def name: String = kreis.name
@@ -55,7 +55,11 @@ case class SimulationGLMGenerator (
     @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match { case e: GLMTransformerEdge => Some (e) case _ => None })
+        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match
+        {
+            case e: GLMTransformerEdge => Some (e)
+            case _ => None
+        })
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
@@ -69,15 +73,15 @@ case class SimulationGLMGenerator (
         else
             s"${recorder.property}_A.real,${recorder.property}_A.imag,${recorder.property}_B.real,${recorder.property}_B.imag,${recorder.property}_C.real,${recorder.property}_C.imag"
         s"""
-        |        object recorder
-        |        {
-        |            name "${recorder.name}";
-        |            parent "${recorder.parent}";
-        |            property "$property";
-        |            interval "${recorder.interval}";
-        |            file "${recorder.file}";
-        |        };
-        |""".stripMargin
+           |        object recorder
+           |        {
+           |            name "${recorder.name}";
+           |            parent "${recorder.parent}";
+           |            property "$property";
+           |            interval "${recorder.interval}";
+           |            file "${recorder.file}";
+           |        };
+           |""".stripMargin
     }
 
     // relies on the player file being of the form: "input_data/" + player.name + ".csv"
@@ -90,40 +94,40 @@ case class SimulationGLMGenerator (
     def emit_player (name: String, parent: String, property: String, phase: String, file: String, suffix: String): String =
     {
         s"""
-        |        object player
-        |        {
-        |            name "$name$suffix";
-        |            parent "$parent";
-        |            property "$property$phase.real,$property$phase.imag";
-        |            file "${ phase_file (file, suffix)}";
-        |        };
-        |""".stripMargin
+           |        object player
+           |        {
+           |            name "$name$suffix";
+           |            parent "$parent";
+           |            property "$property$phase.real,$property$phase.imag";
+           |            file "${phase_file (file, suffix)}";
+           |        };
+           |""".stripMargin
     }
 
     def emit_node_player (node: SimulationNode)(player: SimulationPlayer): String =
     {
         val parent = if (player.`type` == "energy") s"${player.name}_object" else player.parent
-        val suffixes = if (one_phase) Seq (("_A", "")) else Seq(("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
+        val suffixes = if (one_phase) Seq (("_A", "")) else Seq (("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
         val players = for (suffix <- suffixes)
             yield
                 emit_player (player.name, parent, player.property, suffix._1, player.file, suffix._2)
         if (player.`type` == "energy")
             s"""
-            |        object load
-            |        {
-            |            name "${player.name}_object";
-            |            parent "${player.parent}";
-            |            phases ${if (one_phase) "AN" else "ABCN"};
-            |            nominal_voltage ${node.nominal_voltage}V;
-            |        };
-            |${players.mkString}""".stripMargin
+               |        object load
+               |        {
+               |            name "${player.name}_object";
+               |            parent "${player.parent}";
+               |            phases ${if (one_phase) "AN" else "ABCN"};
+               |            nominal_voltage ${node.nominal_voltage}V;
+               |        };
+               |${players.mkString}""".stripMargin
         else
             players.mkString
     }
 
     def emit_edge_player (player: SimulationPlayer): String =
     {
-        val suffixes = if (one_phase) Seq (("_A", "")) else Seq(("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
+        val suffixes = if (one_phase) Seq (("_A", "")) else Seq (("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
         val players = for (suffix <- suffixes)
             yield
                 emit_player (player.name, player.parent, player.property, suffix._1, player.file, suffix._2)

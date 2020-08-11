@@ -13,11 +13,11 @@ object LogLevels extends Enumeration
  * Options for MSCONS processing.
  *
  * @param main_options main() program options
- * @param verbose if <code>true</code>, emit progress messages
- * @param log_level logging level
- * @param output_file name of the output file to write
- * @param delimiter the character to insert between record fields
- * @param mscons MSCONS files
+ * @param verbose      if <code>true</code>, emit progress messages
+ * @param log_level    logging level
+ * @param output_file  name of the output file to write
+ * @param delimiter    the character to insert between record fields
+ * @param mscons       MSCONS files
  */
 case class MSCONSOptions
 (
@@ -27,4 +27,4 @@ case class MSCONSOptions
     output_file: String = "",
     delimiter: String = " ",
     mscons: Seq[String] = Seq ()
-)  extends Mainable
+) extends Mainable

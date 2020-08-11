@@ -16,10 +16,10 @@ case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFun
 {
     jars = Array (
         jarForObject (this),
-        jarForObject (options),               // ShortCircuit.jar
-        jarForObject (new GLMGenerator ()),   // GridLAB-D.jar
+        jarForObject (options), // ShortCircuit.jar
+        jarForObject (new GLMGenerator ()), // GridLAB-D.jar
         jarForObject (new LoadFlowNode ("", 0.0)), // Net.jar
-        jarForObject (Complex (0.0, 0.0)))    // Util.jar
+        jarForObject (Complex (0.0, 0.0))) // Util.jar
 
     override def getReturnType: Return = Return.Dataset
 

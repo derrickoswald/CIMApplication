@@ -10,24 +10,24 @@ object LogLevels extends Enumeration
 
 /**
  *
- * @param valid False if either help or version requested (i.e. don't proceed with execution).
- * @param unittest If <code>true</code>, don't call sys.exit().
- * @param verbose If <code>true</code>, emit progress messages.
- * @param master Spark master.
- * @param options Spark options.
- * @param host Cassandra connection host.
- * @param port Cassandra connection port.
- * @param log_level Logging level.
- * @param checkpoint Session RDD checkpoint directory.
- * @param workdir  Working directory for executors.
- * @param storage_level Storage level for RDD serialization.
- * @param three_phase If <code>true</code>, simulate in three phase flag.
- * @param fake_three_phase If <code>true</code>, convert single phase meter readings into three phase.
- * @param keep If <code>true</code>, keep glm and input/output files in workdir.
- * @param simulationonly If <code>true</code>, only perform simulation, not postprocessing.
- * @param postprocessonly If <code>true</code>, only perform postprocessing, not simulation.
+ * @param valid                 False if either help or version requested (i.e. don't proceed with execution).
+ * @param unittest              If <code>true</code>, don't call sys.exit().
+ * @param verbose               If <code>true</code>, emit progress messages.
+ * @param master                Spark master.
+ * @param options               Spark options.
+ * @param host                  Cassandra connection host.
+ * @param port                  Cassandra connection port.
+ * @param log_level             Logging level.
+ * @param checkpoint            Session RDD checkpoint directory.
+ * @param workdir               Working directory for executors.
+ * @param storage_level         Storage level for RDD serialization.
+ * @param three_phase           If <code>true</code>, simulate in three phase flag.
+ * @param fake_three_phase      If <code>true</code>, convert single phase meter readings into three phase.
+ * @param keep                  If <code>true</code>, keep glm and input/output files in workdir.
+ * @param simulationonly        If <code>true</code>, only perform simulation, not postprocessing.
+ * @param postprocessonly       If <code>true</code>, only perform postprocessing, not simulation.
  * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with too high impedance values
- * @param simulation Simulation JSON files.
+ * @param simulation            Simulation JSON files.
  */
 case class SimulationOptions
 (

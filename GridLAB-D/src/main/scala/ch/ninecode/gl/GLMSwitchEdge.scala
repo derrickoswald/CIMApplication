@@ -14,8 +14,8 @@ import ch.ninecode.net.SwitchEdge
 case class GLMSwitchEdge (
     data: SwitchData
 )
-extends SwitchEdge (data)
-with GLMEdge
+    extends SwitchEdge (data)
+        with GLMEdge
 {
     /**
      * Emit a switch or fuse.
@@ -37,15 +37,15 @@ with GLMEdge
         else
             ""
         s"""
-          |        object ${if (fuse) "fuse" else "switch"}
-          |        {
-          |            name "$id";
-          |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
-          |            from "$cn1";
-          |            to "$cn2";
-          |            status "$status";$fuse_details
-          |        };
-          |""".stripMargin
+           |        object ${if (fuse) "fuse" else "switch"}
+           |        {
+           |            name "$id";
+           |            phases ${if (generator.isSinglePhase) "AN" else "ABCN"};
+           |            from "$cn1";
+           |            to "$cn2";
+           |            status "$status";$fuse_details
+           |        };
+           |""".stripMargin
     }
 }
 
@@ -58,7 +58,7 @@ object GLMSwitchEdge
         switches: Iterable[Element]
     ): GLMSwitchEdge =
     {
-        val basic1 = BasicElement (mRID = s"generated_terminal_${ Random.nextInt (99999999) }")
+        val basic1 = BasicElement (mRID = s"generated_terminal_${Random.nextInt (99999999)}")
         val obj1 = IdentifiedObject (basic1, mRID = basic1.mRID)
         obj1.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
         val ac1 = ACDCTerminal (obj1, true, 1)
@@ -66,7 +66,7 @@ object GLMSwitchEdge
         val t1 = Terminal (ac1, TopologicalNode = cn1)
         t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
 
-        val basic2 = BasicElement (mRID = s"generated_terminal_${ Random.nextInt (99999999) }")
+        val basic2 = BasicElement (mRID = s"generated_terminal_${Random.nextInt (99999999)}")
         val obj2 = IdentifiedObject (basic2, mRID = basic2.mRID)
         obj2.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
         val ac2 = ACDCTerminal (obj2, true, 2)

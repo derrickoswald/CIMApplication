@@ -147,13 +147,13 @@ abstract class FieldExtractor[T] extends Parsers
         {
             case Success (r, _) => r
             case Failure (msg, _) =>
-                log.error (s"${ segment.name } segment parse failure: $msg")
-                val constructor = classOf[Class[T]].getConstructors ()(0)
-                constructor.newInstance ().asInstanceOf[T]
+                log.error (s"${segment.name} segment parse failure: $msg")
+                val constructor = classOf [Class[T]].getConstructors ()(0)
+                constructor.newInstance ().asInstanceOf [T]
             case Error (msg, _) =>
-                log.error (s"${ segment.name } segment parse error: $msg")
-                val constructor = classOf[Class[T]].getConstructors ()(0)
-                constructor.newInstance ().asInstanceOf[T]
+                log.error (s"${segment.name} segment parse error: $msg")
+                val constructor = classOf [Class[T]].getConstructors ()(0)
+                constructor.newInstance ().asInstanceOf [T]
         }
     }
 }

@@ -9,17 +9,17 @@ object LogLevels extends Enumeration
 /**
  * Options for copy between Cassandra instances.
  *
- * @param valid False if either help or version requested (i.e. don't proceed with execution).
- * @param unittest If <code>true</code>, don't call sys.exit().
- * @param log_level Logging level.
- * @param master Spark master.
- * @param options Spark options.
- * @param source_host Cassandra source connection host.
- * @param source_port Cassandra source connection port.
- * @param source_keyspace Cassandra source keyspace.
- * @param target_host Cassandra destination connection host.
- * @param target_port Cassandra destination connection port.
- * @param target_keyspace Cassandra destination keyspace.
+ * @param valid              False if either help or version requested (i.e. don't proceed with execution).
+ * @param unittest           If <code>true</code>, don't call sys.exit().
+ * @param log_level          Logging level.
+ * @param master             Spark master.
+ * @param options            Spark options.
+ * @param source_host        Cassandra source connection host.
+ * @param source_port        Cassandra source connection port.
+ * @param source_keyspace    Cassandra source keyspace.
+ * @param target_host        Cassandra destination connection host.
+ * @param target_port        Cassandra destination connection port.
+ * @param target_keyspace    Cassandra destination keyspace.
  * @param target_replication Cassandra destination keyspace replication factor.
  */
 case class CopyOptions

@@ -34,7 +34,7 @@ case class ScExperiment
      * @param c The Calendar value to be cloned.
      * @return A clone of the calendar.
      */
-    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
+    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
 
     /**
      * The start time of the experiment.

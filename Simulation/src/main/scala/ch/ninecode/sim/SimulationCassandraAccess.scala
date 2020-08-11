@@ -9,12 +9,12 @@ import org.slf4j.LoggerFactory
 /**
  * Standard queries to Cassandra.
  *
- * @param spark the spark session to use (has spark.cassandra.connection.host and spark.cassandra.connection.port set).
- * @param storage_level persistence applied to each created DataFrame
- * @param simulation the simulation id (part of the primary key for all tables)
- * @param input_keyspace the keyspace used for measured and synthesized values
+ * @param spark           the spark session to use (has spark.cassandra.connection.host and spark.cassandra.connection.port set).
+ * @param storage_level   persistence applied to each created DataFrame
+ * @param simulation      the simulation id (part of the primary key for all tables)
+ * @param input_keyspace  the keyspace used for measured and synthesized values
  * @param output_keyspace the keyspace used for simulated and other values
- * @param verbose if <code>true</code> turns on logging level INFO for this class
+ * @param verbose         if <code>true</code> turns on logging level INFO for this class
  */
 case class SimulationCassandraAccess (
     spark: SparkSession,
@@ -29,6 +29,7 @@ case class SimulationCassandraAccess (
 
     // ToDo: how can we not hard-code this period?
     val PERIOD: Int = 900000
+
     def getPeriod: Int = PERIOD
 
     /**
@@ -75,7 +76,7 @@ case class SimulationCassandraAccess (
             // can't push down partition key = (simulation, mrid, type, period)
             // so it relies on indices on simulation, type and period
             .filter (s"simulation = '$simulation' and type = '${`type`}' and period = $period")
-            .drop (to_drop:_*)
+            .drop (to_drop: _*)
             .persist (storage_level)
         values
     }

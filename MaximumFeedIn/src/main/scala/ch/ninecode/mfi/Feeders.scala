@@ -18,7 +18,7 @@ import ch.ninecode.model.Switch
  *
  * The default operation selects Connector elements with a voltage less than 1000V (N7) contained in stations.
  *
- * @param session the Spark session
+ * @param session       the Spark session
  * @param storage_level the storage level for persistence
  */
 class Feeders (
@@ -33,7 +33,7 @@ class Feeders (
 
     // get the list of N7 voltages
     // ToDo: fix this 1000V multiplier
-    val low_voltages: Array[String] = getOrElse[BaseVoltage].filter (x => x.nominalVoltage <= 1.0).map (_.id).collect
+    val low_voltages: Array[String] = getOrElse [BaseVoltage].filter (x => x.nominalVoltage <= 1.0).map (_.id).collect
 
     // get the list of allowed power system resource types
     val allowed_PSRTypes: Array[String] = Array ("PSRType_Substation", "PSRType_TransformerStation")
@@ -44,7 +44,7 @@ class Feeders (
      * All elements with associated terminals will be called with this predicate.
      * If the feeder is a two (or more) terminal device this predicate should be careful to select the correct one.
      *
-     * @param element the element (subclass of ConductingEquipment) to test
+     * @param element  the element (subclass of ConductingEquipment) to test
      * @param terminal the terminal of the conducting equipment
      * @return <code>true</code> if the equipment at this terminal is a feeder
      */
@@ -69,9 +69,9 @@ class Feeders (
     def getFeeders (test: (Element, Terminal) => Boolean = isFeeder): RDD[Feeder] =
     {
         // get terminals keyed by their conducting equipment
-        val terminals = getOrElse[Terminal].keyBy (_.ConductingEquipment)
+        val terminals = getOrElse [Terminal].keyBy (_.ConductingEquipment)
         // get switches keyed by their unique topological node (i.e. no busbars)
-        val switches = getOrElse[Switch]
+        val switches = getOrElse [Switch]
             .keyBy (_.id)
             .join (terminals)
             .map (x => (x._2._2.TopologicalNode, x._2._1.id))
@@ -79,7 +79,7 @@ class Feeders (
             .filter (x => x._2.size < 2)
             .map (x => (x._1, x._2.headOption.orNull))
         // join filtered feeders with swtches and create Feeder objects
-        val feeders = getOrElse[Element]("Elements")
+        val feeders = getOrElse [Element]("Elements")
             .keyBy (_.id)
             .join (terminals)
             .values

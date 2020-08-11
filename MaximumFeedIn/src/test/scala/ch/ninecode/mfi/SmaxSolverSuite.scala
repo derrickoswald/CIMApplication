@@ -7,7 +7,9 @@ import org.scalatest.funsuite.AnyFunSuite
 class SmaxSolverSuite extends AnyFunSuite
 {
     val root3: Double = math.sqrt (3)
+
     def toRadians (angle: Double): Double = angle * Math.PI / 180.0
+
     def near (number: Double, reference: Double, epsilon: Double = 1.0e-3): Boolean =
     {
         val diff = number - reference
@@ -19,12 +21,12 @@ class SmaxSolverSuite extends AnyFunSuite
     /**
      * Execute one test.
      *
-     * @param cosphi the target power factor
-     * @param angle the voltage angle (°)
-     * @param v the target voltage (V)
+     * @param cosphi    the target power factor
+     * @param angle     the voltage angle (°)
+     * @param v         the target voltage (V)
      * @param threshold the limit; fraction of voltage over nominal
-     * @param smax the expected maximum power
-     * @param message a message to print if the test fails
+     * @param smax      the expected maximum power
+     * @param message   a message to print if the test fails
      */
     def run (cosphi: Double, angle: Double, v: Double, threshold: Double, smax: Double, message: String): Unit =
     {
@@ -33,7 +35,7 @@ class SmaxSolverSuite extends AnyFunSuite
         // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
         // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
         // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-        val phi = - Math.acos (cosphi) * Math.signum (cosphi)
+        val phi = -Math.acos (cosphi) * Math.signum (cosphi)
         val s = Complex (smax * Math.cos (phi), smax * Math.sin (phi))
         val rad = toRadians (angle)
         val vc = Complex (limit * Math.cos (rad), limit * Math.sin (rad))
@@ -90,7 +92,7 @@ class SmaxSolverSuite extends AnyFunSuite
         // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
         // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
         // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-        val phi = - Math.acos (cosphi) * Math.signum (cosphi)
+        val phi = -Math.acos (cosphi) * Math.signum (cosphi)
         val solver = SmaxSolver (threshold, cosphi)
         val z = z_cable + z_trans
         val p = solver.solve (v, z)
@@ -114,7 +116,7 @@ class SmaxSolverSuite extends AnyFunSuite
         // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
         // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
         // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-        val phi = - Math.acos (cosphi) * Math.signum (cosphi)
+        val phi = -Math.acos (cosphi) * Math.signum (cosphi)
         val solver = SmaxSolver (threshold, cosphi)
         val z = z_cable + z_trans
         val p = solver.solve (v, z)
@@ -143,7 +145,7 @@ class SmaxSolverSuite extends AnyFunSuite
             // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
             // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
             // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-            val phi = - Math.acos (cosphi) * Math.signum (cosphi)
+            val phi = -Math.acos (cosphi) * Math.signum (cosphi)
             val smax1ph = smax / root3
             val s = Complex (smax1ph * Math.cos (phi), smax1ph * Math.sin (phi))
             val rad = toRadians (angle)
@@ -154,56 +156,56 @@ class SmaxSolverSuite extends AnyFunSuite
             if (z.re >= 0.0 && z.im >= 0.0)
             {
                 run (cosphi, angle, v, threshold, smax, s"$cosphi power factor @ $angle° for ${threshold * 100}%% at ${v}V ${smax}W")
-//                val solver = SmaxSolver (threshold, cosphi)
-//                val p = solver.solve (v, z)
-//                assert ((p - s).modulus < 0.001 * smax, s"$cosphi power factor @ $angle° for ${threshold * 100}% at ${v}V ${smax}VA Z = $z")
-//                assert (near (p.angle, phi))
+                //                val solver = SmaxSolver (threshold, cosphi)
+                //                val p = solver.solve (v, z)
+                //                assert ((p - s).modulus < 0.001 * smax, s"$cosphi power factor @ $angle° for ${threshold * 100}% at ${v}V ${smax}VA Z = $z")
+                //                assert (near (p.angle, phi))
             }
         }
     }
-/*
-    test ("HAS138124 using Precalculation")
-    {
-        val cosphi = 0.9
-        val v = 400.0
-        val threshold = 0.03
-        // the following two values are the current PreCalculation values for impedance and power
-        val z = Complex (0.22915629,0.09288086)
-        val power = Complex (18035.79988585,8734.91400283)
+    /*
+        test ("HAS138124 using Precalculation")
+        {
+            val cosphi = 0.9
+            val v = 400.0
+            val threshold = 0.03
+            // the following two values are the current PreCalculation values for impedance and power
+            val z = Complex (0.22915629,0.09288086)
+            val power = Complex (18035.79988585,8734.91400283)
 
-        // https://en.wikipedia.org/wiki/Power_factor
-        // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
-        // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
-        // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-        val phi = - Math.acos (cosphi) * Math.signum (cosphi)
-        val solver = SmaxSolver (threshold, cosphi)
-        val p = solver.solve (v, z)
-        assert ((p - power).modulus < 0.001 * power.modulus, "HAS138124 power")
-        assert (near (p.angle, phi), s"power angle (${p.angle}) differs from expected ${phi}")
-    }
+            // https://en.wikipedia.org/wiki/Power_factor
+            // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
+            // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
+            // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
+            val phi = - Math.acos (cosphi) * Math.signum (cosphi)
+            val solver = SmaxSolver (threshold, cosphi)
+            val p = solver.solve (v, z)
+            assert ((p - power).modulus < 0.001 * power.modulus, "HAS138124 power")
+            assert (near (p.angle, phi), s"power angle (${p.angle}) differs from expected ${phi}")
+        }
 
-    test ("HAS138124 using Load-Flow")
-    {
-        val cosphi = 0.9
-        val v = 400.0
-        // on the step before the 3% limit is exceeded, this is the percentage
-        val threshold = 0.02956
-        // the following two values are from the GridLAB-D recorder files for voltage and current at the house
-        val vh = Complex (411.812, 3.14138)
-        val ih = - Complex (-39.4825, 18.7518) // negate because the cable is ordered from the junction to the house, but current flows from the house to the junction
+        test ("HAS138124 using Load-Flow")
+        {
+            val cosphi = 0.9
+            val v = 400.0
+            // on the step before the 3% limit is exceeded, this is the percentage
+            val threshold = 0.02956
+            // the following two values are from the GridLAB-D recorder files for voltage and current at the house
+            val vh = Complex (411.812, 3.14138)
+            val ih = - Complex (-39.4825, 18.7518) // negate because the cable is ordered from the junction to the house, but current flows from the house to the junction
 
-        val z = (vh - v) / ih // Complex (0.21327465, 0.18085642j
-        val power = vh * ~ih // Complex (16200.46076052, 7846.24579745)
+            val z = (vh - v) / ih // Complex (0.21327465, 0.18085642j
+            val power = vh * ~ih // Complex (16200.46076052, 7846.24579745)
 
-        // https://en.wikipedia.org/wiki/Power_factor
-        // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
-        // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
-        // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-        val phi = - Math.acos (cosphi) * Math.signum (cosphi)
-        val solver = SmaxSolver (threshold, cosphi)
-        val p = solver.solve (v, z)
-        assert ((p - power).modulus < 0.001 * power.modulus, "HAS138124 power")
-        assert (near (p.angle, phi), s"power angle (${p.angle}) differs from expected ${phi}")
-    }
- */
+            // https://en.wikipedia.org/wiki/Power_factor
+            // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
+            // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
+            // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
+            val phi = - Math.acos (cosphi) * Math.signum (cosphi)
+            val solver = SmaxSolver (threshold, cosphi)
+            val p = solver.solve (v, z)
+            assert ((p - power).modulus < 0.001 * power.modulus, "HAS138124 power")
+            assert (near (p.angle, phi), s"power angle (${p.angle}) differs from expected ${phi}")
+        }
+     */
 }

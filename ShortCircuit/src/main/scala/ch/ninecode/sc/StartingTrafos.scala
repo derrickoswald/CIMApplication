@@ -68,7 +68,7 @@ case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: Transf
                     v
             }
         )
-        val v2 = _v(0)
+        val v2 = _v (0)
         val ratio = v2 / v1
         val ratio2 = ratio * ratio
         val primary = primary_impedance

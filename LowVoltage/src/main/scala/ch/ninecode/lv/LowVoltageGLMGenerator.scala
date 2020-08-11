@@ -25,7 +25,7 @@ class LowVoltageGLMGenerator
      * @param c The Calendar value to be cloned.
      */
     @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf[Calendar]
+    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
 
     override def name: String = trafokreis.name
 
@@ -55,18 +55,18 @@ class LowVoltageGLMGenerator
     override def nodes: Iterable[GLMNode] =
     {
         val swings = swing_nodes.map (_.id).toArray
-        trafokreis.nodes.filter (x => !swings.contains (x.id)).++(
+        trafokreis.nodes.filter (x => !swings.contains (x.id)).++ (
             trafokreis.transformers.transformers.map (
-                        tx =>
-                            PowerFeedingNode (
-                                tx.node0,
-                                null,
-                                null,
-                                tx.v0,
-                                null,
-                                null,
-                                0.0,
-                                Double.PositiveInfinity)).toSeq)
+                tx =>
+                    PowerFeedingNode (
+                        tx.node0,
+                        null,
+                        null,
+                        tx.v0,
+                        null,
+                        null,
+                        0.0,
+                        Double.PositiveInfinity)).toSeq)
     }
 
     override def emit_node (node: GLMNode): String =
@@ -99,33 +99,33 @@ class LowVoltageGLMGenerator
             else
                 "power_losses_A.real,power_losses_A.imag,power_losses_B.real,power_losses_B.imag,power_losses_C.real,power_losses_C.imag"
             s"""
-              |        object recorder
-              |        {
-              |            name "${id}_current_recorder";
-              |            parent "$id";
-              |            property $current;
-              |            interval 300;
-              |            file "output_data/${id}_current.csv";
-              |        };
-              |
-              |        object recorder
-              |        {
-              |            name "${id}_power_recorder";
-              |            parent "$id";
-              |            property $power;
-              |            interval 300;
-              |            file "output_data/${id}_power.csv";
-              |        };
-              |
-              |        object recorder
-              |        {
-              |            name "${id}_losses_recorder";
-              |            parent "$id";
-              |            property $losses;
-              |            interval 300;
-              |            file "output_data/${id}_losses.csv";
-              |        };
-              |""".stripMargin
+               |        object recorder
+               |        {
+               |            name "${id}_current_recorder";
+               |            parent "$id";
+               |            property $current;
+               |            interval 300;
+               |            file "output_data/${id}_current.csv";
+               |        };
+               |
+               |        object recorder
+               |        {
+               |            name "${id}_power_recorder";
+               |            parent "$id";
+               |            property $power;
+               |            interval 300;
+               |            file "output_data/${id}_power.csv";
+               |        };
+               |
+               |        object recorder
+               |        {
+               |            name "${id}_losses_recorder";
+               |            parent "$id";
+               |            property $losses;
+               |            interval 300;
+               |            file "output_data/${id}_losses.csv";
+               |        };
+               |""".stripMargin
         }
 
         val rec = edge match
@@ -145,29 +145,29 @@ class LowVoltageGLMGenerator
                 // generate low voltage pin (NSPIN) swing node
                 val trafo = swing.name
                 val player = if (one_phase)
-                 s"""            object player
-                    |            {
-                    |                property "voltage_A";
-                    |                file "input_data/${trafo}.csv";
-                    |            };
-                    |""".stripMargin
+                    s"""            object player
+                       |            {
+                       |                property "voltage_A";
+                       |                file "input_data/${trafo}.csv";
+                       |            };
+                       |""".stripMargin
                 else
-                 s"""            object player
-                    |            {
-                    |                property "voltage_A";
-                    |                file "input_data/${trafo}_R.csv";
-                    |            };
-                    |            object player
-                    |            {
-                    |                property "voltage_B";
-                    |                file "input_data/${trafo}_S.csv";
-                    |            };
-                    |            object player
-                    |            {
-                    |                property "voltage_C";
-                    |                file "input_data/${trafo}_T.csv";
-                    |            };
-                    |""".stripMargin
+                    s"""            object player
+                       |            {
+                       |                property "voltage_A";
+                       |                file "input_data/${trafo}_R.csv";
+                       |            };
+                       |            object player
+                       |            {
+                       |                property "voltage_B";
+                       |                file "input_data/${trafo}_S.csv";
+                       |            };
+                       |            object player
+                       |            {
+                       |                property "voltage_C";
+                       |                file "input_data/${trafo}_T.csv";
+                       |            };
+                       |""".stripMargin
                 val id = swing.id
                 val current = if (one_phase)
                     "measured_current_A.real,measured_current_A.imag"
@@ -177,34 +177,34 @@ class LowVoltageGLMGenerator
                     "measured_power_A.real,measured_power_A.imag"
                 else
                     "measured_power_A.real,measured_power_A.imag,measured_power_B.real,measured_power_B.imag,measured_power_C.real,measured_power_C.imag"
-                 s"""
-                    |        object meter
-                    |        {
-                    |            name "$id";
-                    |            phases ${if (one_phase) "AN" else "ABCN"};
-                    |            bustype SWING;
-                    |            nominal_voltage ${swing.nominal_voltage}V;
-                    |$player
-                    |        };
-                    |
-                    |        object recorder
-                    |        {
-                    |            name "${trafo}_current_recorder";
-                    |            parent "$id";
-                    |            property $current;
-                    |            interval 300;
-                    |            file "output_data/${trafo}_current.csv";
-                    |        };
-                    |
-                    |        object recorder
-                    |        {
-                    |            name "${trafo}_power_recorder";
-                    |            parent "$id";
-                    |            property $power;
-                    |            interval 300;
-                    |            file "output_data/${trafo}_power.csv";
-                    |        };
-                    |""".stripMargin
+                s"""
+                   |        object meter
+                   |        {
+                   |            name "$id";
+                   |            phases ${if (one_phase) "AN" else "ABCN"};
+                   |            bustype SWING;
+                   |            nominal_voltage ${swing.nominal_voltage}V;
+                   |$player
+                   |        };
+                   |
+                   |        object recorder
+                   |        {
+                   |            name "${trafo}_current_recorder";
+                   |            parent "$id";
+                   |            property $current;
+                   |            interval 300;
+                   |            file "output_data/${trafo}_current.csv";
+                   |        };
+                   |
+                   |        object recorder
+                   |        {
+                   |            name "${trafo}_power_recorder";
+                   |            parent "$id";
+                   |            property $power;
+                   |            interval 300;
+                   |            file "output_data/${trafo}_power.csv";
+                   |        };
+                   |""".stripMargin
             case _ =>
                 ""
         }
@@ -230,37 +230,37 @@ class LowVoltageGLMGenerator
                     "power_losses_A.real,power_losses_A.imag"
                 else
                     "power_losses_A.real,power_losses_A.imag,power_losses_B.real,power_losses_B.imag,power_losses_C.real,power_losses_C.imag"
-              s"""
-                 |        object recorder
-                 |        {
-                 |            name "${name}_current_recorder";
-                 |            parent "$name";
-                 |            property $current;
-                 |            interval 300;
-                 |            file "output_data/${name}_current.csv";
-                 |        };
-                 |
-                 |        object recorder
-                 |        {
-                 |            name "${name}_power_recorder";
-                 |            parent "$name";
-                 |            property $power;
-                 |            interval 300;
-                 |            file "output_data/${name}_power.csv";
-                 |        };
-                 |
-                 |        object recorder
-                 |        {
-                 |            name "${name}_losses_recorder";
-                 |            parent "$name";
-                 |            property $losses;
-                 |            interval 300;
-                 |            file "output_data/${name}_losses.csv";
-                 |        };""".stripMargin
+                s"""
+                   |        object recorder
+                   |        {
+                   |            name "${name}_current_recorder";
+                   |            parent "$name";
+                   |            property $current;
+                   |            interval 300;
+                   |            file "output_data/${name}_current.csv";
+                   |        };
+                   |
+                   |        object recorder
+                   |        {
+                   |            name "${name}_power_recorder";
+                   |            parent "$name";
+                   |            property $power;
+                   |            interval 300;
+                   |            file "output_data/${name}_power.csv";
+                   |        };
+                   |
+                   |        object recorder
+                   |        {
+                   |            name "${name}_losses_recorder";
+                   |            parent "$name";
+                   |            property $losses;
+                   |            interval 300;
+                   |            file "output_data/${name}_losses.csv";
+                   |        };""".stripMargin
             }
             else
                 ""
-            )
+                )
     }
 
     /**
@@ -300,23 +300,23 @@ class LowVoltageGLMGenerator
                 else
                     "power_A.real,power_A.imag,power_B.real,power_B.imag,power_C.real,power_C.imag"
                 s"""
-                 |        object recorder
-                 |        {
-                 |            name "${nis}_voltage_recorder";
-                 |            parent "${id}";
-                 |            property $voltage;
-                 |            interval 300;
-                 |            file "output_data/" + node.id + "_voltage.csv\";
-                 |        };
-                 |
-                 |        object recorder
-                 |        {
-                 |            name "${nis}_power_recorder\";
-                 |            parent "$id";
-                 |            property $power;
-                 |            interval 300;
-                 |            file "output_data/${id}_power.csv";
-                 |        };""".stripMargin
+                   |        object recorder
+                   |        {
+                   |            name "${nis}_voltage_recorder";
+                   |            parent "${id}";
+                   |            property $voltage;
+                   |            interval 300;
+                   |            file "output_data/" + node.id + "_voltage.csv\";
+                   |        };
+                   |
+                   |        object recorder
+                   |        {
+                   |            name "${nis}_power_recorder\";
+                   |            parent "$id";
+                   |            property $power;
+                   |            interval 300;
+                   |            file "output_data/${id}_power.csv";
+                   |        };""".stripMargin
             case None =>
                 ""
         }
@@ -331,38 +331,38 @@ class LowVoltageGLMGenerator
         {
             case Some (_) =>
                 val player = if (one_phase)
-                  s"""            object player
-                    |            {
-                    |                property "constant_current_A";
-                    |                file "input_data/$house.csv\";
-                    |            };""".stripMargin
+                    s"""            object player
+                       |            {
+                       |                property "constant_current_A";
+                       |                file "input_data/$house.csv\";
+                       |            };""".stripMargin
                 else
-                  s"""            object player
-                    |            {
-                    |                property "constant_current_A";
-                    |                file "input_data/${house}_R.csv";
-                    |            };
-                    |            object player
-                    |            {
-                    |                property \"constant_current_B\";
-                    |                file "input_data/${house}_S.csv";
-                    |            };
-                    |            object player
-                    |            {
-                    |                property "constant_current_C";
-                    |                file "input_data/${house}_T.csv";
-                    |            };
-                    |""".stripMargin
+                    s"""            object player
+                       |            {
+                       |                property "constant_current_A";
+                       |                file "input_data/${house}_R.csv";
+                       |            };
+                       |            object player
+                       |            {
+                       |                property \"constant_current_B\";
+                       |                file "input_data/${house}_S.csv";
+                       |            };
+                       |            object player
+                       |            {
+                       |                property "constant_current_C";
+                       |                file "input_data/${house}_T.csv";
+                       |            };
+                       |""".stripMargin
                 val id = node.id
                 s"""
-                 |        object load
-                 |        {
-                 |            name "${id}_load";
-                 |            parent "$id";
-                 |            phases ${if (one_phase) "AN" else "ABCN"};
-                 |            nominal_voltage ${node.nominal_voltage}V;
-                 |$player
-                 |        };""".stripMargin
+                   |        object load
+                   |        {
+                   |            name "${id}_load";
+                   |            parent "$id";
+                   |            phases ${if (one_phase) "AN" else "ABCN"};
+                   |            nominal_voltage ${node.nominal_voltage}V;
+                   |$player
+                   |        };""".stripMargin
             case None =>
                 ""
         }

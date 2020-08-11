@@ -82,7 +82,7 @@ object STS extends FieldExtractor[STS]
     private lazy val c601 =
         subfields (
             c601_9015 ~ c601_1131 ~ c601_3055 ^^
-                { case _9015 ~ _1131 ~ _3055  => Status_Category (_9015, _1131, _3055) }
+                { case _9015 ~ _1131 ~ _3055 => Status_Category (_9015, _1131, _3055) }
         )
 
     private lazy val c555_4405 = alphanumeric (3)
@@ -92,7 +92,7 @@ object STS extends FieldExtractor[STS]
     private lazy val c555 =
         subfields (
             c555_4405 ~ c555_1131 ~ c555_3055 ~ c555_4404 ^^
-                { case _4405 ~ _1131 ~ _3055 ~ _4404  => Status (_4405, _1131, _3055, _4404) }
+                { case _4405 ~ _1131 ~ _3055 ~ _4404 => Status (_4405, _1131, _3055, _4404) }
         )
 
     //    030    C556 STATUS REASON                              C    1
@@ -108,7 +108,7 @@ object STS extends FieldExtractor[STS]
     private lazy val c556 =
         subfields (
             c556_9013 ~ c556_1131 ~ c556_3055 ~ c556_9012 ^^
-                { case _9013 ~ _1131 ~ _3055 ~ _9012  => Status_Reason (_9013, _1131, _3055, _9012) }
+                { case _9013 ~ _1131 ~ _3055 ~ _9012 => Status_Reason (_9013, _1131, _3055, _9012) }
         )
 
     lazy val sts_fields: Parser[STS] =

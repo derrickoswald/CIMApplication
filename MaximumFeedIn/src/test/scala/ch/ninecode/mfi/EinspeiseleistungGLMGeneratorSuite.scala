@@ -11,13 +11,13 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
     {
         val parser = new CHIM (xml)
         val result = CHIM.parse (parser)
-        result._1 ("ID123").asInstanceOf[SolarGeneratingUnit]
+        result._1 ("ID123").asInstanceOf [SolarGeneratingUnit]
     }
 
     def getConstantPower (solargen: SolarGeneratingUnit, one_phase: Boolean = true): List[(String, String)] =
     {
         val node_mock = MaxPowerFeedingNodeEEA ("ID123", 400.0, "", "", "", "", 0.0, null, "", "")
-        val options = EinspeiseleistungOptions()
+        val options = EinspeiseleistungOptions ()
         val glm_gen = new EinspeiseleistungGLMGenerator (one_phase, null, null, options.base_temperature, options.sim_temperature)
         val load = glm_gen.emit_pv (List (solargen), node_mock)
         val regex_constant_power = "(constant_power_[ABC])\\s+(.*)(?=;)".r
@@ -29,9 +29,9 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
     {
         val xml =
             """
-            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-            |		<cim:GeneratingUnit.ratedNetMaxP>10.0</cim:GeneratingUnit.ratedNetMaxP>
-            |	</cim:SolarGeneratingUnit>
+              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+              |		<cim:GeneratingUnit.ratedNetMaxP>10.0</cim:GeneratingUnit.ratedNetMaxP>
+              |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -46,10 +46,10 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
     {
         val xml =
             """
-            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-            |		<cim:GeneratingUnit.ratedNetMaxP>11.0</cim:GeneratingUnit.ratedNetMaxP>
-            |		<cim:GeneratingUnit.normalPF>1.000000000</cim:GeneratingUnit.normalPF>
-            |	</cim:SolarGeneratingUnit>
+              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+              |		<cim:GeneratingUnit.ratedNetMaxP>11.0</cim:GeneratingUnit.ratedNetMaxP>
+              |		<cim:GeneratingUnit.normalPF>1.000000000</cim:GeneratingUnit.normalPF>
+              |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -65,10 +65,10 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
     {
         val xml =
             """
-            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-            |		<cim:GeneratingUnit.ratedNetMaxP>5.0</cim:GeneratingUnit.ratedNetMaxP>
-            |		<cim:GeneratingUnit.normalPF>0.800</cim:GeneratingUnit.normalPF>
-            |	</cim:SolarGeneratingUnit>
+              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+              |		<cim:GeneratingUnit.ratedNetMaxP>5.0</cim:GeneratingUnit.ratedNetMaxP>
+              |		<cim:GeneratingUnit.normalPF>0.800</cim:GeneratingUnit.normalPF>
+              |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -84,10 +84,10 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
     {
         val xml =
             """
-            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-            |		<cim:GeneratingUnit.ratedNetMaxP>5.0</cim:GeneratingUnit.ratedNetMaxP>
-            |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
-            |	</cim:SolarGeneratingUnit>
+              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+              |		<cim:GeneratingUnit.ratedNetMaxP>5.0</cim:GeneratingUnit.ratedNetMaxP>
+              |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
+              |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -103,10 +103,10 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
     {
         val xml =
             """
-            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-            |		<cim:GeneratingUnit.ratedNetMaxP>15.0</cim:GeneratingUnit.ratedNetMaxP>
-            |		<cim:GeneratingUnit.normalPF>0.800</cim:GeneratingUnit.normalPF>
-            |	</cim:SolarGeneratingUnit>
+              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+              |		<cim:GeneratingUnit.ratedNetMaxP>15.0</cim:GeneratingUnit.ratedNetMaxP>
+              |		<cim:GeneratingUnit.normalPF>0.800</cim:GeneratingUnit.normalPF>
+              |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)
@@ -130,10 +130,10 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
     {
         val xml =
             """
-            |	<cim:SolarGeneratingUnit rdf:ID="ID123">
-            |		<cim:GeneratingUnit.ratedNetMaxP>15.0</cim:GeneratingUnit.ratedNetMaxP>
-            |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
-            |	</cim:SolarGeneratingUnit>
+              |	<cim:SolarGeneratingUnit rdf:ID="ID123">
+              |		<cim:GeneratingUnit.ratedNetMaxP>15.0</cim:GeneratingUnit.ratedNetMaxP>
+              |		<cim:GeneratingUnit.normalPF>-0.800</cim:GeneratingUnit.normalPF>
+              |	</cim:SolarGeneratingUnit>
             """.stripMargin
 
         val solargen = parseSolarGen (xml)

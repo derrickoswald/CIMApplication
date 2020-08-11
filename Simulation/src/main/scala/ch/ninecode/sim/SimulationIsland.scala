@@ -23,12 +23,12 @@ import ch.ninecode.net.TerminalPlus
 import ch.ninecode.net.TransformerSet
 
 class SimulationIsland (spark: SparkSession, storage_level: StorageLevel)
-extends Island (spark, storage_level)
+    extends Island (spark, storage_level)
 {
     override implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    lazy val world_points: RDD[(String, Iterable[PositionPoint])] = get[PositionPoint].groupBy (_.Location)
-    lazy val schematic_points: RDD[(String, Iterable[DiagramObjectPoint])] = getOrElse[DiagramObject].keyBy (_.id).join (getOrElse[DiagramObjectPoint].groupBy (_.DiagramObject)).values.map (x => (x._1.IdentifiedObject_attr, x._2))
+    lazy val world_points: RDD[(String, Iterable[PositionPoint])] = get [PositionPoint].groupBy (_.Location)
+    lazy val schematic_points: RDD[(String, Iterable[DiagramObjectPoint])] = getOrElse [DiagramObject].keyBy (_.id).join (getOrElse [DiagramObjectPoint].groupBy (_.DiagramObject)).values.map (x => (x._1.IdentifiedObject_attr, x._2))
 
     def positionPointToCoordinates (points: Option[Iterable[PositionPoint]]): Iterable[(Double, Double)] =
     {
@@ -55,13 +55,13 @@ extends Island (spark, storage_level)
     def getOne (terminals: Iterable[TerminalPlus]): TerminalPlus =
     {
         val sorted = terminals.toArray.sortBy (_.element.id)
-        sorted(0)
+        sorted (0)
     }
 
     override def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
     {
         val just_one: RDD[TerminalPlus] = rdd.map (getOne)
-        val with_psr: RDD[(TerminalPlus, PowerSystemResource)] = just_one.keyBy (_.element.id).join (get[PowerSystemResource].keyBy (_.id)).values
+        val with_psr: RDD[(TerminalPlus, PowerSystemResource)] = just_one.keyBy (_.element.id).join (get [PowerSystemResource].keyBy (_.id)).values
 
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates =
@@ -71,7 +71,7 @@ extends Island (spark, storage_level)
 
     override def line_maker (rdd: RDD[(LineData, (identifier, LoadFlowNode))]): RDD[(identifier, LoadFlowEdge)] =
     {
-        val with_psr = rdd.keyBy (_._1.aLine.line.id).join (get[PowerSystemResource].keyBy (_.id)).values
+        val with_psr = rdd.keyBy (_._1.aLine.line.id).join (get [PowerSystemResource].keyBy (_.id)).values
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates =
             with_world.map (x => (x._1._1.aLine.line.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
@@ -93,7 +93,7 @@ extends Island (spark, storage_level)
                 unique_identifiers.flatMap (y => x.find (_._2._1 == y))
             }
         )
-        val with_psr = switches.keyBy (_._1.aSwitch.element.id).join (get[PowerSystemResource].keyBy (_.id)).values
+        val with_psr = switches.keyBy (_._1.aSwitch.element.id).join (get [PowerSystemResource].keyBy (_.id)).values
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates =
             with_world.map (x => (x._1._1.aSwitch.element.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
@@ -115,7 +115,7 @@ extends Island (spark, storage_level)
                 unique_identifiers.flatMap (y => x.find (_._2._1 == y))
             }
         )
-        val with_psr = transformers.keyBy (_._1.transformers.head.transformer.id).join (get[PowerSystemResource].keyBy (_.id)).values
+        val with_psr = transformers.keyBy (_._1.transformers.head.transformer.id).join (get [PowerSystemResource].keyBy (_.id)).values
         val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
         val with_coordinates =
             with_world.map (x => (x._1._1.transformers.head.transformer.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))

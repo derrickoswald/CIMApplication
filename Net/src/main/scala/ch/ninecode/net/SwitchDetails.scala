@@ -1,4 +1,6 @@
-package ch.ninecode.net;
+package ch.ninecode.net
+
+;
 
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -22,9 +24,9 @@ import ch.ninecode.model.Terminal
 /**
  * A switch element.
  *
- * @param element the switch
- * @param terminal1 associated Terminal one
- * @param terminal2 associated Terminal two
+ * @param element     the switch
+ * @param terminal1   associated Terminal one
+ * @param terminal2   associated Terminal two
  * @param switch_info asset information for this switch
  */
 final case class SwitchDetails (
@@ -33,6 +35,7 @@ final case class SwitchDetails (
     terminal2: Terminal,
     switch_info: Option[Element])
 {
+
     import SwitchDetails._
 
     lazy val log: Logger = LoggerFactory.getLogger (getClass)
@@ -47,18 +50,18 @@ final case class SwitchDetails (
     {
         element match
         {
-            case s: Switch =>             s
-            case c: Cut =>                c.Switch
-            case d: Disconnector =>       d.Switch
-            case f: Fuse =>               f.Switch
+            case s: Switch => s
+            case c: Cut => c.Switch
+            case d: Disconnector => d.Switch
+            case f: Fuse => f.Switch
             case g: GroundDisconnector => g.Switch
-            case j: Jumper =>             j.Switch
-            case m: MktSwitch =>          m.Switch
-            case p: ProtectedSwitch =>    p.Switch
-            case b: Breaker =>            b.ProtectedSwitch.Switch
-            case l: LoadBreakSwitch =>    l.ProtectedSwitch.Switch
-            case r: Recloser =>           r.ProtectedSwitch.Switch
-            case s: Sectionaliser =>      s.Switch
+            case j: Jumper => j.Switch
+            case m: MktSwitch => m.Switch
+            case p: ProtectedSwitch => p.Switch
+            case b: Breaker => b.ProtectedSwitch.Switch
+            case l: LoadBreakSwitch => l.ProtectedSwitch.Switch
+            case r: Recloser => r.ProtectedSwitch.Switch
+            case s: Sectionaliser => s.Switch
             case _ =>
                 // Todo: should be a "require", but that's impossible for case class creation
                 log.error (s"non-switch (${element.getClass}:${element.id}) in SwitchEdge")

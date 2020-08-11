@@ -51,7 +51,7 @@ case class TransformerServiceArea (
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
     debug: Boolean = false,
     calculate_public_lighting: Boolean = false)
-extends CIMRDD with Graphable
+    extends CIMRDD with Graphable
 {
 
     import TransformerServiceArea._
@@ -59,14 +59,14 @@ extends CIMRDD with Graphable
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val voltage_rdd: RDD[BaseVoltage] = getOrElse[BaseVoltage]
-    val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse[ConductingEquipment]
-    val element_rdd: RDD[Element] = getOrElse[Element]("Elements")
-    val power_transformer_rdd: RDD[PowerTransformer] = getOrElse[PowerTransformer]
-    val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse[PowerTransformerEnd]
-    val terminal_rdd: RDD[Terminal] = getOrElse[Terminal]
-    val topological_island_rdd: RDD[TopologicalIsland] = getOrElse[TopologicalIsland]
-    val topological_node_rdd: RDD[TopologicalNode] = getOrElse[TopologicalNode]
+    val voltage_rdd: RDD[BaseVoltage] = getOrElse [BaseVoltage]
+    val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse [ConductingEquipment]
+    val element_rdd: RDD[Element] = getOrElse [Element]("Elements")
+    val power_transformer_rdd: RDD[PowerTransformer] = getOrElse [PowerTransformer]
+    val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse [PowerTransformerEnd]
+    val terminal_rdd: RDD[Terminal] = getOrElse [Terminal]
+    val topological_island_rdd: RDD[TopologicalIsland] = getOrElse [TopologicalIsland]
+    val topological_node_rdd: RDD[TopologicalNode] = getOrElse [TopologicalNode]
 
     /**
      * Determine if the bitfield is set for the given mask.
@@ -150,14 +150,14 @@ extends CIMRDD with Graphable
      * @return a mapping between TopologicalIsland.id and PowerTransformer.id, e.g. ("PIN123_node_island", "TRA123")
      *         Where there are ganged transformers with connected secondary windings, the PowerTransformer.id
      *         is the concatenation of the sorted PowerTransformer.id values of all connected transformers,
-     * e.g. TRA1234_TRA5678.
+     *         e.g. TRA1234_TRA5678.
      *         Any TopologicalIsland without a transformer secondary node is not included.
      */
     def island_trafoset_rdd: RDD[(String, String)] =
     {
         // get a map of voltages
         // ToDo: fix this 1kV multiplier on the voltages
-        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
+        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
 
         // get all power transformers for transformer service areas
         val power_transformers = power_transformer_rdd

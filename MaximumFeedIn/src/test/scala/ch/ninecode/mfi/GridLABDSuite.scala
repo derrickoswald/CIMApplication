@@ -43,7 +43,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
                 all = true,
                 files = List (filename)
             )
-            runMFI(session, options)
+            runMFI (session, options)
 
             val maxSimulation = getMaxSimulation (options.outputfile)
             val query =
@@ -76,7 +76,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
                 files = List (filename),
                 cable_impedance_limit = 0.14
             )
-            runMFI(session, options)
+            runMFI (session, options)
 
             val maxSimulation = getMaxSimulation (options.outputfile)
             val query =
@@ -88,7 +88,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             assert (result.size == 28, "number of records")
             while (result.next)
             {
-                checkResults (result, null.asInstanceOf[Double], "no results", "invalid element (CAB0014 r=0.14600148356433446 > limit=0.14)")
+                checkResults (result, null.asInstanceOf [Double], "no results", "invalid element (CAB0014 r=0.14600148356433446 > limit=0.14)")
             }
         }
     }
@@ -107,7 +107,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
                 workdir = "simulation/",
                 files = List (filename)
             )
-            runMFI(session, options)
+            runMFI (session, options)
 
             val query = "select trafo, house, maximum, reason, details from results where id = (select max(id) from results)"
             val result = querySQLite (options.outputfile, query)
@@ -136,7 +136,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
                 workdir = "simulation/",
                 files = List (filename)
             )
-            runMFI(session, options)
+            runMFI (session, options)
 
             val query = s"select trafo, house, maximum, reason, details from results where simulation = ${getMaxSimulation (options.outputfile)}"
             val result = querySQLite (options.outputfile, query)
@@ -146,14 +146,15 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             {
                 if (result.getString (1) == "TX0003")
                     fail ("""transformer "TX00003" should not be present""")
-                else if (result.getString (1) == "TX0002")
-                {
-                    if (result.getObject (3) != null) // some fuse nodes have no mrid
+                else
+                    if (result.getString (1) == "TX0002")
                     {
-                        assert (result.getString (4) == "current limit", "load-flow should find a current limit")
-                        assert (result.getString (5).contains (" > 67.0 Amps"), "limit should be set by GKN 3x10re/10 1/0.6 kV limit of 67 Amps")
+                        if (result.getObject (3) != null) // some fuse nodes have no mrid
+                            {
+                                assert (result.getString (4) == "current limit", "load-flow should find a current limit")
+                                assert (result.getString (5).contains (" > 67.0 Amps"), "limit should be set by GKN 3x10re/10 1/0.6 kV limit of 67 Amps")
+                            }
                     }
-                }
             }
         }
     }
@@ -174,7 +175,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
                 workdir = "simulation_three_phase/",
                 files = List (filename)
             )
-            runMFI(session, options_one_phase)
+            runMFI (session, options_one_phase)
             val one_phase = getMaxSimulation (options_one_phase.outputfile)
 
             val options_three_phase = EinspeiseleistungOptions (
@@ -184,7 +185,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
                 workdir = "simulation_three_phase/",
                 files = List (filename)
             )
-            runMFI(session, options_one_phase)
+            runMFI (session, options_one_phase)
             val three_phase = getMaxSimulation (options_three_phase.outputfile)
 
             val queryOnePhase = s"select trafo, house, maximum, reason, details from results where simulation='$one_phase'"

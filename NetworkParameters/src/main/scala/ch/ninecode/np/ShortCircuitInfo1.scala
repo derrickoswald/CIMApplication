@@ -41,7 +41,7 @@ case class ShortCircuitInfo1 (
     session: SparkSession,
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
 )
-extends CIMRDD
+    extends CIMRDD
 {
 
     import session.sqlContext.implicits._
@@ -86,7 +86,7 @@ extends CIMRDD
             val id = row.getString (0)
             val ort = row.getString (1)
             val v1 = row.getDouble (2) * 1e3
-            val wik = - row.getDouble (3) * Math.PI / 180.0
+            val wik = -row.getDouble (3) * Math.PI / 180.0
             val sk = row.getDouble (4) * 1e6
             val sap = row.getString (5)
             val feeder = row.getString (6)
@@ -332,7 +332,7 @@ extends CIMRDD
     {
         val chim = new CHIM ("")
         val subsetters: List[String] = chim.classes.map (info => info.name)
-        val old_elements = get[Element]("Elements")
+        val old_elements = get [Element]("Elements")
 
         // get the list of classes that need to be merged
         def supers (element: Element): List[String] =
@@ -359,11 +359,11 @@ extends CIMRDD
         // merge each class
         def add[T <: Product] (subsetter: CIMSubsetter[T]): Unit =
         {
-            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T] (subsetter.runtime_class)
+            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T](subsetter.runtime_class)
             implicit val tag: universe.TypeTag[T] = subsetter.tag
             val subrdd: RDD[T] = elements.flatMap (subsetter.asThisClass)
-            val existing: RDD[T] = getOrElse[subsetter.basetype] (subsetter.cls)
-            val _ = put[T] (subrdd.union (existing))
+            val existing: RDD[T] = getOrElse [subsetter.basetype](subsetter.cls)
+            val _ = put [T](subrdd.union (existing))
         }
 
         for (info <- list)

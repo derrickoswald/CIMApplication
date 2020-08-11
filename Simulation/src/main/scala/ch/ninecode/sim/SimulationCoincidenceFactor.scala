@@ -21,7 +21,7 @@ import com.datastax.spark.connector._
  * @param spark   The Spark session
  * @param options The simulation options.
  */
-case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggregate]) (spark: SparkSession, options: SimulationOptions)
+case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggregate])(spark: SparkSession, options: SimulationOptions)
     extends SimulationPostProcessor (spark, options)
 {
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
@@ -34,30 +34,31 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
     {
         log.info ("Coincidence Factor")
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-        def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf[Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
+        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
+        def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
 
         val typ = "power"
         val to_drop = if (options.three_phase)
-            Seq("simulation", "type", "period", "units")
+            Seq ("simulation", "type", "period", "units")
         else
-            Seq("simulation", "type", "period", "real_b", "imag_b", "real_c", "imag_c", "units")
+            Seq ("simulation", "type", "period", "real_b", "imag_b", "real_c", "imag_c", "units")
         val simulated_values = access.raw_values (typ, to_drop)
         val simulated_power_values =
             if (options.three_phase)
             {
                 val intermediate = simulated_values
-                    .withColumn ("power_a", magnitude[Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                    .withColumn ("power_b", magnitude[Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
-                    .withColumn ("power_c", magnitude[Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
+                    .withColumn ("power_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                    .withColumn ("power_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
+                    .withColumn ("power_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
                     .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
                 intermediate
-                    .withColumn ("power", summation[Double, Double, Double].apply (intermediate ("power_a"), intermediate ("power_b"), intermediate ("power_c")))
+                    .withColumn ("power", summation [Double, Double, Double].apply (intermediate ("power_a"), intermediate ("power_b"), intermediate ("power_c")))
                     .drop ("power_a", "power_b", "power_c")
             }
             else
                 simulated_values
-                    .withColumn ("power", magnitude[Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                    .withColumn ("power", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
                     .drop ("real_a", "imag_a")
         val simulated_power_values_by_day = simulated_power_values
             .withColumn ("date", simulated_values ("time").cast (DateType))
@@ -131,7 +132,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
 object SimulationCoincidenceFactor extends SimulationPostProcessorParser
 {
     // standard aggregation is daily
-    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] (
+    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List [SimulationAggregate](
         SimulationAggregate (96, 0)
     )
 
@@ -139,6 +140,7 @@ object SimulationCoincidenceFactor extends SimulationPostProcessorParser
 
     /**
      * Generates a JSON parser to populate a processor.
+     *
      * @return A method that will return an instance of a post processor given the postprocessing element of a JSON.
      */
     def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
@@ -162,6 +164,6 @@ object SimulationCoincidenceFactor extends SimulationPostProcessorParser
             else
                 STANDARD_AGGREGATES
 
-            SimulationCoincidenceFactor (aggregates) (_: SparkSession, _: SimulationOptions)
+            SimulationCoincidenceFactor (aggregates)(_: SparkSession, _: SimulationOptions)
         }
 }

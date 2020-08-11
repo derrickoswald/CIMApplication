@@ -72,13 +72,14 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
         val lines = session.sparkContext.textFile (filename)
         val rdd = lines.flatMap (parse_belvis_line (join_table, job, measurementDateTimeFormat))
         // combine real and imaginary parts
-        if (job.mode == Modes.Append) {
+        if (job.mode == Modes.Append)
+        {
             val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
             implicit val configuration: ReadConf =
                 ReadConf
                     .fromSparkConf (session.sparkContext.getConf)
                     .copy (splitCount = Some (executors))
-            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
             val unioned = rdd.union (df)
             val grouped = unioned.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
             grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
@@ -90,14 +91,16 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
         }
     }
 
-    def process (filename: String, job: IngestJob): Unit = {
-        val join_table = loadCsvMapping(session, filename, job)
-        job.datafiles.foreach(
+    def process (filename: String, job: IngestJob): Unit =
+    {
+        val join_table = loadCsvMapping (session, filename, job)
+        job.datafiles.foreach (
             file =>
-                for (filename <- getFiles(job, options.workdir)(file))
-                    time(s"process $filename: %s seconds") {
-                        sub_belvis(filename, join_table, job)
-                        cleanUp(job, filename)
+                for (filename <- getFiles (job, options.workdir)(file))
+                    time (s"process $filename: %s seconds")
+                    {
+                        sub_belvis (filename, join_table, job)
+                        cleanUp (job, filename)
                     }
         )
     }

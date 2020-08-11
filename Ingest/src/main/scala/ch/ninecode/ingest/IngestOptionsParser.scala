@@ -10,7 +10,7 @@ import scopt.OptionParser
 /**
  * Parser for command line operation.
  *
- * @param APPLICATION_NAME the name of the program
+ * @param APPLICATION_NAME    the name of the program
  * @param APPLICATION_VERSION the version of the program.
  */
 @SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
@@ -61,36 +61,39 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     def updateJson (options: IngestOptions): IngestOptions = options.copy (ingestions = Seq (job.asJson))
 
-    opt[Unit]("unittest")
+    opt [Unit]("unittest")
         .hidden ()
-        .action ((_, c) => { unittest = true; c.copy (unittest = true) })
+        .action ((_, c) =>
+        {
+            unittest = true; c.copy (unittest = true)
+        })
         .text (s"unit testing - don't call sys.exit() [${default.unittest}]")
 
-    opt[LogLevels.Value]("log")
+    opt [LogLevels.Value]("log")
         .action ((x, c) => c.copy (log_level = x))
         .text (s"log level, one of ${LogLevels.values.mkString (",")} [${default.log_level}]")
 
-    opt[Unit]("verbose")
+    opt [Unit]("verbose")
         .action ((_, c) => c.copy (verbose = true))
         .text (s"emit progress messages [${default.verbose}]")
 
-    opt[String]("master").valueName ("MASTER_URL")
+    opt [String]("master").valueName ("MASTER_URL")
         .action ((x, c) => c.copy (master = x))
         .text (s"local[*], spark://host:port, mesos://host:port or yarn [${default.master}]")
 
-    opt[String]("host").valueName ("Cassandra")
+    opt [String]("host").valueName ("Cassandra")
         .action ((x, c) => c.copy (host = x))
         .text (s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${default.host}]")
 
-    opt[Int]("port").valueName ("<port_number>")
+    opt [Int]("port").valueName ("<port_number>")
         .action ((x, c) => c.copy (port = x))
         .text (s"Cassandra connection port [${default.port}]")
 
-    opt[String]("storage")
+    opt [String]("storage")
         .action ((x, c) => c.copy (storage = x))
         .text (s"storage level for RDD serialization [${default.storage}]")
 
-    opt[String]("workdir")
+    opt [String]("workdir")
         .action (
             (x, c) =>
             {
@@ -100,59 +103,98 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         )
         .text (s"working directory for unzip and copy [${default.workdir}]")
 
-    opt[String]("mapping")
-        .action ((x, c) => { job = job.copy (mapping = x); updateJson (c) })
+    opt [String]("mapping")
+        .action ((x, c) =>
+        {
+            job = job.copy (mapping = x); updateJson (c)
+        })
         .text (s"file name of mapping CSV or RDF [${job.mapping}] (required)")
 
-    opt[String]("metercol")
-        .action ((x, c) => { job = job.copy (metercol = x); updateJson (c) })
+    opt [String]("metercol")
+        .action ((x, c) =>
+        {
+            job = job.copy (metercol = x); updateJson (c)
+        })
         .text (s"column name of meter id in mapping CSV [${job.metercol}]")
 
-    opt[String]("mridcol")
-        .action ((x, c) => { job = job.copy (mridcol = x); updateJson (c) })
+    opt [String]("mridcol")
+        .action ((x, c) =>
+        {
+            job = job.copy (mridcol = x); updateJson (c)
+        })
         .text (s"column name of CIM mRID in mapping CSV [${job.mridcol}]")
 
-    opt[String]("timezone")
-        .action ((x, c) => { job = job.copy (timezone = x); updateJson (c) })
+    opt [String]("timezone")
+        .action ((x, c) =>
+        {
+            job = job.copy (timezone = x); updateJson (c)
+        })
         .text (s"measurement time zone for measurements [${job.timezone}]")
 
-    opt[String]("mintime")
-        .action ((x, c) => { job = job.copy (mintime = parseTime (x)); updateJson (c) })
+    opt [String]("mintime")
+        .action ((x, c) =>
+        {
+            job = job.copy (mintime = parseTime (x)); updateJson (c)
+        })
         .text (s"minimum time for ingestion timespan [${formatTime (job.mintime)}]")
 
-    opt[String]("maxtime")
-        .action ((x, c) => { job = job.copy (maxtime = parseTime (x)); updateJson (c) })
+    opt [String]("maxtime")
+        .action ((x, c) =>
+        {
+            job = job.copy (maxtime = parseTime (x)); updateJson (c)
+        })
         .text (s"maximum time for ingestion timespan [${formatTime (job.maxtime)}]")
 
-    opt[String]("keyspace")
-        .action ((x, c) => { job = job.copy (keyspace = x); updateJson (c) })
+    opt [String]("keyspace")
+        .action ((x, c) =>
+        {
+            job = job.copy (keyspace = x); updateJson (c)
+        })
         .text (s"target Cassandra keyspace [${job.keyspace}]")
 
-    opt[Int]("replication")
-        .action ((x, c) => { job = job.copy (replication = x); updateJson (c) })
+    opt [Int]("replication")
+        .action ((x, c) =>
+        {
+            job = job.copy (replication = x); updateJson (c)
+        })
         .text (s"keyspace replication if the Cassandra keyspace needs creation [${job.replication}]")
 
-    opt[Formats.Value]("format")
-        .action ((x, c) => { job = job.copy (format = x); updateJson (c) })
+    opt [Formats.Value]("format")
+        .action ((x, c) =>
+        {
+            job = job.copy (format = x); updateJson (c)
+        })
         .text (s"format of the data files, one of ${Formats.values.iterator.mkString (",")} [${job.format}]")
 
-    opt[Modes.Value]("mode")
-        .action ((x, c) => {job = job.copy (mode = x); updateJson(c)})
+    opt [Modes.Value]("mode")
+        .action ((x, c) =>
+        {
+            job = job.copy (mode = x); updateJson (c)
+        })
         .text (s"ingest mode, one of ${Modes.values.iterator.mkString (",")} [${job.mode}]")
 
-    opt[Unit]("nocopy")
-        .action ((_, c) => { job = job.copy (nocopy = true); updateJson (c) })
+    opt [Unit]("nocopy")
+        .action ((_, c) =>
+        {
+            job = job.copy (nocopy = true); updateJson (c)
+        })
         .text (s"use files 'as is' without unzipping and copying to HDFS [${job.nocopy}]")
 
-    opt[String]("aws_s3a_access_key")
-        .action ((x, c) => { job = job.copy (aws_s3a_access_key = x); updateJson (c) })
+    opt [String]("aws_s3a_access_key")
+        .action ((x, c) =>
+        {
+            job = job.copy (aws_s3a_access_key = x); updateJson (c)
+        })
         .text (s"aws access key [${job.aws_s3a_access_key}]")
 
-    opt[String]("aws_s3a_secret_key")
-        .action ((x, c) => { job = job.copy (aws_s3a_secret_key = x); updateJson (c) })
+    opt [String]("aws_s3a_secret_key")
+        .action ((x, c) =>
+        {
+            job = job.copy (aws_s3a_secret_key = x); updateJson (c)
+        })
         .text (s"aws seceret key [${job.aws_s3a_secret_key}]")
 
-    arg[String]("<ZIP> or <CSV>...")
+    arg [String]("<ZIP> or <CSV>...")
         .optional ()
         .unbounded ()
         .action ((x, c) =>
@@ -160,9 +202,11 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
             try
             {
                 val sep = System.getProperty ("file.separator")
-                val file = if (x.startsWith (sep) || x.startsWith("s3a:")) {
+                val file = if (x.startsWith (sep) || x.startsWith ("s3a:"))
+                {
                     x
-                } else {
+                } else
+                {
                     s"${new java.io.File (".").getCanonicalPath}$sep$x"
                 }
                 job = job.copy (datafiles = job.datafiles :+ file)
@@ -182,18 +226,27 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     help ("help")
         .hidden ()
-        .validate (Unit => { helpout = true; Right (Unit) })
+        .validate (Unit =>
+        {
+            helpout = true; Right (Unit)
+        })
 
     version ("version")
-        .validate (Unit => { versionout = true; Right (Unit) })
+        .validate (Unit =>
+        {
+            versionout = true; Right (Unit)
+        })
         .text (
             {
                 val version = APPLICATION_VERSION.split ("-")
-                s"Scala: ${version(0)}, Spark: ${version(1)}, $APPLICATION_NAME: ${version(2)}"
+                s"Scala: ${version (0)}, Spark: ${version (1)}, $APPLICATION_NAME: ${version (2)}"
             }
         )
 
-    checkConfig (o => { o.valid = !(helpout || versionout); Right (Unit) })
+    checkConfig (o =>
+    {
+        o.valid = !(helpout || versionout); Right (Unit)
+    })
 
     note (
         """

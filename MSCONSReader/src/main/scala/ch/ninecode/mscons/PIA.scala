@@ -63,7 +63,7 @@ object PIA extends FieldExtractor[PIA]
     private lazy val c212 =
         subfields (
             c212_7140 ~ c212_7143 ~ c212_1131 ~ c212_3055 ^^
-                { case _7140 ~ _7143 ~ _1131 ~ _3055  => Item_Number_Identification (_7140, _7143, _1131, _3055) }
+                { case _7140 ~ _7143 ~ _1131 ~ _3055 => Item_Number_Identification (_7140, _7143, _1131, _3055) }
         )
 
     lazy val pia_fields: Parser[PIA] =

@@ -12,14 +12,16 @@ import com.datastax.spark.connector._
 
 case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
 {
+
     import TimeSeriesMeta._
 
     val map: Map[String, Classifier] = common.map (x => (x.keyword, x)).toMap
     val apt_map: Map[String, Classifier] = apts.map (x => (x.keyword, x)).toMap
+
     def classify (in: String, addr: String): Option[Classifier] =
     {
         val splits = in.split ("[ ,()-/]")
-        map.get (splits(0)) match
+        map.get (splits (0)) match
         {
             case Some (lookup) =>
                 lookup.count = lookup.count + 1
@@ -28,7 +30,7 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
                 val options = splits.flatMap (x => map.get (x))
                 if (options.length > 0)
                 {
-                    val item = options(0)
+                    val item = options (0)
                     item.count = item.count + 1
                     Some (item)
                 }
@@ -38,7 +40,7 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
                     val address = extra.flatMap (x => map.get (x))
                     if (address.length > 0)
                     {
-                        val item = address(0)
+                        val item = address (0)
                         item.count = item.count + 1
                         Some (item)
                     }
@@ -48,33 +50,35 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
                         val b = extra.flatMap (x => apt_map.get (x))
                         if (a.length > 0)
                         {
-                            val item = a(0)
-                            item.count = item.count + 1
-                            Some (item)
-                        }
-                        else if (b.length > 0)
-                        {
-                            val item = b(0)
+                            val item = a (0)
                             item.count = item.count + 1
                             Some (item)
                         }
                         else
-                        {
-                            unknown.count = unknown.count + 1
-                            None
-                        }
+                            if (b.length > 0)
+                            {
+                                val item = b (0)
+                                item.count = item.count + 1
+                                Some (item)
+                            }
+                            else
+                            {
+                                unknown.count = unknown.count + 1
+                                None
+                            }
                     }
                 }
         }
     }
 
-    def mrid (col: Array[String]): String = if ("" != col(3)) col(3) else col(12)
-    def meter (col: Array[String]): String = col(7)
+    def mrid (col: Array[String]): String = if ("" != col (3)) col (3) else col (12)
+
+    def meter (col: Array[String]): String = col (7)
 
     // write to Cassandra
     def toClasses (classnames: Iterable[String]): mutable.Map[String, Int] =
     {
-        val col = mutable.Map[String, Int] ()
+        val col = mutable.Map[String, Int]()
         classnames.foreach (
             x =>
             {
@@ -90,7 +94,8 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
         col
     }
 
-    type sum = mutable.Map[String,(Int,mutable.Set[Classifier])]
+    type sum = mutable.Map[String, (Int, mutable.Set[Classifier])]
+
     def process (m: sum, ss: Classifier): sum =
     {
         m.get (ss.cls) match
@@ -114,20 +119,20 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
                     val splits = line.split ("[;]")
                     val mRID = mrid (splits)
                     if ("" != mRID) // has a NIS number
-                    {
-                        val cls = classify (splits(16), splits(15))
-                        cls match
                         {
-                            case Some (classifier) =>
-                                matched = matched + 1
-                                Some ((mRID, classifier.cls))
-                            case None =>
-                                unmatched = unmatched + 1
-                                println (mRID + " " + splits(7) + " " + splits(16) + " ==== " + splits(15))
-                                Some ((mRID, unknown.cls))
+                            val cls = classify (splits (16), splits (15))
+                            cls match
+                            {
+                                case Some (classifier) =>
+                                    matched = matched + 1
+                                    Some ((mRID, classifier.cls))
+                                case None =>
+                                    unmatched = unmatched + 1
+                                    println (mRID + " " + splits (7) + " " + splits (16) + " ==== " + splits (15))
+                                    Some ((mRID, unknown.cls))
+                            }
                         }
-                    }
-                    else
+                        else
                         None
                 }
                 else
@@ -139,10 +144,10 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
         val raw: RDD[(String, mutable.Map[String, Int])] = rdd.groupByKey.mapValues (toClasses)
         val columns = SomeColumns ("mrid", "classes")
         val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
-        raw.saveToCassandra  (options.keyspace, "measured_value_meta", columns, writeConf)
+        raw.saveToCassandra (options.keyspace, "measured_value_meta", columns, writeConf)
 
         // summarize
-        val arranged = all.foldLeft (mutable.Map[String,(Int,mutable.Set[Classifier])]())(process)
+        val arranged = all.foldLeft (mutable.Map[String, (Int, mutable.Set[Classifier])]())(process)
 
         println (s"$unmatched unmatched, matched $matched of ${matched + unmatched} = ${100.0 * (matched.toDouble / (matched.toDouble + unmatched.toDouble))}%")
         arranged.foreach (println (_))
@@ -150,8 +155,10 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
         source.close ()
     }
 }
+
 object TimeSeriesMeta
 {
+
     case class Classifier (var count: Int, keyword: String, cls: String)
     {
         override def toString: String = s"$keyword×$count"
@@ -333,6 +340,6 @@ object TimeSeriesMeta
         Classifier (0, "Dachgeschoss", "Apartment"))
     val unknown: Classifier = Classifier (0, "", "unknown")
 
-    lazy val all: Array[Classifier] = Array.concat (common, apts, Array(unknown))
+    lazy val all: Array[Classifier] = Array.concat (common, apts, Array (unknown))
     lazy val classes: Array[String] = all.map (_.cls).distinct.sortWith (_ < _)
 }

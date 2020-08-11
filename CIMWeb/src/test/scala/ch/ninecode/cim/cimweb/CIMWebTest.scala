@@ -24,7 +24,7 @@ import org.junit.runner.RunWith
 /**
  * CIMWeb test suite.
  */
-@RunWith (classOf[Arquillian])
+@RunWith (classOf [Arquillian])
 object CIMWebTest
 {
     val WEBEAR_SRC = "src/main"
@@ -36,21 +36,21 @@ object CIMWebTest
     {
         try
         {
-            val war = ShrinkWrap.create (classOf[WebArchive], "CIMWeb.war")
+            val war = ShrinkWrap.create (classOf [WebArchive], "CIMWeb.war")
                 .setWebXML (new File (WEBAPP_SRC, "WEB-INF/web.xml"))
                 .addPackage (getClass.getPackage) // deprecated: (java.lang.Package.getPackage ("ch.ninecode.cim.cimweb"))
-                .deleteClass (classOf[CIMWebTest])
+                .deleteClass (classOf [CIMWebTest])
                 .addAsWebResource (new File (WEBAPP_SRC, "index.html"))
                 .addManifest ()
             println (war.toString (true))
-            war.as (classOf[ZipExporter]).exportTo (new File ("./target/CIMWeb.war"), true)
-            val ear = ShrinkWrap.create (classOf[EnterpriseArchive], "CIMWeb.ear")
+            war.as (classOf [ZipExporter]).exportTo (new File ("./target/CIMWeb.war"), true)
+            val ear = ShrinkWrap.create (classOf [EnterpriseArchive], "CIMWeb.ear")
                 .addAsModules (war)
                 .add (new FileAsset (new File ("../CIMConnector/target/CIMConnector-2.11-2.4.5-2.7.2.rar")), "CIMConnector.rar")
                 .addManifest ()
                 .addAsManifestResource (new File (WEBEAR_SRC, "application.xml"))
             println (ear.toString (true))
-            ear.as (classOf[ZipExporter]).exportTo (new File ("./target/CIMWeb.ear"), true)
+            ear.as (classOf [ZipExporter]).exportTo (new File ("./target/CIMWeb.ear"), true)
             //        final EnterpriseArchive ear = ShrinkWrap.createFromZipFile (EnterpriseArchive.class, new File ("../CIMEar/target/CIMApplication.ear"));
             //        println (ear.toString (true));
             //        ear.as (ZipExporter.class).exportTo (new File ("./target/CIMWeb.ear"), true);
@@ -65,7 +65,7 @@ object CIMWebTest
     }
 }
 
-@RunWith (classOf[Arquillian])
+@RunWith (classOf [Arquillian])
 class CIMWebTest
 {
     def print_context_r (context: InitialContext, name: String, depth: Int): Unit =
@@ -103,14 +103,14 @@ class CIMWebTest
         properties.foldLeft (new Properties)
         {
             case (p, (k, v)) =>
-                val _ = p.put (k,v)
+                val _ = p.put (k, v)
                 p
         }
 
     @Test
     def testResourceAdapter (): Unit =
     {
-        val properties = Map[String, String] (
+        val properties = Map [String, String](
             Context.INITIAL_CONTEXT_FACTORY -> "org.apache.openejb.client.LocalInitialContextFactory",
             "openejb.deployments.classpath.include" -> ".*resource-injection.*"
         )

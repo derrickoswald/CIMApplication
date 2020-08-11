@@ -19,12 +19,21 @@ import org.junit.Test
 
 class SimulationJobTests
 {
+
     class TestAppender extends AppenderSkeleton
     {
-        val log: ArrayBuffer[LoggingEvent] = ArrayBuffer[LoggingEvent]()
+        val log: ArrayBuffer[LoggingEvent] = ArrayBuffer [LoggingEvent]()
+
         override def requiresLayout = false
-        override def close (): Unit = {}
-        override def append (event: LoggingEvent): Unit = { val _ = log += event }
+
+        override def close (): Unit =
+        {}
+
+        override def append (event: LoggingEvent): Unit =
+        {
+            val _ = log += event
+        }
+
         def getLog: ArrayBuffer[LoggingEvent] = log
     }
 
@@ -115,10 +124,10 @@ class SimulationJobTests
                 val TITLE = "ratedCurrent"
                 val text =
                     s"""
-                    |{
-                    |    "title": "$TITLE",
-                    |    "bork": "not correct"
-                    |}
+                       |{
+                       |    "title": "$TITLE",
+                       |    "bork": "not correct"
+                       |}
                     """.stripMargin
                 val extra = SimulationJob.parseExtra ("test", toJsonObject (text))
                 assert (extra.isEmpty)
@@ -197,10 +206,10 @@ class SimulationJobTests
                 val QUERY = "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
                 val text =
                     s"""
-                    |{
-                    |    "title": "$TITLE",
-                    |    "query": "$QUERY"
-                    |}
+                       |{
+                       |    "title": "$TITLE",
+                       |    "query": "$QUERY"
+                       |}
                     """.stripMargin
                 val extra = SimulationJob.parseExtra ("test", toJsonObject (text))
                 extra match
@@ -225,10 +234,10 @@ class SimulationJobTests
                 val QUERY2 = "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, first_value (c.substation) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, (select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
                 val text =
                     s"""
-                    |{
-                    |    "title": "$TITLE",
-                    |    "query": ["$QUERY1", "$QUERY2"]
-                    |}
+                       |{
+                       |    "title": "$TITLE",
+                       |    "query": ["$QUERY1", "$QUERY2"]
+                       |}
                     """.stripMargin
                 val extra = SimulationJob.parseExtra ("test", toJsonObject (text))
                 extra match

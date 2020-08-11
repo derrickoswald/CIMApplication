@@ -30,18 +30,18 @@ class View extends RESTful
     /**
      * Read CIM features from Spark.
      *
-     * @param about md:FullModel rdf:about contents
-     * @param zip if <code>true</code> returns the RDF file as a zip compressed file
-     * @param xmin minimum longitude
-     * @param ymin minimum latitude
-     * @param xmax maximum longitude
-     * @param ymax maximum latitude
-     * @param reduceLines if <code>true</code> restricts the number of ACLineSegment to <code>maxLines</code>
-     * @param maxLines the maximum number of ACLineSegments if <code>reduceLines</code> is <code>true</code>
-     * @param dougPeuk if <code>true</code> applies the Ramer–Douglas–Peucker algorithm to reduce the number of PositionPoint verticies in ACLineSegment geometries
+     * @param about          md:FullModel rdf:about contents
+     * @param zip            if <code>true</code> returns the RDF file as a zip compressed file
+     * @param xmin           minimum longitude
+     * @param ymin           minimum latitude
+     * @param xmax           maximum longitude
+     * @param ymax           maximum latitude
+     * @param reduceLines    if <code>true</code> restricts the number of ACLineSegment to <code>maxLines</code>
+     * @param maxLines       the maximum number of ACLineSegments if <code>reduceLines</code> is <code>true</code>
+     * @param dougPeuk       if <code>true</code> applies the Ramer–Douglas–Peucker algorithm to reduce the number of PositionPoint verticies in ACLineSegment geometries
      * @param dougPeukFactor smoothing factor for the Ramer–Douglas–Peucker algorithm
-     * @param resolution distance factor for the Ramer–Douglas–Peucker algorithm
-     * (the epsilon parameter in the Ramer–Douglas–Peucker algorithm is epsilon = 5 * dougPeukFactor * resolution)
+     * @param resolution     distance factor for the Ramer–Douglas–Peucker algorithm
+     *                       (the epsilon parameter in the Ramer–Douglas–Peucker algorithm is epsilon = 5 * dougPeukFactor * resolution)
      * @return the result set as a CIM RDF XML file
      */
     @GET
@@ -119,7 +119,7 @@ class View extends RESTful
                 }
                 finally
                     try
-                        connection.close ()
+                    connection.close ()
                     catch
                     {
                         case resourceexception: ResourceException =>

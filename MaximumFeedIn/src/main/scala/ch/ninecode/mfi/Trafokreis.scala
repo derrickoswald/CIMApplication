@@ -12,13 +12,13 @@ import ch.ninecode.net.TransformerData
 /**
  * A work package for gridlab simulation.
  *
- * @param start        Starting time to be used in the simulation.
- * @param trafo        The island name [concatenated transformer(s) (or ganged transformers)] = the simulation name.
- * @param transformers The feeding transformers (or ganged transformers).
- * @param nodes        The nodes in the transformer service area.
- * @param edges        The edges in the transformer service area.
- * @param houses       The house connections in the transformer service area.
- * @param options      Options for calculations.
+ * @param start                  Starting time to be used in the simulation.
+ * @param trafo                  The island name [concatenated transformer(s) (or ganged transformers)] = the simulation name.
+ * @param transformers           The feeding transformers (or ganged transformers).
+ * @param nodes                  The nodes in the transformer service area.
+ * @param edges                  The edges in the transformer service area.
+ * @param houses                 The house connections in the transformer service area.
+ * @param options                Options for calculations.
  * @param subtransmission_trafos The list of subtransmission transformers to be matched for edge creation.
  */
 case class Trafokreis
@@ -30,7 +30,7 @@ case class Trafokreis
     edges: Iterable[PreEdge],
     houses: Iterable[MaxPowerFeedingNodeEEA],
     options: EinspeiseleistungOptions,
-    subtransmission_trafos: Array[TransformerData] = Array()
+    subtransmission_trafos: Array[TransformerData] = Array ()
 )
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -50,8 +50,8 @@ case class Trafokreis
 
     def significant (h: MaxPowerFeedingNodeEEA): Boolean =
         h.psr_type == "PSRType_HouseService" &&
-        // only do houses where we know it's more than a kilowatt or it's zero because of a three winding transformer
-        (h.max_power_feeding > 1000.0 || 0 != h.reason.indexOf ("transformer windings for edge"))
+            // only do houses where we know it's more than a kilowatt or it's zero because of a three winding transformer
+            (h.max_power_feeding > 1000.0 || 0 != h.reason.indexOf ("transformer windings for edge"))
 
     def best (nodes: Iterable[MaxPowerFeedingNodeEEA]): String =
     {
@@ -89,7 +89,7 @@ case class Trafokreis
 
     def finish_time: Calendar =
     {
-        val t = start_time.clone ().asInstanceOf[Calendar]
+        val t = start_time.clone ().asInstanceOf [Calendar]
         t.add (Calendar.SECOND, experiments.length * window)
         t
     }

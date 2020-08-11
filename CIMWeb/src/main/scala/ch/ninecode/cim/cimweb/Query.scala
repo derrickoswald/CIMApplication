@@ -24,7 +24,7 @@ class Query extends RESTful
     /**
      * Execute a Spark SQL query.
      *
-     * @param sql The query text
+     * @param sql        The query text
      * @param table_name The temporary table to register as the result of the query
      * @return The result set as a JSON array
      */
@@ -58,7 +58,7 @@ class Query extends RESTful
                                 case _ =>
                                     ret.setResultException (new ResourceException ("QueryFunction result is not a JsonObject"), "unhandled result type")
                             }
-                        case _  =>
+                        case _ =>
                             ret.setResultException (new ResourceException ("QueryFunction interaction result is not a MappedRecord"), "unhandled interaction result")
                     }
                     interaction.close ()
@@ -70,7 +70,7 @@ class Query extends RESTful
                 }
                 finally
                     try
-                        connection.close ()
+                    connection.close ()
                     catch
                     {
                         case resourceexception: ResourceException =>

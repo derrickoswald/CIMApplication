@@ -6,13 +6,13 @@ import ch.ninecode.net.LoadFlowNode
 /**
  * Vertex data.
  *
- * @param id              TopologicalNode mRID.
- * @param nominal_voltage Node voltage (V).
- * @param equipment       ConductingEquipment mRID.
- * @param world_position  The (x,y) coordinates of the PositionPoint of the ConductingEquipment in world coordinates, or <code>null</code> if none.
+ * @param id                 TopologicalNode mRID.
+ * @param nominal_voltage    Node voltage (V).
+ * @param equipment          ConductingEquipment mRID.
+ * @param world_position     The (x,y) coordinates of the PositionPoint of the ConductingEquipment in world coordinates, or <code>null</code> if none.
  * @param schematic_position The (x,y) coordinates of the PositionPoint of the ConductingEquipment in schematic coordinates, or <code>null</code> if none.
- * @param players         Players attached to this node - if any.
- * @param recorders       Recorders attached to this node - if any.
+ * @param players            Players attached to this node - if any.
+ * @param recorders          Recorders attached to this node - if any.
  */
 case class SimulationNode
 (
@@ -24,11 +24,11 @@ case class SimulationNode
     players: Iterable[SimulationPlayer] = Seq (),
     recorders: Iterable[SimulationRecorder] = Seq ()
 )
-extends LoadFlowNode (
-    id,
-    nominal_voltage
-)
-with GLMNode
+    extends LoadFlowNode (
+        id,
+        nominal_voltage
+    )
+        with GLMNode
 {
     override def toString: String = s"$id $equipment (${nominal_voltage}V)"
 }

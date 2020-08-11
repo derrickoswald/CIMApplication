@@ -8,7 +8,7 @@ import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.main
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@FixMethodOrder (MethodSorters.NAME_ASCENDING)
 class ModelSuiteIT
 {
     val DEFAULT_CASSANDRA_PORT = 9042
@@ -30,7 +30,7 @@ class ModelSuiteIT
             port.toInt
     }
 
-    def time[R](template: String)(block: => R): R =
+    def time[R] (template: String)(block: => R): R =
     {
         val t0 = System.nanoTime ()
         val ret = block

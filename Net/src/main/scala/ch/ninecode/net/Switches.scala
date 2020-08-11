@@ -1,4 +1,6 @@
-package ch.ninecode.net;
+package ch.ninecode.net
+
+;
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
@@ -48,10 +50,10 @@ final case class Switches (
 
     @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     def switch_info: RDD[Element] = session.sparkContext.union (
-        getOrElse[SwitchInfo].asInstanceOf[RDD[Element]],
-        getOrElse[OldSwitchInfo].asInstanceOf[RDD[Element]],
-        getOrElse[BreakerInfo].asInstanceOf[RDD[Element]],
-        getOrElse[RecloserInfo].asInstanceOf[RDD[Element]]
+        getOrElse [SwitchInfo].asInstanceOf [RDD[Element]],
+        getOrElse [OldSwitchInfo].asInstanceOf [RDD[Element]],
+        getOrElse [BreakerInfo].asInstanceOf [RDD[Element]],
+        getOrElse [RecloserInfo].asInstanceOf [RDD[Element]]
     )
 
     def refAssetDataSheet (switch: Switch): String = switch.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
@@ -77,9 +79,9 @@ final case class Switches (
     {
         // get switches with two terminals
         val switches_terminals: RDD[(Switch, Terminal, Terminal)] =
-            getOrElse[Switch]
+            getOrElse [Switch]
                 .keyBy (_.id)
-                .leftOuterJoin (getOrElse[Terminal].keyBy (_.ConductingEquipment).groupByKey)
+                .leftOuterJoin (getOrElse [Terminal].keyBy (_.ConductingEquipment).groupByKey)
                 .values
                 .flatMap (unpack)
 
@@ -92,7 +94,7 @@ final case class Switches (
         // get the subclass Element
         val elements_terminals_parameters_info: RDD[(Element, Terminal, Terminal, Option[Element])] =
             switches_terminals_parameters_info.keyBy (_._1.id)
-                .join (getOrElse[Element]("Elements").keyBy (_.id))
+                .join (getOrElse [Element]("Elements").keyBy (_.id))
                 .values
                 .map (x => (x._2, x._1._2, x._1._3, x._1._4))
 

@@ -18,7 +18,7 @@ class SpatialSuite extends TestUtil with BeforeAndAfter
     def readFile (context: SQLContext, filename: String): DataFrame =
     {
         val files = filename.split (",")
-        val options = Map[String, String](
+        val options = Map [String, String](
             "path" -> filename,
             "StorageLevel" -> "MEMORY_AND_DISK_SER")
         context.read.format ("ch.ninecode.cim").options (options).load (files: _*)

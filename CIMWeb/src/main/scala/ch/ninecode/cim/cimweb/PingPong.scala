@@ -18,7 +18,7 @@ abstract class PingPong extends RESTful
     def classLoaderFrom (element: StackTraceElement): Option[ClassLoader] =
     {
         try
-            Option (Class.forName (element.getClassName).getClassLoader)
+        Option (Class.forName (element.getClassName).getClassLoader)
         catch
         {
             case _: ClassNotFoundException =>
@@ -29,7 +29,7 @@ abstract class PingPong extends RESTful
     @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
     def getClassLoaders: Set[ClassLoader] =
     {
-        val system = Set[ClassLoader] (
+        val system = Set [ClassLoader](
             ClassLoader.getSystemClassLoader,
             Thread.currentThread.getContextClassLoader)
         val trace =

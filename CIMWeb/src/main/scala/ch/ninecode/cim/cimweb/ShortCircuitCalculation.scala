@@ -54,28 +54,31 @@ class ShortCircuitCalculation extends RESTful
                     if (!resultset.wasNull ())
                         if (value.isNaN)
                             ret.add (name, "NaN")
-                        else if (value.isInfinite)
-                            ret.add (name, "∞")
                         else
-                            ret.add (name, value)
+                            if (value.isInfinite)
+                                ret.add (name, "∞")
+                            else
+                                ret.add (name, value)
                 case Types.DOUBLE =>
                     val value = resultset.getDouble (column)
                     if (!resultset.wasNull ())
                         if (value.isNaN)
                             ret.add (name, "NaN")
-                        else if (value.isInfinite)
-                            ret.add (name, "∞")
                         else
-                            ret.add (name, value)
+                            if (value.isInfinite)
+                                ret.add (name, "∞")
+                            else
+                                ret.add (name, value)
                 case Types.FLOAT =>
                     val value = resultset.getDouble (column)
                     if (!resultset.wasNull ())
                         if (value.isNaN)
                             ret.add (name, "NaN")
-                        else if (value.isInfinite)
-                            ret.add (name, "∞")
                         else
-                            ret.add (name, value)
+                            if (value.isInfinite)
+                                ret.add (name, "∞")
+                            else
+                                ret.add (name, value)
                 case Types.INTEGER =>
                     val value = resultset.getInt (column)
                     if (!resultset.wasNull ())
@@ -105,11 +108,11 @@ class ShortCircuitCalculation extends RESTful
                     if (!resultset.wasNull ())
                         value match
                         {
-//                            doesn't work because of type erasure
-//                            case doubles: scala.collection.mutable.WrappedArray[Double] =>
-//                                ret.add (name, doubles.foldLeft (Json.createArrayBuilder)((b, d) => b.add (d)))
-//                            case strings: scala.collection.mutable.WrappedArray[String] =>
-//                                ret.add (name, strings.foldLeft (Json.createArrayBuilder)((b, d) => b.add (d)))
+                            //                            doesn't work because of type erasure
+                            //                            case doubles: scala.collection.mutable.WrappedArray[Double] =>
+                            //                                ret.add (name, doubles.foldLeft (Json.createArrayBuilder)((b, d) => b.add (d)))
+                            //                            case strings: scala.collection.mutable.WrappedArray[String] =>
+                            //                                ret.add (name, strings.foldLeft (Json.createArrayBuilder)((b, d) => b.add (d)))
                             case array: scala.collection.mutable.WrappedArray[_] =>
                                 array.headOption match
                                 {
@@ -170,7 +173,7 @@ class ShortCircuitCalculation extends RESTful
             batchsize = getLong (json, "batchsize", 10000),
             trafos = json.getString ("trafos", ""),
             workdir = json.getString ("workdir", ""),
-            calculate_public_lighting = json.getBoolean("calculate_public_lighting", false)
+            calculate_public_lighting = json.getBoolean ("calculate_public_lighting", false)
         )
     }
 
@@ -179,13 +182,13 @@ class ShortCircuitCalculation extends RESTful
         try
         {
             try
-                Json.createReader (new StringReader (json)).readObject match
-                {
-                    case obj: JsonObject => Some (parseOptions (obj))
-                    case _ =>
-                        _Logger.log (Level.SEVERE, """not a JsonObject""")
-                        None
-                }
+            Json.createReader (new StringReader (json)).readObject match
+            {
+                case obj: JsonObject => Some (parseOptions (obj))
+                case _ =>
+                    _Logger.log (Level.SEVERE, """not a JsonObject""")
+                    None
+            }
             catch
             {
                 case je: JsonException =>
@@ -298,7 +301,7 @@ class ShortCircuitCalculation extends RESTful
                         }
                         finally
                             try
-                                connection.close ()
+                            connection.close ()
                             catch
                             {
                                 case resourceexception: ResourceException =>

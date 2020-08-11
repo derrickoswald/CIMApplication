@@ -15,6 +15,7 @@ case class SimulationPlayerQuery
     query: String,
     transform: String
 )
+
 object SimulationPlayerQuery
 {
     @SuppressWarnings (Array ("org.wartremover.warts.Null"))

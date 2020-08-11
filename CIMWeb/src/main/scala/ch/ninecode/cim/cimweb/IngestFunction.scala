@@ -26,29 +26,29 @@ case class IngestFunction (job: String) extends CIMWebFunction
 {
     jars = Array (
         jarForObject (this),
-        jarForObject (IngestOptions()),                   // Ingest.jar
+        jarForObject (IngestOptions ()), // Ingest.jar
         jarForObject (com.datastax.oss.driver.api.core.ConsistencyLevel.ANY), // spark-cassandra-connector.jar
-        jarForObject (Json.createObjectBuilder))          // javaee-api <JSON implementation>.jar
+        jarForObject (Json.createObjectBuilder)) // javaee-api <JSON implementation>.jar
 
     override def getReturnType: Return = Return.JSON
 
     def readJSON (json: String): Option[JsonObject] =
     {
         try
-            try
-            Json.createReader (new StringReader (json)).readObject match
-            {
-                case obj: JsonObject => Some (obj)
-                case _ =>
-                    Logger.getLogger (getClass.getName).log (Level.SEVERE, """not a JsonObject""")
-                    None
-            }
-            catch
-            {
-                case je: JsonException =>
-                    Logger.getLogger (getClass.getName).log (Level.SEVERE, """unparseable as JSON""", je)
-                    None
-            }
+        try
+        Json.createReader (new StringReader (json)).readObject match
+        {
+            case obj: JsonObject => Some (obj)
+            case _ =>
+                Logger.getLogger (getClass.getName).log (Level.SEVERE, """not a JsonObject""")
+                None
+        }
+        catch
+        {
+            case je: JsonException =>
+                Logger.getLogger (getClass.getName).log (Level.SEVERE, """unparseable as JSON""", je)
+                None
+        }
         catch
         {
             case e: Exception =>

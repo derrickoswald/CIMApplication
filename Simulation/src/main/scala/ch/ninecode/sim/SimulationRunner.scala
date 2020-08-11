@@ -31,16 +31,16 @@ import ch.ninecode.util.ThreePhaseComplexDataElement
  *  - execute gridlabd (2:41)
  *  - store each Recorder .csv file in Cassandra (3:30)
  *
- * @param cassandra a Cassandra seed node name
- * @param keyspace  the keyspace to store the results (the keyspace for reading is set by the Cassandra query in the player)
- * @param workdir   the directory to create the .glm and location of /input_data and /output_data directories
- * @param three_phase if <code>true</code> simulate in three phase
- * @param fake_three_phase if <code>true</code> convert single phase readings on phase A into three phase
- * @param cim_temperature the temperature of the elements in the CIM file (°C)
+ * @param cassandra              a Cassandra seed node name
+ * @param keyspace               the keyspace to store the results (the keyspace for reading is set by the Cassandra query in the player)
+ * @param workdir                the directory to create the .glm and location of /input_data and /output_data directories
+ * @param three_phase            if <code>true</code> simulate in three phase
+ * @param fake_three_phase       if <code>true</code> convert single phase readings on phase A into three phase
+ * @param cim_temperature        the temperature of the elements in the CIM file (°C)
  * @param simulation_temperature the temperature at which to run the simulation (°C)
- * @param swing_voltage_factor factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal
- * @param keep      when <code>true</code> do not delete the generated .glm, player and recorder files
- * @param verbose   when <code>true</code> set the log level for this class as INFO
+ * @param swing_voltage_factor   factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal
+ * @param keep                   when <code>true</code> do not delete the generated .glm, player and recorder files
+ * @param verbose                when <code>true</code> set the log level for this class as INFO
  */
 case class SimulationRunner (
     cassandra: String,
@@ -109,10 +109,10 @@ case class SimulationRunner (
     }
 
     // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
-    def glm_format (index: Int) (datum: SimulationPlayerData): String =
+    def glm_format (index: Int)(datum: SimulationPlayerData): String =
     {
         val time = glm_date_format.format (datum.time)
-        val (r, i) = (datum.readings(index), datum.readings(index + 1))
+        val (r, i) = (datum.readings (index), datum.readings (index + 1))
         val (real, imag) = if (three_phase && fake_three_phase) (r / 3.0, i / 3.0) else (r, i)
         s"$time,$real,$imag"
     }
@@ -173,8 +173,8 @@ case class SimulationRunner (
         log.info ("""executing GridLAB-D for %s""".format (trafo.name))
 
         var dir = trafo.directory
-        if (dir.takeRight(1) == """\""")
-            dir = dir.slice(0, dir.length - 1)
+        if (dir.takeRight (1) == """\""")
+            dir = dir.slice (0, dir.length - 1)
         val bash = """pushd "%s%s";gridlabd --quiet "%s.glm";popd;""".format (workdir, dir, trafo.name)
         val command = Seq ("bash", "-c", bash)
         val lines = new ListBuffer[String]()
@@ -202,7 +202,7 @@ case class SimulationRunner (
             if (0 != warningLines)
                 log.warn ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
 
-        val problems: List[String] = (if (0 != exit_code) List(s"gridlabd exit code $exit_code") else List[String] ()) ++ lines.toList
+        val problems: List[String] = (if (0 != exit_code) List (s"gridlabd exit code $exit_code") else List [String]()) ++ lines.toList
         ((0 == exit_code) && (0 == errorLines), problems)
     }
 
@@ -374,7 +374,7 @@ case class SimulationRunner (
                         accumulated
                     case None =>
                         log.error ("""no baseline interval ("intervals" = 1) in recorder (%s)""".format (recorder.toString))
-                        Array[SimulationResult] ()
+                        Array [SimulationResult]()
                 }
                 measures
             }
@@ -397,7 +397,7 @@ case class SimulationRunner (
                         case Some (records) =>
                             (player, records._2)
                         case None =>
-                            (player, List())
+                            (player, List ())
                     }
                 }
             )
@@ -412,7 +412,7 @@ case class SimulationRunner (
             (List (), read_recorders_and_accumulate (trafo))
         else
         {
-            (s"GridLAB-D failed for ${trafo.name}" :: ret._2, List())
+            (s"GridLAB-D failed for ${trafo.name}" :: ret._2, List ())
         }
     }
 }

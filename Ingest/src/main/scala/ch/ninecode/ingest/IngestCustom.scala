@@ -86,7 +86,7 @@ case class IngestCustom (session: SparkSession, options: IngestOptions) extends 
                 ReadConf
                     .fromSparkConf (session.sparkContext.getConf)
                     .copy (splitCount = Some (executors))
-            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
             val unioned = rdd.union (df)
             val grouped = unioned.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
             grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
@@ -100,10 +100,10 @@ case class IngestCustom (session: SparkSession, options: IngestOptions) extends 
 
     def process (filename: String, job: IngestJob): Unit =
     {
-        val join_table = loadCsvMapping(session, filename, job)
+        val join_table = loadCsvMapping (session, filename, job)
         job.datafiles.foreach (
             file =>
-                for (filename <- getFiles (job, options.workdir) (file))
+                for (filename <- getFiles (job, options.workdir)(file))
                     time (s"process $filename: %s seconds")
                     {
                         sub_custom (filename, join_table, job)

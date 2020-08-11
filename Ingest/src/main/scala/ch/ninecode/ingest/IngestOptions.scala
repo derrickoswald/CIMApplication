@@ -9,16 +9,16 @@ object LogLevels extends Enumeration
 /**
  * Ingest meter readings options.
  *
- * @param valid False if either help or version requested (i.e. don't proceed with execution).
- * @param unittest If <code>true</code>, don't call sys.exit().
- * @param verbose If <code>true</code>, emit progress messages.
- * @param master Spark master.
- * @param options Spark options.
- * @param host Cassandra connection host.
- * @param port Cassandra connection port.
- * @param storage Storage level for RDD serialization.
+ * @param valid     False if either help or version requested (i.e. don't proceed with execution).
+ * @param unittest  If <code>true</code>, don't call sys.exit().
+ * @param verbose   If <code>true</code>, emit progress messages.
+ * @param master    Spark master.
+ * @param options   Spark options.
+ * @param host      Cassandra connection host.
+ * @param port      Cassandra connection port.
+ * @param storage   Storage level for RDD serialization.
  * @param log_level Logging level.
- * @param workdir Working directory for unzipping and copying if nocopy is <code>false</code>.
+ * @param workdir   Working directory for unzipping and copying if nocopy is <code>false</code>.
  */
 case class IngestOptions
 (
@@ -39,7 +39,7 @@ object IngestOptions
 {
     def cwd: String =
     {
-        val pwd = new java.io.File(".").getCanonicalPath
+        val pwd = new java.io.File (".").getCanonicalPath
         if (pwd.endsWith ("."))
             pwd.substring (0, pwd.length - 1)
         else

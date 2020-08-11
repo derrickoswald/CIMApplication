@@ -15,10 +15,11 @@ class LoadFlowNode
     _id: String,
     _nominal_voltage: Double
 )
-extends Graphable
-with Serializable
+    extends Graphable
+        with Serializable
 {
     def id: String = _id
+
     def nominal_voltage: Double = _nominal_voltage
 }
 

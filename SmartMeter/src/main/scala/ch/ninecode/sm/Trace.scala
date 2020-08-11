@@ -67,6 +67,7 @@ case class FinalNodeData
  */
 class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
 {
+
     import Trace._
 
     def vertexProgram (id: VertexId, v: NodeData, message: NodeData): NodeData =

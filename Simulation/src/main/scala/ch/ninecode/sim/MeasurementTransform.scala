@@ -46,15 +46,16 @@ abstract class MeasurementTransform extends Serializable
 
 object MeasurementTransform
 {
-    val cache = new mutable.HashMap[String, MeasurementTransform] ()
-    lazy val identity: MeasurementTransform = new MeasurementTransform {}
+    val cache = new mutable.HashMap[String, MeasurementTransform]()
+    lazy val identity: MeasurementTransform = new MeasurementTransform
+    {}
 
     def build (program: String): MeasurementTransform =
     {
         val toolbox = scala.reflect.runtime.currentMirror.mkToolBox ()
         val tree = toolbox.parse ("import ch.ninecode.sim._; import ch.ninecode.gl._; import ch.ninecode.net._; import ch.ninecode.util._; " + program)
         val compiledCode = toolbox.compile (tree)
-        val code = compiledCode()
+        val code = compiledCode ()
         code match
         {
             case cls: Class[_] =>
@@ -78,7 +79,7 @@ object MeasurementTransform
         else
         {
             if (cache.contains (program))
-                cache(program)
+                cache (program)
             else
             {
                 val transform = build (program)

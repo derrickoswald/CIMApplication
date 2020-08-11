@@ -13,6 +13,7 @@ case class Generator (
     period: Int = 15 * 60 * 1000)
 {
     def timestamp (index: Long): Long = time + (period * index)
+
     def record (item: (Double, Int)): SimulationPlayerData =
     {
         val (value, index) = item
@@ -42,7 +43,8 @@ class MeasurementTransformTests
             .toArray
     }
 
-    val transform_class = """
+    val transform_class =
+        """
         MeasurementTransform
         {
             val MILLISECONDS_PER_MINUTE: Int = 60 * 1000
@@ -68,7 +70,8 @@ class MeasurementTransformTests
     @Test def testMeasurementTransform (): Unit =
     {
         val series = generateStuff
-        val identity = new MeasurementTransform {}
+        val identity = new MeasurementTransform
+        {}
         val original = identity.transform (series)
         // println (original.take (5).mkString ("\n"))
 
@@ -109,9 +112,9 @@ class MeasurementTransformTests
                 val array1 = item._1.readings
                 val array2 = item._2.readings
                 for (i <- array1.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
                 for (i <- array2.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
             }
         )
     }
@@ -119,7 +122,8 @@ class MeasurementTransformTests
     @Test def testMeasurementTransformInstance (): Unit =
     {
         val series = generateStuff
-        val identity = new MeasurementTransform {}
+        val identity = new MeasurementTransform
+        {}
         val original = identity.transform (series)
         // println (original.take (5).mkString ("\n"))
 
@@ -136,9 +140,9 @@ class MeasurementTransformTests
                 val array1 = item._1.readings
                 val array2 = item._2.readings
                 for (i <- array1.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
                 for (i <- array2.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
             }
         )
     }
@@ -146,11 +150,13 @@ class MeasurementTransformTests
     @Test def testMeasurementTransformClass (): Unit =
     {
         val series = generateStuff
-        val identity = new MeasurementTransform {}
+        val identity = new MeasurementTransform
+        {}
         val original = identity.transform (series)
         // println (original.take (5).mkString ("\n"))
 
-        val program = s"""class MyTransform extends $transform_class
+        val program =
+            s"""class MyTransform extends $transform_class
         classOf[MyTransform]"""
         val my_transform = MeasurementTransform.build (program)
         val player_data = my_transform.transform (series)
@@ -164,9 +170,9 @@ class MeasurementTransformTests
                 val array1 = item._1.readings
                 val array2 = item._2.readings
                 for (i <- array1.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
                 for (i <- array2.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
             }
         )
     }

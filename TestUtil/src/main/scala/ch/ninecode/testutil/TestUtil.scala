@@ -25,7 +25,7 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
     type FixtureParam = SparkSession
     val classesToRegister: Array[Class[_]] = CIMClasses.list
 
-    def time[R](template: String)(block: => R): R =
+    def time[R] (template: String)(block: => R): R =
     {
         val t0 = System.nanoTime ()
         val ret = block
@@ -117,8 +117,8 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
     def registerDependency (configuration: SparkConf): Unit =
     {
         val _ = configuration.registerKryoClasses (classesToRegister)
-        // use the custom registrator
-        .set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
+            // use the custom registrator
+            .set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
     }
 
     /**
@@ -136,7 +136,7 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
 
     def readCIMElements (session: SparkSession, filename: String): Unit =
     {
-        val options = Map[String, String] (
+        val options = Map [String, String](
             "path" -> filename,
             "StorageLevel" -> "MEMORY_AND_DISK_SER",
             "ch.ninecode.cim.do_topo_islands" -> "true",
@@ -149,8 +149,8 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
     }
 
     def readCIMElements (session: SparkSession,
-                         filename: String,
-                         options: Map[String, String])
+        filename: String,
+        options: Map[String, String])
     {
         time ("read: %s seconds")
         {
@@ -172,25 +172,24 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
     /**
      * Get the named RDD.
      *
-     * @param name The name of the RDD, usually the same as the CIM class.
+     * @param name  The name of the RDD, usually the same as the CIM class.
      * @param spark The Spark session which persisted the named RDD.
      * @tparam T The type of objects contained in the named RDD.
      * @return The typed RDD, e.g. <code>RDD[T]</code>.
-     *
-     * @example The RDD of all elements is somewhat special,
-     * currently it is named Elements (plural), so this method must be used:
+     * @example                                                   The RDD of all elements is somewhat special,
+     *                                                            currently it is named Elements (plural), so this method must be used:
      * {{{val elements: RDD[Element] = get[Element]("Elements")}}}.
      *
      */
     @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-    def get[T : ClassTag](name: String)(implicit spark: SparkSession): RDD[T] =
+    def get[T: ClassTag] (name: String)(implicit spark: SparkSession): RDD[T] =
     {
         spark.sparkContext.getPersistentRDDs.find (_._2.name == name) match
         {
             case Some ((_, rdd: RDD[_])) =>
-                rdd.asInstanceOf[RDD[T]]
+                rdd.asInstanceOf [RDD[T]]
             case Some (_) | None =>
-                spark.sparkContext.emptyRDD[T]
+                spark.sparkContext.emptyRDD [T]
         }
     }
 
@@ -204,9 +203,9 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
      * @tparam T The type of the RDD, e.g. <code>RDD[T]</code>.
      * @return The RDD with the given type of objects, e.g. <code>RDD[ACLineSegment]</code>.
      */
-    def get[T : ClassTag](implicit spark: SparkSession): RDD[T] =
+    def get[T: ClassTag] (implicit spark: SparkSession): RDD[T] =
     {
-        val classname = classTag[T].runtimeClass.getName
+        val classname = classTag [T].runtimeClass.getName
         val name = classname.substring (classname.lastIndexOf (".") + 1)
         get (name)
     }
@@ -214,10 +213,10 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
     /**
      * Assert the difference between a number and a reference value are less than a threshold.
      *
-     * @param number the number to test
+     * @param number    the number to test
      * @param reference the reference value
-     * @param epsilon the difference limit
-     * @param message a message to display if the assert fails
+     * @param epsilon   the difference limit
+     * @param message   a message to display if the assert fails
      */
     def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = ""): Unit =
     {

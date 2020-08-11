@@ -29,7 +29,7 @@ abstract class CIMWebFunction extends CIMFunction
 {
     override def getReturnType: Return = Return.JSON
 
-    var jars: Array[String] = new Array[String] (0)
+    var jars: Array[String] = new Array[String](0)
 
     def setJars (newjars: Array[String]): Unit = jars = newjars
 
@@ -50,7 +50,7 @@ abstract class CIMWebFunction extends CIMFunction
         if (!ret.toLowerCase ().endsWith (".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = s"/tmp/${ Random.nextInt (99999999) }.jar"
+            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
             val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
             writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (s"${ret}ch/")), "ch/")
             writer.close ()
@@ -80,6 +80,7 @@ abstract class CIMWebFunction extends CIMFunction
 
     // get the file system
     def uri: URI = FileSystem.getDefaultUri (hdfs_configuration)
+
     // or: val uri: URI = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY))
 
     def hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)

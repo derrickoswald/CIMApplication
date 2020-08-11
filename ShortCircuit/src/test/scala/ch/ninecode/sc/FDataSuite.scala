@@ -675,8 +675,8 @@ class FDataSuite extends AnyFunSuite
 
     test ("Parallel rating")
     {
-        val z1 = Impedanzen (Complex (1.20,0.02), Complex (4.80, 0.13), Complex (1.30,0.02), Complex (5.20, 0.13))
-        val z2 = Impedanzen (Complex (0.44,0.01), Complex (1.76, 0.05), Complex (0.45,0.01), Complex (1.80, 0.05))
+        val z1 = Impedanzen (Complex (1.20, 0.02), Complex (4.80, 0.13), Complex (1.30, 0.02), Complex (5.20, 0.13))
+        val z2 = Impedanzen (Complex (0.44, 0.01), Complex (1.76, 0.05), Complex (0.45, 0.01), Complex (1.80, 0.05))
         FData.fuse_sizing_table (1)
         val branch =
             ParallelBranch ("a", "z", 10.0,
@@ -694,10 +694,10 @@ class FDataSuite extends AnyFunSuite
         assert (FData.fuses (280, branch) == "50,40", "expected 60:40 split")
 
         val z_total = Impedanzen (
-            Complex (0.37183277,+0.00810154),
-            Complex (1.48732429,0.04194802),
-            Complex (0.38360881,0.00813756),
-            Complex (1.53442772,0.04199405)
+            Complex (0.37183277, +0.00810154),
+            Complex (1.48732429, 0.04194802),
+            Complex (0.38360881, 0.00813756),
+            Complex (1.53442772, 0.04199405)
         )
         val scr = ScResult (
             node = "test",
@@ -705,9 +705,9 @@ class FDataSuite extends AnyFunSuite
             voltage = 400.0,
             terminal = 1,
             container = null,
-            errors = List(),
+            errors = List (),
             tx = "TRAXXX",
-            tx_impedance = Complex(0),
+            tx_impedance = Complex (0),
             prev = "previous",
             costerm = 1.0,
             low_r = z_total.impedanz_low.re,
@@ -726,13 +726,13 @@ class FDataSuite extends AnyFunSuite
         assert (scr.lastFusesString == "50,40", "lastFusesString")
         assert (scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
         assert (scr.fuseMax == "50,40", "expected 60:40 split")
-        assert (scr.fuseOK (ShortCircuitOptions().cmin), "expected OK")
+        assert (scr.fuseOK (ShortCircuitOptions ().cmin), "expected OK")
     }
 
     test ("Series wrapped parallel rating")
     {
-        val z1 = Impedanzen (Complex (1.20,0.02), Complex (4.80, 0.13), Complex (1.30,0.02), Complex (5.20, 0.13))
-        val z2 = Impedanzen (Complex (0.44,0.01), Complex (1.76, 0.05), Complex (0.45,0.01), Complex (1.80, 0.05))
+        val z1 = Impedanzen (Complex (1.20, 0.02), Complex (4.80, 0.13), Complex (1.30, 0.02), Complex (5.20, 0.13))
+        val z2 = Impedanzen (Complex (0.44, 0.01), Complex (1.76, 0.05), Complex (0.45, 0.01), Complex (1.80, 0.05))
         FData.fuse_sizing_table (1)
         val branch =
             SeriesBranch ("wrap", "up", 10.0,
@@ -754,10 +754,10 @@ class FDataSuite extends AnyFunSuite
         assert (FData.fuses (280, branch) == "50,40", "expected 60:40 split")
 
         val z_total = Impedanzen (
-            Complex (0.37183277,+0.00810154),
-            Complex (1.48732429,0.04194802),
-            Complex (0.38360881,0.00813756),
-            Complex (1.53442772,0.04199405)
+            Complex (0.37183277, +0.00810154),
+            Complex (1.48732429, 0.04194802),
+            Complex (0.38360881, 0.00813756),
+            Complex (1.53442772, 0.04199405)
         )
         val scr = ScResult (
             node = "test",
@@ -765,9 +765,9 @@ class FDataSuite extends AnyFunSuite
             voltage = 400.0,
             terminal = 1,
             container = null,
-            errors = List(),
+            errors = List (),
             tx = "TRAXXX",
-            tx_impedance = Complex(0),
+            tx_impedance = Complex (0),
             prev = "previous",
             costerm = 1.0,
             low_r = z_total.impedanz_low.re,
@@ -786,21 +786,21 @@ class FDataSuite extends AnyFunSuite
         assert (scr.lastFusesString == "50,40", "lastFusesString")
         assert (scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
         assert (scr.fuseMax == "50,40", "expected 60:40 split")
-        assert (scr.fuseOK (ShortCircuitOptions().cmin), "expected OK")
+        assert (scr.fuseOK (ShortCircuitOptions ().cmin), "expected OK")
     }
 
     test ("Series wrapped parallel rating not OK")
     {
         val z1 = Impedanzen (
-            Complex (1.20,0.02),
+            Complex (1.20, 0.02),
             Complex (4.80, 0.13),
-            Complex (1.30,0.02),
+            Complex (1.30, 0.02),
             Complex (5.20, 0.13)
         )
         val z2 = Impedanzen (
-            Complex (0.44,0.01),
+            Complex (0.44, 0.01),
             Complex (1.76, 0.05),
-            Complex (0.45,0.01),
+            Complex (0.45, 0.01),
             Complex (1.80, 0.05)
         )
         FData.fuse_sizing_table (1)
@@ -824,10 +824,10 @@ class FDataSuite extends AnyFunSuite
         assert (FData.fuses (280, branch) == "50,50", "expected 50:50 split")
 
         val z_total = Impedanzen (
-            Complex (0.37183277,+0.00810154),
-            Complex (1.48732429,0.04194802),
-            Complex (0.38360881,0.00813756),
-            Complex (1.53442772,0.04199405)
+            Complex (0.37183277, +0.00810154),
+            Complex (1.48732429, 0.04194802),
+            Complex (0.38360881, 0.00813756),
+            Complex (1.53442772, 0.04199405)
         )
         val scr = ScResult (
             node = "test",
@@ -835,9 +835,9 @@ class FDataSuite extends AnyFunSuite
             voltage = 400.0,
             terminal = 1,
             container = null,
-            errors = List(),
+            errors = List (),
             tx = "TRAXXX",
-            tx_impedance = Complex(0),
+            tx_impedance = Complex (0),
             prev = "previous",
             costerm = 1.0,
             low_r = z_total.impedanz_low.re,
@@ -856,6 +856,6 @@ class FDataSuite extends AnyFunSuite
         assert (scr.lastFusesString == "50,100", "lastFusesString")
         assert (scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
         assert (scr.fuseMax == "50,50", "expected 50:50 split")
-        assert (!scr.fuseOK (ShortCircuitOptions().cmin), "expected not OK")
+        assert (!scr.fuseOK (ShortCircuitOptions ().cmin), "expected not OK")
     }
 }

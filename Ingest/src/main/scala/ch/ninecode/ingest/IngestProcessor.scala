@@ -35,7 +35,7 @@ trait IngestProcessor
 
     def map_csv_options: Map[String, String] =
     {
-        Map[String, String](
+        Map [String, String](
             "header" -> "true",
             "ignoreLeadingWhiteSpace" -> "false",
             "ignoreTrailingWhiteSpace" -> "false",
@@ -54,7 +54,7 @@ trait IngestProcessor
             "inferSchema" -> "true")
     }
 
-    def time[R](template: String)(block: => R): R =
+    def time[R] (template: String)(block: => R): R =
     {
         val t0 = System.nanoTime ()
         val ret = block
@@ -105,14 +105,15 @@ trait IngestProcessor
 
     /**
      * Put a file on HDFS
-     * @param dst the path to save the file
-     * @param src the file to save
+     *
+     * @param dst   the path to save the file
+     * @param src   the file to save
      * @param unzip flag indicating the stream is a ZIP file that needs to be expanded
      * @return
      */
     def putFile (dst: String, src: String, unzip: Boolean = false): Seq[String] =
     {
-        var ret = Seq[String]()
+        var ret = Seq [String]()
         val fs = hdfs
         val file = new Path (fs.getUri.toString, dst)
         // write the file
@@ -130,12 +131,12 @@ trait IngestProcessor
             {
                 val in =
                     try
-                    Files.newInputStream(Paths.get (src))
+                    Files.newInputStream (Paths.get (src))
                     catch
                     {
                         case e: Exception =>
                             log.error (s"""ingest failed for file "$file"""", e)
-                            new ByteArrayInputStream (Array[Byte]())
+                            new ByteArrayInputStream (Array [Byte]())
                     }
                 val zip = new ZipInputStream (in)
                 val buffer = new Array[Byte](1024)
@@ -194,7 +195,7 @@ trait IngestProcessor
         ret
     }
 
-    def getFiles (job: IngestJob, workdir: String) (file: String): Seq[String] =
+    def getFiles (job: IngestJob, workdir: String)(file: String): Seq[String] =
     {
         if (job.nocopy)
             Seq (file)
@@ -207,7 +208,7 @@ trait IngestProcessor
     }
 
 
-    def cleanUp (job: IngestJob, filename: String) : Unit =
+    def cleanUp (job: IngestJob, filename: String): Unit =
     {
         if (!job.nocopy)
         {
@@ -316,15 +317,18 @@ trait IngestProcessor
         }
     }
 
-    def loadCsvMapping(session: SparkSession, filename: String, job: IngestJob): Map[String, String] = {
-        val dataframe = time(s"read $filename: %s seconds") {
-            session.sqlContext.read.format("csv").options(map_csv_options).csv(filename)
+    def loadCsvMapping (session: SparkSession, filename: String, job: IngestJob): Map[String, String] =
+    {
+        val dataframe = time (s"read $filename: %s seconds")
+        {
+            session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
         }
-        val join_table = time("map: %s seconds") {
-            val ch_number = dataframe.schema.fieldIndex(job.metercol)
-            val nis_number = dataframe.schema.fieldIndex(job.mridcol)
-            val extract = extractor(dataframe.schema.fields(ch_number).dataType)
-            dataframe.rdd.map(row => (extract(row, ch_number), row.getString(nis_number))).filter(_._2 != null).collect.toMap
+        val join_table = time ("map: %s seconds")
+        {
+            val ch_number = dataframe.schema.fieldIndex (job.metercol)
+            val nis_number = dataframe.schema.fieldIndex (job.mridcol)
+            val extract = extractor (dataframe.schema.fields (ch_number).dataType)
+            dataframe.rdd.map (row => (extract (row, ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
         }
         join_table
     }

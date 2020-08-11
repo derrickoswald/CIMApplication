@@ -26,9 +26,10 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 
 class RESTful ()
 {
+
     import RESTful._
 
-    type map = java.util.Map[String,Object]
+    type map = java.util.Map[String, Object]
 
     def asBoolean (string: String): Boolean =
     {
@@ -54,7 +55,7 @@ class RESTful ()
             properties.putAll (Map (
                 "spark.driver.memory" -> "1g",
                 "spark.executor.memory" -> "2g").asJava)
-            Some (factory.getConnection (specification).asInstanceOf[CIMConnection])
+            Some (factory.getConnection (specification).asInstanceOf [CIMConnection])
         }
         else
         {
@@ -86,7 +87,7 @@ class RESTful ()
 
 object RESTful
 {
-    @Resource(
+    @Resource (
         name = "SparkConnectionFactory",
         lookup = "java:comp/env/eis/Spark",
         description = "Connection factory for Spark connection using CIMConnector")
@@ -149,7 +150,7 @@ object RESTful
         try
         {
             val factory = context.lookup (name)
-            Success (factory.asInstanceOf[CIMConnectionFactory])
+            Success (factory.asInstanceOf [CIMConnectionFactory])
         }
         catch
         {

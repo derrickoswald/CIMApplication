@@ -55,7 +55,7 @@ object BGM extends FieldExtractor[BGM]
     private lazy val c002 =
         subfields (
             c002_1001 ~ c002_1131 ~ c002_3055 ~ c002_1000 ^^
-                { case c002_1001 ~ c002_1131 ~ c002_3055 ~ c002_1000  => Document_Message_Name (c002_1001, c002_1131, c002_3055, c002_1000) }
+                { case c002_1001 ~ c002_1131 ~ c002_3055 ~ c002_1000 => Document_Message_Name (c002_1001, c002_1131, c002_3055, c002_1000) }
         )
 
     //    1004  Document identifier                       C      an..35

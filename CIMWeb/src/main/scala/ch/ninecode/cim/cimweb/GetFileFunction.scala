@@ -19,7 +19,7 @@ case class GetFileFunction (path: String) extends CIMWebFunction
             val data = hdfs.open (file)
             // ToDo: handle files bigger than 2GB
             val size = hdfs.getFileStatus (file).getLen.toInt
-            val bytes = new Array[Byte] (size)
+            val bytes = new Array[Byte](size)
             data.readFully (0, bytes)
             Text.decode (bytes, 0, size)
         }

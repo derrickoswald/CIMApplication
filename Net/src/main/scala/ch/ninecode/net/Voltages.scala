@@ -18,11 +18,12 @@ final case class Voltages (
 
     /**
      * Create a collection of all BaseVoltage values
+     *
      * @return
      */
     def getVoltages: Map[String, Double] =
-        getOrElse[BaseVoltage]
-        .map (voltage => (voltage.id, voltage.nominalVoltage * 1000.0)) // ToDo: remove this 1000.0V multiplier
-        .collect
-        .toMap
+        getOrElse [BaseVoltage]
+            .map (voltage => (voltage.id, voltage.nominalVoltage * 1000.0)) // ToDo: remove this 1000.0V multiplier
+            .collect
+            .toMap
 }

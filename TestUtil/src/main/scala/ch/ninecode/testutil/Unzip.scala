@@ -8,7 +8,8 @@ import java.io.IOException
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
-trait Unzip extends Using {
+trait Unzip extends Using
+{
 
     /**
      * This utility extracts files and directories of a standard zip file to
@@ -46,12 +47,14 @@ trait Unzip extends Using {
         {
             @SuppressWarnings (Array ("org.wartremover.warts.Var", "org.wartremover.warts.Null"))
             var entry: ZipEntry = _
+
             override def hasNext: Boolean =
             {
                 if (null == entry)
                     entry = zip.getNextEntry
                 null != entry
             }
+
             @SuppressWarnings (Array ("org.wartremover.warts.Null"))
             override def next (): ZipEntry =
             {
@@ -98,12 +101,13 @@ trait Unzip extends Using {
          * we need to guard against a -1 return in next(),
          * which leads to one extra 0 byte write at the end.
          *
-         * @param zip the zip stream opened at the entry
+         * @param zip   the zip stream opened at the entry
          * @param bytes an array to store the entry bytes in
          */
         case class Bytes (zip: ZipInputStream, bytes: Array[Byte]) extends Iterator[Int]
         {
             override def hasNext: Boolean = 0 != zip.available ()
+
             override def next (): Int =
             {
                 val n = zip.read (bytes)
@@ -130,4 +134,5 @@ trait Unzip extends Using {
             }
         }
     }
+
 }

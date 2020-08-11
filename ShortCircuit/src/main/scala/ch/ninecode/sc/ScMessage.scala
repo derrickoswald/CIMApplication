@@ -5,13 +5,13 @@ import ch.ninecode.util.Complex
 /**
  * Message sent between nodes in the short circuit GraphX Pregel algorithm.
  *
- * @param source_id     the feeding transformer
+ * @param source_id        the feeding transformer
  * @param source_impedance the source impedance at the transformer secondary (Ω)
- * @param ref           the impedance from the transformer to the previous node
- * @param edge          the edge impedance
- * @param fuses         the list of fuses encountered on the path from the source to this node
- * @param previous_node the previous node mRID
- * @param errors        any errors encountered
+ * @param ref              the impedance from the transformer to the previous node
+ * @param edge             the edge impedance
+ * @param fuses            the list of fuses encountered on the path from the source to this node
+ * @param previous_node    the previous node mRID
+ * @param errors           any errors encountered
  */
 case class ScMessage
 (
