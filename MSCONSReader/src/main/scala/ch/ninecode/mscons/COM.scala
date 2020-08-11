@@ -23,7 +23,7 @@ object COM extends FieldExtractor[COM]
     private lazy val c076 =
         subfields (
             c076_3148 ~ c076_3155 ^^
-                { case _3148 ~ _3155  => Communication_Contact (_3148, _3155) }
+                { case _3148 ~ _3155 => Communication_Contact (_3148, _3155) }
         )
 
     lazy val com_fields: Parser[COM] =

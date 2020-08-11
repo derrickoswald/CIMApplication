@@ -6,7 +6,7 @@ import org.apache.spark.sql.SparkSession
 /**
  * Postprocessor base class.
  *
- * @param spark the Spark session
+ * @param spark   the Spark session
  * @param options simulation options
  */
 abstract class SimulationPostProcessor (spark: SparkSession, options: SimulationOptions)
@@ -28,6 +28,7 @@ abstract class SimulationPostProcessorParser[T <: SimulationPostProcessor]
 {
     /**
      * The class name of the postprocessor, as found in the JSON file.
+     *
      * @return A unique class of processor.
      */
     def cls: String

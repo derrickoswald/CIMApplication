@@ -20,9 +20,9 @@ case class IngestFunction (options: IngestOptions) extends CIMWebFunction
 {
     jars = Array (
         jarForObject (this),
-        jarForObject (options),                           // Ingest.jar
-        jarForObject (Cluster.builder),                   // spark-cassandra-connector.jar
-        jarForObject (Json.createObjectBuilder))          // javaee-api <JSON implementation>.jar
+        jarForObject (options), // Ingest.jar
+        jarForObject (Cluster.builder), // spark-cassandra-connector.jar
+        jarForObject (Json.createObjectBuilder)) // javaee-api <JSON implementation>.jar
 
     override def getReturnType: Return = Return.JSON
 
@@ -52,7 +52,7 @@ case class IngestFunction (options: IngestOptions) extends CIMWebFunction
         result.add ("mridcol", _options.mridcol)
         result.add ("timezone", _options.timezone)
         result.add ("mintime", _options.mintime)
-        result.add ("maxtime",_options.maxtime)
+        result.add ("maxtime", _options.maxtime)
         result.add ("format", _options.format.toString)
         val files = Json.createArrayBuilder
         for (f <- _options.datafiles)
@@ -60,8 +60,8 @@ case class IngestFunction (options: IngestOptions) extends CIMWebFunction
         result.add ("datafiles", files.build)
         result.add ("keyspace", _options.keyspace)
         result.add ("replication", _options.replication)
-        result.add("aws_s3a_access_key", _options.aws_s3a_access_key)
-        result.add("aws_s3a_secret_key", _options.aws_s3a_secret_key)
+        result.add ("aws_s3a_access_key", _options.aws_s3a_access_key)
+        result.add ("aws_s3a_secret_key", _options.aws_s3a_secret_key)
         RESTfulJSONResult (OK, "ingest successful", result.build).getJSON
     }
 

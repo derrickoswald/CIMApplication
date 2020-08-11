@@ -26,13 +26,20 @@ import ch.ninecode.cim.connector.CIMResourceAdapterMetaData
 @Path ("/pong")
 class Pong extends RESTful
 {
+
     import Pong._
 
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
     def pong (@DefaultValue ("false") @MatrixParam ("debug") debug: String): String =
     {
-        val verbose = try { debug.toBoolean } catch { case _: Throwable => false }
+        val verbose = try
+        {
+            debug.toBoolean
+        } catch
+        {
+            case _: Throwable => false
+        }
         _Logger.info ("pong (debug=%s)".format (verbose))
 
         val result = new RESTfulJSONResult (RESTfulJSONResult.OK, new util.Date ().toString)
@@ -54,7 +61,7 @@ class Pong extends RESTful
             if (!classLoaders.contains (Thread.currentThread.getContextClassLoader))
                 classLoaders.add (Thread.currentThread.getContextClassLoader)
             try
-                throw new Exception
+            throw new Exception
             catch
             {
                 case exception: Exception ⇒
@@ -84,7 +91,7 @@ class Pong extends RESTful
             {
                 // add the Resource Adapter metadata
                 val metadata = Json.createObjectBuilder
-                val meta: CIMResourceAdapterMetaData = factory.getMetaData.asInstanceOf[CIMResourceAdapterMetaData]
+                val meta: CIMResourceAdapterMetaData = factory.getMetaData.asInstanceOf [CIMResourceAdapterMetaData]
                 if (null != meta)
                 {
                     metadata.add ("name", meta.getAdapterName)
@@ -128,14 +135,14 @@ class Pong extends RESTful
                 ret.add ("default_connection_spec", default_connection_spec)
             }
 
-            val connection = getConnection (result)  // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
+            val connection = getConnection (result) // ToDo: solve CDI (Contexts and Dependency Injection) problem and add debug output
             if (null != connection)
             {
                 if (verbose)
                 {
                     // add the Connection metadata
                     val metadata = Json.createObjectBuilder
-                    val meta: CIMConnectionMetaData = connection.getMetaData.asInstanceOf[CIMConnectionMetaData]
+                    val meta: CIMConnectionMetaData = connection.getMetaData.asInstanceOf [CIMConnectionMetaData]
                     if (null != meta)
                     {
                         metadata.add ("product", meta.getEISProductName)

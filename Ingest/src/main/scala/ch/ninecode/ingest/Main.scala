@@ -94,12 +94,12 @@ object Main
 
                         if (options.aws_s3a_access_key.trim.nonEmpty && options.aws_s3a_secret_key.trim.nonEmpty)
                         {
-                            System.setProperty("com.amazonaws.services.s3.enableV4", "true")
-                            session.sparkContext.hadoopConfiguration.set("com.amazonaws.services.s3.enableV4", "true")
-                            session.sparkContext.hadoopConfiguration.set("fs.s3a.access.key", options.aws_s3a_access_key)
-                            session.sparkContext.hadoopConfiguration.set("fs.s3a.secret.key", options.aws_s3a_secret_key)
-                            session.sparkContext.hadoopConfiguration.set("fs.s3a.endpoint","s3.eu-central-1.amazonaws.com")
-                            session.sparkContext.hadoopConfiguration.set("fs.s3a.impl","org.apache.hadoop.fs.s3a.S3AFileSystem")
+                            System.setProperty ("com.amazonaws.services.s3.enableV4", "true")
+                            session.sparkContext.hadoopConfiguration.set ("com.amazonaws.services.s3.enableV4", "true")
+                            session.sparkContext.hadoopConfiguration.set ("fs.s3a.access.key", options.aws_s3a_access_key)
+                            session.sparkContext.hadoopConfiguration.set ("fs.s3a.secret.key", options.aws_s3a_secret_key)
+                            session.sparkContext.hadoopConfiguration.set ("fs.s3a.endpoint", "s3.eu-central-1.amazonaws.com")
+                            session.sparkContext.hadoopConfiguration.set ("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
                         }
 
                         val version = session.version

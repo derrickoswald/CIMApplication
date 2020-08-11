@@ -31,8 +31,8 @@ case class MaxPowerFeedingNodeEEA
 {
     def problem: Boolean =
         reason.indexOf ("invalid element") != -1 ||
-        reason.indexOf ("regulator edge") != -1 ||
-        reason.indexOf ("subtransmission edge") != -1
+            reason.indexOf ("regulator edge") != -1 ||
+            reason.indexOf ("subtransmission edge") != -1
 
     override def toString: String = s"""$id_seq@${voltage}V $mrid from $source_obj maximum: $max_power_feeding $reason $details"""
 }

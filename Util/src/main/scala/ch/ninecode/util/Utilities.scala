@@ -7,7 +7,8 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.zip.ZipInputStream
 
-trait Using {
+trait Using
+{
     def using[T <: AutoCloseable, R] (resource: T)(block: T => R): R =
     {
         try
@@ -21,7 +22,9 @@ trait Using {
     }
 }
 
-trait Unzip {
+trait Unzip
+{
+
     /**
      * This utility extracts files and directories of a standard zip file to
      * a destination directory.
@@ -56,9 +59,9 @@ trait Unzip {
                         val path = directory + entry.getName
                         if (!entry.isDirectory)
                         // if the entry is a file, extract it
-                            extractFile (zip, path)
-                        else
-                        // if the entry is a directory, make the directory
+                        extractFile (zip, path)
+                            else
+                            // if the entry is a directory, make the directory
                             new File (path).mkdir
                         zip.closeEntry ()
                         entry = zip.getNextEntry
@@ -90,4 +93,5 @@ trait Unzip {
             }
         }
     }
+
 }

@@ -108,7 +108,8 @@ class EDIFACTSuite extends FunSuite
         assert (scanner.una.segment_terminator == '\'')
         val seg = scanner.first
         assertResult ("XY'Z", "segment incorrect")(seg)
-        assert (!scanner.atEnd)    }
+        assert (!scanner.atEnd)
+    }
 
     test ("ParseMultipleSegments")
     {
@@ -194,7 +195,7 @@ class EDIFACTSuite extends FunSuite
         segments.apply (scanner) match
         {
             case message.Success (result: List[Segment], _) =>
-                assertResult ("UNB", "name incorrect") (result.head.name)
+                assertResult ("UNB", "name incorrect")(result.head.name)
             case message.Failure (msg, _) =>
                 fail (msg)
             case message.Error (msg, _) =>

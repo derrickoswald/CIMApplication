@@ -75,7 +75,7 @@ class IngestSuiteIT
             s"${FILE_DEPOT}${LPEX_FILE1}",
             s"${FILE_DEPOT}${LPEX_FILE2}"))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect ()
 
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS12345' and type='power'", 96L, "HAS12345")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='HAS12345' and type='power' and time='2019-03-02 23:15:00.000+0000'", 12075.0, 3750.0, "W")
@@ -106,7 +106,7 @@ class IngestSuiteIT
             s"${FILE_DEPOT}${DAYLIGHT_START}",
             s"${FILE_DEPOT}${DAYLIGHT_END}"))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect ()
 
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time>'2018-10-28 23:45:00.000+0000'", 188L, "daylight savings start")
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='HAS42' and type='energy' and time<'2018-10-28 23:45:00.000+0000'", 196L, "daylight savings end")
@@ -138,7 +138,7 @@ class IngestSuiteIT
             "--mapping", MAPPING_FILE,
             "--format", "MSCONS"), FILES))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect ()
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='USR0001' and type='energy'", 96L, "merged records")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time = '2019-12-13 23:15:00.000+0000'", 36300, 10800, "Wh")
         session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")
@@ -160,7 +160,7 @@ class IngestSuiteIT
             "--format", "MSCONS",
             FILE))
 
-        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect ()
         checkCount (session, s"select count(*) as count from $KEYSPACE.measured_value where mrid='USR0001' and type='energy'", 96L, "merged records")
         checkValue (session, s"select * from $KEYSPACE.measured_value where mrid='USR0001' and type='energy' and time = '2019-12-13 23:15:00.000+0000'", 36300, 10800, "Wh")
         session.execute (s"delete from $KEYSPACE.measured_value where mrid='USR0001' and type = 'energy'")

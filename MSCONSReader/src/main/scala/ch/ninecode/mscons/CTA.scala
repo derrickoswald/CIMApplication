@@ -28,7 +28,7 @@ object CTA extends FieldExtractor[CTA]
     private lazy val c056 =
         subfields (
             c056_3413 ~ c056_3412 ^^
-                { case c056_3413 ~ c056_3412  => Contact_Details (c056_3413, c056_3412) }
+                { case c056_3413 ~ c056_3412 => Contact_Details (c056_3413, c056_3412) }
         )
 
     lazy val cta_fields: Parser[CTA] =

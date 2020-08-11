@@ -69,9 +69,9 @@ trait TestUtil extends fixture.FunSuite with SQLite with Unzip
     }
 
     def readCIMElements (session: SparkSession,
-                         filename: String,
-                         options: Map[String, String] = null,
-                         files: Array[String] = null)
+        filename: String,
+        options: Map[String, String] = null,
+        files: Array[String] = null)
     {
         val start = System.nanoTime
         var thisFiles = files

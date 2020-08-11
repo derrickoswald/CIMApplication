@@ -71,7 +71,7 @@ abstract class FieldExtractor[T] extends Parsers
         Parser
         {
             in =>
-                def parse (p: Parser[Q], in: FieldListParser): ParseResult[Q] = p(in)
+                def parse (p: Parser[Q], in: FieldListParser): ParseResult[Q] = p (in)
 
                 if (!in.atEnd)
                     parse (phrase, FieldListParser (in.first.submembers)) match
@@ -106,7 +106,7 @@ abstract class FieldExtractor[T] extends Parsers
         Parser
         {
             in =>
-                def parse (p: Parser[Q], in: Input): ParseResult[Q] = p(in)
+                def parse (p: Parser[Q], in: Input): ParseResult[Q] = p (in)
 
                 parse (phrase, in) match
                 {
@@ -147,12 +147,12 @@ abstract class FieldExtractor[T] extends Parsers
             case Success (r, _) => r
             case Failure (msg, _) =>
                 log.error (s"${segment.name} segment parse failure: $msg")
-                val constructor = classOf[Class[T]].getConstructors()(0)
-                constructor.newInstance().asInstanceOf[T]
+                val constructor = classOf [Class[T]].getConstructors ()(0)
+                constructor.newInstance ().asInstanceOf [T]
             case Error (msg, _) =>
                 log.error (s"${segment.name} segment parse error: $msg")
-                val constructor = classOf[Class[T]].getConstructors()(0)
-                constructor.newInstance().asInstanceOf[T]
+                val constructor = classOf [Class[T]].getConstructors ()(0)
+                constructor.newInstance ().asInstanceOf [T]
         }
     }
 }

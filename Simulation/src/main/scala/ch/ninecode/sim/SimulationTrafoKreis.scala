@@ -68,11 +68,11 @@ case class SimulationTrafoKreis
     def newSwitch (id: String): Switch =
     {
         val basic = BasicElement (null, id)
-        val obj = IdentifiedObject (basic, null, null, id, null, List(), List())
-        val psr = PowerSystemResource (obj, null, List(), List(), List(), null, List(), List(), List(), List(), null, List())
-        val equipment = Equipment (psr, aggregate = false, normallyInService = false, List(), List(), null, List(), List(), List(), List(), List(), List(), List(), List(), List())
-        val conducting = ConductingEquipment (equipment, null, null, null, List(), List(), null, List())
-        Switch (conducting, normalOpen = false, open = false, 0, retained = false, 0, null, null, List(), null, null, List(), List())
+        val obj = IdentifiedObject (basic, null, null, id, null, List (), List ())
+        val psr = PowerSystemResource (obj, null, List (), List (), List (), null, List (), List (), List (), List (), null, List ())
+        val equipment = Equipment (psr, aggregate = false, normallyInService = false, List (), List (), null, List (), List (), List (), List (), List (), List (), List (), List (), List ())
+        val conducting = ConductingEquipment (equipment, null, null, null, List (), List (), null, List ())
+        Switch (conducting, normalOpen = false, open = false, 0, retained = false, 0, null, null, List (), null, null, List (), List ())
     }
 
     def alterEdgeNode (edge: GLMEdge, original_node: String, new_node: String): GLMEdge =
@@ -144,7 +144,7 @@ case class SimulationTrafoKreis
      * Determine if an edge is incoming or not.
      *
      * @param start the starting node
-     * @param edge the edge to check
+     * @param edge  the edge to check
      * @return <code>Some(true)</code> if incoming, <code>Some(false)</code> if outgoing, <code>None</code> if we can't tell.
      */
     def minitrace_incoming (start: String, edge: GLMEdge): Option[Boolean] =
@@ -165,7 +165,7 @@ case class SimulationTrafoKreis
             {
                 val votes = connected.map (e ⇒ minitrace_incoming (other, e))
                 val initial: Option[Boolean] = None
-                votes.foldLeft(initial)(vote (other))
+                votes.foldLeft (initial)(vote (other))
             }
             else
                 None
@@ -232,7 +232,7 @@ case class SimulationTrafoKreis
             {
                 if (edge_node_map.contains (edge.id))
                 {
-                    val original_node = edge_node_map(edge.id)
+                    val original_node = edge_node_map (edge.id)
                     alterEdgeNode (edge, original_node, original_node + "_pseudo")
                 }
                 else
@@ -242,8 +242,8 @@ case class SimulationTrafoKreis
         val modified_transformer = // the transformer is not part of the edge list and needs to be handled specially
             if (edge_node_map.contains (transformer_edge.id))
             {
-                val original_node = edge_node_map(transformer_edge.id)
-                alterEdgeNode (transformer_edge, original_node, original_node + "_pseudo").asInstanceOf[TransformerEdge]
+                val original_node = edge_node_map (transformer_edge.id)
+                alterEdgeNode (transformer_edge, original_node, original_node + "_pseudo").asInstanceOf [TransformerEdge]
             }
             else
                 transformer_edge
@@ -256,8 +256,8 @@ case class SimulationTrafoKreis
                     x._1.parent + "_pseudo",
                     x._1.parent,
                     SwitchEdge (x._1.parent + "_pseudo", x._1.parent, Seq (newSwitch (x._1.parent + "_switch"))),
-                    Seq[(Double, Double)](),
-                    Seq[(Double, Double)]()
+                    Seq [(Double, Double)](),
+                    Seq [(Double, Double)]()
                 )
             }
         )
@@ -282,14 +282,14 @@ case class SimulationTrafoKreis
     def nodes: Iterable[SimulationNode] =
     {
         if (!hacked && (null != directions)) // when performing the directionality simulation, the directions are not set yet
-        {
-            val (_n, _e, _r, _t) = kludge
-            raw_nodes = _n
-            raw_edges = _e
-            recorders = _r
-            transformer_edge = _t
-            hacked = true
-        }
+            {
+                val (_n, _e, _r, _t) = kludge
+                raw_nodes = _n
+                raw_edges = _e
+                recorders = _r
+                transformer_edge = _t
+                hacked = true
+            }
         (raw_nodes ++ Seq (SimulationNode (transformer_edge.cn1, transformer_edge.transformer.v0, transformer_edge.transformer.transformer_name, null, null))).map (
             raw ⇒
             {
@@ -316,14 +316,14 @@ case class SimulationTrafoKreis
     def edges: Iterable[SimulationEdge] =
     {
         if (!hacked && (null != directions)) // when performing the directionality simulation, the directions are not set yet
-        {
-            val (_n, _e, _r, _t) = kludge
-            raw_nodes = _n
-            raw_edges = _e
-            recorders = _r
-            transformer_edge = _t
-            hacked = true
-        }
+            {
+                val (_n, _e, _r, _t) = kludge
+                raw_nodes = _n
+                raw_edges = _e
+                recorders = _r
+                transformer_edge = _t
+                hacked = true
+            }
         raw_edges.map (
             raw ⇒
             {

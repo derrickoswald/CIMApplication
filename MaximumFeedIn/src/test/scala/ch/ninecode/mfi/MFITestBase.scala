@@ -58,6 +58,6 @@ class MFITestBase extends TestUtil
         val maximum = result.getDouble ("Maximum")
         near (maximum, max, 1000.0, s"maximum for $house is $maximum instead of $max")
         assert (result.getString ("Reason") == reason, s"reason for $house")
-        assert (result.getString ("Details").startsWith(details), s"details for $house")
+        assert (result.getString ("Details").startsWith (details), s"details for $house")
     }
 }

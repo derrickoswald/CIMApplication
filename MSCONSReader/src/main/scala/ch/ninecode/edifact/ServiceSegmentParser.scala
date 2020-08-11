@@ -12,12 +12,13 @@ object ServiceSegmentParser extends Parsers
     type Elem = Segment
     override type Input = Reader[Segment]
 
-    def unb: Parser[UNB] = acceptIf (_.name =="UNB")(seg => s"unexpected ${seg.name}") ^^ (x => UNB (x.fields))
+    def unb: Parser[UNB] = acceptIf (_.name == "UNB")(seg => s"unexpected ${seg.name}") ^^ (x => UNB (x.fields))
 
-    def unh: Parser[UNH] = acceptIf (_.name =="UNH")(seg => s"unexpected ${seg.name}") ^^ (x => UNH (x.fields))
+    def unh: Parser[UNH] = acceptIf (_.name == "UNH")(seg => s"unexpected ${seg.name}") ^^ (x => UNH (x.fields))
 
     val header = unb ~ unh
-    def parse[T](p: Parser[T], in: SegmentListParser): ParseResult[T] = p(in)
+
+    def parse[T] (p: Parser[T], in: SegmentListParser): ParseResult[T] = p (in)
 
     def read (in: List[Segment]): ParseResult[ch.ninecode.edifact.ServiceSegments] =
     {

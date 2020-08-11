@@ -3,26 +3,26 @@ package ch.ninecode.mfi
 import scopt.OptionParser
 
 class EinspeiseleistungOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
-    extends OptionParser[ EinspeiseleistungOptions](APPLICATION_NAME)
+    extends OptionParser[EinspeiseleistungOptions](APPLICATION_NAME)
 {
     head (APPLICATION_NAME, APPLICATION_VERSION)
 
-    val default = new  EinspeiseleistungOptions
+    val default = new EinspeiseleistungOptions
     var unittest = false
     var helpout = false
     var versionout = false
 
     implicit val LogLevelsRead: scopt.Read[LogLevels.Value] = scopt.Read.reads (LogLevels.withName)
 
-    implicit val mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
+    implicit val mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map[String, String] ()
+            var ret = Map [String, String]()
             val ss = s.split (",")
             for (p <- ss)
             {
                 val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1)))
+                ret = ret + ((kv (0), kv (1)))
             }
             ret
         }
@@ -40,14 +40,17 @@ class EinspeiseleistungOptionsParser (APPLICATION_NAME: String, APPLICATION_VERS
 
     opt [Unit]("unittest").
         hidden ().
-        action ((_, c) => { unittest = true; c.copy (unittest = true) }).
+        action ((_, c) =>
+        {
+            unittest = true; c.copy (unittest = true)
+        }).
         text (s"unit testing - don't call sys.exit() [${default.unittest}]")
 
     opt [String]("master").valueName ("MASTER_URL").
         action ((x, c) => c.copy (master = x)).
         text ("spark://host:port, mesos://host:port, yarn, or local[*]")
 
-    opt[Map[String, String]]("sparkopts").valueName ("k1=v1,k2=v2").
+    opt [Map[String, String]]("sparkopts").valueName ("k1=v1,k2=v2").
         action ((x, c) => c.copy (spark_options = x)).
         text (s"Spark options [${default.spark_options.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
 
@@ -55,11 +58,11 @@ class EinspeiseleistungOptionsParser (APPLICATION_NAME: String, APPLICATION_VERS
         action ((x, c) => c.copy (storage = x)).
         text (s"storage level for RDD serialization [${default.storage}]")
 
-    opt[Map[String, String]]("cimopts").valueName ("k1=v1,k2=v2").
+    opt [Map[String, String]]("cimopts").valueName ("k1=v1,k2=v2").
         action ((x, c) => c.copy (cim_reader_options = x)).
         text (s"CIMReader options [${default.cim_reader_options.map (x ⇒ x._1 + "=" + x._2).mkString (",")}]")
 
-    opt[Unit]("deduplicate").
+    opt [Unit]("deduplicate").
         action ((_, c) => c.copy (dedup = true)).
         text (s"de-duplicate input (striped) files [${default.dedup}]")
 
@@ -157,21 +160,31 @@ class EinspeiseleistungOptionsParser (APPLICATION_NAME: String, APPLICATION_VERS
 
     help ("help").
         hidden ().
-        validate (Unit => { helpout = true; Right (Unit) })
+        validate (Unit =>
+        {
+            helpout = true; Right (Unit)
+        })
 
     version ("version").
-        validate (Unit => { versionout = true; Right (Unit) }).
-            text ("Scala: %s, Spark: %s, %s: %s".format (
-                APPLICATION_VERSION.split ("-")(0),
-                APPLICATION_VERSION.split ("-")(1),
-                APPLICATION_NAME,
-                APPLICATION_VERSION.split ("-")(2)
-            )
+        validate (Unit =>
+        {
+            versionout = true; Right (Unit)
+        }).
+        text ("Scala: %s, Spark: %s, %s: %s".format (
+            APPLICATION_VERSION.split ("-")(0),
+            APPLICATION_VERSION.split ("-")(1),
+            APPLICATION_NAME,
+            APPLICATION_VERSION.split ("-")(2)
+        )
         )
 
-    checkConfig (o => { o.valid = !(helpout || versionout); Right (Unit) })
+    checkConfig (o =>
+    {
+        o.valid = !(helpout || versionout); Right (Unit)
+    })
 
-    note ("""
+    note (
+        """
 Calculate maximum feed-in power without reinforcement or exceeding voltage, current or power constraints.
 """)
 

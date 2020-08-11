@@ -12,11 +12,11 @@ import ch.ninecode.gl.TransformerIsland
  *
  * Includes the information necessary to perform a simulation (of a transformer service area - a trafokreis).
  *
- * @param island      the transformer island for the low voltage side of the transformer
- * @param nodes       topological nodes for the simulation
- * @param edges       topological edges for the simulation
- * @param start_time  the simulation starting time
- * @param directory   the directory to write the .glm, players and recorders
+ * @param island     the transformer island for the low voltage side of the transformer
+ * @param nodes      topological nodes for the simulation
+ * @param edges      topological edges for the simulation
+ * @param start_time the simulation starting time
+ * @param directory  the directory to write the .glm, players and recorders
  */
 case class SimulationTransformerServiceArea
 (
@@ -38,12 +38,12 @@ case class SimulationTransformerServiceArea
     // generate experiments as 5 seconds short circuit (100Ω) at each node
     lazy val experiments: Array[ScExperiment] = nodes.filter (keep).zipWithIndex // (node, index)
         .map (
-        x =>
-        {
-            val node = x._1.asInstanceOf [SimulationNode]
-            ScExperiment (name, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (100.0))
-        }
-    ).toArray
+            x =>
+            {
+                val node = x._1.asInstanceOf [SimulationNode]
+                ScExperiment (name, node.id, node.equipment, start_time, x._2, 5, x._1.nominal_voltage, Complex (100.0))
+            }
+        ).toArray
 
     /**
      * Calendar duplication utility function.

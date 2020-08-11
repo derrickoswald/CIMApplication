@@ -70,19 +70,19 @@ import ch.ninecode.model.TopologicalNode
  *  - all input JSON files are read and parsed into Jobs
  *  - Jobs with the same RDF file are gathered into Batches
  *  - For each batch:
- *   -    the RDF file is read into Spark RDDs
- *   -    topological processing adds topological nodes and islands
- *   -    any 'extra' queries (for data to be attached to GeoJSON objects) are performed against Spark RDDs as DataFrames
- *   -    a list of transformer sets is created
- *   -    jobs are converted into individual transformer area tasks, possibly limited by the transformers specified in the job, by:
- *    -        performing the player queries to determine player files that need to be generated
- *    -        performing the recorder queries to determine the recorder files that will be created
- *    -        identifying the nodes and edges that belong to each transformer area (topological island)
- *   -    for each task (spread out over the cluster of executors) do the simulation as the following steps:
- *    -        generate the GridLAB-D glm file
- *    -        query Cassandra for each player file
- *    -        perform the gridlabd load-flow analysis
- *    -        insert the contents of each recorder file into Cassandra
+ *   - the RDF file is read into Spark RDDs
+ *   - topological processing adds topological nodes and islands
+ *   - any 'extra' queries (for data to be attached to GeoJSON objects) are performed against Spark RDDs as DataFrames
+ *   - a list of transformer sets is created
+ *   - jobs are converted into individual transformer area tasks, possibly limited by the transformers specified in the job, by:
+ *    - performing the player queries to determine player files that need to be generated
+ *    - performing the recorder queries to determine the recorder files that will be created
+ *    - identifying the nodes and edges that belong to each transformer area (topological island)
+ *   - for each task (spread out over the cluster of executors) do the simulation as the following steps:
+ *    - generate the GridLAB-D glm file
+ *    - query Cassandra for each player file
+ *    - perform the gridlabd load-flow analysis
+ *    - insert the contents of each recorder file into Cassandra
  **/
 case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
@@ -402,7 +402,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
         }
     }
 
-    def columns (primaryKey: String) (phases: Int): Seq[String] =
+    def columns (primaryKey: String)(phases: Int): Seq[String] =
     {
         if (phases == 3)
             Seq (primaryKey, "type", "time", "period", "units", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
@@ -441,24 +441,26 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
     def queryValues (job: SimulationJob, simulations: RDD[SimulationTrafoKreis]): RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] =
     {
         val phases = if (options.three_phase && !options.fake_three_phase) 3 else 1
-        def inTime (min: Long, max: Long) (row: Row): Boolean =
+
+        def inTime (min: Long, max: Long)(row: Row): Boolean =
         {
             val time = row.getTimestamp (2).getTime
             time >= min && time <= max
         }
-        val inInterval = inTime (job.start_time.getTimeInMillis - job.buffer, job.end_time.getTimeInMillis + job.buffer)_
+
+        val inInterval = inTime (job.start_time.getTimeInMillis - job.buffer, job.end_time.getTimeInMillis + job.buffer) _
         val measured_df = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "measured_value", "keyspace" -> job.input_keyspace))
             .load
-            .selectExpr (columns ("mrid") (phases): _*)
+            .selectExpr (columns ("mrid")(phases): _*)
         val synthesised_df = spark
             .read
             .format ("org.apache.spark.sql.cassandra")
             .options (Map ("table" -> "synthesized_value", "keyspace" -> job.input_keyspace))
             .load
-            .selectExpr (columns ("synthesis") (phases): _*)
+            .selectExpr (columns ("synthesis")(phases): _*)
             .withColumnRenamed ("synthesis", "mrid")
         val function = if (phases == 3) toThreePhase _ else toOnePhase _
         val raw_measured: RDD[SimulationPlayerData] =

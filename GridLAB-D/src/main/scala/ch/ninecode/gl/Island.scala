@@ -36,18 +36,18 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         val cls = clazz.substring (clazz.lastIndexOf (".") + 1)
         cls match
         {
-            case "Switch" ⇒ !element.asInstanceOf [Switch].normalOpen
-            case "Cut" ⇒ !element.asInstanceOf [Cut].Switch.normalOpen
-            case "Disconnector" ⇒ !element.asInstanceOf [Disconnector].Switch.normalOpen
-            case "Fuse" ⇒ !element.asInstanceOf [Fuse].Switch.normalOpen
-            case "GroundDisconnector" ⇒ !element.asInstanceOf [GroundDisconnector].Switch.normalOpen
-            case "Jumper" ⇒ !element.asInstanceOf [Jumper].Switch.normalOpen
-            case "MktSwitch" ⇒ !element.asInstanceOf [MktSwitch].Switch.normalOpen
-            case "ProtectedSwitch" ⇒ !element.asInstanceOf [ProtectedSwitch].Switch.normalOpen
-            case "Breaker" ⇒ !element.asInstanceOf [Breaker].ProtectedSwitch.Switch.normalOpen
-            case "LoadBreakSwitch" ⇒ !element.asInstanceOf [LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
-            case "Recloser" ⇒ !element.asInstanceOf [Recloser].ProtectedSwitch.Switch.normalOpen
-            case "Sectionaliser" ⇒ !element.asInstanceOf [Sectionaliser].Switch.normalOpen
+            case "Switch" ⇒ !element.asInstanceOf[Switch].normalOpen
+            case "Cut" ⇒ !element.asInstanceOf[Cut].Switch.normalOpen
+            case "Disconnector" ⇒ !element.asInstanceOf[Disconnector].Switch.normalOpen
+            case "Fuse" ⇒ !element.asInstanceOf[Fuse].Switch.normalOpen
+            case "GroundDisconnector" ⇒ !element.asInstanceOf[GroundDisconnector].Switch.normalOpen
+            case "Jumper" ⇒ !element.asInstanceOf[Jumper].Switch.normalOpen
+            case "MktSwitch" ⇒ !element.asInstanceOf[MktSwitch].Switch.normalOpen
+            case "ProtectedSwitch" ⇒ !element.asInstanceOf[ProtectedSwitch].Switch.normalOpen
+            case "Breaker" ⇒ !element.asInstanceOf[Breaker].ProtectedSwitch.Switch.normalOpen
+            case "LoadBreakSwitch" ⇒ !element.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch.normalOpen
+            case "Recloser" ⇒ !element.asInstanceOf[Recloser].ProtectedSwitch.Switch.normalOpen
+            case "Sectionaliser" ⇒ !element.asInstanceOf[Sectionaliser].Switch.normalOpen
             case "Conductor" ⇒ true
             case "ACLineSegment" ⇒ true
             case "PowerTransformer" ⇒ v1 <= 1000.0 && (v2 <= 1000.0 && v2 > 230.0) // ToDo: don't hard code these voltage values
@@ -72,8 +72,8 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         {
             case cable: ACLineSegment ⇒
                 if (cable.r < cable_impedance_limit) // ToDo: use PSRType_Bogus
-                    "invalid element (%s r=%s)".format (cable.id, cable.r)
-                else
+                "invalid element (%s r=%s)".format (cable.id, cable.r)
+                    else
                     null
             case _: PowerTransformer ⇒
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
@@ -112,40 +112,40 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
             if (!terminals.map (_._2).contains (230.0))
             // make a pre-edge for each pair of terminals
-                ret = terminals.length match
-                {
-                    case 1 ⇒
-                        ret :+
-                            PreEdge (
-                                terminals (0)._1.id,
-                                terminals (0)._1.TopologicalNode,
-                                terminals (0)._2,
-                                "",
-                                "",
-                                terminals (0)._2,
-                                terminals (0)._1.ConductingEquipment,
-                                connected (element, terminals (0)._2, 0.0),
-                                null,
-                                ratedCurrent,
-                                element)
-                    case _ ⇒
-                        for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                        {
-                            ret = ret :+ PreEdge (
-                                terminals (0)._1.id,
-                                terminals (0)._1.TopologicalNode,
-                                terminals (0)._2,
-                                terminals (i)._1.id,
-                                terminals (i)._1.TopologicalNode,
-                                terminals (i)._2,
-                                terminals (0)._1.ConductingEquipment,
-                                connected (element, terminals (0)._2, terminals (i)._2),
-                                hasIssues (element, terminals.length, terminals (0)._2, terminals (i)._2),
-                                ratedCurrent,
-                                element)
-                        }
-                        ret
-                }
+            ret = terminals.length match
+            {
+                case 1 ⇒
+                    ret :+
+                        PreEdge (
+                            terminals (0)._1.id,
+                            terminals (0)._1.TopologicalNode,
+                            terminals (0)._2,
+                            "",
+                            "",
+                            terminals (0)._2,
+                            terminals (0)._1.ConductingEquipment,
+                            connected (element, terminals (0)._2, 0.0),
+                            null,
+                            ratedCurrent,
+                            element)
+                case _ ⇒
+                    for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                    {
+                        ret = ret :+ PreEdge (
+                            terminals (0)._1.id,
+                            terminals (0)._1.TopologicalNode,
+                            terminals (0)._2,
+                            terminals (i)._1.id,
+                            terminals (i)._1.TopologicalNode,
+                            terminals (i)._2,
+                            terminals (0)._1.ConductingEquipment,
+                            connected (element, terminals (0)._2, terminals (i)._2),
+                            hasIssues (element, terminals.length, terminals (0)._2, terminals (i)._2),
+                            ratedCurrent,
+                            element)
+                    }
+                    ret
+            }
         }
         //else // shouldn't happen, terminals always reference ConductingEquipment, right?
         // throw new Exception ("element " + e.id + " is not derived from ConductingEquipment")
@@ -302,7 +302,8 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         xnodes.persist (storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined)
         {
-            xedges.checkpoint (); xnodes.checkpoint ()
+            xedges.checkpoint ();
+            xnodes.checkpoint ()
         }
 
         // construct the initial graph from the edges and nodes
@@ -345,13 +346,13 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         // get equipment attached to each terminal
         val terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)] = transformers_terminals.groupBy (_._2.ConductingEquipment).join (get [ConductingEquipment].keyBy (_.id)).values.cache
 
-        val edges: RDD[(identifier, GLMEdge)] = getEdges(edge_maker, terminals_equipment)
-        val nodes: RDD[(identifier, GLMNode)] = getNodes(node_maker, terminals_equipment)
+        val edges: RDD[(identifier, GLMEdge)] = getEdges (edge_maker, terminals_equipment)
+        val nodes: RDD[(identifier, GLMNode)] = getNodes (node_maker, terminals_equipment)
         (nodes, edges)
     }
 
-    def getNodes(node_maker: RDD[NodeParts] ⇒ RDD[(identifier, GLMNode)],
-                 terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)]): RDD[(identifier, GLMNode)] =
+    def getNodes (node_maker: RDD[NodeParts] ⇒ RDD[(identifier, GLMNode)],
+        terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)]): RDD[(identifier, GLMNode)] =
     {
         // where two or more pieces of equipment connect to the same topological node, we would like the equipment that only has one terminal, e.g. EnergyConsumer, rather than the ACLineSegment
         val one_terminal_equipment: RDD[(String, ((identifier, Terminal), ConductingEquipment))] = terminals_equipment.filter (1 == _._1.size).map (x ⇒ (x._1.head, x._2)).keyBy (_._1._2.TopologicalNode)
@@ -373,26 +374,27 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         val base_voltage: Array[(String, BaseVoltage)] = get [BaseVoltage].keyBy (_.id).collect
         val unknown_voltage = BaseVoltage (
             sup = IdentifiedObject (
-                sup=BasicElement (mRID="unknown"),
-                aliasName="fake voltage",
-                description="non-null voltage",
-                mRID="unknown",
-                name="unknown",
-                DiagramObjects=List(),
-                Names=List()),
-            nominalVoltage=0.0,
-            ConductingEquipment=List(),
-            TopologicalNode=List(),
-            TransformerEnds=List(),
-            VoltageLevel=List())
+                sup = BasicElement (mRID = "unknown"),
+                aliasName = "fake voltage",
+                description = "non-null voltage",
+                mRID = "unknown",
+                name = "unknown",
+                DiagramObjects = List (),
+                Names = List ()),
+            nominalVoltage = 0.0,
+            ConductingEquipment = List (),
+            TopologicalNode = List (),
+            TransformerEnds = List (),
+            VoltageLevel = List ())
         val n: RDD[(identifier, (Terminal, ConductingEquipment, BaseVoltage))] = transfomer_join.map (t =>
         {
             val ((identifier, (terminal, conductingEquipment)), trafo_end_option) = t
-            val voltage_string = trafo_end_option match {
-                case Some(end) ⇒ end.TransformerEnd.BaseVoltage
+            val voltage_string = trafo_end_option match
+            {
+                case Some (end) ⇒ end.TransformerEnd.BaseVoltage
                 case None ⇒ conductingEquipment.BaseVoltage
             }
-            val current_base_voltage = if (null == voltage_string) unknown_voltage else base_voltage.find(_._1 == voltage_string).map(_._2).getOrElse(unknown_voltage)
+            val current_base_voltage = if (null == voltage_string) unknown_voltage else base_voltage.find (_._1 == voltage_string).map (_._2).getOrElse (unknown_voltage)
             (identifier, (terminal, conductingEquipment, current_base_voltage))
         })
 
@@ -404,8 +406,8 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         nodes
     }
 
-    def getEdges(edge_maker: RDD[EdgeParts] ⇒ RDD[(identifier, GLMEdge)],
-                 terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)]): RDD[(identifier, GLMEdge)] =
+    def getEdges (edge_maker: RDD[EdgeParts] ⇒ RDD[(identifier, GLMEdge)],
+        terminals_equipment: RDD[(Iterable[(identifier, Terminal)], ConductingEquipment)]): RDD[(identifier, GLMEdge)] =
     {
         // get all equipment with two nodes in the transformer service area that separate different TopologicalNode (these are the edges)
         val ff: RDD[(Iterable[(identifier, Terminal)], Element)] = terminals_equipment.keyBy (_._2.id).join (get [Element]("Elements").keyBy (_.id)).values.map (x ⇒ (x._1._1, x._2)).cache

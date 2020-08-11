@@ -16,10 +16,10 @@ import org.slf4j.LoggerFactory
  * $ sed --in-place 's/enable_user_defined_functions: false/enable_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml \
  * $ sed --in-place 's/enable_scripted_user_defined_functions: false/enable_scripted_user_defined_functions: true/g' /etc/cassandra/cassandra.yaml
  *
- * @param session the Spark session
- * @param keyspace the target keyspace to create (if it does not exist)
+ * @param session     the Spark session
+ * @param keyspace    the target keyspace to create (if it does not exist)
  * @param replication the replication factor for the keyspace (if it does not exist)
- * @param verbose the flag to trigger logging at INFO level
+ * @param verbose     the flag to trigger logging at INFO level
  */
 case class SchemaMaker (session: SparkSession, keyspace: String = "cimapplication", replication: Int = 2, verbose: Boolean)
 {

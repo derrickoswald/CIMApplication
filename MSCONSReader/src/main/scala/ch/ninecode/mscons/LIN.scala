@@ -55,7 +55,7 @@ object LIN extends FieldExtractor[LIN]
     private lazy val c212 =
         subfields (
             c212_7140 ~ c212_7143 ~ c212_1131 ~ c212_3055 ^^
-                { case _7140 ~ _7143 ~ _1131 ~ _3055  => Item_Number_Identification (_7140, _7143, _1131, _3055) }
+                { case _7140 ~ _7143 ~ _1131 ~ _3055 => Item_Number_Identification (_7140, _7143, _1131, _3055) }
         )
 
     //    040    C829 SUB-LINE INFORMATION                       C    1
@@ -66,7 +66,7 @@ object LIN extends FieldExtractor[LIN]
     private lazy val c829 =
         subfields (
             c829_5495 ~ c829_1082 ^^
-                { case _5495 ~ _1082  => Sub_Line_Information (_5495, _1082) }
+                { case _5495 ~ _1082 => Sub_Line_Information (_5495, _1082) }
         )
 
     private lazy val _1222 = alphanumeric_? (2)

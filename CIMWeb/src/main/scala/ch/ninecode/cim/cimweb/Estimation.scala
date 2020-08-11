@@ -22,17 +22,30 @@ import ch.ninecode.sim.SimulationOptions
 @Path ("estimation")
 class Estimation extends RESTful
 {
+
     import Estimation._
 
     @POST
     @Produces (Array (MediaType.APPLICATION_JSON))
     def estimate (
-         @DefaultValue ("false") @MatrixParam ("verbose") _verbose: String,
-         @DefaultValue ("false") @MatrixParam ("keep") _keep: String,
-         data: Array[Byte]): String =
+        @DefaultValue ("false") @MatrixParam ("verbose") _verbose: String,
+        @DefaultValue ("false") @MatrixParam ("keep") _keep: String,
+        data: Array[Byte]): String =
     {
-        val verbose = try { _verbose.toBoolean } catch { case _: Throwable => false }
-        val keep = try { _keep.toBoolean } catch { case _: Throwable => false }
+        val verbose = try
+        {
+            _verbose.toBoolean
+        } catch
+        {
+            case _: Throwable => false
+        }
+        val keep = try
+        {
+            _keep.toBoolean
+        } catch
+        {
+            case _: Throwable => false
+        }
         val json = new String (data, "UTF-8")
         _Logger.info ("""estimation verbose=%s, keep=%s, json=%s""".format (verbose, keep, json))
         var ret = new RESTfulJSONResult
@@ -70,7 +83,7 @@ class Estimation extends RESTful
             }
             finally
                 try
-                    connection.close ()
+                connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>

@@ -67,11 +67,16 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
     def makeTrafokreis (start: Calendar, options: EinspeiseleistungOptions, subtransmission_trafos: Array[TransformerData])(arg: (String, (TransformerIsland, (Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA])))): Trafokreis =
     {
-        def notTheTransformer (island: TransformerIsland) (edge: GLMEdge): Boolean =
+        def notTheTransformer (island: TransformerIsland)(edge: GLMEdge): Boolean =
             island.transformers.forall (
                 tx =>
-                    edge match { case t: PreEdge => t.id != tx.transformer_name case _ => true }
+                    edge match
+                    {
+                        case t: PreEdge => t.id != tx.transformer_name
+                        case _ => true
+                    }
             )
+
         val (trafokreise, (transformers, (nodes, edges, mpfne))) = arg
         Trafokreis (start, trafokreise, transformers, nodes, edges.filter (notTheTransformer (transformers)), mpfne, options, subtransmission_trafos)
     }
@@ -146,11 +151,12 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             x =>
             {
                 for
-                {
+                    {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     feeder = lookup.getOrElse (x.element, null)
-                    threshold = if (null == feeder) max else if (feeder == e.feeder) max else neighbormax
+                    threshold = if (null == feeder) max else
+                        if (feeder == e.feeder) max else neighbormax
                     if overvoltage (x, threshold)
                 }
                     yield (e, x, limit, x.element + " > " + threshold + " Volts")
@@ -191,7 +197,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             x =>
             {
                 for
-                {
+                    {
                     e ← experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
                     if !options.ignore_other || lookup.getOrElse (x.element, List ()).contains (e.feeder)
@@ -302,7 +308,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             val errorMessage = if (null == error)
                 "no returned errors"
             else
-                error.errorMessages.mkString("\n")
+                error.errorMessages.mkString ("\n")
             trafo._2._2._2.map (e => MaxEinspeiseleistung (e.trafo, e.feeder, e.node, e.house, None, s"gridlabd failed \n $errorMessage", "no results")).toList
         }
     }
@@ -318,9 +324,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         else
         {
             log.error ("solve: %s seconds failed".format ((solved - b4_solve) / 1e9))
-            gridlabFailures.foreach(failure => {
-                log.error(s"${failure.trafoID} has failures: ")
-                failure.errorMessages.foreach(log.error)
+            gridlabFailures.foreach (failure =>
+            {
+                log.error (s"${failure.trafoID} has failures: ")
+                failure.errorMessages.foreach (log.error)
             })
         }
         val output = gridlabd.read_output_files (!options.three, trafos.collect)
@@ -340,7 +347,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
         // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
         // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-        val phi = - math.signum (options.cosphi) * math.acos (math.abs (options.cosphi))
+        val phi = -math.signum (options.cosphi) * math.acos (math.abs (options.cosphi))
         val unitvector = new Complex (math.cos (phi), math.sin (phi))
 
         def addrow (time: Calendar, power: Double): Unit =
@@ -515,7 +522,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         the_map.values
     }
 
-    def initializeTransformers(): (RDD[TransformerIsland], Array[TransformerData]) = {
+    def initializeTransformers (): (RDD[TransformerIsland], Array[TransformerData]) =
+    {
         // determine transformer list if any
         val trafos = if ("" != options.trafos)
         {
@@ -525,15 +533,16 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             file.close ()
             lines
         }
-        else if (-1 != options.simulation)
-        {
-            // do all transformers with EEA which are not yet processed
-            Database.fetchTransformersWithEEA (options.simulation, options.outputfile)
-        }
         else
-        {
-            null
-        }
+            if (-1 != options.simulation)
+            {
+                // do all transformers with EEA which are not yet processed
+                Database.fetchTransformersWithEEA (options.simulation, options.outputfile)
+            }
+            else
+            {
+                null
+            }
 
         if ((null != trafos) && (0 == trafos.length))
         {
@@ -552,7 +561,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             trafo =>
             {
                 trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) || // ToDo: don't hard code these voltage values
-                (trafo.v0 == trafo.v1)
+                    (trafo.v0 == trafo.v1)
             }
         ).collect
 
@@ -572,7 +581,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         (transformers, subtransmission_trafos)
     }
 
-    def preCalculation(transformers: RDD[TransformerIsland]): PreCalculationResults = {
+    def preCalculation (transformers: RDD[TransformerIsland]): PreCalculationResults =
+    {
         // prepare the initial graph edges and nodes
         val (xedges, xnodes) = gridlabd.prepare ()
 
@@ -587,7 +597,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val precalc_results =
         {
             // construct the initial graph from the real edges and nodes
-            val initial = Graph.apply [PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
+            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, null), storage_level, storage_level)
             val pf = new PowerFeeding (session, storage_level, options.base_temperature, options.sim_temperature)
             pf.threshold_calculation (initial, sdata, transformers, options)
         }
@@ -599,7 +609,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val start = System.nanoTime ()
 
         // read the file
-        val reader_options = Map[String, String] (
+        val reader_options = Map [String, String](
             "path" -> options.files.mkString (","),
             "ch.ninecode.cim.do_deduplication" -> options.dedup.toString) ++
             options.cim_reader_options
@@ -609,17 +619,18 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val read = System.nanoTime ()
         log.info (s"read: ${(read - start) / 1e9} seconds")
 
-        val (transformers, subtransmission_trafos) = initializeTransformers()
-        val precalc_results = preCalculation(transformers)
+        val (transformers, subtransmission_trafos) = initializeTransformers ()
+        val precalc_results = preCalculation (transformers)
         val houses = if (options.all)
             precalc_results.has
-        else if (-1 != options.reference)
-        {
-            val changed: Array[String] = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta, options.outputfile)
-            precalc_results.has.filter (x => changed.contains (x.mrid))
-        }
         else
-            precalc_results.has.filter (x => (x.eea != null) || (x.reason == "non-radial network"))
+            if (-1 != options.reference)
+            {
+                val changed: Array[String] = Database.fetchHousesWithDifferentEEA (precalc_results.simulation, options.reference, options.delta, options.outputfile)
+                precalc_results.has.filter (x => changed.contains (x.mrid))
+            }
+            else
+                precalc_results.has.filter (x => (x.eea != null) || (x.reason == "non-radial network"))
 
         // get a list of invalid nodes and group by transformer
         val invalid = houses.filter (_.problem).keyBy (_.source_obj).groupByKey

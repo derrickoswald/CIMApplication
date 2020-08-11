@@ -43,6 +43,7 @@ case class ShortCircuitInfo3 (
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
 ) extends CIMRDD with Serializable
 {
+
     import session.sqlContext.implicits._
 
     implicit val spark: SparkSession = session
@@ -348,11 +349,11 @@ case class ShortCircuitInfo3 (
         // merge each class
         def add[T <: Product] (subsetter: CIMSubsetter[T]): Unit =
         {
-            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T] (subsetter.runtime_class)
+            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T](subsetter.runtime_class)
             implicit val tag: universe.TypeTag[T] = subsetter.tag
-            val subrdd: RDD[T] = elements.collect[T] (subsetter.pf)
-            val existing: RDD[T] = getOrElse[subsetter.basetype] (subsetter.cls)
-            put[T] (subrdd.union (existing))
+            val subrdd: RDD[T] = elements.collect[T](subsetter.pf)
+            val existing: RDD[T] = getOrElse [subsetter.basetype](subsetter.cls)
+            put [T](subrdd.union (existing))
         }
 
         for (info <- list)

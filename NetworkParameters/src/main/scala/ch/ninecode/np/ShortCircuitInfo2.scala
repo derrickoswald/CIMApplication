@@ -46,6 +46,7 @@ case class ShortCircuitInfo2 (
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
 ) extends CIMRDD with Serializable
 {
+
     import session.sqlContext.implicits._
 
     implicit val spark: SparkSession = session
@@ -161,8 +162,8 @@ case class ShortCircuitInfo2 (
             val ratioZ0Z1_min = row.getDouble (28) // ToDo: not used, where to put this in the CIM model
             val ratioX1R1_max = row.getDouble (29)
             val ratioX1R1_min = row.getDouble (30)
-            val wik1_max = - row.getDouble (31) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
-            val wik1_min = - row.getDouble (32) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
+            val wik1_max = -row.getDouble (31) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
+            val wik1_min = -row.getDouble (32) * Math.PI / 180.0 // these angles are redundant with the X:R ratio in the spreadsheet
             val ratioX0R0_max = row.getDouble (33)
             val ratioX0R0_min = row.getDouble (34)
             val wik0_max = -((Math.PI / 2.0) - Math.atan (ratioX0R0_max))
@@ -408,11 +409,11 @@ case class ShortCircuitInfo2 (
         // merge each class
         def add[T <: Product] (subsetter: CIMSubsetter[T]): Unit =
         {
-            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T] (subsetter.runtime_class)
+            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T](subsetter.runtime_class)
             implicit val tag: universe.TypeTag[T] = subsetter.tag
-            val subrdd: RDD[T] = elements.collect[T] (subsetter.pf)
-            val existing: RDD[T] = getOrElse[subsetter.basetype] (subsetter.cls)
-            put[T] (subrdd.union (existing))
+            val subrdd: RDD[T] = elements.collect[T](subsetter.pf)
+            val existing: RDD[T] = getOrElse [subsetter.basetype](subsetter.cls)
+            put [T](subrdd.union (existing))
         }
 
         for (info <- list)

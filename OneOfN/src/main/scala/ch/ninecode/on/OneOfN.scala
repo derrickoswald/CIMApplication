@@ -191,7 +191,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // get a map of voltage for each TopologicalNode starting from Terminal elements
         // ToDo: fix these 1kV multiplier on the voltages
         log.info ("creating nodes")
-        val voltages = get ("BaseVoltage").asInstanceOf [RDD[BaseVoltage]].map (v ⇒ (v.id, v.nominalVoltage * 1000.0)).collectAsMap
+        val voltages = get ("BaseVoltage").asInstanceOf[RDD[BaseVoltage]].map (v ⇒ (v.id, v.nominalVoltage * 1000.0)).collectAsMap
         val end_voltages = getOrElse [PowerTransformerEnd].map (
             x ⇒
             {
@@ -215,25 +215,25 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 
         // put it all together
         val ff = nodes_feeders.join (get [TopologicalNode].keyBy (_.id)).leftOuterJoin (nodevoltages).map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (nodeid, (feederid, TopologicalNode, voltage?))
-    val nodes: RDD[(String, FeederNode)] = ff.leftOuterJoin (feeder.feederNodes).values // ((feederid, TopologicalNode, voltage?), feeder?)
-        .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List (_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0))))).persist (options.storage)
+        val nodes: RDD[(String, FeederNode)] = ff.leftOuterJoin (feeder.feederNodes).values // ((feederid, TopologicalNode, voltage?), feeder?)
+            .map (x ⇒ (x._1._1, FeederNode.toFeederNode (x._2.map (List (_)).orNull, x._1._2.id, voltages.getOrElse (x._1._2.BaseVoltage, x._1._3.getOrElse (0.0))))).persist (options.storage)
         if (options.verbose)
             log.info ("%s nodes".format (nodes.count))
 
         // get equipment with nodes & terminals
         log.info ("creating edges")
         val gg: RDD[(String, Iterable[(String, Terminal)])] = get [Terminal].map (x ⇒ (x.ConductingEquipment, (x.TopologicalNode, x))).groupByKey // (equipmentid, [(nodeid, terminal)])
-    // eliminate 0Ω links
-    val hh = gg.filter (x ⇒ x._2.groupBy (_._1).size > 1)
+        // eliminate 0Ω links
+        val hh = gg.filter (x ⇒ x._2.groupBy (_._1).size > 1)
         val eq: RDD[(Iterable[(String, Terminal)], Element)] = get [ConductingEquipment]
             .keyBy (_.id).join (get [Element]("Elements").keyBy (_.id)).map (x ⇒ (x._1, x._2._2)) // (elementid, Element)
             .join (hh).values.map (_.swap) // ([(nodeid, terminal)], Element)
             // eliminate edges with only one end
             .filter (x ⇒ (x._1.size > 1) && x._1.map (_._1).forall (_ != null)) // ([(nodeid, terminal)], Element)
-    // index by feeder
-    val jj: RDD[(String, (Iterable[(String, Terminal)], Element))] = eq.flatMap (x ⇒ x._1.map (y ⇒ (y._1, x))).join (nodes_feeders).values.distinct.map (_.swap) // (feederid, ([(nodeid, Terminal)], Element)
-    // ToDo: is it better to groupBy feeder first?
-    val kk: RDD[Iterable[(String, (Iterable[(String, Terminal)], Element))]] = jj.keyBy (x ⇒ x._2._1.map (_._1).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values // [(feederid, ([(nodeid, Terminal)], Element)]
+        // index by feeder
+        val jj: RDD[(String, (Iterable[(String, Terminal)], Element))] = eq.flatMap (x ⇒ x._1.map (y ⇒ (y._1, x))).join (nodes_feeders).values.distinct.map (_.swap) // (feederid, ([(nodeid, Terminal)], Element)
+        // ToDo: is it better to groupBy feeder first?
+        val kk: RDD[Iterable[(String, (Iterable[(String, Terminal)], Element))]] = jj.keyBy (x ⇒ x._2._1.map (_._1).toArray.sortWith (_ < _).mkString ("_")).groupByKey.values // [(feederid, ([(nodeid, Terminal)], Element)]
 
         // make edges
         // ToDo: fix this collect
@@ -260,50 +260,50 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         val feeders = needed_nodes.groupByKey.join (edges.groupByKey).join (feeder.feederStations.keyBy (_.id))
             .map (x ⇒ (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], FeederMetadata)
             .map (
-            x ⇒
-            {
-                val nodes = x._2._1.groupBy (_.id).map (y ⇒ y._2.head) // distinct
-            // to handle the ganged transformers that have only one node connected into the network
-            // check against the list of nodes and if there are more than one edge with the same id keep only those with both ends in the topology
-            val nodelist = nodes.map (x ⇒ (x._id, x)).toMap
-
-                def pickbest (arg: (String, Iterable[GLMEdge])): GLMEdge =
+                x ⇒
                 {
-                    val withcount = arg._2.map (
-                        edge ⇒
-                        {
-                            val n = (nodelist.get (edge.cn1), nodelist.get (edge.cn2)) match
-                            {
-                                case (Some (n1), Some (n2)) ⇒ List (n1, n2)
-                                case (Some (n1), None) ⇒ List (n1)
-                                case (None, Some (n2)) ⇒ List (n2)
-                                case _ ⇒ List () // ?
-                            }
-                            (edge, n)
-                        }
-                    )
-                    val two = withcount.filter (_._2.size >= 2)
-                    if (two.nonEmpty)
-                        two.head._1
-                    else
-                    {
-                        val one = withcount.filter (_._2.nonEmpty)
-                        if (one.nonEmpty)
-                            one.head._1
-                        else
-                            withcount.head._1
-                    }
-                }
+                    val nodes = x._2._1.groupBy (_.id).map (y ⇒ y._2.head) // distinct
+                    // to handle the ganged transformers that have only one node connected into the network
+                    // check against the list of nodes and if there are more than one edge with the same id keep only those with both ends in the topology
+                    val nodelist = nodes.map (x ⇒ (x._id, x)).toMap
 
-                val edges = x._2._2.groupBy (_.id).map (pickbest)
-                FeederArea (x._1, x._2._3, nodes, edges)
-            }).persist (options.storage)
+                    def pickbest (arg: (String, Iterable[GLMEdge])): GLMEdge =
+                    {
+                        val withcount = arg._2.map (
+                            edge ⇒
+                            {
+                                val n = (nodelist.get (edge.cn1), nodelist.get (edge.cn2)) match
+                                {
+                                    case (Some (n1), Some (n2)) ⇒ List (n1, n2)
+                                    case (Some (n1), None) ⇒ List (n1)
+                                    case (None, Some (n2)) ⇒ List (n2)
+                                    case _ ⇒ List () // ?
+                                }
+                                (edge, n)
+                            }
+                        )
+                        val two = withcount.filter (_._2.size >= 2)
+                        if (two.nonEmpty)
+                            two.head._1
+                        else
+                        {
+                            val one = withcount.filter (_._2.nonEmpty)
+                            if (one.nonEmpty)
+                                one.head._1
+                            else
+                                withcount.head._1
+                        }
+                    }
+
+                    val edges = x._2._2.groupBy (_.id).map (pickbest)
+                    FeederArea (x._1, x._2._3, nodes, edges)
+                }).persist (options.storage)
         log.info ("%s feeders".format (feeders.count))
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
             if (options.verbose) // re-set the log level on each worker
-                org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.OneOfN").setLevel (org.apache.log4j.Level.INFO)
+            org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.OneOfN").setLevel (org.apache.log4j.Level.INFO)
 
             val generator = OneOfNGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)

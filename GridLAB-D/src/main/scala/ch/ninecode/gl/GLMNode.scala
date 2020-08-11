@@ -47,7 +47,7 @@ object GLMNode
      *   - multi-island trace results
      *
      * @param elements The CIM elements that are associated with this node.
-     * @param id The unique id of the node.
+     * @param id       The unique id of the node.
      * @return a type of node
      */
     def toGLMNode (elements: Iterable[Element], id: String, nominal_voltage: Double): GLMNode =

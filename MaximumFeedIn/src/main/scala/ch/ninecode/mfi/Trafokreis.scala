@@ -29,7 +29,7 @@ case class Trafokreis
     edges: Iterable[PreEdge],
     houses: Iterable[MaxPowerFeedingNodeEEA],
     options: EinspeiseleistungOptions,
-    subtransmission_trafos: Array[TransformerData] = Array()
+    subtransmission_trafos: Array[TransformerData] = Array ()
 )
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
@@ -49,8 +49,8 @@ case class Trafokreis
 
     def significant (h: MaxPowerFeedingNodeEEA): Boolean =
         h.psr_type == "PSRType_HouseService" &&
-        // only do houses where we know it's more than a kilowatt or it's zero because of a three winding transformer
-        (h.max_power_feeding > 1000.0 || 0 != h.reason.indexOf ("transformer windings for edge"))
+            // only do houses where we know it's more than a kilowatt or it's zero because of a three winding transformer
+            (h.max_power_feeding > 1000.0 || 0 != h.reason.indexOf ("transformer windings for edge"))
 
     def best (nodes: Iterable[MaxPowerFeedingNodeEEA]): String =
     {

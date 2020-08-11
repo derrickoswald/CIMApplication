@@ -12,7 +12,7 @@ import scala.util.parsing.input.Reader
  *
  * @see https://github.com/scala/scala-parser-combinators/blob/v1.0.7/shared/src/main/scala/scala/util/parsing/combinator/lexical/Scanners.scala
  * @param buffer the byte buffer
- * @param una EDIFACT UNA segment values with special character definitions
+ * @param una    EDIFACT UNA segment values with special character definitions
  */
 case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
 {
@@ -28,11 +28,11 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
         var start = buffer.position
         var size = 0
         var c = 0
-        var intervals = List[(Int,Int)] () // start and size of each piece of the segment
+        var intervals = List [(Int, Int)]() // start and size of each piece of the segment
 
         while ((0 < buffer.remaining) && !stop)
         {
-            c = buffer.get.asInstanceOf[Int]
+            c = buffer.get.asInstanceOf [Int]
             size += 1
             stop = false
             if (skip)
@@ -46,17 +46,17 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
                 skip = false
             }
             else
-            if (c == una.segment_terminator)
-                stop = true
-            else
-            if (c == una.release_character)
-                skip = true
+                if (c == una.segment_terminator)
+                    stop = true
+                else
+                    if (c == una.release_character)
+                        skip = true
         }
 
         intervals = intervals :+ ((start, if (stop) size - 1 else size))
 
         // copy the data piece by piece to a new array
-        val bytes = new Array[Byte] (intervals.map (_._2).sum)
+        val bytes = new Array[Byte](intervals.map (_._2).sum)
         var offset = 0
         intervals.foreach (
             item =>
@@ -85,7 +85,12 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
 
     /** The position of the first element in the reader.
      */
-    def pos: Position = new Position { val line = 0; val column = 0; val lineContents = ""}
+    def pos: Position = new Position
+    {
+        val line = 0;
+        val column = 0;
+        val lineContents = ""
+    }
 
     /** `true` iff there are no more elements in this reader.
      */
@@ -108,9 +113,9 @@ object SegmentScanner
         if (buffer.limit >= 9)
         {
             buffer.mark
-            val buna = new Array[Char] (9)
+            val buna = new Array[Char](9)
             for (i <- 0 until 9)
-                buna(i) = buffer.get.asInstanceOf[Char]
+                buna (i) = buffer.get.asInstanceOf [Char]
             val una = new String (buna)
             if (("UNA" == una.substring (0, 3)) && (" " == una.substring (7, 8)))
             {

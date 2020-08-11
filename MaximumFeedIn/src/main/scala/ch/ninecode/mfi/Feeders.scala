@@ -14,7 +14,7 @@ import ch.ninecode.model._
  *
  * The default operation selects Connector elements with a voltage less than 1000V (N7) contained in stations.
  *
- * @param session the Spark session
+ * @param session       the Spark session
  * @param storage_level the storage level for persistence
  */
 class Feeders (
@@ -40,7 +40,7 @@ class Feeders (
      * All elements with associated terminals will be called with this predicate.
      * If the feeder is a two (or more) terminal device this predicate should be careful to select the correct one.
      *
-     * @param element the element (subclass of ConductingEquipment) to test
+     * @param element  the element (subclass of ConductingEquipment) to test
      * @param terminal the terminal of the conducting equipment
      * @return <code>true</code> if the equipment at this terminal is a feeder
      */

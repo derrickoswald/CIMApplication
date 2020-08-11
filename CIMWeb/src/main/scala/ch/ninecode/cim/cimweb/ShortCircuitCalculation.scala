@@ -29,6 +29,7 @@ import javax.ws.rs.POST
 @Path ("short_circuit")
 class ShortCircuitCalculation extends RESTful
 {
+
     import ShortCircuitCalculation._
 
     def packRow (resultset: CIMResultSet, meta: ResultSetMetaData): JsonObjectBuilder =
@@ -56,28 +57,31 @@ class ShortCircuitCalculation extends RESTful
                     if (!resultset.wasNull ())
                         if (value.isNaN)
                             ret.add (name, "NaN")
-                        else if (value.isInfinite)
-                            ret.add (name, "∞")
                         else
-                            ret.add (name, value)
+                            if (value.isInfinite)
+                                ret.add (name, "∞")
+                            else
+                                ret.add (name, value)
                 case Types.DOUBLE ⇒
                     val value = resultset.getDouble (column)
                     if (!resultset.wasNull ())
                         if (value.isNaN)
                             ret.add (name, "NaN")
-                        else if (value.isInfinite)
-                            ret.add (name, "∞")
                         else
-                            ret.add (name, value)
+                            if (value.isInfinite)
+                                ret.add (name, "∞")
+                            else
+                                ret.add (name, value)
                 case Types.FLOAT ⇒
                     val value = resultset.getDouble (column)
                     if (!resultset.wasNull ())
                         if (value.isNaN)
                             ret.add (name, "NaN")
-                        else if (value.isInfinite)
-                            ret.add (name, "∞")
                         else
-                            ret.add (name, value)
+                            if (value.isInfinite)
+                                ret.add (name, "∞")
+                            else
+                                ret.add (name, value)
                 case Types.INTEGER ⇒
                     val value = resultset.getInt (column)
                     if (!resultset.wasNull ())
@@ -107,8 +111,8 @@ class ShortCircuitCalculation extends RESTful
                     if (!resultset.wasNull ())
                         try
                         {
-                            val array = value.asInstanceOf[scala.collection.mutable.WrappedArray[Double]]
-                            val doubles: Array[Double] = array.toArray[Double]
+                            val array = value.asInstanceOf [scala.collection.mutable.WrappedArray[Double]]
+                            val doubles: Array[Double] = array.toArray [Double]
                             val json = Json.createArrayBuilder
                             doubles.map (json.add)
                             ret.add (name, json)
@@ -118,8 +122,8 @@ class ShortCircuitCalculation extends RESTful
                             case _: Throwable =>
                                 try
                                 {
-                                    val array = value.asInstanceOf[scala.collection.mutable.WrappedArray[String]]
-                                    val strings: Array[String] = array.toArray[String]
+                                    val array = value.asInstanceOf [scala.collection.mutable.WrappedArray[String]]
+                                    val strings: Array[String] = array.toArray [String]
                                     val json = Json.createArrayBuilder
                                     strings.map (json.add)
                                     ret.add (name, json)
@@ -176,7 +180,7 @@ class ShortCircuitCalculation extends RESTful
             batchsize = getLong (json, "batchsize", 10000),
             trafos = json.getString ("trafos", ""),
             workdir = json.getString ("workdir", ""),
-            calculate_public_lighting = json.getBoolean("calculate_public_lighting", false)
+            calculate_public_lighting = json.getBoolean ("calculate_public_lighting", false)
         )
     }
 
@@ -185,13 +189,13 @@ class ShortCircuitCalculation extends RESTful
         try
         {
             try
-                Json.createReader (new StringReader (json)).readObject match
-                {
-                    case obj: JsonObject ⇒ Some (parseOptions (obj))
-                    case _ ⇒
-                        _Logger.log (Level.SEVERE, """not a JsonObject""")
-                        None
-                }
+            Json.createReader (new StringReader (json)).readObject match
+            {
+                case obj: JsonObject ⇒ Some (parseOptions (obj))
+                case _ ⇒
+                    _Logger.log (Level.SEVERE, """not a JsonObject""")
+                    None
+            }
             catch
             {
                 case je: JsonException ⇒
@@ -305,7 +309,7 @@ class ShortCircuitCalculation extends RESTful
                     }
                     finally
                         try
-                            connection.close ()
+                        connection.close ()
                         catch
                         {
                             case resourceexception: ResourceException ⇒

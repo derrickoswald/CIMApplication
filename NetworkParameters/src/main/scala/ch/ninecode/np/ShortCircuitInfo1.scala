@@ -87,7 +87,7 @@ case class ShortCircuitInfo1 (
             val id = row.getString (0)
             val ort = row.getString (1)
             val v1 = row.getDouble (2) * 1e3
-            val wik = - row.getDouble (3) * Math.PI / 180.0
+            val wik = -row.getDouble (3) * Math.PI / 180.0
             val sk = row.getDouble (4) * 1e6
             val sap = row.getString (5)
             val feeder = row.getString (6)
@@ -331,11 +331,11 @@ case class ShortCircuitInfo1 (
         // merge each class
         def add[T <: Product] (subsetter: CIMSubsetter[T]): Unit =
         {
-            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T] (subsetter.runtime_class)
+            implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T](subsetter.runtime_class)
             implicit val tag: universe.TypeTag[T] = subsetter.tag
-            val subrdd: RDD[T] = elements.collect[T] (subsetter.pf)
-            val existing: RDD[T] = getOrElse[subsetter.basetype] (subsetter.cls)
-            put[T] (subrdd.union (existing))
+            val subrdd: RDD[T] = elements.collect[T](subsetter.pf)
+            val existing: RDD[T] = getOrElse [subsetter.basetype](subsetter.cls)
+            put [T](subrdd.union (existing))
         }
 
         for (info <- list)

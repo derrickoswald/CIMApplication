@@ -13,6 +13,7 @@ case class Generator (
     period: Int = 15 * 60 * 1000)
 {
     def timestamp (index: Long): Long = time + (period * index)
+
     def record (item: (Double, Int)): SimulationPlayerData =
     {
         val (value, index) = item
@@ -41,7 +42,8 @@ class MeasurementTransformTests
             .map (item => gen.record (item))
             .toArray
 
-        val identity = new MeasurementTransform {}
+        val identity = new MeasurementTransform
+        {}
         val original = identity.transform (series)
         // println (original.take (5).mkString ("\n"))
 
@@ -82,9 +84,9 @@ class MeasurementTransformTests
                 val array1 = item._1.readings
                 val array2 = item._2.readings
                 for (i <- array1.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
                 for (i <- array2.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
             }
         )
     }
@@ -100,11 +102,13 @@ class MeasurementTransformTests
             .map (item => gen.record (item))
             .toArray
 
-        val identity = new MeasurementTransform {}
+        val identity = new MeasurementTransform
+        {}
         val original = identity.transform (series)
         // println (original.take (5).mkString ("\n"))
 
-        val program = """
+        val program =
+            """
         new MeasurementTransform
         {
             val MILLISECONDS_PER_MINUTE: Int = 60 * 1000
@@ -138,9 +142,9 @@ class MeasurementTransformTests
                 val array1 = item._1.readings
                 val array2 = item._2.readings
                 for (i <- array1.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
                 for (i <- array2.indices)
-                    assert (array1(i) == array2(i))
+                    assert (array1 (i) == array2 (i))
             }
         )
     }

@@ -7,6 +7,7 @@ case class MemberParser (una: UNA) extends Parsers
 {
     type Elem = Field
     override type Input = Reader[Field]
+
     implicit def member: Parser[Field] = new Parser[Field]
     {
         override def apply (in: Input): ParseResult[Field] =
@@ -17,5 +18,6 @@ case class MemberParser (una: UNA) extends Parsers
                 Success (in.first, in.rest)
         }
     }
-    def parse[T](p: Parser[T], in: MemberScanner): ParseResult[T] = p(in)
+
+    def parse[T] (p: Parser[T], in: MemberScanner): ParseResult[T] = p (in)
 }

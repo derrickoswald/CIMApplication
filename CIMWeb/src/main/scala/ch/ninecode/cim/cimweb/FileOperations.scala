@@ -35,6 +35,7 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 @Path ("file/")
 class FileOperations extends RESTful
 {
+
     import FileOperations._
 
     @GET
@@ -58,7 +59,13 @@ class FileOperations extends RESTful
             if (fetch)
                 GetFileFunction (file) // get the (XML) file from HDFS.
             else
-                ListFilesFunction (file, try { debug.toBoolean } catch { case _: Throwable => false }) // list the files in HDFS.
+                ListFilesFunction (file, try
+                {
+                    debug.toBoolean
+                } catch
+                {
+                    case _: Throwable => false
+                }) // list the files in HDFS.
         val ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         val response: Response = if (null != connection)
@@ -86,7 +93,13 @@ class FileOperations extends RESTful
                         if (xml.startsWith ("File does not exist:"))
                             Response.status (Response.Status.NOT_FOUND).build
                         else
-                            if (try { zip.toBoolean } catch { case _: Throwable => false })
+                            if (try
+                            {
+                                zip.toBoolean
+                            } catch
+                            {
+                                case _: Throwable => false
+                            })
                             {
                                 val bos = new ByteArrayOutputStream ()
                                 val zos = new ZipOutputStream (bos)
@@ -124,7 +137,7 @@ class FileOperations extends RESTful
                     {
                         ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
                         interaction.close ()
-                        val response = ret.result.asInstanceOf[JsonObject]
+                        val response = ret.result.asInstanceOf [JsonObject]
                         if (response.containsKey ("error"))
                         {
                             ret.status = RESTfulJSONResult.FAIL
@@ -146,7 +159,7 @@ class FileOperations extends RESTful
             }
             finally
                 try
-                    connection.close ()
+                connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>
@@ -168,7 +181,13 @@ class FileOperations extends RESTful
     {
         val file = if (path.startsWith ("/")) path else "/" + path
         _Logger.info ("file put %s".format (file))
-        val function = PutFileFunction (file, data, try { unzip.toBoolean } catch { case _: Throwable => false })
+        val function = PutFileFunction (file, data, try
+        {
+            unzip.toBoolean
+        } catch
+        {
+            case _: Throwable => false
+        })
         val ret = new RESTfulJSONResult
         val connection = getConnection (ret)
         if (null != connection)
@@ -186,7 +205,7 @@ class FileOperations extends RESTful
                 {
                     val record = output.asInstanceOf [CIMMappedRecord]
                     ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
-                    val response = ret.result.asInstanceOf[JsonObject]
+                    val response = ret.result.asInstanceOf [JsonObject]
                     if (response.containsKey ("error"))
                     {
                         ret.status = RESTfulJSONResult.FAIL
@@ -206,7 +225,7 @@ class FileOperations extends RESTful
             }
             finally
                 try
-                    connection.close ()
+                connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>
@@ -241,7 +260,7 @@ class FileOperations extends RESTful
                 {
                     val record = output.asInstanceOf [CIMMappedRecord]
                     ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
-                    val response = ret.result.asInstanceOf[JsonObject]
+                    val response = ret.result.asInstanceOf [JsonObject]
                     if (response.containsKey ("error"))
                     {
                         ret.status = RESTfulJSONResult.FAIL
@@ -261,7 +280,7 @@ class FileOperations extends RESTful
             }
             finally
                 try
-                    connection.close ()
+                connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>

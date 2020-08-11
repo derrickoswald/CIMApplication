@@ -50,101 +50,106 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         MeasurementTimestampFormat (options).format (time)
     }
 
-    opt[Unit]("unittest").
+    opt [Unit]("unittest").
         hidden ().
-        action ((_, c) => { unittest = true; c.copy (unittest = true) }).
+        action ((_, c) =>
+        {
+            unittest = true; c.copy (unittest = true)
+        }).
         text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
-    opt[LogLevels.Value]("log").
+    opt [LogLevels.Value]("log").
         action ((x, c) => c.copy (log_level = x)).
         text ("log level, one of %s [%s]".format (LogLevels.values.iterator.mkString (","), default.log_level))
 
-    opt[Unit]("verbose").
+    opt [Unit]("verbose").
         action ((_, c) ⇒ c.copy (verbose = true)).
         text ("emit progress messages [%s]".format (default.verbose))
 
-    opt[String]("master").valueName ("MASTER_URL").
+    opt [String]("master").valueName ("MASTER_URL").
         action ((x, c) ⇒ c.copy (master = x)).
         text ("local[*], spark://host:port, mesos://host:port or yarn [%s]".format (default.master))
 
-    opt[String]("host").valueName ("Cassandra").
+    opt [String]("host").valueName ("Cassandra").
         action ((x, c) ⇒ c.copy (host = x)).
         text ("Cassandra connection host (listen_address or seed in cassandra.yaml) [%s]".format (default.host))
 
-    opt[Int]("port").valueName ("<port_number>").
+    opt [Int]("port").valueName ("<port_number>").
         action ((x, c) ⇒ c.copy (port = x)).
         text ("Cassandra connection port [%s]".format (default.port))
 
-    opt[String]("storage").
+    opt [String]("storage").
         action ((x, c) ⇒ c.copy (storage = x)).
         text ("storage level for RDD serialization [%s]".format (default.storage))
 
-    opt[Unit]("nocopy").
+    opt [Unit]("nocopy").
         action ((_, c) ⇒ c.copy (nocopy = true)).
         text ("use files 'as is' without unzipping and copying to HDFS [%s]".format (default.nocopy))
 
-    opt[String]("workdir").
+    opt [String]("workdir").
         action ((x, c) ⇒ c.copy (workdir = if (x.endsWith ("/")) x else s"$x/")).
         text ("working directory for unzip and copy [%s]".format (default.workdir))
 
-    opt[String]("mapping").
+    opt [String]("mapping").
         action ((x, c) ⇒ c.copy (mapping = x)).
         text ("file name of mapping CSV or RDF [%s] (required)".format (default.mapping))
 
-    opt[String]("metercol").
+    opt [String]("metercol").
         action ((x, c) ⇒ c.copy (metercol = x)).
         text ("column name of meter id in mapping CSV [%s]".format (default.metercol))
 
-    opt[String]("mridcol").
+    opt [String]("mridcol").
         action ((x, c) ⇒ c.copy (mridcol = x)).
         text ("column name of CIM mRID in mapping CSV [%s]".format (default.mridcol))
 
-    opt[String]("timezone").
+    opt [String]("timezone").
         action ((x, c) ⇒ c.copy (timezone = x)).
         text ("measurement time zone for measurements [%s]".format (default.timezone))
 
-    opt[String]("mintime").
+    opt [String]("mintime").
         action ((x, c) ⇒ c.copy (mintime = parseTime (c, x))).
         text ("minimum time for ingestion timespan [%s]".format (formatTime (default, default.mintime)))
 
-    opt[String]("maxtime").
+    opt [String]("maxtime").
         action ((x, c) ⇒ c.copy (maxtime = parseTime (c, x))).
         text ("maximum time for ingestion timespan [%s]".format (formatTime (default, default.maxtime)))
 
-    opt[String]("keyspace").
+    opt [String]("keyspace").
         action ((x, c) ⇒ c.copy (keyspace = x)).
         text ("target Cassandra keyspace [%s]".format (default.keyspace))
 
-    opt[Int]("replication").
+    opt [Int]("replication").
         action ((x, c) ⇒ c.copy (replication = x)).
         text ("keyspace replication if the Cassandra keyspace needs creation [%s]".format (default.replication))
 
-    opt[Formats.Value]("format").
+    opt [Formats.Value]("format").
         action ((x, c) ⇒ c.copy (format = x)).
         text ("format of the data files, one of " + Formats.values.iterator.mkString (",") + " [%s]".format (default.format))
 
-    opt[Modes.Value]("mode").
-      action ((x, c) ⇒ c.copy (mode = x)).
-      text ("ingest mode, one of " + Modes.values.iterator.mkString (",") + " [%s]".format (default.mode))
+    opt [Modes.Value]("mode").
+        action ((x, c) ⇒ c.copy (mode = x)).
+        text ("ingest mode, one of " + Modes.values.iterator.mkString (",") + " [%s]".format (default.mode))
 
-    opt[String]("aws_s3a_access_key").
+    opt [String]("aws_s3a_access_key").
         action ((x, c) ⇒ c.copy (aws_s3a_access_key = x)).
         text ("aws access key [%s]".format (default.aws_s3a_access_key))
 
-    opt[String]("aws_s3a_secret_key").
+    opt [String]("aws_s3a_secret_key").
         action ((x, c) ⇒ c.copy (aws_s3a_secret_key = x)).
         text ("aws secret key [%s]".format (default.aws_s3a_secret_key))
 
-    arg[String]("<ZIP> or <CSV>...").optional ().unbounded ().
+    arg [String]("<ZIP> or <CSV>...").optional ().unbounded ().
         action ((x, c) ⇒
         {
             try
             {
                 val sep = System.getProperty ("file.separator")
-                val file = if (x.startsWith (sep) || x.startsWith("s3a:")) {
+                val file = if (x.startsWith (sep) || x.startsWith ("s3a:"))
+                {
                     x
-                } else {
-                 new java.io.File (".").getCanonicalPath + sep + x
+                } else
+                {
+                    new java.io.File (".").getCanonicalPath + sep + x
                 }
                 c.copy (datafiles = c.datafiles :+ file.toString)
             }
@@ -159,19 +164,28 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     help ("help").
         hidden ().
-        validate (Unit => { helpout = true; Right (Unit) })
+        validate (Unit =>
+        {
+            helpout = true; Right (Unit)
+        })
 
     version ("version").
-        validate (Unit => { versionout = true; Right (Unit) }).
-            text ("Scala: %s, Spark: %s, %s: %s".format (
-                APPLICATION_VERSION.split ("-")(0),
-                APPLICATION_VERSION.split ("-")(1),
-                APPLICATION_NAME,
-                APPLICATION_VERSION.split ("-")(2)
-            )
+        validate (Unit =>
+        {
+            versionout = true; Right (Unit)
+        }).
+        text ("Scala: %s, Spark: %s, %s: %s".format (
+            APPLICATION_VERSION.split ("-")(0),
+            APPLICATION_VERSION.split ("-")(1),
+            APPLICATION_NAME,
+            APPLICATION_VERSION.split ("-")(2)
+        )
         )
 
-    checkConfig (o => { o.valid = !(helpout || versionout); Right (Unit) })
+    checkConfig (o =>
+    {
+        o.valid = !(helpout || versionout); Right (Unit)
+    })
 
     note (
         """

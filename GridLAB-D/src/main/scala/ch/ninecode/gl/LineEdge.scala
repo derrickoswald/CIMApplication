@@ -200,7 +200,7 @@ case class LineEdge
         val dia = diag.asString (8) + " Ohm/km"
         val off = offd.asString (8) + " Ohm/km"
         val warning = if (default) "#warning WARNING: using default line_configuration for " + config + "\n" else ""
-        val comment =  lines.map (line ⇒
+        val comment = lines.map (line ⇒
             "            // %s".format (line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name)).mkString ("\n", "\n", "")
         """
           |%s        object line_configuration

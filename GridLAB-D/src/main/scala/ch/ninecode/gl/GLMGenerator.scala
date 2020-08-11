@@ -10,12 +10,12 @@ import java.util.{Calendar, TimeZone}
  * details for the actual export to be valid, such as edges, nodes, swing node,
  * simulation start and stop times, etc.
  *
- * @param one_phase           If <code>true</code> generate a single phase .glm file.
- * @param temperature         The reference temperature of the elements in the CIM file (°C).
- * @param date_format         The date format to use within the .glm file.
- * @param emit_voltage_dump   if <code>true</code> add a voltage dump element to the .glm prefix text
- * @param emit_impedance_dump if <code>true</code> add a impedance dump element to the .glm prefix text
- * @param emit_fault_check    if <code>true</code> add a fault check element to the .glm prefix text
+ * @param one_phase            If <code>true</code> generate a single phase .glm file.
+ * @param temperature          The reference temperature of the elements in the CIM file (°C).
+ * @param date_format          The date format to use within the .glm file.
+ * @param emit_voltage_dump    if <code>true</code> add a voltage dump element to the .glm prefix text
+ * @param emit_impedance_dump  if <code>true</code> add a impedance dump element to the .glm prefix text
+ * @param emit_fault_check     if <code>true</code> add a fault check element to the .glm prefix text
  * @param swing_voltage_factor Factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal.
  */
 class GLMGenerator
@@ -314,21 +314,21 @@ class GLMGenerator
             else
             {
                 val phase_voltage = voltage / math.sqrt (3.0)
-             s"""            voltage_A $phase_voltage+0.0d;
-                |            voltage_B $phase_voltage-120.0d;
-                |            voltage_C $phase_voltage+120.0d;""".stripMargin
+                s"""            voltage_A $phase_voltage+0.0d;
+                   |            voltage_B $phase_voltage-120.0d;
+                   |            voltage_C $phase_voltage+120.0d;""".stripMargin
             }
 
         s"""
-        |        object meter
-        |        {
-        |            name "$name";
-        |            phases $phase;
-        |            bustype SWING;
-        |            nominal_voltage ${node.nominal_voltage}V;
-        |$swing
-        |        };
-        |""".stripMargin
+           |        object meter
+           |        {
+           |            name "$name";
+           |            phases $phase;
+           |            bustype SWING;
+           |            nominal_voltage ${node.nominal_voltage}V;
+           |$swing
+           |        };
+           |""".stripMargin
 
     }
 

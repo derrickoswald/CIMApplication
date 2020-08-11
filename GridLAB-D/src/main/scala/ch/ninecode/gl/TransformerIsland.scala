@@ -15,10 +15,10 @@ case class TransformerIsland (transformers: Array[TransformerSet])
         val s = if ((null == string) || ("" == string))
             "unknown"
         else
-        if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
-            string
-        else
-            "_" + string
+            if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
+                string
+            else
+                "_" + string
         s.replace (".", "d").replace (":", "$")
     }
 

@@ -269,7 +269,7 @@ object Main
 
                     val options = OneOfNOptions (
                         verbose = !arguments.quiet,
-                        cim_reader_options = mutable.HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
+                        cim_reader_options = mutable.HashMap[String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                         three = arguments.three,
                         base_temperature = arguments.base_temperature,
                         temperature = arguments.temperature,

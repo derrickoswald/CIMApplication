@@ -32,7 +32,11 @@ case class SimulationDirectionGenerator
 
     override def getTransformerConfigurations (transformers: Iterable[TransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match { case e: TransformerEdge => Some (e) case _ => None })
+        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match
+        {
+            case e: TransformerEdge => Some (e)
+            case _ => None
+        })
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
@@ -44,26 +48,26 @@ case class SimulationDirectionGenerator
             "            constant_power_A 1000.0+0j;"
         else
         {
-          """            constant_power_A 333.33333333+0j;
-            |            constant_power_B 333.33333333+0j;
-            |            constant_power_C 333.33333333+0j;""".stripMargin
+            """            constant_power_A 333.33333333+0j;
+              |            constant_power_B 333.33333333+0j;
+              |            constant_power_C 333.33333333+0j;""".stripMargin
         }
         val phases = if (one_phase) "AN" else "ABCN"
         val voltage = node.nominal_voltage
         s"""
-        |        object load
-        |        {
-        |            name "${node.id}";
-        |$power
-        |            phases $phases;
-        |            nominal_voltage ${voltage}V;
-        |        };
+           |        object load
+           |        {
+           |            name "${node.id}";
+           |$power
+           |            phases $phases;
+           |            nominal_voltage ${voltage}V;
+           |        };
         """.stripMargin
     }
 
     override def emit_edge (edge: GLMEdge): String =
     {
-        super.emit_edge (edge.asInstanceOf [SimulationEdge].rawedge)
+        super.emit_edge (edge.asInstanceOf[SimulationEdge].rawedge)
     }
 
     override def emit_node (node: GLMNode): String =
@@ -81,6 +85,6 @@ case class SimulationDirectionGenerator
      */
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        edges.filter (_.asInstanceOf [SimulationEdge].rawedge.isInstanceOf [LineEdge]).map (_.asInstanceOf [SimulationEdge].rawedge.asInstanceOf [LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        edges.filter (_.asInstanceOf[SimulationEdge].rawedge.isInstanceOf [LineEdge]).map (_.asInstanceOf[SimulationEdge].rawedge.asInstanceOf [LineEdge]).groupBy (_.configurationName).values.map (_.head.configuration (this))
     }
 }

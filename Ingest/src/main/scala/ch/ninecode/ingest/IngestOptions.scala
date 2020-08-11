@@ -20,30 +20,30 @@ object Modes extends Enumeration
 
 /**
  *
- * @param valid False if either help or version requested (i.e. don't proceed with execution).
- * @param unittest If <code>true</code>, don't call sys.exit().
- * @param verbose If <code>true</code>, emit progress messages.
- * @param master Spark master.
- * @param options Spark options.
- * @param host Cassandra connection host.
- * @param port Cassandra connection port.
- * @param storage Storage level for RDD serialization.
- * @param log_level Logging level.
- * @param nocopy If <code>true</code>, use the file names provided directly, without unzipping or transferring them to HDFS.
- * @param workdir Working directory for unzipping and copying if nocopy is <code>false</code>.
- * @param mapping Mapping CSV file or RDF file name.
- * @param metercol Mapping CSV measurement identifier column name (column containing CH############################### values).
- * @param mridcol Mapping CSV mRID column name (column containing HAS##### values).
- * @param timezone Time zone for the measurement files.
- * @param mintime Minimum time for ingestion timespan.
- *                The default is the minimum representable time in the Linux epoch.
- * @param maxtime Maximum time for ingestion timespan.
- *                The default is the maximum representable time in the Linux epoch.
- * @param format Type of data file, either Belvis, LPEx or MSCONS.
- * @param mode Ingest Mode: 'Overwrite' or 'Append'. Overwrite: overwrites existing values in database. Append: adds values to existing ones.
- * @param datafiles Source Belvis/LPEx/MSCONS files.
- * @param keyspace Cassandra keyspace.
- * @param replication Cassandra keyspace replication factor only if the keyspace is created.
+ * @param valid              False if either help or version requested (i.e. don't proceed with execution).
+ * @param unittest           If <code>true</code>, don't call sys.exit().
+ * @param verbose            If <code>true</code>, emit progress messages.
+ * @param master             Spark master.
+ * @param options            Spark options.
+ * @param host               Cassandra connection host.
+ * @param port               Cassandra connection port.
+ * @param storage            Storage level for RDD serialization.
+ * @param log_level          Logging level.
+ * @param nocopy             If <code>true</code>, use the file names provided directly, without unzipping or transferring them to HDFS.
+ * @param workdir            Working directory for unzipping and copying if nocopy is <code>false</code>.
+ * @param mapping            Mapping CSV file or RDF file name.
+ * @param metercol           Mapping CSV measurement identifier column name (column containing CH############################### values).
+ * @param mridcol            Mapping CSV mRID column name (column containing HAS##### values).
+ * @param timezone           Time zone for the measurement files.
+ * @param mintime            Minimum time for ingestion timespan.
+ *                           The default is the minimum representable time in the Linux epoch.
+ * @param maxtime            Maximum time for ingestion timespan.
+ *                           The default is the maximum representable time in the Linux epoch.
+ * @param format             Type of data file, either Belvis, LPEx or MSCONS.
+ * @param mode               Ingest Mode: 'Overwrite' or 'Append'. Overwrite: overwrites existing values in database. Append: adds values to existing ones.
+ * @param datafiles          Source Belvis/LPEx/MSCONS files.
+ * @param keyspace           Cassandra keyspace.
+ * @param replication        Cassandra keyspace replication factor only if the keyspace is created.
  * @param aws_s3a_access_key The access key to log into AWS S3
  * @param aws_s3a_secret_key The secret key to log into AWS S3
  */
@@ -79,7 +79,7 @@ object IngestOptions
 {
     def cwd: String =
     {
-        val pwd = new java.io.File(".").getCanonicalPath
+        val pwd = new java.io.File (".").getCanonicalPath
         if (pwd.endsWith ("."))
             pwd.substring (0, pwd.length - 1)
         else

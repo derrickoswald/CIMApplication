@@ -17,17 +17,17 @@ case class SwitchEdge
         element match
         {
             case s: Switch ⇒ s.asInstanceOf [Switch]
-            case c: Cut ⇒ c.asInstanceOf [Cut].Switch
-            case d: Disconnector ⇒ d.asInstanceOf [Disconnector].Switch
-            case f: Fuse ⇒ f.asInstanceOf [Fuse].Switch
-            case g: GroundDisconnector ⇒ g.asInstanceOf [GroundDisconnector].Switch
-            case j: Jumper ⇒ j.asInstanceOf [Jumper].Switch
-            case m: MktSwitch ⇒ m.asInstanceOf [MktSwitch].Switch
-            case p: ProtectedSwitch ⇒ p.asInstanceOf [ProtectedSwitch].Switch
-            case b: Breaker ⇒ b.asInstanceOf [Breaker].ProtectedSwitch.Switch
-            case l: LoadBreakSwitch ⇒ l.asInstanceOf [LoadBreakSwitch].ProtectedSwitch.Switch
-            case r: Recloser ⇒ r.asInstanceOf [Recloser].ProtectedSwitch.Switch
-            case s: Sectionaliser ⇒ s.asInstanceOf [Sectionaliser].Switch
+            case c: Cut ⇒ c.asInstanceOf[Cut].Switch
+            case d: Disconnector ⇒ d.asInstanceOf[Disconnector].Switch
+            case f: Fuse ⇒ f.asInstanceOf[Fuse].Switch
+            case g: GroundDisconnector ⇒ g.asInstanceOf[GroundDisconnector].Switch
+            case j: Jumper ⇒ j.asInstanceOf[Jumper].Switch
+            case m: MktSwitch ⇒ m.asInstanceOf[MktSwitch].Switch
+            case p: ProtectedSwitch ⇒ p.asInstanceOf[ProtectedSwitch].Switch
+            case b: Breaker ⇒ b.asInstanceOf[Breaker].ProtectedSwitch.Switch
+            case l: LoadBreakSwitch ⇒ l.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch
+            case r: Recloser ⇒ r.asInstanceOf[Recloser].ProtectedSwitch.Switch
+            case s: Sectionaliser ⇒ s.asInstanceOf[Sectionaliser].Switch
             case _ ⇒
                 println ("non-switch (%s:%s) in SwitchEdge".format (element.getClass, element.id))
                 null.asInstanceOf [Switch]
@@ -41,7 +41,7 @@ case class SwitchEdge
         switches.map (x ⇒ toSwitch (x).ratedCurrent).min
 
     def fuse: Boolean =
-        switches.forall ( { case f: Fuse ⇒ true case _ ⇒ false })
+        switches.forall ({ case f: Fuse ⇒ true case _ ⇒ false })
 
     /**
      * Emit a switch or fuse.
@@ -59,8 +59,8 @@ case class SwitchEdge
         // also set mean_replacement_time because sometimes: WARNING  [INIT] : Fuse:SIG8494 has a negative or 0 mean replacement time - defaulting to 1 hour
         val fuse_details = if (fuse)
             """
-               |            mean_replacement_time 3600.0;
-               |            current_limit %sA;""".format (current).stripMargin
+              |            mean_replacement_time 3600.0;
+              |            current_limit %sA;""".format (current).stripMargin
         else
             ""
         """

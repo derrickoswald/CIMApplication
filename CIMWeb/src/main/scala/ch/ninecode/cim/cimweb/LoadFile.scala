@@ -27,6 +27,7 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 @Path ("load/")
 class LoadFile extends RESTful
 {
+
     import LoadFile._
 
     @GET
@@ -66,21 +67,22 @@ class LoadFile extends RESTful
         @DefaultValue ("yyyy-MM-dd'T'HH:mm:ss.SSSXXX") @MatrixParam ("timestampFormat") timestampFormat: String,
         @DefaultValue ("PERMISSIVE") @MatrixParam ("mode") mode: String,
         @DefaultValue ("false") @MatrixParam ("inferSchema") inferSchema: String
-        ): String =
+    ): String =
     {
         val ret = new RESTfulJSONResult
         val files = path.split (',').map (f ⇒ if (f.startsWith ("/")) f else "/" + f)
         // set the type
-        val filetype = if (files(0).endsWith (".rdf") || files(0).endsWith (".xml"))
+        val filetype = if (files (0).endsWith (".rdf") || files (0).endsWith (".xml"))
             "CIM"
-        else if (files(0).endsWith (".csv"))
-            "CSV"
         else
-        {
-            ret.setResultException (new ResourceException ("unrecognized file format (%s)".format (files(0))), "ResourceException on input")
-            return (ret.toString)
-        }
-        val options = new scala.collection.mutable.HashMap[String, String] ()
+            if (files (0).endsWith (".csv"))
+                "CSV"
+            else
+            {
+                ret.setResultException (new ResourceException ("unrecognized file format (%s)".format (files (0))), "ResourceException on input")
+                return (ret.toString)
+            }
+        val options = new scala.collection.mutable.HashMap[String, String]()
         val function = filetype match
         {
             case "CIM" ⇒ // see https://github.com/derrickoswald/CIMReader#reader-api
@@ -138,7 +140,7 @@ class LoadFile extends RESTful
                     // if not found use Response.Status.NOT_FOUND
                     val record = output.asInstanceOf [CIMMappedRecord]
                     ret.setResult (record.get (CIMFunction.RESULT).asInstanceOf [JsonStructure])
-                    val response = ret.result.asInstanceOf[JsonObject]
+                    val response = ret.result.asInstanceOf [JsonObject]
                     if (response.containsKey ("error"))
                     {
                         ret.status = RESTfulJSONResult.FAIL
@@ -160,7 +162,7 @@ class LoadFile extends RESTful
             }
             finally
                 try
-                    connection.close ()
+                connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>

@@ -58,10 +58,10 @@ case class ScEdge
         if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
             !switch.open // open valid
         else
-        if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
-            !switch.normalOpen
-        else
-            true
+            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+                !switch.normalOpen
+            else
+                true
     }
 
     /**
@@ -92,8 +92,9 @@ case class ScEdge
                 case trafo: PowerTransformer ⇒
                     if (v1 < 230.0 || v2 < 230.0)
                         return false
-                    else if ( !calculate_public_lighting && (v1 == 230.0 || v2 == 230.0) )
-                        return false
+                    else
+                        if (!calculate_public_lighting && (v1 == 230.0 || v2 == 230.0))
+                            return false
                     val id_cn = node.id_seq // continue if voltage decreases or it stays below 1000.0
                     if (id_cn == id_cn_1)
                         v1 <= v2 || v1 <= 1000.0

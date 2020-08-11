@@ -300,12 +300,12 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         val sources = feederIslands.groupByKey
         edges.flatMap (x ⇒ List ((x.attr.island1, x.attr.island1), (x.attr.island2, x.attr.island2))).leftOuterJoin (sources).values // (islandid, [feederid]?)
             .map (
-            x ⇒
-            {
-                val starting_feeders = x._2.map (y ⇒ y.map (_.id).toSet).getOrElse (Set [String]())
-                (vertex_id (x._1), VertexData (x._1, starting_feeders, starting_feeders))
-            }
-        ).persist (storage) // (vertexid, VertexData)
+                x ⇒
+                {
+                    val starting_feeders = x._2.map (y ⇒ y.map (_.id).toSet).getOrElse (Set [String]())
+                    (vertex_id (x._1), VertexData (x._1, starting_feeders, starting_feeders))
+                }
+            ).persist (storage) // (vertexid, VertexData)
     }
 
     /**
@@ -327,8 +327,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
         {
             if (null == msg) // do nothing initially
-                attr
-            else
+            attr
+                else
                 msg
         }
 
@@ -362,7 +362,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         // assigns the minimum VertexId of all electrically identical islands
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
         val graph: Graph[VertexData, EdgeData] = Graph (vertices, edges, VertexData (), storage, storage).cache
-        val g = graph.pregel [VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).cache
+        val g = graph.pregel[VertexData](null, 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message).cache
 
         // label every node (not just the ones on the boundary switches
         val island_feeders = g.vertices.map (x ⇒ (x._2.id, x._2.feeders)).filter (null != _._2) // (islandid, [feeders])

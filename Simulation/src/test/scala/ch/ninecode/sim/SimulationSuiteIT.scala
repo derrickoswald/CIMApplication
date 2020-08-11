@@ -27,9 +27,10 @@ import org.junit.FixMethodOrder
 import org.junit.Test
 import org.junit.runners.MethodSorters
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@FixMethodOrder (MethodSorters.NAME_ASCENDING)
 class SimulationSuiteIT
 {
+
     import SimulationSuiteIT._
 
     @Test def Help ()
@@ -45,282 +46,282 @@ class SimulationSuiteIT
             writer =>
                 writer.write (
                     s"""
-                    |{
-                    |    "id": "Basic",
-                    |    "name": "DemoData",
-                    |    "description": "simulation with demo data",
-                    |    "cim": "$FILE_DEPOT$FILENAME1.rdf",
-                    |    "cimreaderoptions": {
-                    |        "ch.ninecode.cim.do_about": false,
-                    |        "ch.ninecode.cim.do_normalize": false,
-                    |        "ch.ninecode.cim.do_deduplication": false,
-                    |        "ch.ninecode.cim.make_edges": false,
-                    |        "ch.ninecode.cim.do_join": false,
-                    |        "ch.ninecode.cim.do_topo_islands": false,
-                    |        "ch.ninecode.cim.do_topo": false,
-                    |        "ch.ninecode.cim.split_maxsize": 67108864
-                    |    },
-                    |    "interval": {
-                    |        "start": "2018-01-01T00:00:00.000+0100",
-                    |        "end": "2018-02-01T00:00:00.000+0100",
-                    |        "buffer": 3600000
-                    |    },
-                    |    "temperatures": {
-                    |        "cim_temperature": 20.0,
-                    |        "simulation_temperature": 20.0
-                    |    },
-                    |    "swing": "hi",
-                    |    "swing_voltage_factor": 1.0,
-                    |    "keyspaces": {
-                    |        "input": "$KEYSPACE",
-                    |        "output": "$KEYSPACE",
-                    |        "replication": 1
-                    |    },
-                    |    "players": [
-                    |        {
-                    |            "title": "Measured power for all PSRType_HouseService house services",
-                    |            "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID "
-                    |        }
-                    |    ],
-                    |    "recorders": [
-                    |        {
-                    |            "title": "All PowerTransformer input power",
-                    |            "query": "select concat (name_island.name, '_power_recorder') name, name_island.name mrid, name_island.name parent, 'power' type, 'power_in' property, 'VA' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All PowerTransformer output currents",
-                    |            "query": "select concat (name_island.name, '_current_recorder') name, name_island.name mrid, name_island.name parent, 'current' type, 'current_out' property, 'Amperes' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All PowerTransformer power losses",
-                    |            "query": "select concat (name_island.name, '_losses_recorder') name, name_island.name mrid, name_island.name parent, 'losses' type, 'power_losses' property, 'VA' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All BusbarSection node voltages",
-                    |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All BusbarSection output power",
-                    |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'power' type, 'measured_power' property, 'VA' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All EnergyConsumer node voltages",
-                    |            "query": "select concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name, c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, EnergyConsumer c where t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All EnergyConsumer output power",
-                    |            "query": "select concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name, c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load_object') parent, 'power' type, 'power' property, 'VA' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, EnergyConsumer c where t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All ACLineSegment currents",
-                    |            "query": "select concat (name_island.name, '_current_recorder') name, name_island.name mrid, name_island.name parent, 'current' type, 'current_in' property, 'Amperes' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from ( select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID ) wires group by nodes ) name_island ",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        },
-                    |        {
-                    |            "title": "All ACLineSegment losses",
-                    |            "query": "select concat (name_island.name, '_losses_recorder') name, name_island.name mrid, name_island.name parent, 'losses' type, 'power_losses' property, 'Wh' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from ( select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID ) wires group by nodes ) name_island ",
-                    |            "interval": 900,
-                    |            "aggregations": [
-                    |                {
-                    |                    "intervals": 1,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 4,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 12,
-                    |                    "ttl": null
-                    |                },
-                    |                {
-                    |                    "intervals": 96,
-                    |                    "ttl": null
-                    |                }
-                    |            ]
-                    |        }
-                    |    ],
-                    |    "transformers": [],
-                    |    "extras": [
-                    |        {
-                    |            "title": "ratedCurrent",
-                    |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
-                    |        },
-                    |        {
-                    |            "title": "ratedS",
-                    |            "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, cast (sum (e.ratedS) as string) value from Terminal t, PowerTransformerEnd e where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 group by t.TopologicalNode"
-                    |        },
-                    |        {
-                    |            "title": "nominalVoltage",
-                    |            "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
-                    |        },
-                    |        {
-                    |            "title": "substation",
-                    |            "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, first_value (c.substation) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, (select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
-                    |        },
-                    |        {
-                    |            "title": "contains",
-                    |            "query": "select first_value (contains.station) key, concat_ws (',', collect_list(contains.name)) value from ( select name_node_station.station station, name_node_station.name name from ( select concat_ws ('_', sort_array (collect_set (busbars.mrid))) name, first_value (busbars.station) station from ( select distinct b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t.TopologicalNode node, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalNode n, Terminal t, BusbarSection b, Substation s where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode and s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType in ('PSRType_Substation', 'PSRType_TransformerStation', 'PSRType_DistributionBox') and b.Connector.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID ) busbars group by node ) name_node_station ) contains group by station"
-                    |        },
-                    |        {
-                    |            "title": "stationratedS",
-                    |            "query": "select first_value (c.substation) key, cast (sum(e.ratedS) as string) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, ( select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u ) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
-                    |        }
-                    |    ],
-                    |    "postprocessing": []
-                    |}
-                    |""".stripMargin
+                       |{
+                       |    "id": "Basic",
+                       |    "name": "DemoData",
+                       |    "description": "simulation with demo data",
+                       |    "cim": "$FILE_DEPOT$FILENAME1.rdf",
+                       |    "cimreaderoptions": {
+                       |        "ch.ninecode.cim.do_about": false,
+                       |        "ch.ninecode.cim.do_normalize": false,
+                       |        "ch.ninecode.cim.do_deduplication": false,
+                       |        "ch.ninecode.cim.make_edges": false,
+                       |        "ch.ninecode.cim.do_join": false,
+                       |        "ch.ninecode.cim.do_topo_islands": false,
+                       |        "ch.ninecode.cim.do_topo": false,
+                       |        "ch.ninecode.cim.split_maxsize": 67108864
+                       |    },
+                       |    "interval": {
+                       |        "start": "2018-01-01T00:00:00.000+0100",
+                       |        "end": "2018-02-01T00:00:00.000+0100",
+                       |        "buffer": 3600000
+                       |    },
+                       |    "temperatures": {
+                       |        "cim_temperature": 20.0,
+                       |        "simulation_temperature": 20.0
+                       |    },
+                       |    "swing": "hi",
+                       |    "swing_voltage_factor": 1.0,
+                       |    "keyspaces": {
+                       |        "input": "$KEYSPACE",
+                       |        "output": "$KEYSPACE",
+                       |        "replication": 1
+                       |    },
+                       |    "players": [
+                       |        {
+                       |            "title": "Measured power for all PSRType_HouseService house services",
+                       |            "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID "
+                       |        }
+                       |    ],
+                       |    "recorders": [
+                       |        {
+                       |            "title": "All PowerTransformer input power",
+                       |            "query": "select concat (name_island.name, '_power_recorder') name, name_island.name mrid, name_island.name parent, 'power' type, 'power_in' property, 'VA' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All PowerTransformer output currents",
+                       |            "query": "select concat (name_island.name, '_current_recorder') name, name_island.name mrid, name_island.name parent, 'current' type, 'current_out' property, 'Amperes' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All PowerTransformer power losses",
+                       |            "query": "select concat (name_island.name, '_losses_recorder') name, name_island.name mrid, name_island.name parent, 'losses' type, 'power_losses' property, 'VA' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All BusbarSection node voltages",
+                       |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All BusbarSection output power",
+                       |            "query": "select concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name, b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'power' type, 'measured_power' property, 'VA' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, BusbarSection b where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All EnergyConsumer node voltages",
+                       |            "query": "select concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name, c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, n.IdentifiedObject.mRID parent, 'voltage' type, 'voltage' property, 'Volts' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, EnergyConsumer c where t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All EnergyConsumer output power",
+                       |            "query": "select concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name, c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load_object') parent, 'power' type, 'power' property, 'VA' unit, n.TopologicalIsland island from TopologicalNode n, Terminal t, EnergyConsumer c where t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode ",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All ACLineSegment currents",
+                       |            "query": "select concat (name_island.name, '_current_recorder') name, name_island.name mrid, name_island.name parent, 'current' type, 'current_in' property, 'Amperes' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from ( select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID ) wires group by nodes ) name_island ",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All ACLineSegment losses",
+                       |            "query": "select concat (name_island.name, '_losses_recorder') name, name_island.name mrid, name_island.name parent, 'losses' type, 'power_losses' property, 'Wh' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from ( select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID ) wires group by nodes ) name_island ",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": null
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        }
+                       |    ],
+                       |    "transformers": [],
+                       |    "extras": [
+                       |        {
+                       |            "title": "ratedCurrent",
+                       |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
+                       |        },
+                       |        {
+                       |            "title": "ratedS",
+                       |            "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, cast (sum (e.ratedS) as string) value from Terminal t, PowerTransformerEnd e where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 group by t.TopologicalNode"
+                       |        },
+                       |        {
+                       |            "title": "nominalVoltage",
+                       |            "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
+                       |        },
+                       |        {
+                       |            "title": "substation",
+                       |            "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, first_value (c.substation) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, (select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
+                       |        },
+                       |        {
+                       |            "title": "contains",
+                       |            "query": "select first_value (contains.station) key, concat_ws (',', collect_list(contains.name)) value from ( select name_node_station.station station, name_node_station.name name from ( select concat_ws ('_', sort_array (collect_set (busbars.mrid))) name, first_value (busbars.station) station from ( select distinct b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t.TopologicalNode node, s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID station from TopologicalNode n, Terminal t, BusbarSection b, Substation s where t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and n.IdentifiedObject.mRID = t.TopologicalNode and s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.PSRType in ('PSRType_Substation', 'PSRType_TransformerStation', 'PSRType_DistributionBox') and b.Connector.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID ) busbars group by node ) name_node_station ) contains group by station"
+                       |        },
+                       |        {
+                       |            "title": "stationratedS",
+                       |            "query": "select first_value (c.substation) key, cast (sum(e.ratedS) as string) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, ( select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u ) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
+                       |        }
+                       |    ],
+                       |    "postprocessing": []
+                       |}
+                       |""".stripMargin
                 )
         }
         Main.main (
@@ -344,179 +345,179 @@ class SimulationSuiteIT
             writer =>
                 writer.write (
                     s"""
-                      |{
-                      |    "id": "$ID_SIMULATION",
-                      |    "name": "Reinforced Simulation Test",
-                      |    "description": "simulation with demo data and reinforcement",
-                      |    "cim": "$FILE_DEPOT$FILENAME2.rdf",
-                      |    "cimreaderoptions": {
-                      |        "ch.ninecode.cim.do_about": false,
-                      |        "ch.ninecode.cim.do_normalize": false,
-                      |        "ch.ninecode.cim.do_deduplication": false,
-                      |        "ch.ninecode.cim.make_edges": false,
-                      |        "ch.ninecode.cim.do_join": false,
-                      |        "ch.ninecode.cim.do_topo_islands": false,
-                      |        "ch.ninecode.cim.do_topo": false,
-                      |        "ch.ninecode.cim.split_maxsize": 67108864
-                      |    },
-                      |    "interval": {
-                      |        "start": "2018-01-01T00:00:00.000+0100",
-                      |        "end": "2018-02-01T00:00:00.000+0100",
-                      |        "buffer": 3600000
-                      |    },
-                      |    "temperatures": {
-                      |        "cim_temperature": 20.0,
-                      |        "simulation_temperature": 20.0
-                      |    },
-                      |    "swing": "hi",
-                      |    "swing_voltage_factor": 1.0,
-                      |    "keyspaces": {
-                      |        "input": "$KEYSPACE",
-                      |        "output": "$KEYSPACE",
-                      |        "replication": 1
-                      |    },
-                      |    "players": [
-                      |        {
-                      |            "title": "Measured power for all house services",
-                      |            "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID ",
-                      |            "transform": "new MeasurementTransform{val MILLISECONDS_PER_MINUTE: Int = 60 * 1000;override def transform (data: Array[SimulationPlayerData]): Array[SimulationPlayerData] ={data.map (reading =>reading.`type` match{case \\"energy\\" =>val factor = MILLISECONDS_PER_HOUR / reading.period;val t = reading.time - (reading.period - MILLISECONDS_PER_MINUTE);reading.copy (time = t, readings = reading.readings.map (_ * factor), units = \\"VA\\") case _ =>reading})}}"
-                      |        }
-                      |    ],
-                      |    "recorders": [
-                      |        {
-                      |            "title": "All PowerTransformer input power",
-                      |            "query": "select concat (name_island.name, '_power_recorder') name, name_island.name mrid, name_island.name parent, 'power' type, 'power_in' property, 'VA' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
-                      |            "interval": 900,
-                      |            "aggregations": [
-                      |                {
-                      |                    "intervals": 1,
-                      |                    "ttl": 1800
-                      |                },
-                      |                {
-                      |                    "intervals": 4,
-                      |                    "ttl": 3600
-                      |                },
-                      |                {
-                      |                    "intervals": 12,
-                      |                    "ttl": 7200
-                      |                },
-                      |                {
-                      |                    "intervals": 96,
-                      |                    "ttl": null
-                      |                }
-                      |            ]
-                      |        },
-                      |        {
-                      |            "title": "All BusbarSection node voltages",
-                      |            "query": "select    concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'voltage' type,    'voltage' property,    'Volts' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    BusbarSection b where    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
-                      |            "interval": 900,
-                      |            "aggregations": [
-                      |                {
-                      |                    "intervals": 1,
-                      |                    "ttl": 1800
-                      |                },
-                      |                {
-                      |                    "intervals": 4,
-                      |                    "ttl": 3600
-                      |                },
-                      |                {
-                      |                    "intervals": 12,
-                      |                    "ttl": 7200
-                      |                },
-                      |                {
-                      |                    "intervals": 96,
-                      |                    "ttl": null
-                      |                }
-                      |            ]
-                      |        },
-                      |        {
-                      |            "title": "All EnergyConsumer node voltages",
-                      |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'voltage' type,    'voltage' property,    'Volts' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    EnergyConsumer c where    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
-                      |            "interval": 900,
-                      |            "aggregations": [
-                      |                {
-                      |                    "intervals": 1,
-                      |                    "ttl": 1800
-                      |                },
-                      |                {
-                      |                    "intervals": 4,
-                      |                    "ttl": 3600
-                      |                },
-                      |                {
-                      |                    "intervals": 12,
-                      |                    "ttl": 7200
-                      |                },
-                      |                {
-                      |                    "intervals": 96,
-                      |                    "ttl": null
-                      |                }
-                      |            ]
-                      |        },
-                      |        {
-                      |            "title": "All EnergyConsumer output power",
-                      |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load_object') parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    EnergyConsumer c where    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
-                      |            "interval": 900,
-                      |            "aggregations": [
-                      |                {
-                      |                    "intervals": 1,
-                      |                    "ttl": 1800
-                      |                },
-                      |                {
-                      |                    "intervals": 4,
-                      |                    "ttl": 3600
-                      |                },
-                      |                {
-                      |                    "intervals": 12,
-                      |                    "ttl": 7200
-                      |                },
-                      |                {
-                      |                    "intervals": 96,
-                      |                    "ttl": null
-                      |                }
-                      |            ]
-                      |        },
-                      |        {
-                      |            "title": "All ACLineSegment currents",
-                      |            "query": "select concat (name_island.name, '_current_recorder') name, name_island.name mrid, name_island.name parent, 'current' type, 'current_in' property, 'Amperes' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from ( select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID ) wires group by nodes ) name_island ",
-                      |            "interval": 900,
-                      |            "aggregations": [
-                      |                {
-                      |                    "intervals": 1,
-                      |                    "ttl": 1800
-                      |                },
-                      |                {
-                      |                    "intervals": 4,
-                      |                    "ttl": 3600
-                      |                },
-                      |                {
-                      |                    "intervals": 12,
-                      |                    "ttl": 7200
-                      |                },
-                      |                {
-                      |                    "intervals": 96,
-                      |                    "ttl": null
-                      |                }
-                      |            ]
-                      |        }
-                      |    ],
-                      |    "transformers": [],
-                      |    "extras": [
-                      |        {
-                      |            "title": "ratedCurrent",
-                      |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
-                      |        },
-                      |        {
-                      |            "title": "ratedS",
-                      |            "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, cast (sum (e.ratedS) as string) value from Terminal t, PowerTransformerEnd e where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 group by t.TopologicalNode"
-                      |        },
-                      |        {
-                      |            "title": "nominalVoltage",
-                      |            "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
-                      |        }
-                      |    ],
-                      |    "postprocessing": []
-                      |}
-                      |""".stripMargin
+                       |{
+                       |    "id": "$ID_SIMULATION",
+                       |    "name": "Reinforced Simulation Test",
+                       |    "description": "simulation with demo data and reinforcement",
+                       |    "cim": "$FILE_DEPOT$FILENAME2.rdf",
+                       |    "cimreaderoptions": {
+                       |        "ch.ninecode.cim.do_about": false,
+                       |        "ch.ninecode.cim.do_normalize": false,
+                       |        "ch.ninecode.cim.do_deduplication": false,
+                       |        "ch.ninecode.cim.make_edges": false,
+                       |        "ch.ninecode.cim.do_join": false,
+                       |        "ch.ninecode.cim.do_topo_islands": false,
+                       |        "ch.ninecode.cim.do_topo": false,
+                       |        "ch.ninecode.cim.split_maxsize": 67108864
+                       |    },
+                       |    "interval": {
+                       |        "start": "2018-01-01T00:00:00.000+0100",
+                       |        "end": "2018-02-01T00:00:00.000+0100",
+                       |        "buffer": 3600000
+                       |    },
+                       |    "temperatures": {
+                       |        "cim_temperature": 20.0,
+                       |        "simulation_temperature": 20.0
+                       |    },
+                       |    "swing": "hi",
+                       |    "swing_voltage_factor": 1.0,
+                       |    "keyspaces": {
+                       |        "input": "$KEYSPACE",
+                       |        "output": "$KEYSPACE",
+                       |        "replication": 1
+                       |    },
+                       |    "players": [
+                       |        {
+                       |            "title": "Measured power for all house services",
+                       |            "query": "select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, 'energy' type, concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name, t.TopologicalNode parent, 'constant_power' property, 'Watt' unit, n.TopologicalIsland island from EnergyConsumer c, Terminal t, TopologicalNode n where c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and t.TopologicalNode = n.IdentifiedObject.mRID ",
+                       |            "transform": "new MeasurementTransform{val MILLISECONDS_PER_MINUTE: Int = 60 * 1000;override def transform (data: Array[SimulationPlayerData]): Array[SimulationPlayerData] ={data.map (reading =>reading.`type` match{case \\"energy\\" =>val factor = MILLISECONDS_PER_HOUR / reading.period;val t = reading.time - (reading.period - MILLISECONDS_PER_MINUTE);reading.copy (time = t, readings = reading.readings.map (_ * factor), units = \\"VA\\") case _ =>reading})}}"
+                       |        }
+                       |    ],
+                       |    "recorders": [
+                       |        {
+                       |            "title": "All PowerTransformer input power",
+                       |            "query": "select concat (name_island.name, '_power_recorder') name, name_island.name mrid, name_island.name parent, 'power' type, 'power_in' property, 'VA' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (trafos.mrid))) name, first_value (trafos.island) island from ( select distinct t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, t1.TopologicalNode node, n.TopologicalIsland island from PowerTransformer t, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.ACDCTerminal.sequenceNumber = 2 and t2.ACDCTerminal.sequenceNumber = 2 and t1.TopologicalNode = n.IdentifiedObject.mRID and t2.TopologicalNode = n.IdentifiedObject.mRID ) trafos group by node ) name_island",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": 1800
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": 3600
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": 7200
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All BusbarSection node voltages",
+                       |            "query": "select    concat (b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,    b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'voltage' type,    'voltage' property,    'Volts' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    BusbarSection b where    t.ConductingEquipment = b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": 1800
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": 3600
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": 7200
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All EnergyConsumer node voltages",
+                       |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_voltage_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    n.IdentifiedObject.mRID parent,    'voltage' type,    'voltage' property,    'Volts' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    EnergyConsumer c where    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": 1800
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": 3600
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": 7200
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All EnergyConsumer output power",
+                       |            "query": "select    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_power_recorder') name,    c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,    concat (c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load_object') parent,    'power' type,    'power' property,    'VA' unit,    n.TopologicalIsland island from    TopologicalNode n,    Terminal t,    EnergyConsumer c where    t.ConductingEquipment = c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and    n.IdentifiedObject.mRID = t.TopologicalNode",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": 1800
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": 3600
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": 7200
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        },
+                       |        {
+                       |            "title": "All ACLineSegment currents",
+                       |            "query": "select concat (name_island.name, '_current_recorder') name, name_island.name mrid, name_island.name parent, 'current' type, 'current_in' property, 'Amperes' unit, name_island.island from ( select concat_ws ('_', sort_array (collect_set (wires.mrid))) name, first_value (wires.island) island from ( select distinct a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, concat_ws ('_', sort_array (array (t1.TopologicalNode, t2.TopologicalNode))) nodes, n.TopologicalIsland island from ACLineSegment a, Terminal t1, Terminal t2, TopologicalNode n where t1.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t2.ConductingEquipment = a.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and t1.TopologicalNode != t2.TopologicalNode and t1.TopologicalNode = n.IdentifiedObject.mRID ) wires group by nodes ) name_island ",
+                       |            "interval": 900,
+                       |            "aggregations": [
+                       |                {
+                       |                    "intervals": 1,
+                       |                    "ttl": 1800
+                       |                },
+                       |                {
+                       |                    "intervals": 4,
+                       |                    "ttl": 3600
+                       |                },
+                       |                {
+                       |                    "intervals": 12,
+                       |                    "ttl": 7200
+                       |                },
+                       |                {
+                       |                    "intervals": 96,
+                       |                    "ttl": null
+                       |                }
+                       |            ]
+                       |        }
+                       |    ],
+                       |    "transformers": [],
+                       |    "extras": [
+                       |        {
+                       |            "title": "ratedCurrent",
+                       |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
+                       |        },
+                       |        {
+                       |            "title": "ratedS",
+                       |            "query": "select concat_ws ('_', sort_array (collect_set (e.PowerTransformer))) key, cast (sum (e.ratedS) as string) value from Terminal t, PowerTransformerEnd e where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 group by t.TopologicalNode"
+                       |        },
+                       |        {
+                       |            "title": "nominalVoltage",
+                       |            "query": "select e.mrid key, cast (v.nominalVoltage * 1000.0 as string) value from (select c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, c.ConductingEquipment.BaseVoltage voltage from EnergyConsumer c union select b.Connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid, b.Connector.ConductingEquipment.BaseVoltage voltage from BusbarSection b) e, BaseVoltage v where e.voltage = v.IdentifiedObject.mRID"
+                       |        }
+                       |    ],
+                       |    "postprocessing": []
+                       |}
+                       |""".stripMargin
                 )
         }
         Main.main (
@@ -1099,12 +1100,14 @@ class SimulationSuiteIT
         {
             cassandraSession =>
                 val sql = s"select * from $KEYSPACE.simulated_value where simulation='$ID_SIMULATION' and type='voltage' and period=900000 allow filtering"
+
                 def mag (row: Row): Double =
                 {
                     val r = row.getDouble ("real_a")
                     val i = row.getDouble ("imag_a")
                     Math.sqrt (r * r + i * i)
                 }
+
                 assert (cassandraSession.execute (sql).all.asScala.forall (row => mag (row) > 409.5)) // min is 409.92237
         }
         new File (json).delete
@@ -1145,7 +1148,7 @@ object SimulationSuiteIT
          *
          * The directory will be created if does not exist.
          *
-         * @param file the zip file
+         * @param file      the zip file
          * @param directory the directory to extract it to
          * @throws IOException if there is a problem with the zip extraction
          */
@@ -1165,9 +1168,9 @@ object SimulationSuiteIT
                         val path = directory + entry.getName
                         if (!entry.isDirectory)
                         // if the entry is a file, extracts it
-                            extractFile (zip, path)
-                        else
-                        // if the entry is a directory, make the directory
+                        extractFile (zip, path)
+                            else
+                            // if the entry is a directory, make the directory
                             new File (path).mkdir
                         zip.closeEntry ()
                         entry = zip.getNextEntry
@@ -1191,7 +1194,10 @@ object SimulationSuiteIT
                 bos =>
                     val bytes = new Array[Byte](4096)
                     var read = -1
-                    while ({ read = zip.read (bytes); read != -1 })
+                    while (
+                    {
+                        read = zip.read (bytes); read != -1
+                    })
                         bos.write (bytes, 0, read)
             }
         }

@@ -42,7 +42,11 @@ case class PongFunction () extends CIMWebFunction
         response.add ("spark_start_time", new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ssXXX").format (start.getTime))
         response.add ("spark_application_id", spark.sparkContext.applicationId)
         response.add ("spark_application_name", spark.sparkContext.appName)
-        spark.sparkContext.uiWebUrl match { case Some(ui) ⇒ response.add ("spark_application_ui_url", ui) case None ⇒ }
+        spark.sparkContext.uiWebUrl match
+        {
+            case Some (ui) ⇒ response.add ("spark_application_ui_url", ui)
+            case None ⇒
+        }
 
         // get the Spark configuration
         val spark_configuration = Json.createObjectBuilder

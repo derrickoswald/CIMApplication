@@ -79,10 +79,10 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
             !switch.open // open valid
         else
-        if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
-            !switch.normalOpen
-        else
-            true
+            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+                !switch.normalOpen
+            else
+                true
     }
 
     /**
@@ -117,7 +117,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      * Predicate to determine if the transformer is supplying a transformer service area.
      *
      * @param voltages array of end voltages
-     * @param arg the transformer id, PowerTransformer element and PowerTransformerEnds
+     * @param arg      the transformer id, PowerTransformer element and PowerTransformerEnds
      * @return <code>true</code> if this transformer should be a starting point for tracing a transformer service area
      */
     def heavy (voltages: collection.Map[String, Double])(arg: (String, (PowerTransformer, Option[Iterable[PowerTransformerEnd]]))): Boolean =
@@ -144,7 +144,7 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
      * @return a mapping between TopologicalIsland.id and PowerTransformer.id, e.g. ("PIN123_node_island", "TRA123")
      *         Where there are ganged transformers with connected secondary windings, the PowerTransformer.id
      *         is the concatenation of the sorted PowerTransformer.id values of all connected transformers,
-     * e.g. TRA1234_TRA5678.
+     *         e.g. TRA1234_TRA5678.
      *         Any TopologicalIsland without a transformer secondary node is not included.
      */
     def island_trafoset_rdd: RDD[(String, String)] =
@@ -243,12 +243,12 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         {
             if (null == msg) // do nothing initially
             attr
-            else
-            {
-                if (debug && log.isDebugEnabled)
-                    log.debug ("%s <-- %s".format (id, msg.toString))
-                msg
-            }
+                else
+                {
+                    if (debug && log.isDebugEnabled)
+                        log.debug ("%s <-- %s".format (id, msg.toString))
+                    msg
+                }
         }
 
         def send_message (triplet: EdgeTriplet[VertexData, EdgeData]): Iterator[(VertexId, VertexData)] =
@@ -256,27 +256,27 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
             if (!triplet.attr.isConnected)
                 Iterator.empty // send no message across an area boundary
             else
-            if ((null != triplet.srcAttr.area_label) && (null == triplet.dstAttr.area_label))
-            {
-                if (debug && log.isDebugEnabled)
-                    log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.toString, triplet.dstAttr.toString))
-                Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
-            }
-            else
-                if ((null == triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label))
+                if ((null != triplet.srcAttr.area_label) && (null == triplet.dstAttr.area_label))
                 {
                     if (debug && log.isDebugEnabled)
-                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.toString, triplet.srcAttr.toString))
-                    Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
+                        log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.srcAttr.toString, triplet.dstAttr.toString))
+                    Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
                 }
                 else
-                    if ((null != triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
+                    if ((null == triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label))
                     {
-                        log.error ("""transformer service areas "%s" and "%s" are connected""".format (triplet.srcAttr.area_label, triplet.dstAttr.area_label))
-                        Iterator.empty
+                        if (debug && log.isDebugEnabled)
+                            log.debug ("%s %s ---> %s".format (triplet.attr.id, triplet.dstAttr.toString, triplet.srcAttr.toString))
+                        Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
                     }
                     else
-                        Iterator.empty
+                        if ((null != triplet.srcAttr.area_label) && (null != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
+                        {
+                            log.error ("""transformer service areas "%s" and "%s" are connected""".format (triplet.srcAttr.area_label, triplet.dstAttr.area_label))
+                            Iterator.empty
+                        }
+                        else
+                            Iterator.empty
         }
 
         def merge_message (a: VertexData, b: VertexData): VertexData =

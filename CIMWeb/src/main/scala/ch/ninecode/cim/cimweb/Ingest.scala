@@ -42,9 +42,9 @@ class Ingest extends RESTful
         if (!json.containsKey (name) || json.isNull (name)) default else
         {
             val a = json.getJsonArray (name)
-            val s = for (s <- a.iterator()
-                 if s.getValueType == JsonValue.ValueType.STRING)
-                yield (s.asInstanceOf[String])
+            val s = for (s <- a.iterator ()
+                         if s.getValueType == JsonValue.ValueType.STRING)
+                yield (s.asInstanceOf [String])
             s.toList
         }
 
@@ -73,20 +73,20 @@ class Ingest extends RESTful
     def readJSON (json: String): Option[IngestOptions] =
     {
         try
-            try
-                Json.createReader (new StringReader (json)).readObject match
-                {
-                    case obj: JsonObject ⇒ Some (parseOptions (obj))
-                    case _ ⇒
-                        Logger.getLogger (getClass.getName).log (Level.SEVERE, """not a JsonObject""")
-                        None
-                }
-            catch
-            {
-                case je: JsonException ⇒
-                    Logger.getLogger (getClass.getName).log (Level.SEVERE, """unparseable as JSON""", je)
-                    None
-            }
+        try
+        Json.createReader (new StringReader (json)).readObject match
+        {
+            case obj: JsonObject ⇒ Some (parseOptions (obj))
+            case _ ⇒
+                Logger.getLogger (getClass.getName).log (Level.SEVERE, """not a JsonObject""")
+                None
+        }
+        catch
+        {
+            case je: JsonException ⇒
+                Logger.getLogger (getClass.getName).log (Level.SEVERE, """unparseable as JSON""", je)
+                None
+        }
         catch
         {
             case e: Exception =>

@@ -56,18 +56,18 @@ object Main
     )
 
     case class Arguments (
-                             quiet: Boolean = false,
-                             master: String = "",
-                             opts: Map[String, String] = Map (),
-                             storage: String = "MEMORY_AND_DISK_SER",
-                             dedup: Boolean = false,
-                             three: Boolean = false,
-                             trafos: String = "",
-                             log_level: LogLevels.Value = LogLevels.OFF,
-                             checkpoint_dir: String = "",
-                             workdir: String = "",
-                             files: Seq[String] = Seq ()
-                         )
+        quiet: Boolean = false,
+        master: String = "",
+        opts: Map[String, String] = Map (),
+        storage: String = "MEMORY_AND_DISK_SER",
+        dedup: Boolean = false,
+        three: Boolean = false,
+        trafos: String = "",
+        log_level: LogLevels.Value = LogLevels.OFF,
+        checkpoint_dir: String = "",
+        workdir: String = "",
+        files: Seq[String] = Seq ()
+    )
 
     val parser: OptionParser[Arguments] = new scopt.OptionParser[Arguments](APPLICATION_NAME)
     {
@@ -222,7 +222,7 @@ object Main
 
                 val options = LowVoltageOptions (
                     verbose = !arguments.quiet,
-                    cim_reader_options = mutable.HashMap [String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
+                    cim_reader_options = mutable.HashMap[String, String]("StorageLevel" → arguments.storage, "ch.ninecode.cim.do_deduplication" → arguments.dedup.toString),
                     three = arguments.three,
                     trafos = arguments.trafos,
                     workdir = if ("" == arguments.workdir) derive_work_dir (arguments.files) else arguments.workdir,

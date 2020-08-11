@@ -55,6 +55,6 @@ case class USTKreis
     val transformers: Array[TransformerSet] = Array.concat (hv_transformers, lv_transformers)
 
     def toTransformerEdge (elements: Iterable[Element], cn1: String, cn2: String): TransformerEdge =
-        // find the transformer in the list
+    // find the transformer in the list
         TransformerEdge (cn1, cn2, transformers.find (_.transformers.map (_.transformer.id).contains (elements.head.id)).orNull)
 }

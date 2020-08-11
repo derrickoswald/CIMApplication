@@ -31,7 +31,10 @@ class CopyOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
 
     opt [Unit]("unittest").
         hidden ().
-        action ((_, c) => { unittest = true; c.copy (unittest = true) }).
+        action ((_, c) =>
+        {
+            unittest = true; c.copy (unittest = true)
+        }).
         text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
     opt [LogLevels.Value]("log").
@@ -72,19 +75,28 @@ class CopyOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String)
 
     help ("help").
         hidden ().
-        validate (Unit => { helpout = true; Right (Unit) })
+        validate (Unit =>
+        {
+            helpout = true; Right (Unit)
+        })
 
     version ("version").
-        validate (Unit => { versionout = true; Right (Unit) }).
-            text ("Scala: %s, Spark: %s, %s: %s".format (
-                APPLICATION_VERSION.split ("-")(0),
-                APPLICATION_VERSION.split ("-")(1),
-                APPLICATION_NAME,
-                APPLICATION_VERSION.split ("-")(2)
-            )
+        validate (Unit =>
+        {
+            versionout = true; Right (Unit)
+        }).
+        text ("Scala: %s, Spark: %s, %s: %s".format (
+            APPLICATION_VERSION.split ("-")(0),
+            APPLICATION_VERSION.split ("-")(1),
+            APPLICATION_NAME,
+            APPLICATION_VERSION.split ("-")(2)
+        )
         )
 
-    checkConfig (o => { o.valid = !(helpout || versionout); Right (Unit) })
+    checkConfig (o =>
+    {
+        o.valid = !(helpout || versionout); Right (Unit)
+    })
 
     note (
         """

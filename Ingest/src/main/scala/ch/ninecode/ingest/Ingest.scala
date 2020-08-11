@@ -91,7 +91,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
 
     def map_csv_options: Map[String, String] =
     {
-        Map[String, String](
+        Map [String, String](
             "header" -> "true",
             "ignoreLeadingWhiteSpace" -> "false",
             "ignoreTrailingWhiteSpace" -> "false",
@@ -146,7 +146,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
         val timestamp = MeasurementTimestampFormat.parse (reading.time.toString)
         val measurement_time = new Date (timestamp.getTime).getTime
         for
-        {
+            {
             i <- reading.values.indices
             time = measurement_time + period * i
             if (time >= options.mintime) && (time <= options.maxtime)
@@ -211,7 +211,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
     def readFile (file: String): Array[Byte] =
     {
         try
-            Files.readAllBytes (Paths.get (file))
+        Files.readAllBytes (Paths.get (file))
         catch
         {
             case e: Exception =>
@@ -222,15 +222,16 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
 
     /**
      * Put a file on HDFS
+     *
      * @param spark the Spark session
-     * @param dst the path to save the file
-     * @param src the file to save
+     * @param dst   the path to save the file
+     * @param src   the file to save
      * @param unzip flag indicating the stream is a ZIP file that needs to be expanded
      * @return
      */
     def putFile (spark: SparkSession, dst: String, src: String, unzip: Boolean = false): Seq[String] =
     {
-        var ret = Seq[String]()
+        var ret = Seq [String]()
         val fs = hdfs
         val file = new Path (fs.getUri.toString, s"${options.workdir}$dst")
         // write the file
@@ -247,14 +248,14 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
             if (unzip)
             {
                 val in =
-                try
-                    Files.newInputStream(Paths.get (src))
-                catch
-                {
-                    case e: Exception =>
-                        log.error (s"""ingest failed for file "$file"""", e)
-                        new ByteArrayInputStream (Array[Byte]())
-                }
+                    try
+                    Files.newInputStream (Paths.get (src))
+                    catch
+                    {
+                        case e: Exception =>
+                            log.error (s"""ingest failed for file "$file"""", e)
+                            new ByteArrayInputStream (Array [Byte]())
+                    }
                 val zip = new ZipInputStream (in)
                 val buffer = new Array[Byte](1024)
                 var more = true
@@ -405,7 +406,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                 val period = fields (6).toInt
                 val interval = period * ONE_MINUTE_IN_MILLIS
                 val list = for
-                {
+                    {
                     i ← 7 until fields.length by 2
                     reading = fields (i)
                     value = if ("" != reading) asDouble (reading) * factor else 0.0
@@ -436,15 +437,15 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
             val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
             implicit val configuration: ReadConf =
                 ReadConf
-                .fromSparkConf (session.sparkContext.getConf)
-                .copy (splitCount = Some (executors))
+                    .fromSparkConf (session.sparkContext.getConf)
+                    .copy (splitCount = Some (executors))
             val df =
                 session
-                .sparkContext
-                .cassandraTable[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)](options.keyspace, "measured_value")
-                .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-            val unioned = rdd.union(df)
-            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
+                    .sparkContext
+                    .cassandraTable[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)](options.keyspace, "measured_value")
+                    .select ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val unioned = rdd.union (df)
+            val grouped = unioned.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
         else
@@ -492,7 +493,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                 val period = fields (14).toInt
                 val interval = period * ONE_MINUTE_IN_MILLIS
                 val list = for
-                {
+                    {
                     i ← 15 until fields.length by 2
                     flags = fields (i + 1)
                     if flags == "W"
@@ -534,11 +535,11 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                         .copy (splitCount = Some (executors))
                 val df =
                     session
-                    .sparkContext
-                    .cassandraTable[MeasuredValue](options.keyspace, "measured_value")
-                    .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-                val unioned = rdd.union(df)
-                val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
+                        .sparkContext
+                        .cassandraTable[MeasuredValue](options.keyspace, "measured_value")
+                        .select ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+                val unioned = rdd.union (df)
+                val grouped = unioned.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
                 grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
             }
             else
@@ -569,7 +570,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
          * Make a three phase data element from record returned by MSCONS parser.
          *
          * @param join_table the mapping from meter id to mRID
-         * @param record a reading from the MSCONS parser
+         * @param record     a reading from the MSCONS parser
          */
         def to_data_element (join_table: Map[String, String])(record: (String, String, Calendar, Int, Double, Double, String)): Option[ThreePhaseComplexDataElement] =
         {
@@ -635,22 +636,24 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                     .copy (splitCount = Some (executors))
             val df =
                 session
-                .sparkContext
-                .cassandraTable(options.keyspace, "measured_value")
-                .select("mrid", "time", "period", "real_a", "imag_a", "units")
-                .map((row) => {
-                    ThreePhaseComplexDataElement(
-                        row.getString("mrid"),
-                        row.getLong("time"),
-                        Complex(row.getDouble("real_a"),row.getDouble("imag_a")),
-                        null,
-                        null,
-                        row.getString("units"))
-                })
-            val unioned= raw.union(df)
+                    .sparkContext
+                    .cassandraTable (options.keyspace, "measured_value")
+                    .select ("mrid", "time", "period", "real_a", "imag_a", "units")
+                    .map ((row) =>
+                    {
+                        ThreePhaseComplexDataElement (
+                            row.getString ("mrid"),
+                            row.getLong ("time"),
+                            Complex (row.getDouble ("real_a"), row.getDouble ("imag_a")),
+                            null,
+                            null,
+                            row.getString ("units"))
+                    })
+            val unioned = raw.union (df)
             val grouped = unioned.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-        } else {
+        } else
+        {
             val grouped = raw.groupBy (x => (x.element, x.millis)).values.map (complex2).map (split)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
@@ -734,11 +737,11 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                     .copy (splitCount = Some (executors))
             val df =
                 session
-                .sparkContext
-                .cassandraTable[MeasuredValue](options.keyspace, "measured_value")
-                .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-            val unioned = rdd.union(df)
-            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.map(complex)
+                    .sparkContext
+                    .cassandraTable[MeasuredValue](options.keyspace, "measured_value")
+                    .select ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val unioned = rdd.union (df)
+            val grouped = unioned.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
             grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
         else
@@ -762,62 +765,71 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
         }
     }
 
-    def process_parquet(): Unit = {
-        readCIM()
-        val synthLoadProfile: RDD[MeasuredValue] = import_parquet()
-        val mapping: RDD[(String, String)] = getMappingAoHas()
-        val joinedData: RDD[MeasuredValue] = synthLoadProfile.keyBy(_._1).join(mapping).values.map(v => v._1.copy(_1 = v._2))
+    def process_parquet (): Unit =
+    {
+        readCIM ()
+        val synthLoadProfile: RDD[MeasuredValue] = import_parquet ()
+        val mapping: RDD[(String, String)] = getMappingAoHas ()
+        val joinedData: RDD[MeasuredValue] = synthLoadProfile.keyBy (_._1).join (mapping).values.map (v => v._1.copy (_1 = v._2))
 
-        def aggregateData(data: Iterable[MeasuredValue]): MeasuredValue = {
-            val real_a = data.map(_._5).sum
-            val imag_a = data.map(_._6).sum
-            data.head.copy(_5 = real_a, _6 = imag_a)
+        def aggregateData (data: Iterable[MeasuredValue]): MeasuredValue =
+        {
+            val real_a = data.map (_._5).sum
+            val imag_a = data.map (_._6).sum
+            data.head.copy (_5 = real_a, _6 = imag_a)
         }
-        val aggregatedData: RDD[MeasuredValue] = joinedData.groupBy(k => (k._1, k._3)).values.map(aggregateData)
-        aggregatedData.saveToCassandra(options.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+
+        val aggregatedData: RDD[MeasuredValue] = joinedData.groupBy (k => (k._1, k._3)).values.map (aggregateData)
+        aggregatedData.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
     }
 
-    def getMappingAoHas(): RDD[(String, String)] = {
-        val name: RDD[Name] = getOrElse[Name]
-        val serviceLocation: RDD[ServiceLocation] = getOrElse[ServiceLocation]
-        val userAttribute: RDD[UserAttribute] = getOrElse[UserAttribute]
-        val stringQuantity: RDD[StringQuantity] = getOrElse[StringQuantity]
+    def getMappingAoHas (): RDD[(String, String)] =
+    {
+        val name: RDD[Name] = getOrElse [Name]
+        val serviceLocation: RDD[ServiceLocation] = getOrElse [ServiceLocation]
+        val userAttribute: RDD[UserAttribute] = getOrElse [UserAttribute]
+        val stringQuantity: RDD[StringQuantity] = getOrElse [StringQuantity]
 
-        val MstHasMapping: RDD[(String, String)] = userAttribute.keyBy(_.value).join(stringQuantity.keyBy(_.id)).values.map(x => (x._1.name, x._2.value))
-        val MstAoMapping: RDD[(String, String)] = serviceLocation.keyBy(_.id).join(name.keyBy(_.IdentifiedObject)).values.map(x => (x._1.WorkLocation.Location.IdentifiedObject.name, x._2.name))
-        MstAoMapping.join(MstHasMapping).values
+        val MstHasMapping: RDD[(String, String)] = userAttribute.keyBy (_.value).join (stringQuantity.keyBy (_.id)).values.map (x => (x._1.name, x._2.value))
+        val MstAoMapping: RDD[(String, String)] = serviceLocation.keyBy (_.id).join (name.keyBy (_.IdentifiedObject)).values.map (x => (x._1.WorkLocation.Location.IdentifiedObject.name, x._2.name))
+        MstAoMapping.join (MstHasMapping).values
     }
 
-    def import_parquet(): RDD[MeasuredValue] = {
-        val dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssXXX")
-        def parquetMapping(row: Row): MeasuredValue = {
-            val ao_id = row.getLong(0).toString
-            val timestamp = dateFormat.parse(row.getString(1)).getTime
-            val real_a = row.getDouble(2)
-            val imag_a = row.getDouble(3)
+    def import_parquet (): RDD[MeasuredValue] =
+    {
+        val dateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ssXXX")
+
+        def parquetMapping (row: Row): MeasuredValue =
+        {
+            val ao_id = row.getLong (0).toString
+            val timestamp = dateFormat.parse (row.getString (1)).getTime
+            val real_a = row.getDouble (2)
+            val imag_a = row.getDouble (3)
             (ao_id, "energy", timestamp, 900000, real_a, imag_a, "Wh")
         }
-        val parquetFileDF = session.read.load(options.datafiles: _*)
-        parquetFileDF.rdd.map(parquetMapping)
+
+        val parquetFileDF = session.read.load (options.datafiles: _*)
+        parquetFileDF.rdd.map (parquetMapping)
     }
 
-    def readCIM(): Unit = {
+    def readCIM (): Unit =
+    {
         val start = System.nanoTime
-        val thisFiles = options.mapping.split(",")
-        val readOptions = Map[String, String](
+        val thisFiles = options.mapping.split (",")
+        val readOptions = Map [String, String](
             "path" -> options.mapping,
             "StorageLevel" -> "MEMORY_AND_DISK_SER",
             "ch.ninecode.cim.do_topo_islands" -> "false",
             "ch.ninecode.cim.debug" -> "true",
             "ch.ninecode.cim.do_deduplication" -> "true"
         )
-        val elements = session.sqlContext.read.format("ch.ninecode.cim")
-            .options(readOptions)
-            .load(thisFiles: _*)
-            .persist(StorageLevel.MEMORY_AND_DISK_SER)
-        println(elements.count + " elements")
+        val elements = session.sqlContext.read.format ("ch.ninecode.cim")
+            .options (readOptions)
+            .load (thisFiles: _*)
+            .persist (StorageLevel.MEMORY_AND_DISK_SER)
+        println (elements.count + " elements")
         val read = System.nanoTime
-        println("read: " + (read - start) / 1e9 + " seconds")
+        println ("read: " + (read - start) / 1e9 + " seconds")
     }
 
     def extractor (datatype: DataType): (Row, Int) => String =
@@ -848,37 +860,39 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
             log.info (s"schema: ${(db - begin) / 1e9} seconds")
             val mapping_files =
                 if (options.nocopy)
-                    Seq(options.mapping)
+                    Seq (options.mapping)
                 else
-                    putFile(session, base_name(options.mapping), options.mapping, options.mapping.toLowerCase.endsWith(".zip"))
+                    putFile (session, base_name (options.mapping), options.mapping, options.mapping.toLowerCase.endsWith (".zip"))
 
             var join_table: Map[String, String] = Map.empty
-            if (options.format != Formats.Parquet && mapping_files.nonEmpty) {
+            if (options.format != Formats.Parquet && mapping_files.nonEmpty)
+            {
                 val filename = mapping_files.head
-                val dataframe = session.sqlContext.read.format("csv").options(map_csv_options).csv(filename)
+                val dataframe = session.sqlContext.read.format ("csv").options (map_csv_options).csv (filename)
 
-                val read = System.nanoTime()
-                log.info(s"read $filename: ${(read - db) / 1e9} seconds")
+                val read = System.nanoTime ()
+                log.info (s"read $filename: ${(read - db) / 1e9} seconds")
 
-                val ch_number = dataframe.schema.fieldIndex(options.metercol)
-                val nis_number = dataframe.schema.fieldIndex(options.mridcol)
-                val extract = extractor(dataframe.schema.fields(ch_number).dataType)
-                join_table = dataframe.rdd.map(row => (extract(row, ch_number), row.getString(nis_number))).filter(_._2 != null).collect.toMap
+                val ch_number = dataframe.schema.fieldIndex (options.metercol)
+                val nis_number = dataframe.schema.fieldIndex (options.mridcol)
+                val extract = extractor (dataframe.schema.fields (ch_number).dataType)
+                join_table = dataframe.rdd.map (row => (extract (row, ch_number), row.getString (nis_number))).filter (_._2 != null).collect.toMap
 
-                val map = System.nanoTime()
-                log.info(s"map: ${(map - read) / 1e9} seconds")
+                val map = System.nanoTime ()
+                log.info (s"map: ${(map - read) / 1e9} seconds")
             }
 
-            options.format.toString match {
-                case "Belvis" => options.datafiles.foreach(process_belvis(join_table))
-                case "LPEx" => options.datafiles.foreach(process_lpex(join_table))
-                case "MSCONS" => process_mscons(join_table)(options.datafiles)
-                case "Custom" => options.datafiles.foreach(process_custom(join_table))
-                case "Parquet" => process_parquet()
+            options.format.toString match
+            {
+                case "Belvis" => options.datafiles.foreach (process_belvis (join_table))
+                case "LPEx" => options.datafiles.foreach (process_lpex (join_table))
+                case "MSCONS" => process_mscons (join_table)(options.datafiles)
+                case "Custom" => options.datafiles.foreach (process_custom (join_table))
+                case "Parquet" => process_parquet ()
             }
 
             if (!options.nocopy)
-                hdfs.delete(new Path(mapping_files.head), false)
+                hdfs.delete (new Path (mapping_files.head), false)
         }
     }
 }

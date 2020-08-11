@@ -18,10 +18,10 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         {
             val ret = for (p <- s.split (","))
                 yield
-                {
-                    val kv = p.split ("=")
-                    (kv (0), kv (1))
-                }
+                    {
+                        val kv = p.split ("=")
+                        (kv (0), kv (1))
+                    }
             ret.toMap
         }
     )
@@ -38,17 +38,23 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     opt [Unit]("unittest").
         hidden ().
-        action ((_, c) => { unittest = true; c.copy (unittest = true) }).
+        action ((_, c) =>
+        {
+            unittest = true; c.copy (unittest = true)
+        }).
         text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
     version ("version").
-        validate (Unit => { versionout = true; Right (Unit) }).
-            text ("Scala: %s, Spark: %s, %s: %s".format (
-                APPLICATION_VERSION.split ("-")(0),
-                APPLICATION_VERSION.split ("-")(1),
-                APPLICATION_NAME,
-                APPLICATION_VERSION.split ("-")(2)
-            )
+        validate (Unit =>
+        {
+            versionout = true; Right (Unit)
+        }).
+        text ("Scala: %s, Spark: %s, %s: %s".format (
+            APPLICATION_VERSION.split ("-")(0),
+            APPLICATION_VERSION.split ("-")(1),
+            APPLICATION_NAME,
+            APPLICATION_VERSION.split ("-")(2)
+        )
         )
 
     opt [Unit]("verbose").
@@ -82,7 +88,8 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     opt [String]("workdir").valueName ("<dir>").
         action ((x, c) ⇒
         {
-            val sep = System.getProperty ("file.separator"); c.copy (workdir = if (x.endsWith (sep)) x else x + sep)
+            val sep = System.getProperty ("file.separator");
+            c.copy (workdir = if (x.endsWith (sep)) x else x + sep)
         }).
         text ("directory for work files on each executor [\"%s\"]".format (default.workdir))
 
@@ -128,9 +135,15 @@ class SimulationOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     help ("help").
         hidden ().
-        validate (Unit => { helpout = true; Right (Unit) })
+        validate (Unit =>
+        {
+            helpout = true; Right (Unit)
+        })
 
-    checkConfig (o => { o.valid = !(helpout || versionout); Right (Unit) })
+    checkConfig (o =>
+    {
+        o.valid = !(helpout || versionout); Right (Unit)
+    })
 
     note (
         """

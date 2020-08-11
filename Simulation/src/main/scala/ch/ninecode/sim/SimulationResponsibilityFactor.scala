@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory
  * @param spark   The Spark session
  * @param options The simulation options.
  */
-case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggregate]) (spark: SparkSession, options: SimulationOptions)
+case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggregate])(spark: SparkSession, options: SimulationOptions)
     extends SimulationPostProcessor (spark, options)
 {
     if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
@@ -39,13 +39,14 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
         log.info ("Responsibility Factor")
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
+
         def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
 
         val typ = "power"
         val to_drop = if (options.three_phase)
-            Seq("simulation", "type", "period", "units")
+            Seq ("simulation", "type", "period", "units")
         else
-            Seq("simulation", "type", "period", "real_b", "imag_b", "real_c", "imag_c", "units")
+            Seq ("simulation", "type", "period", "real_b", "imag_b", "real_c", "imag_c", "units")
         val simulated_values = access.raw_values (typ, to_drop)
 
         val players = access.players ("energy")
@@ -144,7 +145,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
 object SimulationResponsibilityFactor extends SimulationPostProcessorParser
 {
     // standard aggregation is daily
-    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate] (
+    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List [SimulationAggregate](
         SimulationAggregate (96, 0)
     )
 
@@ -152,6 +153,7 @@ object SimulationResponsibilityFactor extends SimulationPostProcessorParser
 
     /**
      * Generates a JSON parser to populate a processor.
+     *
      * @return A method that will return an instance of a post processor given the postprocessing element of a JSON.
      */
     def parser (): JsonObject ⇒ (SparkSession, SimulationOptions) ⇒ SimulationPostProcessor =
@@ -175,6 +177,6 @@ object SimulationResponsibilityFactor extends SimulationPostProcessorParser
             else
                 STANDARD_AGGREGATES
 
-            SimulationResponsibilityFactor (aggregates) (_: SparkSession, _: SimulationOptions)
+            SimulationResponsibilityFactor (aggregates)(_: SparkSession, _: SimulationOptions)
         }
 }

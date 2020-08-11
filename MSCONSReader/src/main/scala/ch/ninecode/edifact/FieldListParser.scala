@@ -9,7 +9,12 @@ case class FieldListParser (list: List[Field]) extends Reader[Field]
 
     override def rest: Reader[Field] = FieldListParser (list.tail)
 
-    override def pos: Position = new Position { val line = 0; val column = 0; val lineContents: String = "" }
+    override def pos: Position = new Position
+    {
+        val line = 0;
+        val column = 0;
+        val lineContents: String = ""
+    }
 
     override def atEnd: Boolean = list.isEmpty
 }

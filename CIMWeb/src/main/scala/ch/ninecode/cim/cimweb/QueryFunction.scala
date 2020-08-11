@@ -30,8 +30,8 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
         val ret = Json.createObjectBuilder
         for (column ← row.schema.fields.indices)
         {
-            val name = row.schema(column).name
-            row.schema(column).dataType.typeName match
+            val name = row.schema (column).name
+            row.schema (column).dataType.typeName match
             {
                 case "boolean" ⇒ if (!row.isNullAt (column)) ret.add (name, row.getBoolean (column))
                 case "byte" ⇒ if (!row.isNullAt (column)) ret.add (name, row.getByte (column))
@@ -43,7 +43,7 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                 case "long" ⇒ if (!row.isNullAt (column)) ret.add (name, row.getLong (column))
                 case "short" ⇒ if (!row.isNullAt (column)) ret.add (name, row.getShort (column))
                 case "string" ⇒ if (!row.isNullAt (column)) ret.add (name, row.getString (column))
-                case "struct" ⇒ if (!row.isNullAt (column)) ret.add (name, packRow (row.get (column).asInstanceOf[Row]))
+                case "struct" ⇒ if (!row.isNullAt (column)) ret.add (name, packRow (row.get (column).asInstanceOf [Row]))
                 case "timestamp" ⇒ if (!row.isNullAt (column)) ret.add (name, row.getTimestamp (column).getTime)
                 case _ ⇒ if (!row.isNullAt (column)) ret.add (name, row.get (column).toString)
             }
@@ -56,33 +56,33 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
     {
         datatype.getName match
         {
-            case ASCII ⇒ classOf[String]
-            case BIGINT ⇒ classOf[Long]
-//            case BLOB ⇒
-            case BOOLEAN ⇒ classOf[Boolean]
-            case COUNTER ⇒ classOf[Long]
-            case DECIMAL ⇒ classOf[Double]
-            case DOUBLE ⇒  classOf[Double]
-            case FLOAT ⇒ classOf[Double]
-//            case INET ⇒
-            case INT ⇒ classOf[Integer]
-            case TEXT ⇒ classOf[String]
-            case TIMESTAMP ⇒ classOf[Date]
-//            case UUID ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
-            case VARCHAR ⇒ classOf[String]
-            case VARINT ⇒ classOf[Integer]
-//            case TIMEUUID ⇒
-//            case LIST ⇒
-//            case SET ⇒
-//            case MAP ⇒
-//            case CUSTOM ⇒
-//            case UDT ⇒
-//            case TUPLE ⇒
-            case SMALLINT ⇒ classOf[Integer]
-            case TINYINT ⇒ classOf[Integer]
-            case DATE ⇒ classOf[Date]
-            case TIME ⇒ classOf[Time]
-            case _ ⇒ classOf[String] // BLOB, CUSTOM, INET, LIST, MAP, SET, TIMEUUID, TUPLE, UDT, UUID
+            case ASCII ⇒ classOf [String]
+            case BIGINT ⇒ classOf [Long]
+            //            case BLOB ⇒
+            case BOOLEAN ⇒ classOf [Boolean]
+            case COUNTER ⇒ classOf [Long]
+            case DECIMAL ⇒ classOf [Double]
+            case DOUBLE ⇒ classOf [Double]
+            case FLOAT ⇒ classOf [Double]
+            //            case INET ⇒
+            case INT ⇒ classOf [Integer]
+            case TEXT ⇒ classOf [String]
+            case TIMESTAMP ⇒ classOf [Date]
+            //            case UUID ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
+            case VARCHAR ⇒ classOf [String]
+            case VARINT ⇒ classOf [Integer]
+            //            case TIMEUUID ⇒
+            //            case LIST ⇒
+            //            case SET ⇒
+            //            case MAP ⇒
+            //            case CUSTOM ⇒
+            //            case UDT ⇒
+            //            case TUPLE ⇒
+            case SMALLINT ⇒ classOf [Integer]
+            case TINYINT ⇒ classOf [Integer]
+            case DATE ⇒ classOf [Date]
+            case TIME ⇒ classOf [Time]
+            case _ ⇒ classOf [String] // BLOB, CUSTOM, INET, LIST, MAP, SET, TIMEUUID, TUPLE, UDT, UUID
         }
     }
 
@@ -122,7 +122,7 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                 case TIMEUUID ⇒ if (!row.isNull (index)) ret.add (name, row.getString (index))
                 case LIST ⇒ if (!row.isNull (index))
                 {
-                    val list = row.getList (name, classOf[String])
+                    val list = row.getList (name, classOf [String])
                     val array = Json.createArrayBuilder
                     list.foreach (x ⇒ array.add (x))
                     ret.add (name, array)
@@ -157,9 +157,9 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
             CassandraConnector (spark.sparkContext.getConf).withSessionDo
             {
                 session =>
-                val resultset: ResultSet = session.execute (sql)
-                for (row: com.datastax.driver.core.Row ← resultset.iterator)
-                    response.add (packRow2 (row))
+                    val resultset: ResultSet = session.execute (sql)
+                    for (row: com.datastax.driver.core.Row ← resultset.iterator)
+                        response.add (packRow2 (row))
             }
         else
         {
@@ -177,11 +177,12 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                 {
                     if (len == 7)
                         rows.map (row ⇒ (row.getString (row.fieldIndex ("mrid")), row.getString (row.fieldIndex ("type")), row.getString (row.fieldIndex ("time")), row.getInt (row.fieldIndex ("interval")), row.getDouble (row.fieldIndex ("real_a")), row.getDouble (row.fieldIndex ("imag_a")), row.getString (row.fieldIndex ("units")))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "units"))
-                    else if (len == 11)
-                        rows.map (row ⇒ (row.getString (row.fieldIndex ("mrid")), row.getString (row.fieldIndex ("type")), row.getString (row.fieldIndex ("time")), row.getInt (row.fieldIndex ("interval")), row.getDouble (row.fieldIndex ("real_a")), row.getDouble (row.fieldIndex ("imag_a")), row.getDouble (row.fieldIndex ("real_b")), row.getDouble (row.fieldIndex ("imag_b")), row.getDouble (row.fieldIndex ("real_c")), row.getDouble (row.fieldIndex ("imag_c")), row.getString (row.fieldIndex ("units")))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "units"))
+                    else
+                        if (len == 11)
+                            rows.map (row ⇒ (row.getString (row.fieldIndex ("mrid")), row.getString (row.fieldIndex ("type")), row.getString (row.fieldIndex ("time")), row.getInt (row.fieldIndex ("interval")), row.getDouble (row.fieldIndex ("real_a")), row.getDouble (row.fieldIndex ("imag_a")), row.getDouble (row.fieldIndex ("real_b")), row.getDouble (row.fieldIndex ("imag_b")), row.getDouble (row.fieldIndex ("real_c")), row.getDouble (row.fieldIndex ("imag_c")), row.getString (row.fieldIndex ("units")))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "units"))
                 }
                 else
-                    // ToDo: need an error mechanism
+                // ToDo: need an error mechanism
                     println ("""Cassandra format error: RDD has rows of %d columns, not 7, or 11 ("mrid", "type", "time", "period", "real_a", "imag_a", ..., "units")""".format (rows.first.length))
             }
             val results = df.collectAsList

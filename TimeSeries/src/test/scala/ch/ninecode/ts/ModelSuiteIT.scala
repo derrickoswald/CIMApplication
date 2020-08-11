@@ -8,7 +8,7 @@ import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.main
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@FixMethodOrder (MethodSorters.NAME_ASCENDING)
 class ModelSuiteIT
 {
     def cassandra_port: String =

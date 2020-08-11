@@ -14,26 +14,26 @@ import ch.ninecode.gl.Complex
  * We would like the JSON representation (of a Branch) to be something like:
  * var circuit =
  * {
- *     "series":
- *     [
- *         "a series branch mRID",
- *         "another series branch mRID",
- *         {
- *             "parallel":
- *             [
- *                 "a single element in a parallel branch",
- *                 {
- *                     "series":
- *                     [
- *                         "one element in series",
- *                         "two element in series"
- *                     ]
- *                 },
- *                "a further element in parallel"
- *             ]
- *         },
- *         "a final element in series"
- *     ]
+ * "series":
+ * [
+ * "a series branch mRID",
+ * "another series branch mRID",
+ * {
+ * "parallel":
+ * [
+ * "a single element in a parallel branch",
+ * {
+ * "series":
+ * [
+ * "one element in series",
+ * "two element in series"
+ * ]
+ * },
+ * "a further element in parallel"
+ * ]
+ * },
+ * "a final element in series"
+ * ]
  * }
  *
  * Note that the series and parallel constructs alternate, and so the labels are redundant
@@ -120,15 +120,16 @@ abstract class Branch (val from: String, val to: String, val current: Double)
  * @param z       the positive and zero sequence impedances at the operational temperatures
  */
 case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, name: String, rating: Option[Double] = None,
-     z: Impedanzen = Impedanzen (0.0, 0.0, 0.0, 0.0)) extends Branch (from, to, current)
+    z: Impedanzen = Impedanzen (0.0, 0.0, 0.0, 0.0)) extends Branch (from, to, current)
 {
-    override def toString: String = """SimpleBranch ("%s" ⇒ "%s" %sA %s%s %s)""".format (
-        from,
-        to,
-        current,
-        mRID,
-        if (rating.isDefined) "@%s".format (rating.get) else "",
-        if (null != name) name else "")
+    override def toString: String =
+        """SimpleBranch ("%s" ⇒ "%s" %sA %s%s %s)""".format (
+            from,
+            to,
+            current,
+            mRID,
+            if (rating.isDefined) "@%s".format (rating.get) else "",
+            if (null != name) name else "")
 
     def asString: String = "%s%s".format (mRID, if (rating.isDefined) "@%s".format (rating.get) else "")
 
@@ -148,7 +149,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def reverse: Branch = SimpleBranch (to, from, current, mRID, name, rating, z)
 
-    def ratios: Iterable[(Double, Branch)] = List((1.0, this))
+    def ratios: Iterable[(Double, Branch)] = List ((1.0, this))
 
     def voltageRatio: Double = 1.0
 
@@ -185,14 +186,15 @@ case class SimpleBranch (override val from: String, override val to: String, ove
  * @param pu      the per unit impedance
  */
 case class TransformerBranch (override val from: String, override val to: String, override val current: Double, mRID: String, name: String,
-                              s: Double, vfrom: Double, vto: Double, pu: Complex) extends Branch (from, to, current)
+    s: Double, vfrom: Double, vto: Double, pu: Complex) extends Branch (from, to, current)
 {
-    override def toString: String = """TransformerBranch ("%s" ⇒ "%s" %sA %s %s)""".format (
-        from,
-        to,
-        current,
-        mRID,
-        if (null != name) name else "")
+    override def toString: String =
+        """TransformerBranch ("%s" ⇒ "%s" %sA %s %s)""".format (
+            from,
+            to,
+            current,
+            mRID,
+            if (null != name) name else "")
 
     def asString: String = "%s".format (mRID)
 
@@ -212,7 +214,7 @@ case class TransformerBranch (override val from: String, override val to: String
 
     def reverse: Branch = TransformerBranch (to, from, current, mRID, name, s, vto, vfrom, pu)
 
-    def ratios: Iterable[(Double, Branch)] = List((1.0, this))
+    def ratios: Iterable[(Double, Branch)] = List ((1.0, this))
 
     def voltageRatio: Double = vto / vfrom
 
@@ -254,7 +256,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def seq: Seq[Branch] = series
 
-    def iter: Iterable[Branch] = Iterable(this)
+    def iter: Iterable[Branch] = Iterable (this)
 
     def lastFuses: Iterable[Branch] = series.last.lastFuses
 
@@ -284,9 +286,9 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def ratios: Iterable[(Double, Branch)] = series.last.ratios
 
-    def voltageRatio: Double = seq.foldLeft (1.0) ((v, branch) ⇒ v * branch.voltageRatio)
+    def voltageRatio: Double = seq.foldLeft (1.0)((v, branch) ⇒ v * branch.voltageRatio)
 
-    def z (in: Impedanzen): Impedanzen = seq.foldLeft (in) ((z, branch) ⇒ branch.z (z))
+    def z (in: Impedanzen): Impedanzen = seq.foldLeft (in)((z, branch) ⇒ branch.z (z))
 
     def contents: Iterable[Branch] = this.series
 
@@ -310,6 +312,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
                     case None => Some (arg)
                 }
         }
+
         val new_series: Seq[(Boolean, Option[Branch])] = series.map (_.checkFuses (ik)).flatMap (fuses)
         if (0 < new_series.size)
         {
@@ -390,12 +393,12 @@ case class ParallelBranch (override val from: String, override val to: String, o
     }
 
     // assume each branch has unity voltage ratio or the same voltage ratio
-    def voltageRatio: Double = parallel.head.iter.foldLeft (1.0) ((v, branch) ⇒ v * branch.voltageRatio)
+    def voltageRatio: Double = parallel.head.iter.foldLeft (1.0)((v, branch) ⇒ v * branch.voltageRatio)
 
     def z (in: Impedanzen): Impedanzen =
     {
         val pz = parallel.map (_.z (Impedanzen ()))
-        in + pz.tail.foldLeft (pz.head) ((z, bz) ⇒ bz.parallel (z))
+        in + pz.tail.foldLeft (pz.head)((z, bz) ⇒ bz.parallel (z))
     }
 
     def contents: Iterable[Branch] = parallel
@@ -430,10 +433,10 @@ case class ParallelBranch (override val from: String, override val to: String, o
 /**
  * A group of elements too complex to reduce to a combination of series and parallel branches.
  *
- * @param from     the 'from' node
- * @param to       the 'to' node
- * @param current  the current through this branch in the GridLAB-D experiment
- * @param basket   the branches in no particular order
+ * @param from    the 'from' node
+ * @param to      the 'to' node
+ * @param current the current through this branch in the GridLAB-D experiment
+ * @param basket  the branches in no particular order
  */
 case class ComplexBranch (override val from: String, override val to: String, override val current: Double, basket: Array[Branch]) extends Branch (from, to, current)
 {
@@ -451,7 +454,11 @@ case class ComplexBranch (override val from: String, override val to: String, ov
 
     def lastFuses: Iterable[Branch] =
     {
-        justFuses match { case Some (fuses) ⇒ Seq(fuses) case None ⇒ Seq() }
+        justFuses match
+        {
+            case Some (fuses) ⇒ Seq (fuses)
+            case None ⇒ Seq ()
+        }
     }
 
     def justFuses: Option[Branch] =
@@ -480,10 +487,11 @@ case class ComplexBranch (override val from: String, override val to: String, ov
 
     def ratios: Iterable[(Double, Branch)] = basket.map (x ⇒ (x.current / current, x))
 
-    def voltageRatio: Double = basket.foldLeft (1.0) ((v, branch) ⇒ v * branch.voltageRatio)
+    def voltageRatio: Double = basket.foldLeft (1.0)((v, branch) ⇒ v * branch.voltageRatio)
 
     /**
      * NOTE: this is totally wrong. It just puts a upper and lower bound on the actual impedance.
+     *
      * @return a fake impedance value
      */
     def z (in: Impedanzen): Impedanzen =

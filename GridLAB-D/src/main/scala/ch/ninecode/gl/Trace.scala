@@ -66,7 +66,7 @@ case class Trace (initial: Graph[PreNode, PreEdge])
         { case (_, _) => false }
 
         // perform the trace, marking all traced nodes true
-        val graph = binary.pregel [Boolean](false, 10000, EdgeDirection.Either)(
+        val graph = binary.pregel[Boolean](false, 10000, EdgeDirection.Either)(
             vertexProgram (starting_nodes),
             sendMessage,
             mergeMessage

@@ -34,15 +34,15 @@ case class PowerFeedingNode
 
     def hasNonRadial: Boolean =
         (null != problem) &&
-        (
-            problem.indexOf ("non-radial network") != -1
-        )
+            (
+                problem.indexOf ("non-radial network") != -1
+                )
 
     def hasIssues: Boolean =
         (null != problem) &&
-        (
-            problem.indexOf ("invalid element") != -1 ||
-            problem.indexOf ("regulator edge") != -1 ||
-            problem.indexOf ("subtransmission edge") != -1
-        )
+            (
+                problem.indexOf ("invalid element") != -1 ||
+                    problem.indexOf ("regulator edge") != -1 ||
+                    problem.indexOf ("subtransmission edge") != -1
+                )
 }

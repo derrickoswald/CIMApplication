@@ -82,7 +82,7 @@ trait GLMEdge extends Graphable with Serializable
 object GLMEdge
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
-    val rootClass:String = ConductingEquipment.getClass.getName.replace ("$", "")
+    val rootClass: String = ConductingEquipment.getClass.getName.replace ("$", "")
 
     def classname (element: Element): String =
     {
@@ -126,12 +126,12 @@ object GLMEdge
      *   - multi-island trace results
      *
      * @param elements the CIM elements comprising the edge
-     * @param cn1 the TopologicalNode id of one end of the edge
-     * @param cn2 the TopologicalNode id of the other end of the edge
+     * @param cn1      the TopologicalNode id of one end of the edge
+     * @param cn2      the TopologicalNode id of the other end of the edge
      * @return a type of edge
      */
     def toGLMEdge (elements: Iterable[Element], cn1: String, cn2: String,
-       makeTransformerEdge: (Iterable[Element], String, String) ⇒ TransformerEdge = transformermaker, tbase: Double = 20.0): GLMEdge =
+        makeTransformerEdge: (Iterable[Element], String, String) ⇒ TransformerEdge = transformermaker, tbase: Double = 20.0): GLMEdge =
     {
         // for now, we handle Conductor, Switch and eventually PowerTransformer
         var tagged = elements.map (x ⇒ (baseClass (x), x))
@@ -149,9 +149,9 @@ object GLMEdge
                 SwitchEdge (cn1, cn2, elements)
             case "Conductor" ⇒
                 LineEdge (cn1, cn2, elements.map (multiconductor), tbase)
-                // base_temperature: Double = 20.0,
-                // DEFAULT_R: Double = 0.225,
-                // DEFAULT_X: Double = 0.068
+            // base_temperature: Double = 20.0,
+            // DEFAULT_R: Double = 0.225,
+            // DEFAULT_X: Double = 0.068
             case "PowerTransformer" ⇒
                 makeTransformerEdge (elements, cn1, cn2)
             case _ ⇒

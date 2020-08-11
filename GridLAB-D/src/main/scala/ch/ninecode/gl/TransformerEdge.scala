@@ -14,7 +14,7 @@ case class TransformerEdge
 
     // check if this is a multi-winding transformer
     lazy val lv_windings: Array[PowerTransformerEnd] =
-        for (winding <- transformer.transformers(0).ends
+        for (winding <- transformer.transformers (0).ends
              if winding.TransformerEnd.endNumber > 1)
             yield winding
     lazy val multiwinding: Boolean = lv_windings.length > 1
@@ -32,35 +32,35 @@ case class TransformerEdge
         {
             val sec = for (index <- lv_windings.indices)
                 yield
-                {
-                    val config = configurationName
-                    val number = lv_windings(index).TransformerEnd.endNumber - 1
-                    val conf = s"${config}_winding_$number"
+                    {
+                        val config = configurationName
+                        val number = lv_windings (index).TransformerEnd.endNumber - 1
+                        val conf = s"${config}_winding_$number"
 
-                    s"""
-                        |        object transformer
-                        |        {
-                        |            name "${transformer.transformer_name}_$number";
-                        |            phases $phase;
-                        |            from "${transformer.node0}";
-                        |            to "${transformer.transformers(0).nodes(index+1).id}";
-                        |            configuration "$conf";
-                        |        };
-                        |""".stripMargin
-                }
+                        s"""
+                           |        object transformer
+                           |        {
+                           |            name "${transformer.transformer_name}_$number";
+                           |            phases $phase;
+                           |            from "${transformer.node0}";
+                           |            to "${transformer.transformers (0).nodes (index + 1).id}";
+                           |            configuration "$conf";
+                           |        };
+                           |""".stripMargin
+                    }
             sec.mkString
         }
         else
-        s"""
-            |        object transformer
-            |        {
-            |            name "${transformer.transformer_name}";
-            |            phases $phase;
-            |            from "${transformer.node0}";
-            |            to "${transformer.node1}";
-            |            configuration "$configurationName";
-            |        };
-            |""".stripMargin
+            s"""
+               |        object transformer
+               |        {
+               |            name "${transformer.transformer_name}";
+               |            phases $phase;
+               |            from "${transformer.node0}";
+               |            to "${transformer.node1}";
+               |            configuration "$configurationName";
+               |        };
+               |""".stripMargin
     }
 
     /**
@@ -153,48 +153,50 @@ case class TransformerEdge
 
         if (!multiwinding)
         {
-        s"""$warn
-            |        object transformer_configuration
-            |        {
-            |$comment
-            |            name "$config";
-            |            connect_type $connect;
-            |            install_type PADMOUNT;
-            |            power_rating ${transformer.power_rating / 1000.0};
-            |            primary_voltage ${transformer.v0};
-            |            secondary_voltage ${if (multiwinding) transformer.v0 else transformer.v1};
-            |            resistance ${nonNegative (total_impedance.re)};
-            |            reactance ${nonNegative (total_impedance.im)};
-            |        };
-            |""".stripMargin
-        }  else {
+            s"""$warn
+               |        object transformer_configuration
+               |        {
+               |$comment
+               |            name "$config";
+               |            connect_type $connect;
+               |            install_type PADMOUNT;
+               |            power_rating ${transformer.power_rating / 1000.0};
+               |            primary_voltage ${transformer.v0};
+               |            secondary_voltage ${if (multiwinding) transformer.v0 else transformer.v1};
+               |            resistance ${nonNegative (total_impedance.re)};
+               |            reactance ${nonNegative (total_impedance.im)};
+               |        };
+               |""".stripMargin
+        } else
+        {
 
-            val array = for ( index <- lv_windings.indices)
-               yield {
-                   val number = lv_windings(index).TransformerEnd.endNumber - 1
-                   val power = lv_windings(index).ratedS
-                   val voltsPrimary = transformer.v0
-                   val voltsSecondary = transformer.transformers(0).voltages(index+1)._2
-                   //Zohms = Zpu * Zbase
-                   //Zbase = Vll^2 / Sbase
-                   val Zbase = voltsSecondary*voltsSecondary / power
-                   val Rpu = lv_windings(index).r / Zbase
-                   val Xpu = lv_windings(index).x / Zbase
-                       s"""$warn
-                      |        object transformer_configuration
-                      |        {
-                      |$comment
-                      |            name ${config}_winding_$number;
-                      |            connect_type $connect;
-                      |            install_type PADMOUNT;
-                      |            power_rating ${power / 1000.0};
-                      |            primary_voltage ${voltsPrimary};
-                      |            secondary_voltage ${voltsSecondary};
-                      |            resistance ${nonNegative (Rpu)};
-                      |            reactance ${nonNegative (Xpu)};
-                      |        };
-                      |""".stripMargin
-               }
+            val array = for (index <- lv_windings.indices)
+                yield
+                    {
+                        val number = lv_windings (index).TransformerEnd.endNumber - 1
+                        val power = lv_windings (index).ratedS
+                        val voltsPrimary = transformer.v0
+                        val voltsSecondary = transformer.transformers (0).voltages (index + 1)._2
+                        //Zohms = Zpu * Zbase
+                        //Zbase = Vll^2 / Sbase
+                        val Zbase = voltsSecondary * voltsSecondary / power
+                        val Rpu = lv_windings (index).r / Zbase
+                        val Xpu = lv_windings (index).x / Zbase
+                        s"""$warn
+                           |        object transformer_configuration
+                           |        {
+                           |$comment
+                           |            name ${config}_winding_$number;
+                           |            connect_type $connect;
+                           |            install_type PADMOUNT;
+                           |            power_rating ${power / 1000.0};
+                           |            primary_voltage ${voltsPrimary};
+                           |            secondary_voltage ${voltsSecondary};
+                           |            resistance ${nonNegative (Rpu)};
+                           |            reactance ${nonNegative (Xpu)};
+                           |        };
+                           |""".stripMargin
+                    }
             array.mkString
         }
     }

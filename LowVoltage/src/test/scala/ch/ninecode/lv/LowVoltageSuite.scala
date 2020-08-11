@@ -13,6 +13,7 @@ import org.apache.spark.sql.SparkSession
 class LowVoltageSuite extends TestUtil
 {
     override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list, GridLABD.classes)
+
     def readFile (session: SparkSession, filename: String): RDD[Element] =
     {
         val files = filename.split (",")

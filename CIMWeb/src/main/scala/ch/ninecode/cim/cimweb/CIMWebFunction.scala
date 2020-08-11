@@ -23,7 +23,7 @@ abstract class CIMWebFunction extends CIMFunction
 {
     override def getReturnType: Return = Return.JSON
 
-    var jars: Array[String] = new Array[String] (0)
+    var jars: Array[String] = new Array[String](0)
 
     def setJars (newjars: Array[String]): Unit = jars = newjars
 
@@ -74,6 +74,7 @@ abstract class CIMWebFunction extends CIMFunction
 
     // get the file system
     def uri: URI = FileSystem.getDefaultUri (hdfs_configuration)
+
     // or: val uri: URI = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY))
 
     def hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)

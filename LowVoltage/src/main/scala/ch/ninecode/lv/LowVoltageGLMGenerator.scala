@@ -55,19 +55,19 @@ class LowVoltageGLMGenerator
     override def nodes: Iterable[GLMNode] =
     {
         val swings = swing_nodes.map (_.id).toArray
-        trafokreis.nodes.filter (x => !swings.contains (x.id)).++(
+        trafokreis.nodes.filter (x => !swings.contains (x.id)).++ (
             trafokreis.transformers.transformers.map (
-                        tx =>
-                            PowerFeedingNode (
-                                tx.node0,
-                                null,
-                                null,
-                                tx.v0,
-                                null,
-                                null,
-                                0.0,
-                                Double.PositiveInfinity,
-                                null)).toSeq)
+                tx =>
+                    PowerFeedingNode (
+                        tx.node0,
+                        null,
+                        null,
+                        tx.v0,
+                        null,
+                        null,
+                        0.0,
+                        Double.PositiveInfinity,
+                        null)).toSeq)
     }
 
     override def emit_node (node: GLMNode): String =

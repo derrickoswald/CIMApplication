@@ -42,18 +42,19 @@ abstract class MeasurementTransform extends Serializable
 
 object MeasurementTransform
 {
-    val cache = new mutable.HashMap[String, MeasurementTransform] ()
-    lazy val identity: MeasurementTransform = new MeasurementTransform {}
+    val cache = new mutable.HashMap[String, MeasurementTransform]()
+    lazy val identity: MeasurementTransform = new MeasurementTransform
+    {}
 
     def build (program: String): MeasurementTransform =
     {
         val toolbox = scala.reflect.runtime.currentMirror.mkToolBox ()
         val tree = toolbox.parse ("import ch.ninecode.sim._; import ch.ninecode.gl._; " + program)
         val compiledCode = toolbox.compile (tree)
-        compiledCode() match
+        compiledCode () match
         {
             case cls: Class[_] =>
-                cls.newInstance ().asInstanceOf[MeasurementTransform]
+                cls.newInstance ().asInstanceOf [MeasurementTransform]
             case inst: MeasurementTransform =>
                 inst
         }
@@ -66,7 +67,7 @@ object MeasurementTransform
         else
         {
             if (cache.contains (program))
-                cache(program)
+                cache (program)
             else
             {
                 val transform = build (program)

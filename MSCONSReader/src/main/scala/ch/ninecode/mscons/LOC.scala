@@ -65,7 +65,7 @@ object LOC extends FieldExtractor[LOC]
     private lazy val c517 =
         subfields (
             c517_3225 ~ c517_1131 ~ c517_3055 ~ c517_3224 ^^
-                { case _3225 ~ _1131 ~ _3055 ~ _3224  => Location_Identification (_3225, _1131, _3055, _3224) }
+                { case _3225 ~ _1131 ~ _3055 ~ _3224 => Location_Identification (_3225, _1131, _3055, _3224) }
         )
 
     private lazy val c519_3223 = alphanumeric_? (35)
@@ -75,7 +75,7 @@ object LOC extends FieldExtractor[LOC]
     private lazy val c519 =
         subfields (
             c519_3223 ~ c519_1131 ~ c519_3055 ~ c519_3222 ^^
-                { case _3223 ~ _1131 ~ _3055 ~ _3222  => Related_Location_One_Identification (_3223, _1131, _3055, _3222) }
+                { case _3223 ~ _1131 ~ _3055 ~ _3222 => Related_Location_One_Identification (_3223, _1131, _3055, _3222) }
         )
 
     private lazy val c553_3223 = alphanumeric_? (35)
@@ -85,7 +85,7 @@ object LOC extends FieldExtractor[LOC]
     private lazy val c553 =
         subfields (
             c553_3223 ~ c553_1131 ~ c553_3055 ~ c553_3222 ^^
-                { case _3223 ~ _1131 ~ _3055 ~ _3222  => Related_Location_Two_Identification (_3223, _1131, _3055, _3222) }
+                { case _3223 ~ _1131 ~ _3055 ~ _3222 => Related_Location_Two_Identification (_3223, _1131, _3055, _3222) }
         )
 
     private lazy val _5479 = alphanumeric_? (3)

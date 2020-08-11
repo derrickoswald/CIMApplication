@@ -50,7 +50,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         edge.element match
         {
             // ToDo: fix this (see note above)
-            case line: ACLineSegment ⇒ (line.Conductor.len / 1000.0, Complex (resistanceAt(tsim, tbase,line.r), line.x), edge.ratedCurrent)
+            case line: ACLineSegment ⇒ (line.Conductor.len / 1000.0, Complex (resistanceAt (tsim, tbase, line.r), line.x), edge.ratedCurrent)
             case _ ⇒ (0.0, 0.0, Double.PositiveInfinity)
         }
     }
@@ -68,64 +68,89 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
             v
     }
 
-    def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] = {
+    def sendMessage (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
+    {
         val dst = triplet.dstAttr
         val src = triplet.srcAttr
-        if ((null == src.source_obj) && (null == dst.source_obj)) {
+        if ((null == src.source_obj) && (null == dst.source_obj))
+        {
             Iterator.empty
-        } else if (src.id == dst.prev_node || dst.id == src.prev_node) {
-            Iterator.empty
-        } else if (!triplet.attr.connected) {
-            Iterator.empty
-        } else if (src.source_obj != null && dst.source_obj == null) {
-            sendMessageToNode(src, dst, triplet.dstId, triplet.attr)
-        } else if (src.source_obj == null && dst.source_obj != null) {
-            sendMessageToNode(dst, src, triplet.srcId, triplet.attr)
-        } else {
-            sendMessageWithIssues(triplet)
-        }
+        } else
+            if (src.id == dst.prev_node || dst.id == src.prev_node)
+            {
+                Iterator.empty
+            } else
+                if (!triplet.attr.connected)
+                {
+                    Iterator.empty
+                } else
+                    if (src.source_obj != null && dst.source_obj == null)
+                    {
+                        sendMessageToNode (src, dst, triplet.dstId, triplet.attr)
+                    } else
+                        if (src.source_obj == null && dst.source_obj != null)
+                        {
+                            sendMessageToNode (dst, src, triplet.srcId, triplet.attr)
+                        } else
+                        {
+                            sendMessageWithIssues (triplet)
+                        }
     }
 
-    private def sendMessageToNode(from: PowerFeedingNode, to: PowerFeedingNode, toId: VertexId, edge: PreEdge): Iterator[(VertexId, PowerFeedingNode)] = {
-        val (dist_km, z, ir) = line_details(edge)
+    private def sendMessageToNode (from: PowerFeedingNode, to: PowerFeedingNode, toId: VertexId, edge: PreEdge): Iterator[(VertexId, PowerFeedingNode)] =
+    {
+        val (dist_km, z, ir) = line_details (edge)
         val sum_z = from.sum_z + z * dist_km
-        val min_ir = math.min(from.min_ir, ir)
+        val min_ir = math.min (from.min_ir, ir)
         val feeder = if (null != to.feeder) to.feeder else from.feeder
         val problem =
             if (from.nominal_voltage < to.nominal_voltage && to.nominal_voltage <= 1000.0) // ToDo: don't hard code these values
             s"low voltage (${to.nominal_voltage}V:${from.nominal_voltage}V) subtransmission edge ${edge.id}"
-                else if (from.hasIssues) from.problem
-            else if (to.hasIssues) to.problem
-            else if (null != edge.problem) edge.problem
-            else from.problem
-        val message = PowerFeedingNode(to.id, from.id, null, to.nominal_voltage, from.source_obj, feeder, sum_z, min_ir, problem)
+                else
+                if (from.hasIssues) from.problem
+                else
+                    if (to.hasIssues) to.problem
+                    else
+                        if (null != edge.problem) edge.problem
+                        else from.problem
+        val message = PowerFeedingNode (to.id, from.id, null, to.nominal_voltage, from.source_obj, feeder, sum_z, min_ir, problem)
         if (log.isDebugEnabled)
-            log.info("%s --> %s".format(from.id, message.asString))
-        Iterator((toId, message))
+            log.info ("%s --> %s".format (from.id, message.asString))
+        Iterator ((toId, message))
     }
 
-    private def sendMessageWithIssues(triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] = {
+    private def sendMessageWithIssues (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): Iterator[(VertexId, PowerFeedingNode)] =
+    {
         val src = triplet.srcAttr
         val dst = triplet.dstAttr
-        if (triplet.srcAttr.hasNonRadial || triplet.dstAttr.hasNonRadial) {
+        if (triplet.srcAttr.hasNonRadial || triplet.dstAttr.hasNonRadial)
+        {
             // at least one node is marked as non-radial, so nothing to do
             Iterator.empty
-        } else if (src.hasIssues && dst.hasIssues) {
-            // both of the nodes already have issues, so nothing we can do
-            Iterator.empty
-        } else if (!src.hasIssues && !dst.hasIssues) {
-            // send message(s) to mark at least one as non-radial
-            Iterator((triplet.srcId, triplet.srcAttr.copy(prev_node = triplet.dstAttr.id, problem = "non-radial network")), (triplet.dstId, triplet.dstAttr.copy(prev_node = triplet.srcAttr.id, problem = "non-radial network")))
-        } else if (!src.hasIssues) {
-            Iterator((triplet.srcId, triplet.srcAttr.copy(prev_node = triplet.dstAttr.id, problem = "non-radial network")))
-        } else {
-            Iterator((triplet.dstId, triplet.dstAttr.copy(prev_node = triplet.srcAttr.id, problem = "non-radial network")))
-        }
+        } else
+            if (src.hasIssues && dst.hasIssues)
+            {
+                // both of the nodes already have issues, so nothing we can do
+                Iterator.empty
+            } else
+                if (!src.hasIssues && !dst.hasIssues)
+                {
+                    // send message(s) to mark at least one as non-radial
+                    Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")), (triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
+                } else
+                    if (!src.hasIssues)
+                    {
+                        Iterator ((triplet.srcId, triplet.srcAttr.copy (prev_node = triplet.dstAttr.id, problem = "non-radial network")))
+                    } else
+                    {
+                        Iterator ((triplet.dstId, triplet.dstAttr.copy (prev_node = triplet.srcAttr.id, problem = "non-radial network")))
+                    }
     }
 
     def mergeMessage (a: PowerFeedingNode, b: PowerFeedingNode): PowerFeedingNode =
     {
-        val node = a.copy (problem = if (a.hasIssues) a.problem else if (b.hasIssues) b.problem else "non-radial network")
+        val node = a.copy (problem = if (a.hasIssues) a.problem else
+            if (b.hasIssues) b.problem else "non-radial network")
         if (log.isDebugEnabled)
             log.debug ("merge %s & %s".format (a.asString, b.asString))
         node
@@ -151,7 +176,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
 
         // run Pregel
         val default_message = PowerFeedingNode (null, null, null, 0, null.asInstanceOf [StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity, null)
-        graph.pregel [PowerFeedingNode](default_message, 10000, EdgeDirection.Either)(
+        graph.pregel[PowerFeedingNode](default_message, 10000, EdgeDirection.Either)(
             vertexProgram,
             sendMessage,
             mergeMessage
@@ -203,12 +228,14 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 else
                     (trafo_ratedS, node.problem, "transformer limit")
             }
-            else if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
-                (trafo_ratedS, "transformer limit", "assuming no EEA")
-            else if (p_max_u < p_max_i)
-                (p_max_u, "voltage limit", "assuming no EEA")
             else
-                (p_max_i, "current limit", "assuming no EEA")
+                if ((trafo_ratedS < p_max_u) && (trafo_ratedS < p_max_i))
+                    (trafo_ratedS, "transformer limit", "assuming no EEA")
+                else
+                    if (p_max_u < p_max_i)
+                        (p_max_u, "voltage limit", "assuming no EEA")
+                    else
+                        (p_max_i, "current limit", "assuming no EEA")
 
         MaxPowerFeedingNodeEEA (node.id, node.nominal_voltage, mrid, psrtype, trafo_id, feeder_id, p_max, null, reason, details)
     }
@@ -235,14 +262,14 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
             {
                 val v0 = pn.vertex_id (transformers.node0)
                 val impedance = transformers.total_impedance_per_unit._1
-                for (end <- transformers.transformers(0).ends
+                for (end <- transformers.transformers (0).ends
                      if end.TransformerEnd.endNumber > 1)
                     yield
-                    {
-                        val number = end.TransformerEnd.endNumber - 1
-                        val v1 = pn.vertex_id (transformers.transformers(0).terminals(number).TopologicalNode)
-                        StartingTrafo (v0, v1, transformers.transformer_name, impedance, ratedS)
-                    }
+                        {
+                            val number = end.TransformerEnd.endNumber - 1
+                            val v1 = pn.vertex_id (transformers.transformers (0).terminals (number).TopologicalNode)
+                            StartingTrafo (v0, v1, transformers.transformer_name, impedance, ratedS)
+                        }
             }
         )
     }
@@ -288,6 +315,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
             else
                 pfn.head.problem
         }
+
         // update each element in the transformer service area with bad value
         val problem_trafos = graph.vertices.values.filter (x ⇒ x.source_obj != null && (x.hasIssues || x.hasNonRadial)).keyBy (_.source_obj).groupByKey.map (x ⇒ (x._1.trafo_id, pickWorst (x._2)))
         val has = traced_house_nodes_EEA.map (

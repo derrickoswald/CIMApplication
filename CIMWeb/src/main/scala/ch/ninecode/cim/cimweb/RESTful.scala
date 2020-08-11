@@ -16,9 +16,10 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 
 class RESTful ()
 {
+
     import RESTful._
 
-    type map = java.util.Map[String,Object]
+    type map = java.util.Map[String, Object]
 
     protected def getConnection (result: RESTfulJSONResult, debug: Boolean = false): CIMConnection =
     {
@@ -31,7 +32,7 @@ class RESTful ()
             val specification: CIMConnectionSpec = factory.getDefaultConnectionSpec
             specification.getProperties.put ("spark.driver.memory", "1g")
             specification.getProperties.put ("spark.executor.memory", "2g")
-            factory.getConnection (specification).asInstanceOf[CIMConnection]
+            factory.getConnection (specification).asInstanceOf [CIMConnection]
         }
         else
         {
@@ -51,12 +52,12 @@ class RESTful ()
 
 object RESTful
 {
-    @Resource(
+    @Resource (
         name = "SparkConnectionFactory",
         description = "Connection factory for Spark connection using CIMConnector",
         authenticationType = Resource.AuthenticationType.APPLICATION,
-        mappedName="java:openejb/Resource/SparkConnectionFactory",
-        `type`=classOf[CIMConnectionFactory])
+        mappedName = "java:openejb/Resource/SparkConnectionFactory",
+        `type` = classOf [CIMConnectionFactory])
     var _ConnectionFactory: CIMConnectionFactory = _
 
     /**
@@ -140,7 +141,7 @@ object RESTful
                     if (debug)
                         print_context (debug_out, context, "java:")
                     try
-                        _ConnectionFactory = context.lookup ("java:openejb/Resource/SparkConnectionFactory").asInstanceOf [CIMConnectionFactory]
+                    _ConnectionFactory = context.lookup ("java:openejb/Resource/SparkConnectionFactory").asInstanceOf [CIMConnectionFactory]
                     catch
                     {
                         case ne: NamingException ⇒

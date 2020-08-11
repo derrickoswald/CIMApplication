@@ -24,7 +24,7 @@ import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.main
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@FixMethodOrder (MethodSorters.NAME_ASCENDING)
 class TimeSeriesStatsSuiteIT
 {
     def using[T <: Closeable, R] (resource: T)(block: T => R): R =
@@ -100,7 +100,7 @@ object TimeSeriesStatsSuiteIT
          *
          * The directory will be created if does not exist.
          *
-         * @param file the zip file
+         * @param file      the zip file
          * @param directory the directory to extract it to
          * @throws IOException if there is a problem with the zip extraction
          */
@@ -120,9 +120,9 @@ object TimeSeriesStatsSuiteIT
                         val path = directory + entry.getName
                         if (!entry.isDirectory)
                         // if the entry is a file, extracts it
-                            extractFile (zip, path)
-                        else
-                        // if the entry is a directory, make the directory
+                        extractFile (zip, path)
+                            else
+                            // if the entry is a directory, make the directory
                             new File (path).mkdir
                         zip.closeEntry ()
                         entry = zip.getNextEntry
@@ -146,7 +146,10 @@ object TimeSeriesStatsSuiteIT
                 bos =>
                     val bytes = new Array[Byte](4096)
                     var read = -1
-                    while ({ read = zip.read (bytes); read != -1 })
+                    while (
+                    {
+                        read = zip.read (bytes); read != -1
+                    })
                         bos.write (bytes, 0, read)
             }
         }

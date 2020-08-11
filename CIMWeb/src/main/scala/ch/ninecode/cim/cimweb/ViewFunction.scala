@@ -19,20 +19,20 @@ import ch.ninecode.model.PositionPoint
  * Extract elements from what is currently loaded in Spark.
  *
  * Derived from the GeoVis line extraction with bounding box and simplification.
- * @author Markus Jung
  *
- * @param about md:FullModel rdf:about contents
- * @param all if <code>true</code> return all features, otherwise filter as dictated by the other oarameters
- * @param xmin minimum longitude
- * @param ymin minimum latitude
- * @param xmax maximum longitude
- * @param ymax maximum latitude
- * @param reduceLines if <code>true</code> restricts the number of ACLineSegment to <code>maxLines</code>
- * @param maxLines the maximum number of ACLineSegments if <code>reduceLines</code> is <code>true</code>
- * @param dougPeuk if <code>true</code> applies the Ramer–Douglas–Peucker algorithm to reduce the number of PositionPoint verticies in ACLineSegment geometries
+ * @author Markus Jung
+ * @param about          md:FullModel rdf:about contents
+ * @param all            if <code>true</code> return all features, otherwise filter as dictated by the other oarameters
+ * @param xmin           minimum longitude
+ * @param ymin           minimum latitude
+ * @param xmax           maximum longitude
+ * @param ymax           maximum latitude
+ * @param reduceLines    if <code>true</code> restricts the number of ACLineSegment to <code>maxLines</code>
+ * @param maxLines       the maximum number of ACLineSegments if <code>reduceLines</code> is <code>true</code>
+ * @param dougPeuk       if <code>true</code> applies the Ramer–Douglas–Peucker algorithm to reduce the number of PositionPoint verticies in ACLineSegment geometries
  * @param dougPeukFactor smoothing factor for the Ramer–Douglas–Peucker algorithm
- * @param resolution distance factor for the Ramer–Douglas–Peucker algorithm
- * (the epsilon parameter in the Ramer–Douglas–Peucker algorithm is epsilon = 5 * dougPeukFactor * resolution)
+ * @param resolution     distance factor for the Ramer–Douglas–Peucker algorithm
+ *                       (the epsilon parameter in the Ramer–Douglas–Peucker algorithm is epsilon = 5 * dougPeukFactor * resolution)
  */
 case class ViewFunction (
     about: String,
@@ -46,7 +46,7 @@ case class ViewFunction (
     dougPeuk: Boolean = true,
     dougPeukFactor: Double = 2.0,
     resolution: Double = 1.0e-4
-    ) extends CIMWebFunction with CIMRDD
+) extends CIMWebFunction with CIMRDD
 {
     jars = Array (jarForObject (this))
 
@@ -68,7 +68,7 @@ case class ViewFunction (
 
         def preparePositionPoints: RDD[(String, List[PositionPointPlus])] =
         {
-            val pp: RDD[PositionPointPlus] = get[PositionPoint].map (p ⇒ PositionPointPlus (p, p.xPosition.toDouble, p.yPosition.toDouble))
+            val pp: RDD[PositionPointPlus] = get [PositionPoint].map (p ⇒ PositionPointPlus (p, p.xPosition.toDouble, p.yPosition.toDouble))
             pp.filter (inside).groupBy (_.pp.Location).mapValues (_.toList.sortBy (_.pp.sequenceNumber))
         }
 
@@ -88,7 +88,7 @@ case class ViewFunction (
             var index = 0
             val size = list.size
             val firstPoint = list.head
-            val lastPoint = list(size - 1)
+            val lastPoint = list (size - 1)
             // find the point with the maximum distance
             for (i ← 1 until size - 1)
             {
@@ -108,11 +108,11 @@ case class ViewFunction (
 
         def to_elements (arg: ((ACLineSegment, List[PositionPointPlus]), Location)): List[Element] =
         {
-            arg._1._1.asInstanceOf[Element] :: arg._2.asInstanceOf[Element] :: arg._1._2.map (_.pp.asInstanceOf[Element])
+            arg._1._1.asInstanceOf [Element] :: arg._2.asInstanceOf [Element] :: arg._1._2.map (_.pp.asInstanceOf [Element])
         }
 
         val elements = if (all)
-            get[Element]("Elements")
+            get [Element]("Elements")
         else
         {
             // get the spatially filtered points
@@ -124,7 +124,7 @@ case class ViewFunction (
             log.debug ("points count %d".format (filteredOrderedPositions.count))
 
             // get the reduced lines
-            val lines: RDD[(String, ((ACLineSegment, List[PositionPointPlus]), Location))] = get[ACLineSegment].keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.Location).join (filteredOrderedPositions).join (get[Location].keyBy (_.id))
+            val lines: RDD[(String, ((ACLineSegment, List[PositionPointPlus]), Location))] = get [ACLineSegment].keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.Location).join (filteredOrderedPositions).join (get [Location].keyBy (_.id))
             val numbLines = lines.count
             log.debug ("lines count %d".format (numbLines))
             val result: RDD[((ACLineSegment, List[PositionPointPlus]), Location)] =
@@ -152,7 +152,7 @@ case class ViewFunction (
             val data = hdfs.open (f)
             // ToDo: handle files bigger than 2GB
             val size = hdfs.getFileStatus (f).getLen.toInt
-            val bytes = new Array[Byte] (size)
+            val bytes = new Array[Byte](size)
             data.readFully (0, bytes)
             Text.decode (bytes, 0, size)
         }

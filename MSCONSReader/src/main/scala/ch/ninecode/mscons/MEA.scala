@@ -46,7 +46,7 @@ object MEA extends FieldExtractor[MEA]
     private lazy val c502 =
         subfields (
             c502_6313 ~ c502_6321 ~ c502_6155 ~ c502_6154 ^^
-                { case _6313 ~ _6321 ~ _6155 ~ _6154  => Measurement_Details (_6313, _6321, _6155, _6154) }
+                { case _6313 ~ _6321 ~ _6155 ~ _6154 => Measurement_Details (_6313, _6321, _6155, _6154) }
         )
     //    030    C174 VALUE/RANGE                                C    1
     //    6411  Measurement unit code                     C      an..8
@@ -62,7 +62,7 @@ object MEA extends FieldExtractor[MEA]
     private lazy val c174 =
         subfields (
             c174_6411 ~ c174_6314 ~ c174_6162 ~ c174_6152 ~ c174_6432 ^^
-                { case _6411 ~ _6314 ~ _6162 ~ _6152 ~ _6432  => Value_Range (_6411, _6314, _6162, _6152, _6432) }
+                { case _6411 ~ _6314 ~ _6162 ~ _6152 ~ _6432 => Value_Range (_6411, _6314, _6162, _6152, _6432) }
         )
 
     private lazy val _7383 = alphanumeric_? (3)

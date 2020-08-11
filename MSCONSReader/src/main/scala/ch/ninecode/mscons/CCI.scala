@@ -53,7 +53,7 @@ object CCI extends FieldExtractor[CCI]
     private lazy val c502 =
         subfields (
             c502_6313 ~ c502_6321 ~ c502_6155 ~ c502_6154 ^^
-                { case _6313 ~ _6321 ~ _6155 ~ _6154  => Measurement_Details (_6313, _6321, _6155, _6154) }
+                { case _6313 ~ _6321 ~ _6155 ~ _6154 => Measurement_Details (_6313, _6321, _6155, _6154) }
         )
 
     private lazy val c240_7037 = alphanumeric (17)
@@ -64,7 +64,7 @@ object CCI extends FieldExtractor[CCI]
     private lazy val c240 =
         subfields (
             c240_7037 ~ c240_1131 ~ c240_3055 ~ c240_7036_1 ~ c240_7036_2 ^^
-                { case _7037 ~ _1131 ~ _3055 ~ _7036_1 ~ _7036_2  => Characteristic_Description (_7037,  _1131,  _3055,  _7036_1,  _7036_2) }
+                { case _7037 ~ _1131 ~ _3055 ~ _7036_1 ~ _7036_2 => Characteristic_Description (_7037, _1131, _3055, _7036_1, _7036_2) }
         )
 
     private lazy val _4051 = alphanumeric_? (3)

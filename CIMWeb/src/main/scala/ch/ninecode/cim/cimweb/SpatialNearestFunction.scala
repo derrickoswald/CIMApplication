@@ -15,7 +15,7 @@ case class SpatialNearestFunction (var parameters: SpatialOperationParameters) e
     def setSpatialOperationParameters (newparameters: SpatialOperationParameters): Unit =
     {
         parameters = newparameters
-        jars = Array[String](jarForObject (parameters))
+        jars = Array [String](jarForObject (parameters))
     }
 
     override def getReturnType: Return = Return.Dataset

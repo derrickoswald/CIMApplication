@@ -47,13 +47,19 @@ case class TimeSeriesOptions
     model_file: String = "models/myDecisionTreeRegressorModel",
     meta_file: String = "meta_utf8.csv",
     operation: Operations = Operations.Synthesize,
-    tree_depth: Array[Int] = Array(15),
-    bins: Array[Int] = Array(80),
-    info: Array[Double] = Array(0.0),
+    tree_depth: Array[Int] = Array (15),
+    bins: Array[Int] = Array (80),
+    info: Array[Double] = Array (0.0),
     seed: Long = -1L,
     synthesis: String = "HASFAKE",
-    start: Calendar = { val d = "2017-07-19T00:00:00.000+0000"; val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT")); c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime); c },
-    end: Calendar = { val d = "2018-03-31T23:45:00.000+0000"; val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT")); c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime); c },
+    start: Calendar =
+    {
+        val d = "2017-07-19T00:00:00.000+0000"; val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT")); c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime); c
+    },
+    end: Calendar =
+    {
+        val d = "2018-03-31T23:45:00.000+0000"; val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT")); c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime); c
+    },
     period: Int = 900000,
     yearly_kWh: Double = 7200.0,
     classes: Map[String, Int] = Map ()

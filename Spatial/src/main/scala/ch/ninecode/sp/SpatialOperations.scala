@@ -52,16 +52,16 @@ class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
             // do the fucking Scala type voodoo
             val subsetter = clz.subsetter
             type T = subsetter.basetype
-            implicit val tag: TypeTag[T] = subsetter.tag.asInstanceOf[TypeTag[T]]
+            implicit val tag: TypeTag[T] = subsetter.tag.asInstanceOf [TypeTag[T]]
 
             // get the RDD of desired objects
-            val rdd: RDD[T] = getOrElse[T](subsetter.cls)
+            val rdd: RDD[T] = getOrElse [T](subsetter.cls)
 
             // get the points
-            val points = getOrElse[PositionPoint]
+            val points = getOrElse [PositionPoint]
 
             // join
-            val targets: RDD[(T, PositionPoint)] = rdd.keyBy (x ⇒ location (x.asInstanceOf[Element])).join (points.keyBy (_.Location)).values
+            val targets: RDD[(T, PositionPoint)] = rdd.keyBy (x ⇒ location (x.asInstanceOf [Element])).join (points.keyBy (_.Location)).values
 
             object nearestOrdering extends Ordering[(T, PositionPoint)]
             {
@@ -80,7 +80,7 @@ class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
                  *  - positive if x > y
                  *  - zero otherwise (if x == y)
                  */
-                def compare (x: (T, PositionPoint), y:(T, PositionPoint)): Int =
+                def compare (x: (T, PositionPoint), y: (T, PositionPoint)): Int =
                 {
                     Math.signum (dist2 (x._2) - dist2 (y._2)).toInt
                 }

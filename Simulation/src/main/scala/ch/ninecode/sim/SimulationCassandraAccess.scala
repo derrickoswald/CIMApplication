@@ -13,6 +13,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
 
     // ToDo: how can we not hard-code this period?
     val PERIOD: Int = 900000
+
     def getPeriod: Int = PERIOD
 
     /**
@@ -57,7 +58,7 @@ case class SimulationCassandraAccess (spark: SparkSession, storage_level: Storag
             .load
             // push down partition key = (simulation, mrid, type, period)
             .filter ("simulation = '%s' and type = '%s' and period = %s".format (simulation, `type`, period))
-            .drop (to_drop:_*)
+            .drop (to_drop: _*)
             .persist (storage_level)
         values
     }

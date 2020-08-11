@@ -49,9 +49,9 @@ class CopySuiteIT
             "--target_port", cassandra_port.toString,
             "--target_keyspace", TARGET_KEYSPACE))
 
-//        System.in.read
-//        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
-//
-//        session.close ()
+        //        System.in.read
+        //        val session = new Cluster.Builder ().addContactPoints ("localhost").withPort (cassandra_port).build ().connect()
+        //
+        //        session.close ()
     }
 }

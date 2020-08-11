@@ -79,6 +79,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     def tick[Type_t: TypeTag, Type_period: TypeTag]: UserDefinedFunction = udf [Int, Timestamp, Int](
         (t: Timestamp, period: Int) =>
             ((t.getTime / period) % (24 * 60 * 60 * 1000 / period)).toInt)
+
     def day[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
         (t: Timestamp) =>
         {
@@ -88,12 +89,14 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             c.get (Calendar.DAY_OF_WEEK)
         }
     )
+
     def one_hot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf [Int, Int, Int](
         (day: Int, index: Int) =>
         {
             if (day == index) 1 else 0
         }
     )
+
     def week[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
         (t: Timestamp) =>
         {
@@ -103,7 +106,8 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             c.get (Calendar.WEEK_OF_YEAR)
         }
     )
-    def demultiplex[Type_m: TypeTag, Type_c: TypeTag]: UserDefinedFunction = udf [Int, Map[String,Int], String](
+
+    def demultiplex[Type_m: TypeTag, Type_c: TypeTag]: UserDefinedFunction = udf [Int, Map[String, Int], String](
         (map: Map[String, Int], cls: String) =>
         {
             map.getOrElse (cls, 0)
@@ -138,7 +142,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     def gen_class_columns (frame: DataFrame, class_col: String): DataFrame =
     {
         var ret = frame
-        class_names.foreach (cls => ret = ret.withColumn (cls, demultiplex [Map[String,Int], String].apply (functions.col (class_col), functions.lit (cls))))
+        class_names.foreach (cls => ret = ret.withColumn (cls, demultiplex [Map[String, Int], String].apply (functions.col (class_col), functions.lit (cls))))
         ret
     }
 
@@ -169,7 +173,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         val meta_frame = meta
         val stats_and_meta =
             averages
-            .join (meta_frame, Seq ("mrid"))
+                .join (meta_frame, Seq ("mrid"))
         // only use measurements for which we have metadata
         val in = meta_frame.select ("mrid").rdd.collect.map (row ⇒ row.getString (0)).mkString ("mrid in ('", "','", "')")
         var data = session
@@ -195,12 +199,12 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     {
         // split the data into training and test sets (30% held out for testing)
         val raw = getRawData
-        val splits = raw.randomSplit (Array(0.7, 0.3))
-        val (trainingData, testData) = (splits(0), splits(1))
+        val splits = raw.randomSplit (Array (0.7, 0.3))
+        val (trainingData, testData) = (splits (0), splits (1))
 
         val cols = Seq ("average", "tick", "week") ++ day_names
         val assembler = new VectorAssembler ()
-            .setInputCols  (cols.toArray)
+            .setInputCols (cols.toArray)
             .setOutputCol ("features")
         val train_df = assembler.transform (trainingData)
         val test_df = assembler.transform (testData)
@@ -223,11 +227,11 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 
         // hyperparameter tuning training
         // construct a grid of parameters to search over
-        val grid = new ParamGridBuilder()
+        val grid = new ParamGridBuilder ()
             .addGrid (regressor.maxDepth, options.tree_depth)
             .addGrid (regressor.maxBins, options.bins)
             .addGrid (regressor.minInfoGain, options.info)
-            .build()
+            .build ()
         val evaluator = new RegressionEvaluator ()
             .setLabelCol ("value")
             .setPredictionCol ("prediction")
@@ -238,12 +242,12 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .setEstimatorParamMaps (grid)
             // 70% of the data will be used for training and the remaining 30% for validation
             .setTrainRatio (0.7)
-            // evaluate up to 2 parameter settings in parallel
-            // .setParallelism (2)
+        // evaluate up to 2 parameter settings in parallel
+        // .setParallelism (2)
 
         // run train validation split, and choose the best set of parameters.
         val fitted = trainer.fit (train_df)
-        val model = fitted.bestModel.asInstanceOf[DecisionTreeRegressionModel]
+        val model = fitted.bestModel.asInstanceOf [DecisionTreeRegressionModel]
 
         val predictions = model.transform (test_df)
         val rmse = evaluator.evaluate (predictions)
@@ -262,13 +266,13 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     {
         // split the data into training and test sets (30% held out for testing)
         val raw = getMetaRawData
-        val splits = raw.randomSplit (Array(0.7, 0.3))
-        val (trainingData, testData) = (splits(0), splits(1))
+        val splits = raw.randomSplit (Array (0.7, 0.3))
+        val (trainingData, testData) = (splits (0), splits (1))
         val cols = Seq ("average", "tick", "week") ++ day_names ++ day_names
 
         //println (columns.mkString (","))
         val assembler = new VectorAssembler ()
-            .setInputCols  (cols.toArray)
+            .setInputCols (cols.toArray)
             .setOutputCol ("features")
         val train_df = assembler.transform (trainingData)
         val test_df = assembler.transform (testData)
@@ -296,11 +300,11 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 
         // hyperparameter tuning training
         // construct a grid of parameters to search over
-        val grid = new ParamGridBuilder()
+        val grid = new ParamGridBuilder ()
             .addGrid (regressor.maxDepth, options.tree_depth)
             .addGrid (regressor.maxBins, options.bins)
             .addGrid (regressor.minInfoGain, options.info)
-            .build()
+            .build ()
 
         val trainer = new TrainValidationSplit ()
             .setEstimator (regressor) // in this case the estimator is simply the decision tree regression
@@ -313,7 +317,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 
         // run train validation split, and choose the best set of parameters.
         val fitted = trainer.fit (train_df)
-        val model = fitted.bestModel.asInstanceOf[DecisionTreeRegressionModel]
+        val model = fitted.bestModel.asInstanceOf [DecisionTreeRegressionModel]
 
         val predictions = model.transform (test_df)
         val rmse = evaluator.evaluate (predictions)
@@ -332,19 +336,19 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     {
         // split the data into training and test sets (30% held out for testing)
         val raw = getRawData
-        val splits = raw.randomSplit (Array(0.7, 0.3))
-        val (trainingData, testData) = (splits(0), splits(1))
+        val splits = raw.randomSplit (Array (0.7, 0.3))
+        val (trainingData, testData) = (splits (0), splits (1))
 
         val cols = Seq ("average", "tick", "week") ++ day_names
         val assembler = new VectorAssembler ()
-            .setInputCols  (cols.toArray)
+            .setInputCols (cols.toArray)
             .setOutputCol ("features")
         val train_df = assembler.transform (trainingData)
         val test_df = assembler.transform (testData)
 
-        val model = Sequential().add (Linear (10, 1))
+        val model = Sequential ().add (Linear (10, 1))
         val criterion = MSECriterion ()
-        val estimator = new DLEstimator (model, criterion, Array (10), Array(1))
+        val estimator = new DLEstimator (model, criterion, Array (10), Array (1))
             .setLabelCol ("value")
             .setBatchSize (4)
             .setMaxEpoch (2)
@@ -363,7 +367,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .withColumn ("imag_a", lit (0.0))
             .withColumn ("units", lit ("Wh"))
             .select ("synthesis", "type", "time", "period", "real_a", "imag_a", "units")
-        .rdd.saveToCassandra (options.keyspace, "synthesized_value", SomeColumns ("synthesis", "type", "time", "period", "real_a", "imag_a", "units"))
+            .rdd.saveToCassandra (options.keyspace, "synthesized_value", SomeColumns ("synthesis", "type", "time", "period", "real_a", "imag_a", "units"))
         log.info (s"synthesized values saved")
     }
 
@@ -377,7 +381,9 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         log.info (s"generating features")
         val periods = 24 * 60 * 60 * 1000 / period
         val average = yearly_kWh * 1000.0 / 365.25 / periods
+
         def oneHot (day: Int, weekday: Int): Int = if (day == weekday) 1 else 0
+
         val data = Iterator.continually
         {
             val millis = start.getTimeInMillis
@@ -389,7 +395,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             val week = c.get (Calendar.DAY_OF_WEEK)
             val days = for (d <- 1 to 7) yield (oneHot (day, d))
             start.add (Calendar.MILLISECOND, period)
-            Row.fromSeq (Seq[Any] (millis, average, tick, week) ++ days)
+            Row.fromSeq (Seq [Any](millis, average, tick, week) ++ days)
         }.takeWhile (_ => start.getTimeInMillis <= end.getTimeInMillis)
 
         // make a dataframe
@@ -399,7 +405,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
                 StructField ("average", DoubleType, false),
                 StructField ("tick", IntegerType, false),
                 StructField ("week", IntegerType, false))
-            ++ (for (d <- day_names) yield StructField (d, IntegerType, false)).toList
+                ++ (for (d <- day_names) yield StructField (d, IntegerType, false)).toList
         )
 
         val df = session.createDataFrame (
@@ -408,7 +414,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         )
         val cols = Seq ("average", "tick", "week") ++ day_names
         val assembler = new VectorAssembler ()
-            .setInputCols  (cols.toArray)
+            .setInputCols (cols.toArray)
             .setOutputCol ("features")
         val features = assembler.transform (df)
 
@@ -432,7 +438,9 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         log.info (s"generating features")
         val periods = 24 * 60 * 60 * 1000 / period
         val average = yearly_kWh * 1000.0 / 365.25 / periods
+
         def oneHot (day: Int, weekday: Int): Int = if (day == weekday) 1 else 0
+
         val data = Iterator.continually
         {
             val millis: Long = start.getTimeInMillis
@@ -444,8 +452,8 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             val week = c.get (Calendar.DAY_OF_WEEK)
             start.add (Calendar.MILLISECOND, period)
             val days = for (d <- 1 to 7) yield oneHot (day, d)
-            val classes = for (c <- class_names) yield if (types.contains (c)) types(c) else 0
-            Row.fromSeq (Seq[Any] (millis, average, tick, week) ++ days ++ classes)
+            val classes = for (c <- class_names) yield if (types.contains (c)) types (c) else 0
+            Row.fromSeq (Seq [Any](millis, average, tick, week) ++ days ++ classes)
         }.takeWhile (_ => start.getTimeInMillis <= end.getTimeInMillis)
 
         // make a dataframe
@@ -455,8 +463,8 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
                 StructField ("average", DoubleType, false),
                 StructField ("tick", IntegerType, false),
                 StructField ("week", IntegerType, false))
-            ++ (for (d <- day_names) yield StructField (d, IntegerType, false)).toList
-            ++ (for (c <- class_names) yield StructField (c, IntegerType, false)).toList
+                ++ (for (d <- day_names) yield StructField (d, IntegerType, false)).toList
+                ++ (for (c <- class_names) yield StructField (c, IntegerType, false)).toList
         )
 
         val df = session.createDataFrame (
@@ -465,7 +473,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         )
         val cols = Seq ("average", "tick", "week") ++ day_names ++ class_names
         val assembler = new VectorAssembler ()
-            .setInputCols  (cols.toArray)
+            .setInputCols (cols.toArray)
             .setOutputCol ("features")
         val features = assembler.transform (df)
 

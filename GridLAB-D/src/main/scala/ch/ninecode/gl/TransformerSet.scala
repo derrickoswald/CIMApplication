@@ -152,7 +152,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
 
     /**
      * Return the total impedance at the secondary and a flag indicating if it is the default value (some impedance was zero).
-     *  i.e. (total_impedance, default)
+     * i.e. (total_impedance, default)
      *
      * Calculate the impedance as 1 / sum (1/Zi)
      */
@@ -286,7 +286,7 @@ case class TransformerSet (transformers: Array[TransformerData], default_power_r
 
     /**
      * Return the total impedance and a flag indicating if it includes a default value (an impedance was zero)
-     *  i.e. (total_impedance, default)
+     * i.e. (total_impedance, default)
      * calculate the impedance as 1 / sum (1/Zi)
      */
     val total_impedance_per_unit: (Complex, Boolean) =

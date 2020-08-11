@@ -9,7 +9,12 @@ case class SegmentListParser (list: List[Segment]) extends Reader[Segment]
 
     override def rest: Reader[Segment] = SegmentListParser (list.tail)
 
-    override def pos: Position = new Position { val line = 0; val column = 0; val lineContents: String = "" }
+    override def pos: Position = new Position
+    {
+        val line = 0;
+        val column = 0;
+        val lineContents: String = ""
+    }
 
     override def atEnd: Boolean = list.isEmpty
 }

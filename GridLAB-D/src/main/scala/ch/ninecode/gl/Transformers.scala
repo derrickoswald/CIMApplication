@@ -14,14 +14,14 @@ import ch.ninecode.model._
  * Get information about transformers.
  * Joins PowerTransformer, PowerTransformerEnd, Terminal and BaseVoltage objects to form complete details about transformers.
  *
- * @param session       the Spark session
- * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
- * @param default_supply_network_short_circuit_power_max maximum primary side network equivalent power under short circuit conditions
+ * @param session                                            the Spark session
+ * @param storage_level                                      specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
+ * @param default_supply_network_short_circuit_power_max     maximum primary side network equivalent power under short circuit conditions
  * @param default_supply_network_short_circuit_impedance_max equivalent impedance for maximum primary side network equivalent power under short circuit conditions
- * @param default_supply_network_short_circuit_angle_max power factor angle for maximum primary side network equivalent power under short circuit conditions, overrides impedance value if specified, (°)
- * @param default_supply_network_short_circuit_power_min minimum primary side network equivalent power under short circuit conditions
+ * @param default_supply_network_short_circuit_angle_max     power factor angle for maximum primary side network equivalent power under short circuit conditions, overrides impedance value if specified, (°)
+ * @param default_supply_network_short_circuit_power_min     minimum primary side network equivalent power under short circuit conditions
  * @param default_supply_network_short_circuit_impedance_min equivalent impedance for minimum primary side network equivalent power under short circuit conditions
- * @param default_supply_network_short_circuit_angle_min power factor angle for minimum primary side network equivalent power under short circuit conditions, overrides impedance value if specified, (°)
+ * @param default_supply_network_short_circuit_angle_min     power factor angle for minimum primary side network equivalent power under short circuit conditions, overrides impedance value if specified, (°)
  *
  */
 class Transformers (
@@ -33,7 +33,7 @@ class Transformers (
     default_supply_network_short_circuit_power_min: Double = 100.0e6,
     default_supply_network_short_circuit_impedance_min: Complex = Complex (0.875571570, -2.405613110),
     default_supply_network_short_circuit_angle_min: Double = Double.NaN
-    ) extends CIMRDD with Serializable
+) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
@@ -69,9 +69,9 @@ class Transformers (
     /**
      * Compute equivalent impedance given the power, voltage and power factor angle
      *
-     * @param power network equivalent power under short circuit conditions (VA)
+     * @param power   network equivalent power under short circuit conditions (VA)
      * @param voltage nominal voltage (V)
-     * @param angle power factor angle (°)
+     * @param angle   power factor angle (°)
      * @return the impedance
      */
     def z (power: Double, voltage: Double, angle: Double): Complex =
@@ -124,8 +124,8 @@ class Transformers (
      * Builds a object that models the network at the primary of the transformer.
      *
      * @param transformer the PowerTransformer mRID
-     * @param station the containing Substation
-     * @param voltage the nominal primary voltage
+     * @param station     the containing Substation
+     * @param voltage     the nominal primary voltage
      * @return the EquivalentInjection with the primary network model
      */
     def default_injection (transformer: String, station: String, voltage: (String, Double)): EquivalentInjection =
@@ -181,7 +181,7 @@ class Transformers (
      * Create an RDD of composite transformer objects.
      *
      * @param transformer_filter the filter to apply that eliminates undesired transformers
-     * @param substation_filter the filter to apply that eliminates undesired substations
+     * @param substation_filter  the filter to apply that eliminates undesired substations
      * @return the RDD of transformer instances
      */
     def getTransformers
@@ -211,7 +211,7 @@ class Transformers (
         // attach the nodes
         val ends_terminals_voltages_nodes: RDD[(PowerTransformerEnd, Terminal, (String, Double), TopologicalNode)] = ends_terminals_voltages
             .keyBy (_._2.TopologicalNode)
-            .join (getOrElse[TopologicalNode].keyBy (_.id))
+            .join (getOrElse [TopologicalNode].keyBy (_.id))
             .values
             .map (
                 x =>

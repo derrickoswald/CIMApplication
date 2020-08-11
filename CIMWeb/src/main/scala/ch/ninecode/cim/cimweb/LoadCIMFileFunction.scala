@@ -20,7 +20,13 @@ import ch.ninecode.cim.Unforced
 
 case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String, String)] = null) extends CIMWebFunction
 {
-    def asBoolean (string: String): Boolean = try { string.toBoolean } catch { case _: Throwable => false }
+    def asBoolean (string: String): Boolean = try
+    {
+        string.toBoolean
+    } catch
+    {
+        case _: Throwable => false
+    }
 
     def parseState (text: String): State =
         text match
@@ -59,7 +65,10 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
         {
             // read the file(s)
             val prefix = hdfs.getUri.toString
-            val files = paths.map (s ⇒ { val file = if (s.startsWith ("/")) s else "/" + s; new Path (prefix, file).toString })
+            val files = paths.map (s ⇒
+            {
+                val file = if (s.startsWith ("/")) s else "/" + s; new Path (prefix, file).toString
+            })
             val ff = Json.createArrayBuilder
             for (f <- files)
                 ff.add (f)
@@ -90,11 +99,11 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
             else
                 options
 
-            val reader_options = new HashMap[String, String] ()
+            val reader_options = new HashMap[String, String]()
             for (option ← op)
                 reader_options.put (option._1, option._2)
             reader_options.put ("path", files.mkString (","))
-            val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files:_*)
+            val elements = spark.read.format ("ch.ninecode.cim").options (reader_options).load (files: _*)
             val count = elements.count
             val storage = StorageLevel.fromString (reader_options.getOrElse ("StorageLevel", "MEMORY_AND_DISK_SER"))
             response.add ("elements", count)
@@ -122,7 +131,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
         catch
         {
             case e: Exception =>
-                response.add ("error", e.getMessage )
+                response.add ("error", e.getMessage)
         }
         response.build
     }

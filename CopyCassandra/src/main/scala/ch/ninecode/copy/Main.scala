@@ -67,7 +67,7 @@ object Main
         def same (options: CopyOptions): Boolean =
         {
             options.source_host == options.target_host &&
-            options.source_keyspace == options.target_keyspace
+                options.source_keyspace == options.target_keyspace
         }
 
         optionparser.parse (args, CopyOptions ()) match

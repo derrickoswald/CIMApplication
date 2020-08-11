@@ -12,7 +12,7 @@ case class FieldScanner (segment: Segment, una: UNA, begin: Int = 0) extends Rea
         var skip = false
         var stop = false
         var c = 0
-        var intervals = List[(Int,Int)] () // start and size of each piece of the segment
+        var intervals = List [(Int, Int)]() // start and size of each piece of the segment
 
         while (end < segment.contents.length && !stop)
         {
@@ -45,7 +45,12 @@ case class FieldScanner (segment: Segment, una: UNA, begin: Int = 0) extends Rea
 
     override def rest: Reader[Field] = FieldScanner (segment: Segment, una: UNA, end)
 
-    override def pos: Position = new Position { val line: Int = 0; val column: Int = begin; val lineContents: String = segment.contents }
+    override def pos: Position = new Position
+    {
+        val line: Int = 0;
+        val column: Int = begin;
+        val lineContents: String = segment.contents
+    }
 
     override def atEnd: Boolean = end >= segment.contents.length
 }

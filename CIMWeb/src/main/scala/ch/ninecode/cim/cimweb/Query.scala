@@ -20,12 +20,13 @@ import ch.ninecode.cim.connector.CIMMappedRecord
 @Path ("query/")
 class Query extends RESTful
 {
+
     import Query._
 
     /**
      * Execute a Spark SQL query.
      *
-     * @param sql The query text
+     * @param sql        The query text
      * @param table_name The temporary table to register as the result of the query
      * @return The result set as a JSON array
      */
@@ -37,7 +38,13 @@ class Query extends RESTful
         @DefaultValue ("") @QueryParam ("table_name") table_name: String,
         @DefaultValue ("") @QueryParam ("cassandra_table_name") cassandra_table_name: String): String =
     {
-        val cassandra = try { cass.toBoolean } catch { case _: Throwable => false }
+        val cassandra = try
+        {
+            cass.toBoolean
+        } catch
+        {
+            case _: Throwable => false
+        }
         _Logger.info ("query %ssql=%s%s%s".format (if (cassandra) "cassandra " else "", sql, if ("" != table_name) " table_name=" + table_name else "", if ("" != cassandra_table_name) " cassandra_table_name=" + cassandra_table_name else ""))
         val ret = new RESTfulJSONResult ()
         val connection = getConnection (ret)
@@ -67,7 +74,7 @@ class Query extends RESTful
             }
             finally
                 try
-                    connection.close ()
+                connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>

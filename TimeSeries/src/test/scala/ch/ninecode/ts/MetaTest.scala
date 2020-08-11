@@ -14,9 +14,10 @@ import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.jarForObject
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+@FixMethodOrder (MethodSorters.NAME_ASCENDING)
 class MetaTest
 {
+
     import ch.ninecode.ts.MetaTest._
 
     /* @Test */ def makeModel ()
@@ -25,18 +26,18 @@ class MetaTest
         val begin = System.nanoTime ()
         val model = TimeSeriesModel (session, TimeSeriesOptions (keyspace = KEYSPACE, log_level = LogLevels.INFO, model_file = "hdfs://sandbox:8020/models/myMetaModel16"))
 
-//        model.makeMetaDecisionTreeRegressorModel ()
+        //        model.makeMetaDecisionTreeRegressorModel ()
         val modeled = System.nanoTime ()
         println ("modelling time: " + (modeled - begin) / 1e9 + " seconds")
 
-//        val kWh = 134.4752 * 96 * 365.25 / 1000.0
-//        val format = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-//        format.setTimeZone (TimeZone.getTimeZone ("UTC"))
-//        val start = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
-//        start.setTimeInMillis (format.parse ("2017-10-22T00:00:00.000+0000").getTime)
-//        val end = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
-//        end.setTimeInMillis (format.parse ("2017-10-25T00:00:00.000+0000").getTime)
-//        model.generateMetaTimeSeries ("HAS2104", start, end, 900000, kWh, Map[String, Int] ("House" -> 1))
+        //        val kWh = 134.4752 * 96 * 365.25 / 1000.0
+        //        val format = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        //        format.setTimeZone (TimeZone.getTimeZone ("UTC"))
+        //        val start = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
+        //        start.setTimeInMillis (format.parse ("2017-10-22T00:00:00.000+0000").getTime)
+        //        val end = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
+        //        end.setTimeInMillis (format.parse ("2017-10-25T00:00:00.000+0000").getTime)
+        //        model.generateMetaTimeSeries ("HAS2104", start, end, 900000, kWh, Map[String, Int] ("House" -> 1))
 
         val kWh = 894.40999 * 96 * 365.25 / 1000.0
         val format = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
@@ -45,7 +46,7 @@ class MetaTest
         start.setTimeInMillis (format.parse ("2017-10-22T00:00:00.000+0000").getTime)
         val end = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
         end.setTimeInMillis (format.parse ("2017-10-25T00:00:00.000+0000").getTime)
-        model.generateMetaTimeSeries ("HAS7165", start, end, 900000, kWh, Map[String, Int] ("Apartment" -> 12, "General" -> 1))
+        model.generateMetaTimeSeries ("HAS7165", start, end, 900000, kWh, Map [String, Int]("Apartment" -> 12, "General" -> 1))
         val finish = System.nanoTime ()
         println ("synthesis time: " + (finish - modeled) / 1e9 + " seconds")
         println ("total execution: " + (finish - begin) / 1e9 + " seconds")

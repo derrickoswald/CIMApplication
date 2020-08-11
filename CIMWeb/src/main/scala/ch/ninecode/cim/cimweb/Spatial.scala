@@ -110,7 +110,7 @@ class Spatial extends RESTful
             }
             finally
                 try
-                    connection.close ()
+                connection.close ()
                 catch
                 {
                     case resourceexception: ResourceException =>

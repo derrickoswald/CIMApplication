@@ -23,7 +23,7 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 {
     head (APPLICATION_NAME, APPLICATION_VERSION)
 
-    val default = new  TimeSeriesOptions
+    val default = new TimeSeriesOptions
     var unittest = false
     var helpout = false
     var versionout = false
@@ -32,29 +32,29 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     implicit val OperationsRead: scopt.Read[Operations.Value] = scopt.Read.reads (Operations.withName)
 
-    implicit val string_string_mapRead: scopt.Read[Map[String,String]] = scopt.Read.reads (
+    implicit val string_string_mapRead: scopt.Read[Map[String, String]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map[String, String] ()
+            var ret = Map [String, String]()
             val ss = s.split (",")
             for (p <- ss)
             {
                 val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1)))
+                ret = ret + ((kv (0), kv (1)))
             }
             ret
         }
     )
 
-    implicit val string_int_mapRead: scopt.Read[Map[String,Int]] = scopt.Read.reads (
+    implicit val string_int_mapRead: scopt.Read[Map[String, Int]] = scopt.Read.reads (
         s =>
         {
-            var ret = Map[String, Int] ()
+            var ret = Map [String, Int]()
             val ss = s.split (",")
             for (p <- ss)
             {
                 val kv = p.split ("=")
-                ret = ret + ((kv(0), kv(1).toInt))
+                ret = ret + ((kv (0), kv (1).toInt))
             }
             ret
         }
@@ -84,18 +84,24 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     }
 
     version ("version").
-        validate (Unit => { versionout = true; Right (Unit) }).
-            text ("Scala: %s, Spark: %s, %s: %s".format (
-                APPLICATION_VERSION.split ("-")(0),
-                APPLICATION_VERSION.split ("-")(1),
-                APPLICATION_NAME,
-                APPLICATION_VERSION.split ("-")(2)
-            )
+        validate (Unit =>
+        {
+            versionout = true; Right (Unit)
+        }).
+        text ("Scala: %s, Spark: %s, %s: %s".format (
+            APPLICATION_VERSION.split ("-")(0),
+            APPLICATION_VERSION.split ("-")(1),
+            APPLICATION_NAME,
+            APPLICATION_VERSION.split ("-")(2)
+        )
         )
 
     opt [Unit]("unittest").
         hidden ().
-        action ((_, c) => { unittest = true; c.copy (unittest = true) }).
+        action ((_, c) =>
+        {
+            unittest = true; c.copy (unittest = true)
+        }).
         text (s"unit testing - don't call sys.exit() [${default.unittest}]")
 
     opt [String]("master").valueName ("MASTER_URL").
@@ -131,11 +137,11 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         text (s"model file name [${default.model_file}]")
 
     cmd (Operations.Statistics.toString)
-        .action ((_, c) => c.copy (operation = Operations.Statistics) )
+        .action ((_, c) => c.copy (operation = Operations.Statistics))
         .text (s"    perform statistical analysis${if (default.operation == Operations.Statistics) " - default" else ""}")
 
     cmd (Operations.Meta.toString)
-        .action ((_, c) => c.copy (operation = Operations.Meta) )
+        .action ((_, c) => c.copy (operation = Operations.Meta))
         .text (s"    perform metadata extraction${if (default.operation == Operations.Meta) " - default" else ""}")
         .children (
             opt [String]("meta_file").
@@ -145,28 +151,28 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         )
 
     cmd (Operations.Model.toString)
-        .action ((_, c) => c.copy (operation = Operations.Model) )
+        .action ((_, c) => c.copy (operation = Operations.Model))
         .text (s"    create a model${if (default.operation == Operations.Model) " - default" else ""}")
         .children (
             opt [Array[Int]]("tree_depth").
-            action ((x, c) => c.copy (tree_depth = x)).
-            text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (",")}]"),
+                action ((x, c) => c.copy (tree_depth = x)).
+                text (s"decision tree depth, or array for hyperparameter tuning [${default.tree_depth.mkString (",")}]"),
 
             opt [Array[Int]]("bins").
-            action ((x, c) => c.copy (bins = x)).
-            text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (",")}]"),
+                action ((x, c) => c.copy (bins = x)).
+                text (s"maximum number of bins for discretizing, or array for hyperparameter tuning [${default.bins.mkString (",")}]"),
 
             opt [Array[Double]]("info").
-            action ((x, c) => c.copy (info = x)).
-            text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (",")}]"),
+                action ((x, c) => c.copy (info = x)).
+                text (s"minimum information gain for a split, or array for hyperparameter tuning [${default.info.mkString (",")}]"),
 
             opt [Long]("seed").
-            action ((x, c) => c.copy (seed = x)).
-            text (s"seed value for random number generation [${default.seed}]")
+                action ((x, c) => c.copy (seed = x)).
+                text (s"seed value for random number generation [${default.seed}]")
         )
 
     cmd (Operations.MetaModel.toString)
-        .action ((_, c) => c.copy (operation = Operations.MetaModel) )
+        .action ((_, c) => c.copy (operation = Operations.MetaModel))
         .text (s"    create a meta model${if (default.operation == Operations.MetaModel) " - default" else ""}")
         .children (
             opt [Array[Int]]("tree_depth").
@@ -187,7 +193,7 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         )
 
     cmd (Operations.Synthesize.toString)
-        .action ((_, c) => c.copy (operation = Operations.Synthesize) )
+        .action ((_, c) => c.copy (operation = Operations.Synthesize))
         .text (s"    generate a synthetic load profile${if (default.operation == Operations.Synthesize) " - default" else ""}")
         .children (
             opt [String]("synthesis").
@@ -217,11 +223,18 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
 
     help ("help").
         hidden ().
-        validate (Unit => { helpout = true; Right (Unit) })
+        validate (Unit =>
+        {
+            helpout = true; Right (Unit)
+        })
 
-    checkConfig (o => { o.valid = !(helpout || versionout); Right (Unit) })
+    checkConfig (o =>
+    {
+        o.valid = !(helpout || versionout); Right (Unit)
+    })
 
-    note ("""
+    note (
+        """
 Performs three functions:
 Analyze smart meter data for min, average, max and standard deviation.
 Generate a decision tree regression model.

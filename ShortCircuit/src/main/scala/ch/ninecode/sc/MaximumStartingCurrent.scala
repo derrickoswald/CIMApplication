@@ -23,7 +23,7 @@ object MaximumStartingCurrent
      * @param options           providing power factor values for calculation
      * @return The angle between the device inrush current and the network impedance, or worst case 1.0 if the options choose that.
      */
-    def costerm ( network_impedance: Complex, options: ShortCircuitOptions): Double =
+    def costerm (network_impedance: Complex, options: ShortCircuitOptions): Double =
     {
         if (options.worstcasepf)
             1.0
@@ -46,11 +46,11 @@ object MaximumStartingCurrent
      *         for both a repetition rate: r < 0.01 /min and 0.01 ≤ r < 0.1 /min in that order
      */
     def max_current_3_phase (
-                                network_short_circuit_power: Double,
-                                network_impedance: Complex,
-                                voltage: Double,
-                                options: ShortCircuitOptions
-                            ): (Double, Double) =
+        network_short_circuit_power: Double,
+        network_impedance: Complex,
+        voltage: Double,
+        options: ShortCircuitOptions
+    ): (Double, Double) =
     {
         val root3 = sqrt (3.0)
         val pmax = Math.abs (network_short_circuit_power / (root3 * costerm (network_impedance, options)))
@@ -69,11 +69,11 @@ object MaximumStartingCurrent
      *         for both a repetition rate: r < 0.01 /min and 0.01 ≤ r < 0.1 /min in that order
      */
     def max_current_1_phase (
-                                network_short_circuit_power: Double,
-                                network_impedance: Complex,
-                                voltage: Double,
-                                options: ShortCircuitOptions
-                            ): (Double, Double) =
+        network_short_circuit_power: Double,
+        network_impedance: Complex,
+        voltage: Double,
+        options: ShortCircuitOptions
+    ): (Double, Double) =
     {
         val root3 = sqrt (3.0)
         val phin = network_impedance.angle
@@ -93,11 +93,11 @@ object MaximumStartingCurrent
      *         for both a repetition rate: r < 0.01 /min and 0.01 ≤ r < 0.1 /min in that order
      */
     def max_current_2_phase (
-                                network_short_circuit_power: Double,
-                                network_impedance: Complex,
-                                voltage: Double,
-                                options: ShortCircuitOptions
-                            ): (Double, Double) =
+        network_short_circuit_power: Double,
+        network_impedance: Complex,
+        voltage: Double,
+        options: ShortCircuitOptions
+    ): (Double, Double) =
     {
         val root3 = sqrt (3.0)
         val thirty = Pi / 6.0
@@ -114,7 +114,7 @@ object MaximumStartingCurrent
             min (
                 abs (network_short_circuit_power / cos (phin - (phim + sixty))), // dL2−L3
                 abs (network_short_circuit_power / cos (phin - (phim - sixty)))) // dL3−L1
-    )
+        )
         val pmax = min (pmax_line_neutral, pmax_line_line)
 
         (dmax_low_rep * pmax / voltage, dmax_medium_rep * pmax / voltage)

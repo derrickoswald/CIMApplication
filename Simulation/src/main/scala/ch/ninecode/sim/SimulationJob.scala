@@ -29,117 +29,115 @@ import com.datastax.spark.connector.cql.CassandraConnector
  * Simulation job details.
  * These values are parsed from the supplied JSON and drive all aspects of the simulation.
  *
- * @param id               The user specified ID or a generated GUID identifying this simulation uniquely.
- *                         If one is not supplied in the JSON it will be generated.
- * @param name             A user specified name for the simulation.
- *                         This would be used in chart titles or graph labels when comparing scenarios.
- * @param description      User specified description for the simulation.
- *                         This would be a reminder to the user about why they did the simulation, i.e. a project name.
- * @param cim              The CIM files used in the simulation.
- *                         If there is more than one file, e.g. an additional switch setting overlay file, then separate the file
- *                         names with commas. These are file system dependent names, e.g. hdfs://sandbox:8020/DemoData.rdf.
- * @param cimreaderoptions Options to pass to the CIMReader.
- *                         Unless there is a topology already in the CIM file, this should include ch.ninecode.cim.do_topo_islands=true.
- * @param input_keyspace   The Cassandra keyspace to read measured data from.
- *                         A table named measured_value with an appropriate schema (see simulation_schema.sql) is expected.
- * @param output_keyspace  The Cassandra keyspace to save results to.
- *                         A table named simulated_value with an appropriate schema (see simulation_schema.sql) and if summarization
- *                         operations are performed additional tables with appropriate schema are expected.
- * @param replication      The Cassandra keyspace replication.
- *                         The replication factor used in the <code>create keyspace if not exists</code> DDL, and hence
- *                         <em>used only if the <code>output_keyspace</code> is created.</em>
- * @param start_time       The starting date and time of the simulation.
- * @param end_time         The ending date and time of the simulation.
- * @param buffer           The number of milliseconds of buffer either side of the start⇒end interval to read from measured data.
- * @param cim_temperature  The temperature of the elements in the CIM file (°C).
+ * @param id                     The user specified ID or a generated GUID identifying this simulation uniquely.
+ *                               If one is not supplied in the JSON it will be generated.
+ * @param name                   A user specified name for the simulation.
+ *                               This would be used in chart titles or graph labels when comparing scenarios.
+ * @param description            User specified description for the simulation.
+ *                               This would be a reminder to the user about why they did the simulation, i.e. a project name.
+ * @param cim                    The CIM files used in the simulation.
+ *                               If there is more than one file, e.g. an additional switch setting overlay file, then separate the file
+ *                               names with commas. These are file system dependent names, e.g. hdfs://sandbox:8020/DemoData.rdf.
+ * @param cimreaderoptions       Options to pass to the CIMReader.
+ *                               Unless there is a topology already in the CIM file, this should include ch.ninecode.cim.do_topo_islands=true.
+ * @param input_keyspace         The Cassandra keyspace to read measured data from.
+ *                               A table named measured_value with an appropriate schema (see simulation_schema.sql) is expected.
+ * @param output_keyspace        The Cassandra keyspace to save results to.
+ *                               A table named simulated_value with an appropriate schema (see simulation_schema.sql) and if summarization
+ *                               operations are performed additional tables with appropriate schema are expected.
+ * @param replication            The Cassandra keyspace replication.
+ *                               The replication factor used in the <code>create keyspace if not exists</code> DDL, and hence
+ *                               <em>used only if the <code>output_keyspace</code> is created.</em>
+ * @param start_time             The starting date and time of the simulation.
+ * @param end_time               The ending date and time of the simulation.
+ * @param buffer                 The number of milliseconds of buffer either side of the start⇒end interval to read from measured data.
+ * @param cim_temperature        The temperature of the elements in the CIM file (°C).
  * @param simulation_temperature The temperature at which the simulation is to be run (°C).
- * @param swing_voltage_factor The factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal.
- * @param transformers     The name of the transformers to simulate.
- *                         If this list is empty all transformers in the CIM file will be processed.
- *                         The names should reflect "ganged" transformers. For example, if TRA1234 and TRA1235 share a common
- *                         low voltage topological node, then the name would be "TRA1234_TRA1235".
- * @param players          Queries for driving data.
- *                         Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
- *                         yielding mrid, name, parent, type, property, unit and island for playing data.
- *                         An example for energy consumed by house connections:
+ * @param swing_voltage_factor   The factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal.
+ * @param transformers           The name of the transformers to simulate.
+ *                               If this list is empty all transformers in the CIM file will be processed.
+ *                               The names should reflect "ganged" transformers. For example, if TRA1234 and TRA1235 share a common
+ *                               low voltage topological node, then the name would be "TRA1234_TRA1235".
+ * @param players                Queries for driving data.
+ *                               Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
+ *                               yielding mrid, name, parent, type, property, unit and island for playing data.
+ *                               An example for energy consumed by house connections:
  *
- *                         select
- *                             c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
- *                             'energy' type,
- *                             concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
- *                             t.TopologicalNode parent,
- *                             'constant_power' property,
- *                             'Watt' unit,
- *                             n.TopologicalIsland island
- *                         from
- *                             EnergyConsumer c,
- *                             Terminal t,
- *                             TopologicalNode n
- *                         where
- *                             c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
- *                             c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
- *                             t.TopologicalNode = n.IdentifiedObject.mRID
+ *                               select
+ *                               c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+ *                               'energy' type,
+ *                               concat(c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID, '_load') name,
+ *                               t.TopologicalNode parent,
+ *                               'constant_power' property,
+ *                               'Watt' unit,
+ *                               n.TopologicalIsland island
+ *                               from
+ *                               EnergyConsumer c,
+ *                               Terminal t,
+ *                               TopologicalNode n
+ *                               where
+ *                               c.ConductingEquipment.Equipment.PowerSystemResource.PSRType == 'PSRType_HouseService' and
+ *                               c.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID = t.ConductingEquipment and
+ *                               t.TopologicalNode = n.IdentifiedObject.mRID
+ * @param recorders              Queries for recording data and the recording interval and any aggregations.
+ *                               Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
+ *                               yielding mrid, name, parent, type, property, unit and island for recording data.
+ *                               An example for recording transformer output power:
  *
- * @param recorders        Queries for recording data and the recording interval and any aggregations.
- *                         Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
- *                         yielding mrid, name, parent, type, property, unit and island for recording data.
- *                         An example for recording transformer output power:
+ *                               select
+ *                               concat (name_island.name, '_power_recorder') name,
+ *                               name_island.name mrid,
+ *                               name_island.name parent,
+ *                               'power' type,
+ *                               'power_out' property,
+ *                               'VA' unit,
+ *                               name_island.island
+ *                               from
+ *                               (
+ *                               select
+ *                               concat_ws ('_', sort_array (collect_set (trafos.mrid))) name,
+ *                               first_value (trafos.island) island
+ *                               from
+ *                               (
+ *                               select distinct
+ *                               t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
+ *                               t1.TopologicalNode node,
+ *                               n.TopologicalIsland island
+ *                               from
+ *                               PowerTransformer t,
+ *                               Terminal t1,
+ *                               Terminal t2,
+ *                               TopologicalNode n
+ *                               where
+ *                               t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+ *                               t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
+ *                               t1.ACDCTerminal.sequenceNumber = 2 and
+ *                               t2.ACDCTerminal.sequenceNumber = 2 and
+ *                               t1.TopologicalNode = n.IdentifiedObject.mRID and
+ *                               t2.TopologicalNode = n.IdentifiedObject.mRID
+ *                               ) trafos
+ *                               group by
+ *                               node
+ *                               ) name_island
+ * @param extras                 Queries for data to attach to the GeoJSON point, line and polygon features.
+ *                               Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
+ *                               yielding key-value pairs. The key is the mRID of the object to attach the value to.
+ *                               The query name is used as the key.
+ *                               An example to attach the rated current to each conductor:
  *
- *                         select
- *                             concat (name_island.name, '_power_recorder') name,
- *                             name_island.name mrid,
- *                             name_island.name parent,
- *                             'power' type,
- *                             'power_out' property,
- *                             'VA' unit,
- *                             name_island.island
- *                         from
- *                         (
- *                             select
- *                                 concat_ws ('_', sort_array (collect_set (trafos.mrid))) name,
- *                                 first_value (trafos.island) island
- *                             from
- *                             (
- *                                 select distinct
- *                                     t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID mrid,
- *                                     t1.TopologicalNode node,
- *                                     n.TopologicalIsland island
- *                                 from
- *                                     PowerTransformer t,
- *                                     Terminal t1,
- *                                     Terminal t2,
- *                                     TopologicalNode n
- *                                 where
- *                                     t1.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
- *                                     t2.ConductingEquipment = t.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
- *                                     t1.ACDCTerminal.sequenceNumber = 2 and
- *                                     t2.ACDCTerminal.sequenceNumber = 2 and
- *                                     t1.TopologicalNode = n.IdentifiedObject.mRID and
- *                                     t2.TopologicalNode = n.IdentifiedObject.mRID
- *                             ) trafos
- *                             group by
- *                                 node
- *                         ) name_island
+ *                               select
+ *                               l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key,
+ *                               cast (w.ratedCurrent as string) value
+ *                               from
+ *                               ACLineSegment l,
+ *                               WireInfo w
+ *                               where
+ *                               w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
  *
- * @param extras           Queries for data to attach to the GeoJSON point, line and polygon features.
- *                         Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
- *                         yielding key-value pairs. The key is the mRID of the object to attach the value to.
- *                         The query name is used as the key.
- *                         An example to attach the rated current to each conductor:
- *
- *                         select
- *                             l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key,
- *                             cast (w.ratedCurrent as string) value
- *                         from
- *                             ACLineSegment l,
- *                             WireInfo w
- *                         where
- *                             w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet
- *
- *                         If this query were named ratedCurrent, the GeoJSON line objects representing cables would have a property, e.g.:
- *                             "ratedCurrent": "200.0"
- * @param postprocessors   Operations to be performed after the simulation is complete.
- *                         Each processor in the list handles one type of operation and each must parse its own JSON.
+ *                               If this query were named ratedCurrent, the GeoJSON line objects representing cables would have a property, e.g.:
+ *                               "ratedCurrent": "200.0"
+ * @param postprocessors         Operations to be performed after the simulation is complete.
+ *                               Each processor in the list handles one type of operation and each must parse its own JSON.
  */
 case class SimulationJob
 (
@@ -171,7 +169,7 @@ case class SimulationJob
      * Insert the simulation json into simulation table.
      *
      * @param session the Spark session to use
-     * @param id the id to store this job under
+     * @param id      the id to store this job under
      */
     def save (session: SparkSession, keyspace: String, id: String, tasks: RDD[SimulationTask]): Unit =
     {
@@ -239,13 +237,13 @@ object SimulationJob
         try
         {
             try
-                Json.createReader (new StringReader (json)).readObject match
-                {
-                    case obj: JsonObject ⇒ Some (obj)
-                    case _ ⇒
-                        log.error ("""not a JsonObject""")
-                        None
-                }
+            Json.createReader (new StringReader (json)).readObject match
+            {
+                case obj: JsonObject ⇒ Some (obj)
+                case _ ⇒
+                    log.error ("""not a JsonObject""")
+                    None
+            }
             catch
             {
                 case je: JsonException ⇒
@@ -284,7 +282,7 @@ object SimulationJob
     def parseCIMReaderOptions (options: SimulationOptions, cim: String, json: JsonObject): Map[String, String] =
     {
         val MEMBERNAME = "cimreaderoptions"
-        val map = Map[String,String](
+        val map = Map [String, String](
             "path" → cim, // add path to support multiple files
             "StorageLevel" → storage_level_tostring (options.storage_level) // add storage option from command line
         )
@@ -295,7 +293,11 @@ object SimulationJob
             if (value.getValueType == JsonValue.ValueType.OBJECT)
             {
                 val cimreaderoptions: mutable.Map[String, JsonValue] = value.asInstanceOf[JsonObject].asScala
-                val opt = cimreaderoptions.map (x ⇒ (x._1, x._2 match { case s: JsonString => s.getString case _ => x._2.toString }))
+                val opt = cimreaderoptions.map (x ⇒ (x._1, x._2 match
+                {
+                    case s: JsonString => s.getString
+                    case _ => x._2.toString
+                }))
                 map ++ opt
             }
             else
@@ -353,6 +355,7 @@ object SimulationJob
 
         val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
         iso_date_format.setCalendar (calendar)
+
         def iso_parse (s: String): Calendar =
         {
             val ret = Calendar.getInstance ()
@@ -416,7 +419,7 @@ object SimulationJob
     {
         // ToDo: more robust checking
         val transformers: JsonArray = json.getJsonArray ("transformers")
-        val ret = Array.ofDim [String](transformers.size)
+        val ret = Array.ofDim[String](transformers.size)
         for (i <- 0 until transformers.size)
             ret (i) = transformers.getString (i)
         ret
@@ -425,7 +428,7 @@ object SimulationJob
     def parsePlayers (name: String, json: JsonObject): Seq[SimulationPlayerQuery] =
     {
         val MEMBERNAME = "players"
-        var ret: Seq[SimulationPlayerQuery] = Array[SimulationPlayerQuery] ()
+        var ret: Seq[SimulationPlayerQuery] = Array [SimulationPlayerQuery]()
 
         if (json.containsKey (MEMBERNAME))
         {
@@ -433,8 +436,8 @@ object SimulationJob
             if (value.getValueType == JsonValue.ValueType.ARRAY)
             {
                 var title = "*unnamed player*"
-                var query = null.asInstanceOf[String]
-                var transform = null.asInstanceOf[String]
+                var query = null.asInstanceOf [String]
+                var transform = null.asInstanceOf [String]
                 for (player <- value.asInstanceOf[JsonArray].asScala)
                     if (player.getValueType == JsonValue.ValueType.OBJECT)
                     {
@@ -554,7 +557,7 @@ object SimulationJob
             post_processes.map (parsePostProcess (name, _))
         }
         else
-            Seq()
+            Seq ()
     }
 
 
@@ -576,7 +579,7 @@ object SimulationJob
             val (start, end, buffer) = parseInterval (json)
             val (cim_temperature, simulation_temperature) = parseTemperatures (json)
             val swing = json.getString ("swing", "hi")
-            val swing_voltage_factor = if (json.containsKey ("swing_voltage_factor")) json.getJsonNumber ("swing_voltage_factor") .doubleValue () else 1.0
+            val swing_voltage_factor = if (json.containsKey ("swing_voltage_factor")) json.getJsonNumber ("swing_voltage_factor").doubleValue () else 1.0
             val transformers = parseTransformers (json)
             val players = parsePlayers (name, json)
             val recorders = parseRecorders (name, json)

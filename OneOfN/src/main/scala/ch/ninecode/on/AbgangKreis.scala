@@ -42,17 +42,17 @@ object AbgangKreis
         element match
         {
             case s: Switch ⇒ s.asInstanceOf [Switch]
-            case c: Cut ⇒ c.asInstanceOf [Cut].Switch
-            case d: Disconnector ⇒ d.asInstanceOf [Disconnector].Switch
-            case f: Fuse ⇒ f.asInstanceOf [Fuse].Switch
-            case g: GroundDisconnector ⇒ g.asInstanceOf [GroundDisconnector].Switch
-            case j: Jumper ⇒ j.asInstanceOf [Jumper].Switch
-            case m: MktSwitch ⇒ m.asInstanceOf [MktSwitch].Switch
-            case p: ProtectedSwitch ⇒ p.asInstanceOf [ProtectedSwitch].Switch
-            case b: Breaker ⇒ b.asInstanceOf [Breaker].ProtectedSwitch.Switch
-            case l: LoadBreakSwitch ⇒ l.asInstanceOf [LoadBreakSwitch].ProtectedSwitch.Switch
-            case r: Recloser ⇒ r.asInstanceOf [Recloser].ProtectedSwitch.Switch
-            case s: Sectionaliser ⇒ s.asInstanceOf [Sectionaliser].Switch
+            case c: Cut ⇒ c.asInstanceOf[Cut].Switch
+            case d: Disconnector ⇒ d.asInstanceOf[Disconnector].Switch
+            case f: Fuse ⇒ f.asInstanceOf[Fuse].Switch
+            case g: GroundDisconnector ⇒ g.asInstanceOf[GroundDisconnector].Switch
+            case j: Jumper ⇒ j.asInstanceOf[Jumper].Switch
+            case m: MktSwitch ⇒ m.asInstanceOf[MktSwitch].Switch
+            case p: ProtectedSwitch ⇒ p.asInstanceOf[ProtectedSwitch].Switch
+            case b: Breaker ⇒ b.asInstanceOf[Breaker].ProtectedSwitch.Switch
+            case l: LoadBreakSwitch ⇒ l.asInstanceOf[LoadBreakSwitch].ProtectedSwitch.Switch
+            case r: Recloser ⇒ r.asInstanceOf[Recloser].ProtectedSwitch.Switch
+            case s: Sectionaliser ⇒ s.asInstanceOf[Sectionaliser].Switch
             case _ ⇒
                 println ("non-switch (%s:%s)".format (element.getClass, element.id))
                 null.asInstanceOf [Switch]

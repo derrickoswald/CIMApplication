@@ -18,16 +18,29 @@ import scala.collection.JavaConversions._
 @Path ("/ping")
 class Ping extends RESTful
 {
+
     import Ping._
 
     @GET
     @Produces (Array (MediaType.APPLICATION_JSON))
     def ping (@DefaultValue ("false") @MatrixParam ("debug") debug: String): String =
     {
-        val verbose = try { debug.toBoolean } catch { case _: Throwable => false }
+        val verbose = try
+        {
+            debug.toBoolean
+        } catch
+        {
+            case _: Throwable => false
+        }
         _Logger.info ("ping (debug=%s)".format (verbose))
         val result = new RESTfulJSONResult (RESTfulJSONResult.OK, new util.Date ().toString)
-        if (try { debug.toBoolean } catch { case _: Throwable => false })
+        if (try
+        {
+            debug.toBoolean
+        } catch
+        {
+            case _: Throwable => false
+        })
         {
             val environment = Json.createObjectBuilder
             for (pair <- System.getenv)
@@ -44,7 +57,7 @@ class Ping extends RESTful
             if (!classLoaders.contains (Thread.currentThread.getContextClassLoader))
                 classLoaders.add (Thread.currentThread.getContextClassLoader)
             try
-                throw new Exception
+            throw new Exception
             catch
             {
                 case exception: Exception ⇒

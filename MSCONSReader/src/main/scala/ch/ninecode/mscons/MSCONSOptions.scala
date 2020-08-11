@@ -9,13 +9,13 @@ object LogLevels extends Enumeration
 /**
  * Options for MSCONS processing.
  *
- * @param valid False if either help or version requested (i.e. don't proceed with execution).
- * @param unittest If <code>true</code>, don't call sys.exit().
- * @param verbose If <code>true</code>, emit progress messages.
- * @param log_level Logging level.
+ * @param valid       False if either help or version requested (i.e. don't proceed with execution).
+ * @param unittest    If <code>true</code>, don't call sys.exit().
+ * @param verbose     If <code>true</code>, emit progress messages.
+ * @param log_level   Logging level.
  * @param output_file The name of the output file to write.
- * @param delimiter The character to insert between record fields.
- * @param mscons MSCONS files.
+ * @param delimiter   The character to insert between record fields.
+ * @param mscons      MSCONS files.
  */
 case class MSCONSOptions
 (

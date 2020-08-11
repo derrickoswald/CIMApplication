@@ -12,6 +12,7 @@ import javax.json.stream.JsonGenerator
 
 case class RESTfulJSONResult (var status: String, var message: String, var result: JsonStructure)
 {
+
     import RESTfulJSONResult._
 
     protected def getPrettyJsonWriterFactory: JsonWriterFactory =
@@ -48,7 +49,7 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
     def setResult (string: String): Unit =
     {
         try
-            result = Json.createReader (new StringReader (string)).readObject
+        result = Json.createReader (new StringReader (string)).readObject
         catch
         {
             case je: JsonException ⇒

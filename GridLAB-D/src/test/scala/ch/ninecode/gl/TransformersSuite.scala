@@ -7,7 +7,7 @@ import org.apache.spark.sql.SparkSession
 
 class TransformersSuite extends TestUtil
 {
-    override val classesToRegister: Array[Array[Class[_]]] = Array(CIMClasses.list)
+    override val classesToRegister: Array[Array[Class[_]]] = Array (CIMClasses.list)
     test ("default_injection with sk=100MVA and angle=-73 16kV")
     {
         session: SparkSession ⇒

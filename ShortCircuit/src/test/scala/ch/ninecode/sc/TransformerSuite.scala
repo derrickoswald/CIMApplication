@@ -73,7 +73,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
 
             val filename = FILE_DEPOT + FILENAME2
 
-            val customOptions = Map[String, String] (
+            val customOptions = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -122,7 +122,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession ⇒
 
             val filename = FILE_DEPOT + FILENAME3
-            val customOptions = Map[String, String] (
+            val customOptions = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",

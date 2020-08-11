@@ -224,7 +224,7 @@ object Main
 
         opt [Boolean]("calculate_public_lighting").
             action ((x, c) ⇒ c.copy (calculate_public_lighting = x)).
-            text ("calculate public lighting [%s]".format(default.calculate_public_lighting))
+            text ("calculate public lighting [%s]".format (default.calculate_public_lighting))
 
         help ("help").text ("prints this usage text")
 
@@ -286,7 +286,7 @@ object Main
         val start = System.nanoTime ()
         val storage = StorageLevel.fromString (arguments.storage)
 
-        val reader_options = Map[String, String] (
+        val reader_options = Map [String, String](
             "path" -> arguments.files.mkString (","),
             "StorageLevel" -> arguments.storage,
             "ch.ninecode.cim.do_topo" -> "true",
@@ -388,7 +388,7 @@ object Main
                     trafos = arguments.trafos,
                     cable_impedance_limit = arguments.cable_impedance_limit,
                     workdir = workdir,
-                    calculate_public_lighting =  arguments.calculate_public_lighting
+                    calculate_public_lighting = arguments.calculate_public_lighting
                 )
                 val shortcircuit = ShortCircuit (session, storage, options)
                 val results = shortcircuit.run ()

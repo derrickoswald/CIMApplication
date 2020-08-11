@@ -22,11 +22,11 @@ import org.scalatest.BeforeAndAfter
 import scala.collection.mutable
 
 case class Generator (
-                         override val name: String,
-                         override val nodes: Iterable[GLMNode],
-                         override val edges: Iterable[GLMEdge],
-                         override val transformers: Iterable[TransformerEdge],
-                         override val swing_nodes: Iterable[GLMNode])
+    override val name: String,
+    override val nodes: Iterable[GLMNode],
+    override val edges: Iterable[GLMEdge],
+    override val transformers: Iterable[TransformerEdge],
+    override val swing_nodes: Iterable[GLMNode])
     extends GLMGenerator (emit_voltage_dump = true)
 
 case class Node
@@ -352,8 +352,8 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
             assert (results.nonEmpty, "should have errors")
             assert (results.length == 2, "should have 2 results")
-            assert (results(0).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method"), "foo")
-            assert (results(1).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method"), "bar")
+            assert (results (0).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'foo' is not valid for property powerflow::solver_method"), "foo")
+            assert (results (1).errorMessages.mkString ("\n").contains ("ERROR    [INIT] : keyword 'bar' is not valid for property powerflow::solver_method"), "bar")
 
             println ("total: " + (solve - start) / 1e9 + " seconds")
     }
