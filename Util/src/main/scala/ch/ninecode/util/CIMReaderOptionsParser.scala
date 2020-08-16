@@ -184,7 +184,7 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
                 c
             }
         )
-        .text (s"storage level for RDD serialization, one of ${storageLevels.mkString (",")} [${default.cim_options.storage}]")
+        .text (s"storage level for RDD serialization, one of ${storageLevels.mkString (",")} [${default.cim_options.storageAsString}]")
 
     arg [String]("<CIM> <CIM> ...")
         .optional ()

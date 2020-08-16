@@ -7,6 +7,7 @@ import scala.tools.nsc.io.Jar
 import scala.util.Random
 
 import org.apache.spark.SparkConf
+import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -83,6 +84,8 @@ trait SparkInitializer[T <: Mainable with Sparkable]
                     .setMaster (options.spark_options.master)
                     .setJars (options.spark_options.jars)
                     .registerKryoClasses (options.spark_options.kryo)
+            // register GraphX classes
+            GraphXUtils.registerKryoClasses (configuration)
             options.spark_options.options.foreach ((pair: (String, String)) => configuration.set (pair._1, pair._2))
 
             // make a Spark session

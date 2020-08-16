@@ -8,7 +8,7 @@ import org.scalatest.BeforeAndAfter
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.net.Net
-import ch.ninecode.on.Main.main
+import ch.ninecode.on.OneOfN.main
 import ch.ninecode.testutil.TestUtil
 import ch.ninecode.util.Util
 
@@ -52,7 +52,7 @@ class OneOfNMainSuite extends TestUtil with BeforeAndAfter
             main (Array (
                 "--unittest",
                 "--verbose",
-                "--logging", "INFO",
+                "--log", "INFO",
                 "--workdir", "target/",
                 s"$FILE_DEPOT$FILENAME.rdf"
             ))

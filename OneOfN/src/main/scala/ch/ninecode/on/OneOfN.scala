@@ -1,10 +1,13 @@
 package ch.ninecode.on
 
 import java.io.Closeable
+import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.TimeZone
 
+import org.apache.log4j.Level
+import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
@@ -12,14 +15,15 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CHIM
+import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.DefaultSource
 import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.model.BaseVoltage
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Element
 import ch.ninecode.model.Equipment
@@ -28,9 +32,15 @@ import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.net.LineDetails
+import ch.ninecode.net.Net
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.net.Transformers
 import ch.ninecode.net.Voltages
+import ch.ninecode.util.Main
+import ch.ninecode.util.MainOptions
+import ch.ninecode.util.SparkInitializer
+import ch.ninecode.util.SparkOptions
+import ch.ninecode.util.Util
 
 case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 {
@@ -42,7 +52,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
     }
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
-    implicit val storage: StorageLevel = StorageLevel.fromString (options.storage)
+    implicit val storage: StorageLevel = options.cim_options.storage
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -99,7 +109,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // determine feeders as medium voltage (1e3 < V < 50e3) Connector in substations (PSRType_Substation)
         val feeder = Feeder (session, storage)
         val keep = feeder.feeders
-        log.info (s"${keep.count} medium voltage feeders")
+        log.info (s"${ keep.count } medium voltage feeders")
 
         // create an RDD of elements in substations (PSRType_Substation)
         val markers = get [PowerSystemResource].filter (_.PSRType == "PSRType_Substation")
@@ -143,26 +153,23 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
     {
         val start = System.nanoTime ()
 
+
         // read the file
-        val reader_options = Map [String, String](
-            "path" -> options.files.mkString (","),
-            "ch.ninecode.cim.do_deduplication" -> options.dedup.toString,
-            "ch.ninecode.cim.do_topo" -> "false",
-            "ch.ninecode.cim.do_topo_islands" -> "false",
-            "StorageLevel" -> storage_level_tostring (storage)) ++
-            options.cim_reader_options
-        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files: _*)
+        val reader_options = options.cim_options.toMap ++
+            Map [String, String](
+                "ch.ninecode.cim.do_topo" -> "false",
+                "ch.ninecode.cim.do_topo_islands" -> "false")
+        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.cim_options.files: _*)
             .persist (storage)
-        log.info (s"${elements.count} elements")
+        log.info (s"${ elements.count } elements")
 
         val read = System.nanoTime ()
-        log.info (s"read: ${(read - start) / 1e9} seconds")
+        log.info (s"read: ${ (read - start) / 1e9 } seconds")
 
         // eliminate elements in substations
         val new_elements = deleteSubstationElements ()
-            .persist (storage)
-        log.info (s"${new_elements.count} elements after substation deletion")
-        elements.unpersist (false)
+        put (new_elements, "Elements", true)
+        log.info (s"${ new_elements.count } elements after substation deletion")
 
         // identify topological nodes
         val ntp = CIMNetworkTopologyProcessor (
@@ -174,11 +181,11 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                 storage = storage,
                 debug = true))
         val ele = ntp.process.persist (storage)
-        log.info (s"${ele.count} elements after topology generation")
-        new_elements.unpersist (false)
+        put (ele, "Elements", true)
+        log.info (s"${ ele.count } elements after topology generation")
 
         val topo = System.nanoTime ()
-        log.info (s"topology: ${(topo - read) / 1e9} seconds")
+        log.info (s"topology: ${ (topo - read) / 1e9 } seconds")
 
         //        val export = new CIMExport (session)
         //        export.exportAll (options.files.head.replace (".", "_with_topology."), "PSRType_Substation removed")
@@ -186,12 +193,12 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // get all the transformers
         val _transformers = Transformers (session, storage)
         val transformer_data = _transformers.getTransformers (transformer_filter = _ => true)
-        log.info (s"${transformer_data.count} transformers")
+        log.info (s"${ transformer_data.count } transformers")
 
         // feeder service area calculations
         val feeder = Feeder (session, storage)
         val nodes_feeders = feeder.identifyFeeders.filter (_._2 != null) // (nodeid, feederid)
-        log.info (s"${nodes_feeders.count} feeders")
+        log.info (s"${ nodes_feeders.count } feeders")
 
         // get a map of voltage for each TopologicalNode starting from Terminal elements
         log.info ("creating nodes")
@@ -205,7 +212,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         )
         val zeros = end_voltages.filter (_._2 == 0.0)
         if (!zeros.isEmpty ())
-            log.warn (s"""${zeros.count} transformer ends with no nominal voltage, e.g. ${zeros.take (5).map (_._1).mkString (",")}""")
+            log.warn (s"""${ zeros.count } transformer ends with no nominal voltage, e.g. ${ zeros.take (5).map (_._1).mkString (",") }""")
         val equipment_voltages = getOrElse [Terminal].keyBy (_.ConductingEquipment).join (getOrElse [ConductingEquipment].keyBy (_.id)).values.map (
             x =>
             {
@@ -224,10 +231,10 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                 x =>
                 {
                     val ((id, node, voltage), feeder) = x
-                    (id, FeederNode (feeder, node.id, voltages.getOrElse (node.BaseVoltage, voltage.getOrElse (0.0))))
+                    (id, FeederNode (node.id, voltages.getOrElse (node.BaseVoltage, voltage.getOrElse (0.0)), feeder))
                 }).persist (storage)
         if (options.verbose)
-            log.info (s"${nodes.count} nodes")
+            log.info (s"${ nodes.count } nodes")
 
         // get equipment with nodes & terminals
         log.info ("creating edges")
@@ -250,73 +257,78 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 
         LineDetails.CIM_BASE_TEMPERATURE = options.base_temperature
 
+        @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
         def make_edge (transformers: Array[TransformerSet])(args: Iterable[(Iterable[(String, Terminal)], Element)]): GLMEdge =
         {
             // the terminals may be different for each element, but their TopologicalNode values are the same, so use the head
             val id_cn_1 = args.head._1.head._2.TopologicalNode
-            val id_cn_2 = args.head._1.tail.head._2.TopologicalNode
+            val id_cn_2 = args.head._1.drop (1).head._2.TopologicalNode
             AbgangKreis.toGLMEdge (transformers)(args.map (_._2), id_cn_1, id_cn_2)
         }
 
         // make one edge for each unique feeder it's in
         val edges: RDD[(String, GLMEdge)] = kk.flatMap (x => x.map (_._1).toArray.distinct.map (y => (y, make_edge (transformers)(x.filter (_._1 == y).map (_._2))))).persist (storage)
         if (options.verbose)
-            log.info (s"${edges.count} edges")
+            log.info (s"${ edges.count } edges")
 
         // keep only nodes we need
         val needed_nodes: RDD[(String, FeederNode)] = edges.flatMap (x => List ((x._2.cn1, x._2.cn1), (x._2.cn2, x._2.cn2))).join (nodes.keyBy (_._2._id)).map (_._2._2)
+
+        @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+        def pickbest (nodelist: Map[String, FeederNode])(arg: (String, Iterable[GLMEdge])): GLMEdge =
+        {
+            val withcount = arg._2.map (
+                edge =>
+                {
+                    val n = (nodelist.get (edge.cn1), nodelist.get (edge.cn2)) match
+                    {
+                        case (Some (n1), Some (n2)) => List (n1, n2)
+                        case (Some (n1), None) => List (n1)
+                        case (None, Some (n2)) => List (n2)
+                        case _ => List () // ?
+                    }
+                    (edge, n)
+                }
+            )
+            val two = withcount.filter (_._2.size >= 2)
+            if (two.nonEmpty)
+                two.head._1
+            else
+            {
+                val one = withcount.filter (_._2.nonEmpty)
+                if (one.nonEmpty)
+                    one.head._1
+                else
+                    withcount.head._1
+            }
+        }
+
+        @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+        def toFeederArea (x: (String, (Iterable[FeederNode], Iterable[GLMEdge], FeederMetadata))): FeederArea =
+        {
+            val nodes = x._2._1.groupBy (_.id).map (y => y._2.head) // distinct
+            // to handle the ganged transformers that have only one node connected into the network
+            // check against the list of nodes and if there are more than one edge with the same id keep only those with both ends in the topology
+            val nodelist = nodes.map (x => (x._id, x)).toMap
+
+            val edges = x._2._2.groupBy (_.id).map (pickbest (nodelist))
+            FeederArea (x._1, x._2._3, nodes, edges)
+        }
 
         // OK, so there are nodes and edges identified by feeder, one (duplicate) node and edge for each feeder
         log.info ("creating models")
         val feeders = needed_nodes.groupByKey.join (edges.groupByKey).join (feeder.feederStations.keyBy (_.id))
             .map (x => (x._1, (x._2._1._1, x._2._1._2, x._2._2))) // (feederid, ([FeederNode], [GLMEdge], FeederMetadata)
-            .map (
-                x =>
-                {
-                    val nodes = x._2._1.groupBy (_.id).map (y => y._2.head) // distinct
-                    // to handle the ganged transformers that have only one node connected into the network
-                    // check against the list of nodes and if there are more than one edge with the same id keep only those with both ends in the topology
-                    val nodelist = nodes.map (x => (x._id, x)).toMap
-
-                    def pickbest (arg: (String, Iterable[GLMEdge])): GLMEdge =
-                    {
-                        val withcount = arg._2.map (
-                            edge =>
-                            {
-                                val n = (nodelist.get (edge.cn1), nodelist.get (edge.cn2)) match
-                                {
-                                    case (Some (n1), Some (n2)) => List (n1, n2)
-                                    case (Some (n1), None) => List (n1)
-                                    case (None, Some (n2)) => List (n2)
-                                    case _ => List () // ?
-                                }
-                                (edge, n)
-                            }
-                        )
-                        val two = withcount.filter (_._2.size >= 2)
-                        if (two.nonEmpty)
-                            two.head._1
-                        else
-                        {
-                            val one = withcount.filter (_._2.nonEmpty)
-                            if (one.nonEmpty)
-                                one.head._1
-                            else
-                                withcount.head._1
-                        }
-                    }
-
-                    val edges = x._2._2.groupBy (_.id).map (pickbest)
-                    FeederArea (x._1, x._2._3, nodes, edges)
-                }).persist (storage)
-        log.info (s"${feeders.count} feeders")
+            .map (toFeederArea).persist (storage)
+        log.info (s"${ feeders.count } feeders")
 
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
             if (options.verbose) // re-set the log level on each worker
-            org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.OneOfN").setLevel (org.apache.log4j.Level.INFO)
+                org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.OneOfN").setLevel (org.apache.log4j.Level.INFO)
 
-            val generator = OneOfNGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
+            LineDetails.CIM_BASE_TEMPERATURE = options.base_temperature
+            val generator = OneOfNGLMGenerator (one_phase = !options.three, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)
 
             // to make the glm files testable, we add a player file for the switches generated by a bash file of the form:
@@ -351,7 +363,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
     }
 }
 
-object OneOfN
+object OneOfN extends SparkInitializer[OneOfNOptions] with Main
 {
     /**
      * The list of classes that can be persisted.
@@ -371,5 +383,97 @@ object OneOfN
             classOf [ch.ninecode.on.PlayerSwitchEdge],
             classOf [ch.ninecode.on.VertexData]
         )
+    }
+
+    /**
+     * Generate a working directory matching the files.
+     */
+    def derive_work_dir (files: Seq[String]): String =
+    {
+        files.toList match
+        {
+            case paths :: _ =>
+                val file = paths.split (",")(0).replace (" ", "%20")
+                val uri = new URI (file)
+                val scheme = uri.getScheme
+                val auth = if (null == uri.getAuthority) "" else uri.getAuthority
+                if (null == scheme)
+                    "/simulation/"
+                else
+                    s"$scheme://$auth/simulation/"
+            case _ =>
+                "/simulation/"
+        }
+    }
+
+    def run (options: OneOfNOptions): Unit =
+    {
+        if (options.verbose)
+            LogManager.getLogger (getClass).setLevel (Level.INFO)
+        if (options.main_options.valid)
+        {
+            if (options.cim_options.files.nonEmpty)
+            {
+                val session: SparkSession = createSession (options)
+                time ("execution: %s seconds")
+                {
+                    val on = OneOfN (session, options)
+                    val _ = on.run ()
+                }
+            }
+            else
+                log.error ("no CIM files specified")
+        }
+    }
+
+    def main (args: Array[String])
+    {
+        val have = util.Properties.versionNumberString
+        val need = scala_library_version
+        if (have != need)
+        {
+            log.error (s"Scala version ($have) does not match the version ($need) used to build $application_name")
+            sys.exit (1)
+        }
+        else
+        {
+            // set up default options
+            val default = OneOfNOptions (
+                main_options = MainOptions (application_name, application_version),
+                spark_options = SparkOptions (
+                    jars = Set (
+                        jarForObject (new DefaultSource ()),
+                        jarForObject (this)
+                    ).toArray,
+                    kryo = Array.concat (
+                        // register CIMReader classes
+                        CIMClasses.list,
+                        // register Net classes
+                        Net.classes,
+                        // register GridLAB-D classes
+                        GridLABD.classes,
+                        // register OneOfN classes
+                        OneOfN.classes,
+                        // register Util classes
+                        Util.classes
+                    )
+                )
+            )
+            // parse the command line arguments
+            new OneOfNOptionsParser (default).parse (args, default) match
+            {
+                case Some (o) =>
+                    // execute the main program if everything checks out
+                    val options = if ("" == o.workdir)
+                        o.copy (workdir = derive_work_dir (o.cim_options.files))
+                    else
+                        o
+                    run (options)
+                    if (!options.main_options.unittest)
+                        sys.exit (0)
+                case None =>
+                    sys.exit (1)
+            }
+        }
     }
 }

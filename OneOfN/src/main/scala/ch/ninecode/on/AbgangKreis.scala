@@ -59,7 +59,7 @@ object AbgangKreis
             case conductor: Conductor =>
                 Some (ACLineSegment (conductor))
             case _ =>
-                log.error (s"unexpected class in edge elements (${element.getClass})")
+                log.error (s"unexpected class in edge elements (${ element.getClass })")
                 None
         }
     }
@@ -81,31 +81,22 @@ object AbgangKreis
             case r: Recloser => Some (r.ProtectedSwitch.Switch)
             case s: Sectionaliser => Some (s.Switch)
             case _ =>
-                log.error (s"non-switch (${element.getClass}:${element.id})")
+                log.error (s"non-switch (${ element.getClass }:${ element.id })")
                 None
         }
     }
 
-    def pickSwitch (elements: Iterable[Element]): Option[Switch] =
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def pickSwitch (elements: Iterable[Element]): Switch =
     {
-        // try for a closed switch
-        val switches = for (
-            element <- elements;
-            switch = toSwitch (element)
-        )
-            yield
-                switch
-        // otherwise fall back to just the first switch
-        val none: Option[Switch] = None
-        switches.foldLeft (none)(
-            (last, switch) => last match
-            {
-                case Some (s) =>
-                    if (!s.normalOpen) last else switch
-                case _ =>
-                    switch
-            }
-        )
+        // try for a closed switch, otherwise fall back to just the first switch
+        val switches = elements.flatMap (toSwitch)
+        val closed = switches.filter (!_.normalOpen)
+        closed.headOption match
+        {
+            case Some (switch) => switch
+            case _ => switches.head
+        }
     }
 
     /**
@@ -117,6 +108,7 @@ object AbgangKreis
      * @param cn2      the mRID of the node connected to the other end
      * @return a type of edge
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     def toGLMEdge (transformers: Array[TransformerSet])(elements: Iterable[Element], cn1: String, cn2: String): GLMEdge =
     {
         case class fakeEdge (override val id: String, override val cn1: String, override val cn2: String)
@@ -128,7 +120,7 @@ object AbgangKreis
         element match
         {
             case _: Switch | _: Cut | _: Disconnector | _: Fuse | _: GroundDisconnector | _: Jumper | _: MktSwitch | _: ProtectedSwitch | _: Breaker | _: LoadBreakSwitch | _: Recloser | _: Sectionaliser =>
-                PlayerSwitchEdge (cn1, cn2, pickSwitch (elements).get, fuse = false)
+                PlayerSwitchEdge (cn1, cn2, pickSwitch (elements), fuse = false)
             case _: Conductor | _: ACLineSegment =>
                 val t1 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID = "terminal_1"))), TopologicalNode = cn1)
                 t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
@@ -145,11 +137,11 @@ object AbgangKreis
                     case Some (t) =>
                         GLMTransformerEdge (t)
                     case _ =>
-                        log.error (s"no transformer found for ${element.id}") // ToDo: log somehow
+                        log.error (s"no transformer found for ${ element.id }") // ToDo: log somehow
                         fakeEdge (element.id, cn1, cn2)
                 }
             case _ =>
-                log.error (s"edge ${element.id} has unhandled class '${element.getClass.getName}'") // ToDo: log somehow
+                log.error (s"edge ${ element.id } has unhandled class '${ element.getClass.getName }'") // ToDo: log somehow
                 fakeEdge (element.id, cn1, cn2)
         }
     }

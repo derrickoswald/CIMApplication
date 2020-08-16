@@ -173,7 +173,7 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.on.Main</mainClass>
+                                    <mainClass>ch.ninecode.on.OneOfN</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>

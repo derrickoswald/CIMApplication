@@ -9,29 +9,19 @@ import ch.ninecode.net.LoadFlowNode
  *
  * @param _id             ConnectivityNode or TopologicalNode mRID.
  * @param nominal_voltage Node voltage.
+ * @param feeder          Element attached to this node, if any.
  */
 case class FeederNode
 (
     _id: String,
     override val nominal_voltage: Double,
-    feeder: Element)
-    extends LoadFlowNode (if (null == feeder) _id else feeder.id, nominal_voltage)
-        with GLMNode
-
-object FeederNode
-{
-    def apply (_id: String, feeder: Element, nominal_voltage: Double): FeederNode =
-        FeederNode (_id, nominal_voltage, feeder)
-
-    /**
-     * Create a GLMNode.
-     *
-     * @param element         the element attached to this node
-     * @param id              the id of the TopologicalNode
-     * @param nominal_voltage the nominal voltage of the node (V)
-     * @return a type of node
-     */
-    def apply (element: Option[Element], id: String, nominal_voltage: Double): FeederNode =
-        FeederNode (id, element.orNull, nominal_voltage)
-}
+    feeder: Option[Element])
+    extends LoadFlowNode (
+        feeder match
+        {
+            case Some (element) => element.id
+            case _ => _id
+        },
+        nominal_voltage)
+    with GLMNode
 
