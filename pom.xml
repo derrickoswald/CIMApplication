@@ -8,12 +8,63 @@
     <!-- version>${version.dependency.scala}-${version.dependency.spark}-CIMAPPLICATION_VERSION</version -->
     <version>2.12-3.0.0-3.0.1</version>
     <packaging>pom</packaging>
-    <name>CIM Application Multimodule</name>
+    <name>CIM Application Multi-module</name>
+
+    <description>Electric distribution network analysis software</description>
+    <inceptionYear>2016</inceptionYear>
+    <url>https://github.com/derrickoswald/CIMApplication</url>
+    <organization>
+        <name>9code GmbH</name>
+        <url>http://9code.ch</url>
+    </organization>
     <scm>
         <url>git@github.com:derrickoswald/CIMApplication.git</url>
         <connection>scm:git:git@github.com:derrickoswald/CIMApplication.git</connection>
         <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
     </scm>
+    <issueManagement>
+        <url>https://github.com/derrickoswald/CIMApplication/issues</url>
+    </issueManagement>
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <comments>https://github.com/derrickoswald/CIMApplication/blob/master/LICENSE.md</comments>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Derrick Oswald</name>
+            <email>derrick.oswald@9code.ch</email>
+            <id>derrickoswald</id>
+            <organization>9code GmbH</organization>
+            <organizationUrl>http://9code.ch/</organizationUrl>
+            <timezone>1</timezone>
+            <roles>
+                <role>architect</role>
+                <role>developer</role>
+            </roles>
+            <properties>
+                <keybase>https://keybase.io/derrickoswald</keybase>
+                <picUrl>https://secure.gravatar.com/avatar/d659afe3730a534914c5555640d326b3</picUrl>
+            </properties>
+        </developer>
+        <developer>
+            <name>Markus Jung</name>
+            <email>markus.jung@nis.ch</email>
+            <id>mastermaeg</id>
+            <organization>NIS AG</organization>
+            <organizationUrl>http://www.nis.ch/</organizationUrl>
+            <timezone>1</timezone>
+            <roles>
+                <role>developer</role>
+            </roles>
+            <properties>
+                <picUrl>https://cdn.jsdelivr.net/gh/derrickoswald/CIMSpark@master/img/Markus.jpg</picUrl>
+            </properties>
+        </developer>
+    </developers>
 
     <properties>
 
@@ -23,6 +74,7 @@
 
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
+        <project.build.outputTimestamp>2020-08-17T08:50:00Z</project.build.outputTimestamp>
         <skipITs>false</skipITs>
         <localCassandra>false</localCassandra>
 
@@ -54,12 +106,13 @@
         <version.dependency.scalatest>3.2.0</version.dependency.scalatest>
 
         <!-- plugin versions -->
-        <version.dependency.maven-jar-plugin>3.1.2</version.dependency.maven-jar-plugin>
+        <version.dependency.maven-jar-plugin>3.2.0</version.dependency.maven-jar-plugin>
         <version.dependency.maven-rar-plugin>2.4</version.dependency.maven-rar-plugin>
-        <version.dependency.maven-war-plugin>3.2.3</version.dependency.maven-war-plugin>
+        <version.dependency.maven-war-plugin>3.3.1</version.dependency.maven-war-plugin>
         <version.dependency.maven-ear-plugin>3.0.1</version.dependency.maven-ear-plugin>
         <version.dependency.maven-surefire-plugin>3.0.0-M5</version.dependency.maven-surefire-plugin>
-        <version.dependency.maven-assembly-plugin>3.1.1</version.dependency.maven-assembly-plugin>
+        <version.dependency.maven-assembly-plugin>3.3.0</version.dependency.maven-assembly-plugin>
+        <version.dependency.maven-source-plugin>3.2.1</version.dependency.maven-source-plugin>
         <version.dependency.maven-compiler-plugin>3.8.1</version.dependency.maven-compiler-plugin>
         <version.dependency.maven-enforcer-plugin>3.0.0-M3</version.dependency.maven-enforcer-plugin>
         <version.dependency.maven-failsafe-plugin>2.22.2</version.dependency.maven-failsafe-plugin>
