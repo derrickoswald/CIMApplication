@@ -61,18 +61,9 @@ case class SimulationGeometry (session: SparkSession, keyspace: String) extends 
      */
     def query_extra (simulation: String): RDD[Properties] =
     {
-        val df = session.read.format ("org.apache.spark.sql.cassandra")
-            .options (Map ("keyspace" -> keyspace, "table" -> "key_value"))
-            .load
-            .where (s"simulation == '$simulation'")
-        if (!df.isEmpty)
-        {
-            df.select ("key", "query", "value").rdd
-                .map (row => (row.getString (0), (row.getString (1), row.getString (2))))
-                .groupByKey
-        }
-        else
-            session.sparkContext.emptyRDD
+        val where = s"simulation = '$simulation'"
+        val df = spark.sql (s"""select `key`, `query`, `value` from casscatalog.$keyspace.key_value where $where""")
+        df.rdd.map (row => (row.getString (0), (row.getString (1), row.getString (2)))).groupByKey
     }
 
     /**

@@ -5,7 +5,6 @@ import java.sql.Timestamp
 
 import javax.json.JsonObject
 import javax.json.JsonValue
-
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.reflect.runtime.universe.TypeTag
 
@@ -18,7 +17,6 @@ import org.apache.spark.sql.types.DateType
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
@@ -26,6 +24,7 @@ import com.datastax.spark.connector.types.IntType
 import com.datastax.spark.connector.types.UDTFieldDef
 import com.datastax.spark.connector.types.UserDefinedType
 import com.datastax.spark.connector.writer.WriteConf
+import org.apache.spark.sql.Row
 
 // Measurements needed from GridLAB-D recorders:
 //   - PowerTransformer (N6) apparent power [Scheinleistung (S)] (VA)
@@ -231,7 +230,8 @@ case class Checker (simulation: String, mrid: String, trigger: Trigger, limit: D
 case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"), three_phase: Boolean)
     extends Evented
 {
-    /**
+    /*
+     * Not used since SQL filters are no longer pushed down to Cassandra (since 3.0.0beta).
      * Generate a combined filter taking the 'best' case of a number of thresholds.
      *
      * Used to bulk reduce the number of simulated values than must be checked individually over time.
@@ -242,7 +242,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * @param column     the column to filter on
      * @param nominal    the nominal or reference value the threshold ratio applies to
      * @return a filter string suitable for 'push down'
-     */
+     *
     def filterFor (thresholds: Iterable[_ <: Trigger], column: String, nominal: String): String =
     {
         var minratio = Double.MaxValue
@@ -257,6 +257,39 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
             if (maxratio != Double.MinValue) Some (s"$column < ($maxratio * $nominal)") else None)
         // NOTE: Cassandra has no 'OR' clause capability because it is brain dead, so be aware that thresholds with both filters will fail
         filters.flatten.mkString (" or ")
+    }
+    */
+
+    /**
+     * Generate a combined filter taking the 'best' case of a number of thresholds.
+     *
+     * Used to bulk reduce the number of simulated values than must be checked individually over time.
+     * This replaces an SQL filter that is no longer pushed down to Cassandra (since 3.0.0beta).
+     *
+     * @param thresholds list of 'all' high (or low) thresholds, but not both at the same time.
+     * @param column     the column to filter on
+     * @param nominal    the nominal or reference value the threshold ratio applies to
+     * @return a filter method for each row
+     */
+    def filterFor (thresholds: Iterable[_ <: Trigger], column: Int, nominal: Int): Row => Boolean =
+    {
+        var minratio = Double.MaxValue
+        var maxratio = Double.MinValue
+        thresholds.foreach
+        {
+            case h: HighTrigger => if (h.ratio < minratio) minratio = h.ratio
+            case l: LowTrigger => if (l.ratio > maxratio) maxratio = l.ratio
+        }
+        def kernel (dohi: Boolean, dolo: Boolean) (row: Row) =
+        {
+            val value = row.getDouble (column)
+            val reference = row.getDouble (nominal)
+            val above = dohi && value > (minratio * reference)
+            val below = dolo && value < (maxratio * reference)
+            above || below
+        }
+
+        kernel (minratio != Double.MaxValue, maxratio != Double.MinValue)
     }
 
     /**
@@ -341,9 +374,25 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
 
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
 
-        def maximum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.max (a, Math.max (b, c)))
+        def maximum_magnitude[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag, Type_d: TypeTag, Type_e: TypeTag, Type_f: TypeTag] =
+            udf [Double, Double, Double, Double, Double, Double, Double]((a_r: Double, a_i: Double, b_r: Double, b_i: Double, c_r: Double, c_i: Double) =>
+            {
+                val a = Math.sqrt (a_r * a_r + a_i * a_i)
+                val b = Math.sqrt (b_r * b_r + b_i * b_i)
+                val c = Math.sqrt (c_r * c_r + c_i * c_i)
+                Math.max (a, Math.max (b, c))
+            }
+        )
 
-        def minimum[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => Math.min (a, Math.min (b, c)))
+        def minimum_magnitude[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag, Type_d: TypeTag, Type_e: TypeTag, Type_f: TypeTag] =
+            udf [Double, Double, Double, Double, Double, Double, Double]((a_r: Double, a_i: Double, b_r: Double, b_i: Double, c_r: Double, c_i: Double) =>
+            {
+                val a = Math.sqrt (a_r * a_r + a_i * a_i)
+                val b = Math.sqrt (b_r * b_r + b_i * b_i)
+                val c = Math.sqrt (c_r * c_r + c_i * c_i)
+                Math.min (a, Math.min (b, c))
+            }
+        )
 
         def per_phase[Type_x: TypeTag] = udf [Double, Double]((x: Double) => x / Math.sqrt (3.0))
 
@@ -364,29 +413,23 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
                 .withColumn ("reference", per_phase [Double].apply (keyvalues.col ("value").cast ("double")))
                 .drop ("value")
             simulated_values
-                .withColumn ("value_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a"))).cache
-                .withColumn ("value_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b"))).cache
-                .withColumn ("value_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c"))).cache
-                .withColumn ("value_max", maximum [Double, Double, Double].apply (functions.col ("value_a"), functions.col ("value_b"), functions.col ("value_c")))
-                .withColumn ("value_min", minimum [Double, Double, Double].apply (functions.col ("value_a"), functions.col ("value_b"), functions.col ("value_c")))
-                .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "value_a", "value_b", "value_c")
+                .withColumn ("value_max", maximum_magnitude [Double, Double, Double, Double, Double, Double].apply (functions.col ("real_a"), functions.col ("imag_a"), functions.col ("real_b"), functions.col ("imag_b"), functions.col ("real_c"), functions.col ("imag_c")))
+                .withColumn ("value_min", minimum_magnitude [Double, Double, Double, Double, Double, Double].apply (functions.col ("real_a"), functions.col ("imag_a"), functions.col ("real_b"), functions.col ("imag_b"), functions.col ("real_c"), functions.col ("imag_c")))
+                .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
                 .join (references, Seq ("mrid"))
         }
         else
-            {
-                val references = keyvalues
-                    .withColumn ("reference", keyvalues.col ("value").cast ("double"))
-                    .drop ("value")
-                simulated_values
-                    .withColumn ("value1", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                    .drop ("value", "real_a", "imag_a")
-                    .join (references, Seq ("mrid"))
-            }
-                .persist (storage_level)
+        {
+            val references = keyvalues
+                .withColumn ("reference", keyvalues.col ("value").cast ("double"))
+                .drop ("value")
+            simulated_values
+                .withColumn ("value1", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                .drop ("value", "real_a", "imag_a")
+                .join (references, Seq ("mrid"))
+        }
 
-        //        values.printSchema ()
-        //        values.show(5)
-        //        values.explain (true)
+        val values_rdd = values.rdd.persist (storage_level)
 
         val mrid = values.schema.fieldIndex ("mrid")
         val period = values.schema.fieldIndex ("period")
@@ -413,16 +456,18 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
 
         // for exceeding threshold checks, use the minimum of the three phases (worst case), or just the value (single phase case)
         val highEvents = if (0 < highs.size)
-            values.filter (filterFor (highs, val_min, "reference"))
-                .rdd.map (row => (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_min), row.getDouble (ref)))
+            values_rdd
+                .filter (filterFor (highs, value_min, ref))
+                .map (row => (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_min), row.getDouble (ref)))
                 .groupBy (_._1).values.flatMap (check (access.simulation, highs))
         else
             spark.sparkContext.emptyRDD [Event]
 
         // for subceeding threshold checks, use the maximum of the three phases (worst case), or just the value (single phase case)
         val lowEvents = if (0 < lows.size)
-            values.filter (filterFor (lows, val_max, "reference"))
-                .rdd.map (row => (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_max), row.getDouble (ref)))
+            values_rdd
+                .filter (filterFor (lows, value_max, ref))
+                .map (row => (row.getString (mrid), row.getTimestamp (time), row.getInt (period), row.getDouble (value_max), row.getDouble (ref)))
                 .groupBy (_._1).values.flatMap (check (access.simulation, lows))
         else
             spark.sparkContext.emptyRDD [Event]
@@ -430,7 +475,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         save (highEvents.union (lowEvents))
 
         {
-            val _ = values.unpersist (false)
+            val _ = values_rdd.unpersist (false)
         }
         {
             val _ = keyvalues.unpersist (false)

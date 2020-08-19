@@ -40,97 +40,44 @@ case class SimulationCassandraAccess (
      */
     def key_value (query: String): DataFrame =
     {
-        val keyvalue = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "key_value", "keyspace" -> output_keyspace))
-            .load
-            .filter (s"simulation = '$simulation' and query='$query'")
-            .drop ("simulation", "query")
-            .withColumnRenamed ("key", "mrid")
-            .persist (storage_level)
-        keyvalue
-    }
-
-    // not used
-    def geojson (table: String, coordinate_system: String = "wgs84"): DataFrame =
-    {
-        val geojson = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> table, "keyspace" -> output_keyspace))
-            .load
-            .filter (s"simulation = '$simulation' and coordinate_system='$coordinate_system'")
-            .drop ("simulation", "coordinate_system", "type", "geometry")
-            .persist (storage_level)
-        geojson
+        val where = s"simulation = '$simulation' and query='$query'"
+        spark.sql (s"""select `key` mrid, `value` from casscatalog.$output_keyspace.key_value where $where""").persist (storage_level)
     }
 
     def raw_values (`type`: String, to_drop: Seq[String], period: Int = PERIOD): DataFrame =
     {
-        val values = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "simulated_value", "keyspace" -> output_keyspace))
-            .load
-            // can't push down partition key = (simulation, mrid, type, period)
-            // so it relies on indices on simulation, type and period
-            .filter (s"simulation = '$simulation' and type = '${`type`}' and period = $period")
-            .drop (to_drop: _*)
-            .persist (storage_level)
-        values
-    }
-
-    // not used
-    def raw_meter_values: DataFrame =
-    {
-        val values = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value", "keyspace" -> input_keyspace))
-            .load
-            .filter ("type = 'energy'")
-            .drop ("real_b", "real_c", "imag_b", "imag_c", "type", "units")
-            .persist (storage_level)
-        values
+        val where = s"simulation = '$simulation' and type = '${`type`}' and period = $period"
+        val columns = Seq (
+            "simulation",
+            "mrid",
+            "type",
+            "period",
+            "time",
+            "imag_a",
+            "imag_b",
+            "imag_c",
+            "real_a",
+            "real_b",
+            "real_c",
+            "units").filter (!to_drop.contains (_)).map (x => s"`$x`").mkString (",")
+        spark.sql (s"""select $columns from casscatalog.$output_keyspace.simulated_value where $where""").persist (storage_level)
     }
 
     def players (`type`: String): DataFrame =
     {
-        val values = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "simulation_player", "keyspace" -> output_keyspace))
-            .load
-            .filter (s"simulation = '$simulation' and type = '${`type`}'")
-            .drop ("simulation", "type")
-            .persist (storage_level)
-        values
+        val where = s"simulation = '$simulation' and type = '${`type`}'"
+        spark.sql (s"""select `transformer`,`name`,`mrid`,`property` from casscatalog.$output_keyspace.simulation_player where $where""").persist (storage_level)
     }
 
     def recorders: DataFrame =
     {
-        val values = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "simulation_recorder", "keyspace" -> output_keyspace))
-            .load
-            .filter (s"simulation = '$simulation'")
-            .drop ("simulation")
-            .persist (storage_level)
-        values
+        val where = s"simulation = '$simulation'"
+        spark.sql (s"""select `transformer`,`name`,`aggregations`,`interval`,`mrid`,`property`,`type`,`unit` from casscatalog.$output_keyspace.simulation_recorder where $where""").persist (storage_level)
     }
 
     def events: DataFrame =
     {
-        val values = spark
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "simulation_event", "keyspace" -> output_keyspace))
-            .load
-            .filter (s"simulation = '$simulation'")
-            .drop ("simulation")
-            .persist (storage_level)
-        values
+        val where = s"simulation = '$simulation'"
+        spark.sql (s"""select `mrid`,`type`,`start_time`,`end_time`,`message`,`ratio`,`severity` from casscatalog.$output_keyspace.simulation_event where $where""").persist (storage_level)
     }
 }

@@ -95,6 +95,7 @@ object Main
                             .setAppName (APPLICATION_NAME)
                             .set ("spark.cassandra.connection.host", options.host)
                             .set ("spark.cassandra.connection.port", options.port.toString)
+                            .set ("spark.sql.catalog.casscatalog", "com.datastax.spark.connector.datasource.CassandraCatalog")
                             .setJars (Set (sim, glm, reader, util, json, json_impl, datastax).toArray)
 
                             // register CIMReader classes
