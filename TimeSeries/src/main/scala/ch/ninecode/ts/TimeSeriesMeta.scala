@@ -272,20 +272,20 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
                     val splits = line.split ("[;]")
                     val mRID = mrid (splits)
                     if ("" != mRID) // has a NIS number
+                    {
+                        val cls = classify (splits (16), splits (15))
+                        cls match
                         {
-                            val cls = classify (splits (16), splits (15))
-                            cls match
-                            {
-                                case Some (classifier) =>
-                                    matched = matched + 1
-                                    Some ((mRID, classifier.cls))
-                                case None =>
-                                    unmatched = unmatched + 1
-                                    println (mRID + " " + splits (7) + " " + splits (16) + " ==== " + splits (15))
-                                    Some ((mRID, unknown.cls))
-                            }
+                            case Some (classifier) =>
+                                matched = matched + 1
+                                Some ((mRID, classifier.cls))
+                            case None =>
+                                unmatched = unmatched + 1
+                                println (mRID + " " + splits (7) + " " + splits (16) + " ==== " + splits (15))
+                                Some ((mRID, unknown.cls))
                         }
-                        else
+                    }
+                    else
                         None
                 }
                 else

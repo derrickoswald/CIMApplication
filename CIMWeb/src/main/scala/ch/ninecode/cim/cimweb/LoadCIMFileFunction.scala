@@ -67,7 +67,8 @@ case class LoadCIMFileFunction (paths: Array[String], options: Iterable[(String,
             val prefix = hdfs.getUri.toString
             val files = paths.map (s ⇒
             {
-                val file = if (s.startsWith ("/")) s else "/" + s; new Path (prefix, file).toString
+                val file = if (s.startsWith ("/")) s else "/" + s;
+                new Path (prefix, file).toString
             })
             val ff = Json.createArrayBuilder
             for (f <- files)

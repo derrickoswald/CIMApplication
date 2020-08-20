@@ -303,7 +303,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         def generate (gridlabd: GridLABD, area: FeederArea): Int =
         {
             if (options.verbose) // re-set the log level on each worker
-            org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.OneOfN").setLevel (org.apache.log4j.Level.INFO)
+                org.apache.log4j.LogManager.getLogger ("ch.ninecode.on.OneOfN").setLevel (org.apache.log4j.Level.INFO)
 
             val generator = OneOfNGLMGenerator (one_phase = true, temperature = options.temperature, date_format = date_format, area, voltages)
             gridlabd.export (generator)

@@ -162,8 +162,8 @@ case class LowVoltage (session: SparkSession, storage_level: StorageLevel, optio
         // determine transformer list if any
         val trafos = if ("" != options.trafos)
         // do all transformers listed in the file
-        Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
-            else
+            Source.fromFile (options.trafos, "UTF-8").getLines ().filter (_ != "").toArray
+        else
             null
         if ((null != trafos) && (0 == trafos.length))
         {

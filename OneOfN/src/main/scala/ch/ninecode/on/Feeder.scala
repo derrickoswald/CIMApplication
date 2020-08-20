@@ -327,8 +327,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
         {
             if (null == msg) // do nothing initially
-            attr
-                else
+                attr
+            else
                 msg
         }
 
