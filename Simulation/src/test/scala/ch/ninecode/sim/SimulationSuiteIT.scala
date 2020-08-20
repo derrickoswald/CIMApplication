@@ -1168,9 +1168,9 @@ object SimulationSuiteIT
                         val path = directory + entry.getName
                         if (!entry.isDirectory)
                         // if the entry is a file, extracts it
-                        extractFile (zip, path)
-                            else
-                            // if the entry is a directory, make the directory
+                            extractFile (zip, path)
+                        else
+                        // if the entry is a directory, make the directory
                             new File (path).mkdir
                         zip.closeEntry ()
                         entry = zip.getNextEntry
@@ -1196,7 +1196,8 @@ object SimulationSuiteIT
                     var read = -1
                     while (
                     {
-                        read = zip.read (bytes); read != -1
+                        read = zip.read (bytes);
+                        read != -1
                     })
                         bos.write (bytes, 0, read)
             }

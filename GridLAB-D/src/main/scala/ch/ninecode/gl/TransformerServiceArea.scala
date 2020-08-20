@@ -242,13 +242,13 @@ case class TransformerServiceArea (session: SparkSession, storage_level: Storage
         def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
         {
             if (null == msg) // do nothing initially
-            attr
-                else
-                {
-                    if (debug && log.isDebugEnabled)
-                        log.debug ("%s <-- %s".format (id, msg.toString))
-                    msg
-                }
+                attr
+            else
+            {
+                if (debug && log.isDebugEnabled)
+                    log.debug ("%s <-- %s".format (id, msg.toString))
+                msg
+            }
         }
 
         def send_message (triplet: EdgeTriplet[VertexData, EdgeData]): Iterator[(VertexId, VertexData)] =

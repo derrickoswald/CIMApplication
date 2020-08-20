@@ -162,8 +162,8 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
                         val v1 = lookup (edge.cn1)
                         val v2 = lookup (edge.cn2)
                         if (v1.value_a.modulus > v2.value_a.modulus) // ToDo: three phase ?
-                        (edge.id, +1)
-                            else
+                            (edge.id, +1)
+                        else
                             (edge.id, -1)
                     }
                 ) ++ Seq ((trafo.transformer.transformer_name, +1))

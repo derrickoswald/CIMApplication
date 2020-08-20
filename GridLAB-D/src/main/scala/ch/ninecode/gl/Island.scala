@@ -72,8 +72,8 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
         {
             case cable: ACLineSegment ⇒
                 if (cable.r < cable_impedance_limit) // ToDo: use PSRType_Bogus
-                "invalid element (%s r=%s)".format (cable.id, cable.r)
-                    else
+                    "invalid element (%s r=%s)".format (cable.id, cable.r)
+                else
                     null
             case _: PowerTransformer ⇒
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
@@ -112,40 +112,40 @@ class Island (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fr
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
             if (!terminals.map (_._2).contains (230.0))
             // make a pre-edge for each pair of terminals
-            ret = terminals.length match
-            {
-                case 1 ⇒
-                    ret :+
-                        PreEdge (
-                            terminals (0)._1.id,
-                            terminals (0)._1.TopologicalNode,
-                            terminals (0)._2,
-                            "",
-                            "",
-                            terminals (0)._2,
-                            terminals (0)._1.ConductingEquipment,
-                            connected (element, terminals (0)._2, 0.0),
-                            null,
-                            ratedCurrent,
-                            element)
-                case _ ⇒
-                    for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                    {
-                        ret = ret :+ PreEdge (
-                            terminals (0)._1.id,
-                            terminals (0)._1.TopologicalNode,
-                            terminals (0)._2,
-                            terminals (i)._1.id,
-                            terminals (i)._1.TopologicalNode,
-                            terminals (i)._2,
-                            terminals (0)._1.ConductingEquipment,
-                            connected (element, terminals (0)._2, terminals (i)._2),
-                            hasIssues (element, terminals.length, terminals (0)._2, terminals (i)._2),
-                            ratedCurrent,
-                            element)
-                    }
-                    ret
-            }
+                ret = terminals.length match
+                {
+                    case 1 ⇒
+                        ret :+
+                            PreEdge (
+                                terminals (0)._1.id,
+                                terminals (0)._1.TopologicalNode,
+                                terminals (0)._2,
+                                "",
+                                "",
+                                terminals (0)._2,
+                                terminals (0)._1.ConductingEquipment,
+                                connected (element, terminals (0)._2, 0.0),
+                                null,
+                                ratedCurrent,
+                                element)
+                    case _ ⇒
+                        for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                        {
+                            ret = ret :+ PreEdge (
+                                terminals (0)._1.id,
+                                terminals (0)._1.TopologicalNode,
+                                terminals (0)._2,
+                                terminals (i)._1.id,
+                                terminals (i)._1.TopologicalNode,
+                                terminals (i)._2,
+                                terminals (0)._1.ConductingEquipment,
+                                connected (element, terminals (0)._2, terminals (i)._2),
+                                hasIssues (element, terminals.length, terminals (0)._2, terminals (i)._2),
+                                ratedCurrent,
+                                element)
+                        }
+                        ret
+                }
         }
         //else // shouldn't happen, terminals always reference ConductingEquipment, right?
         // throw new Exception ("element " + e.id + " is not derived from ConductingEquipment")

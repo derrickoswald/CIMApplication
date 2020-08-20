@@ -59,9 +59,9 @@ trait Unzip
                         val path = directory + entry.getName
                         if (!entry.isDirectory)
                         // if the entry is a file, extract it
-                        extractFile (zip, path)
-                            else
-                            // if the entry is a directory, make the directory
+                            extractFile (zip, path)
+                        else
+                        // if the entry is a directory, make the directory
                             new File (path).mkdir
                         zip.closeEntry ()
                         entry = zip.getNextEntry

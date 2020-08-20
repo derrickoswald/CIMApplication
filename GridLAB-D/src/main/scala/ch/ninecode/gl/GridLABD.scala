@@ -179,8 +179,8 @@ class GridLABD
         {
             case cable: ACLineSegment ⇒
                 if (cable.r >= cable_impedance_limit) // ToDo: use PSRType_Bogus
-                "invalid element (%s r=%s)".format (cable.id, cable.r)
-                    else
+                    "invalid element (%s r=%s)".format (cable.id, cable.r)
+                else
                     null
             case _: PowerTransformer ⇒
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
@@ -232,40 +232,40 @@ class GridLABD
             // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
             if (!volts.contains (230.0))
             // make a pre-edge for each pair of terminals
-            ret = terminals.length match
-            {
-                case 1 ⇒
-                    ret :+
-                        PreEdge (
-                            terminals (0).id,
-                            node_name (terminals (0)),
-                            volts (0),
-                            "",
-                            "",
-                            volts (0),
-                            terminals (0).ConductingEquipment,
-                            connected = true,
-                            null,
-                            ratedCurrent,
-                            e)
-                case _ ⇒
-                    for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                    {
-                        ret = ret :+ PreEdge (
-                            terminals (0).id,
-                            node_name (terminals (0)),
-                            volts (0),
-                            terminals (i).id,
-                            node_name (terminals (i)),
-                            volts (i),
-                            terminals (0).ConductingEquipment,
-                            connected (e, volts (0), volts (i)),
-                            hasIssues (e, terminals.length, volts (0), volts (i)),
-                            ratedCurrent,
-                            e)
-                    }
-                    ret
-            }
+                ret = terminals.length match
+                {
+                    case 1 ⇒
+                        ret :+
+                            PreEdge (
+                                terminals (0).id,
+                                node_name (terminals (0)),
+                                volts (0),
+                                "",
+                                "",
+                                volts (0),
+                                terminals (0).ConductingEquipment,
+                                connected = true,
+                                null,
+                                ratedCurrent,
+                                e)
+                    case _ ⇒
+                        for (i ← 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                        {
+                            ret = ret :+ PreEdge (
+                                terminals (0).id,
+                                node_name (terminals (0)),
+                                volts (0),
+                                terminals (i).id,
+                                node_name (terminals (i)),
+                                volts (i),
+                                terminals (0).ConductingEquipment,
+                                connected (e, volts (0), volts (i)),
+                                hasIssues (e, terminals.length, volts (0), volts (i)),
+                                ratedCurrent,
+                                e)
+                        }
+                        ret
+                }
         }
         //else // shouldn't happen, terminals always reference ConductingEquipment, right?
 
@@ -451,76 +451,76 @@ class GridLABD
 
         val gridlabd =
             if ((workdir_scheme == "file") || (workdir_scheme == "")) // local[*]
+            {
+                val os = System.getProperty ("os.name")
+                if (os.startsWith ("Windows"))
                 {
-                    val os = System.getProperty ("os.name")
-                    if (os.startsWith ("Windows"))
+                    log.info ("Running GridLABD on Windows")
+                    val pipeFileName = "./src/test/resources/pipe.sh"
+                    val pipeContent =
+                        """#!/bin/bash
+                          |while read line; do
+                          |    export FILE=${line/$'\r'/};
+                          |    ulimit -Sn `ulimit -Hn`;
+                          |    pushd $1/$FILE > /dev/null;
+                          |    gridlabd.exe $FILE.glm 2> $FILE.out;
+                          |    cat output_data/* > output.txt;
+                          |    echo -n $FILE'|';
+                          |    cat $FILE.out | tr '\r\n' '|';
+                          |    popd > /dev/null;
+                          |done""".stripMargin
+                    new PrintWriter (pipeFileName)
                     {
-                        log.info ("Running GridLABD on Windows")
-                        val pipeFileName = "./src/test/resources/pipe.sh"
-                        val pipeContent =
-                            """#!/bin/bash
-                              |while read line; do
-                              |    export FILE=${line/$'\r'/};
-                              |    ulimit -Sn `ulimit -Hn`;
-                              |    pushd $1/$FILE > /dev/null;
-                              |    gridlabd.exe $FILE.glm 2> $FILE.out;
-                              |    cat output_data/* > output.txt;
-                              |    echo -n $FILE'|';
-                              |    cat $FILE.out | tr '\r\n' '|';
-                              |    popd > /dev/null;
-                              |done""".stripMargin
-                        new PrintWriter (pipeFileName)
-                        {
-                            write (pipeContent)
-                            close ()
-                        }
-                        Array [String](
-                            "bash",
-                            pipeFileName,
-                            workdir_path
-                        )
+                        write (pipeContent)
+                        close ()
                     }
-                    else
-                    {
-                        log.info ("Running GridLABD on a non-cluster Linux")
-                        Array [String](
-                            "bash",
-                            "-c",
-                            "while read line; do " +
-                                "export FILE=$line; " +
-                                "ulimit -Sn `ulimit -Hn`; " +
-                                "pushd " + workdir_path + "$FILE; " +
-                                "gridlabd --quiet $FILE.glm 2> $FILE.out;" +
-                                "cat output_data/* > output.txt; " +
-                                "echo -n $FILE'|';" +
-                                "cat $FILE.out | tr '\\r\\n' '|';" +
-                                "popd; " +
-                                "done < /dev/stdin")
-                    }
+                    Array [String](
+                        "bash",
+                        pipeFileName,
+                        workdir_path
+                    )
                 }
-                else // cluster, either hdfs://XX or wasb://YY
+                else
                 {
-                    log.info ("Running GridLABD on a Linux cluster")
+                    log.info ("Running GridLABD on a non-cluster Linux")
                     Array [String](
                         "bash",
                         "-c",
                         "while read line; do " +
                             "export FILE=$line; " +
-                            "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
-                            "HADOOP_USER_NAME=$SPARK_USER; " +
                             "ulimit -Sn `ulimit -Hn`; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +
-                            "pushd $FILE; " +
+                            "pushd " + workdir_path + "$FILE; " +
                             "gridlabd --quiet $FILE.glm 2> $FILE.out;" +
                             "cat output_data/* > output.txt; " +
-                            "popd; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/output.txt " + workdir_path + "$FILE; " +
-                            "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
                             "echo -n $FILE'|';" +
-                            "cat $FILE/$FILE.out | tr '\\r\\n' '|';" +
-                            "rm -rf $FILE; " +
+                            "cat $FILE.out | tr '\\r\\n' '|';" +
+                            "popd; " +
                             "done < /dev/stdin")
                 }
+            }
+            else // cluster, either hdfs://XX or wasb://YY
+            {
+                log.info ("Running GridLABD on a Linux cluster")
+                Array [String](
+                    "bash",
+                    "-c",
+                    "while read line; do " +
+                        "export FILE=$line; " +
+                        "HDFS_DIR=${HADOOP_HDFS_HOME:-$HADOOP_HOME}; " +
+                        "HADOOP_USER_NAME=$SPARK_USER; " +
+                        "ulimit -Sn `ulimit -Hn`; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyToLocal " + workdir_path + "$FILE $FILE; " +
+                        "pushd $FILE; " +
+                        "gridlabd --quiet $FILE.glm 2> $FILE.out;" +
+                        "cat output_data/* > output.txt; " +
+                        "popd; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/output.txt " + workdir_path + "$FILE; " +
+                        "$HDFS_DIR/bin/hdfs dfs -copyFromLocal -f $FILE/$FILE.out " + workdir_path + "$FILE/$FILE.out; " +
+                        "echo -n $FILE'|';" +
+                        "cat $FILE/$FILE.out | tr '\\r\\n' '|';" +
+                        "rm -rf $FILE; " +
+                        "done < /dev/stdin")
+            }
 
         val out = files.pipe (gridlabd).filter (_.trim () != "") // we somehow get some empty strings back, trim them
         out.flatMap (check).collect

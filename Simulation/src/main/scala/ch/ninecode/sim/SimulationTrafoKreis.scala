@@ -282,14 +282,14 @@ case class SimulationTrafoKreis
     def nodes: Iterable[SimulationNode] =
     {
         if (!hacked && (null != directions)) // when performing the directionality simulation, the directions are not set yet
-            {
-                val (_n, _e, _r, _t) = kludge
-                raw_nodes = _n
-                raw_edges = _e
-                recorders = _r
-                transformer_edge = _t
-                hacked = true
-            }
+        {
+            val (_n, _e, _r, _t) = kludge
+            raw_nodes = _n
+            raw_edges = _e
+            recorders = _r
+            transformer_edge = _t
+            hacked = true
+        }
         (raw_nodes ++ Seq (SimulationNode (transformer_edge.cn1, transformer_edge.transformer.v0, transformer_edge.transformer.transformer_name, null, null))).map (
             raw ⇒
             {
@@ -316,14 +316,14 @@ case class SimulationTrafoKreis
     def edges: Iterable[SimulationEdge] =
     {
         if (!hacked && (null != directions)) // when performing the directionality simulation, the directions are not set yet
-            {
-                val (_n, _e, _r, _t) = kludge
-                raw_nodes = _n
-                raw_edges = _e
-                recorders = _r
-                transformer_edge = _t
-                hacked = true
-            }
+        {
+            val (_n, _e, _r, _t) = kludge
+            raw_nodes = _n
+            raw_edges = _e
+            recorders = _r
+            transformer_edge = _t
+            hacked = true
+        }
         raw_edges.map (
             raw ⇒
             {

@@ -518,7 +518,7 @@ case class Simulation (session: SparkSession, options: SimulationOptions) extend
             val island = transformers.head._2
             if (!transformers.forall (_._2 == island))
             // log.error ("""multiple transformer sets for island %s, (%s)""".format (task.island, tx.map (_.transformer_name).mkString (",")))
-            log.error ("""not all transformers are members of the same island (%s)""".format (island))
+                log.error ("""not all transformers are members of the same island (%s)""".format (island))
             val set = TransformerSet (transformers.map (_._1).toArray)
             (set.transformer_name, set)
         }

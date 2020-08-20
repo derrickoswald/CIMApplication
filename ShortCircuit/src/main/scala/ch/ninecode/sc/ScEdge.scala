@@ -145,11 +145,11 @@ case class ScEdge
                     // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
                     else
                         if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
-                            {
-                                val error = ScError (fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
-                                ScError.combine_errors (errors, List (error), options.messagemax)
-                            }
-                            else
+                        {
+                            val error = ScError (fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
+                            ScError.combine_errors (errors, List (error), options.messagemax)
+                        }
+                        else
                             errors
             case _ ⇒
                 errors

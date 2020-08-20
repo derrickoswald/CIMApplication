@@ -28,14 +28,16 @@ class MSCONSOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         hidden ().
         action ((_, c) =>
         {
-            unittest = true; c.copy (unittest = true)
+            unittest = true;
+            c.copy (unittest = true)
         }).
         text ("unit testing - don't call sys.exit() [%s]".format (default.unittest))
 
     version ("version").
         validate (Unit =>
         {
-            versionout = true; Right (Unit)
+            versionout = true;
+            Right (Unit)
         }).
         text ("Scala: %s, Spark: %s, %s: %s".format (
             APPLICATION_VERSION.split ("-")(0),
@@ -69,12 +71,14 @@ class MSCONSOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         hidden ().
         validate (Unit =>
         {
-            helpout = true; Right (Unit)
+            helpout = true;
+            Right (Unit)
         })
 
     checkConfig (o =>
     {
-        o.valid = !(helpout || versionout); Right (Unit)
+        o.valid = !(helpout || versionout);
+        Right (Unit)
     })
 
     note (
