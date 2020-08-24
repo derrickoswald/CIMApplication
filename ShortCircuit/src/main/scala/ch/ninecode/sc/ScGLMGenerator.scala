@@ -45,13 +45,15 @@ case class ScGLMGenerator
 
     override def edges: Iterable[GLMEdge] = area.edges
 
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.filter (edge => edge match
-        {
-            case _: GLMTransformerEdge => true
-            case _ => false
-        }).asInstanceOf [Iterable[GLMTransformerEdge]]
+        val subtransmission_trafos = edges.flatMap (
+            {
+                case trafo: GLMTransformerEdge => Some (trafo)
+                case _ => None
+            }
+        )
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values
         configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
@@ -78,15 +80,21 @@ case class ScGLMGenerator
      */
     override def emit_slack (node: GLMNode): String =
     {
-        val set: TransformerSet = node.asInstanceOf[ShortCircuitSwingNode].set
         val voltage = node.nominal_voltage
         val phase = if (one_phase) "AN" else "ABCN"
-        val _z = if (isMax)
-            set.network_short_circuit_impedance_max
-        else
-            set.network_short_circuit_impedance_min
-        val z = _z / 1000.0 // per length impedance is per meter now
         val nodename = node.id
+        val _z = node match
+        {
+            case swing: ShortCircuitSwingNode =>
+                val set = swing.set
+                if (isMax)
+                    set.network_short_circuit_impedance_max
+                else
+                    set.network_short_circuit_impedance_min
+            case _ =>
+                Complex (0.0)
+        }
+        val z = _z / 1000.0 // per length impedance is per meter now
 
         // if the network short circuit impedance isn't 0Ω, we have to invent a cable
         if (z != Complex (0))
@@ -103,8 +111,8 @@ case class ScGLMGenerator
                   |        };
                   |""".stripMargin.format (phase, voltage, voltage)
             val mrid = s"_generated_N5_${node.id}"
-            val id = IdentifiedObject (BasicElement (null, mrid), mRID = mrid)
-            val l = ACLineSegment (Conductor (ConductingEquipment (Equipment (PowerSystemResource (id)))))
+            val id = IdentifiedObject (Element = BasicElement (mRID = mrid), mRID = mrid)
+            val l = ACLineSegment (Conductor = Conductor (ConductingEquipment = ConductingEquipment (Equipment = Equipment (PowerSystemResource = PowerSystemResource (id)))))
             val t1 = Terminal (TopologicalNode = "N5")
             val t2 = Terminal (TopologicalNode = node.id)
             implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()

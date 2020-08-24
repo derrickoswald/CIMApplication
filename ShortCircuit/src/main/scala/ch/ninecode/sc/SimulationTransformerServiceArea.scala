@@ -45,6 +45,7 @@ case class SimulationTransformerServiceArea
      *
      * @param c The Calendar value to be cloned.
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
 
     val finish_time: Calendar =

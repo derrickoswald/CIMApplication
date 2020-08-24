@@ -34,6 +34,7 @@ case class ScExperiment
      * @param c The Calendar value to be cloned.
      * @return A clone of the calendar.
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
 
     /**
@@ -56,13 +57,13 @@ case class ScExperiment
         t
     }
 
-    override def toString: String = "Experiment(" +
-        trafo + "," +
-        mrid + "," +
-        equipment + "," +
-        new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z").format (t0.getTime) + "[" + t0.getTimeInMillis + "]," +
-        slot + "," +
-        window + "," +
-        voltage + "V," +
-        impedance.toString + "Ω)"
+    override def toString: String =
+    {
+        val time = ScExperiment.TIMEFORMAT.format (t0.getTime)
+        s"Experiment($trafo,$mrid,$equipment,$time[${t0.getTimeInMillis}],$slot,$window,${voltage}V,${impedance.toString}Ω)"
+    }
+}
+object ScExperiment
+{
+    lazy val TIMEFORMAT = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
 }

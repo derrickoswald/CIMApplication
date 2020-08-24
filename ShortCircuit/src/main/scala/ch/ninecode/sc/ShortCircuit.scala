@@ -1,6 +1,5 @@
 package ch.ninecode.sc
 
-import java.io
 import java.nio.charset.StandardCharsets
 import java.text.ParseException
 import java.text.SimpleDateFormat
@@ -74,78 +73,77 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         while ((null != c) && !c.getClass.getName.endsWith (".ConductingEquipment"))
             c = c.sup
 
-        if (null != c)
+        c match
         {
-            // get the equipment
-            val equipment = c.asInstanceOf [ConductingEquipment]
-
-            // sort terminals by sequence number
-            // except if it has ends, and then sort so the primary is index 0
-            def sortnumber (arg: (Terminal, Option[End])) = arg._2 match
-            {
-                case Some (end) => end.endNumber
-                case None => arg._1.ACDCTerminal.sequenceNumber
-            }
-
-            // the equipment voltage - doesn't work for transformers
-            val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
-            val terminals = t_it.toArray.sortWith (sortnumber (_) < sortnumber (_)).map (terminal_end =>
-            {
-                val voltage =
-                    terminal_end._2 match
-                    {
-                        case Some (end) =>
-                            1000.0 * voltages.getOrElse (end.BaseVoltage, 0.0)
-                        case None =>
-                            volt
-                    }
-                val impedance = element match
+            case equipment: ConductingEquipment =>
+                // sort terminals by sequence number
+                // except if it has ends, and then sort so the primary is index 0
+                def sortnumber (arg: (Terminal, Option[End])) = arg._2 match
                 {
-                    case line: ACLineSegment =>
-                        val dist_km = line.Conductor.len / 1000.0
-                        Impedanzen (
-                            Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
-                            Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
-                            Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
-                            Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
-                    case _: PowerTransformer =>
+                    case Some (end) => end.endNumber
+                    case None => arg._1.ACDCTerminal.sequenceNumber
+                }
+
+                // the equipment voltage - doesn't work for transformers
+                val volt = 1000.0 * voltages.getOrElse (equipment.BaseVoltage, 0.0)
+                val terminals = t_it.toArray.sortWith (sortnumber (_) < sortnumber (_)).map (terminal_end =>
+                {
+                    val voltage =
                         terminal_end._2 match
                         {
                             case Some (end) =>
-                                val z = Complex (end.r, end.x)
-                                Impedanzen (z, z, z, z)
+                                1000.0 * voltages.getOrElse (end.BaseVoltage, 0.0)
                             case None =>
-                                Impedanzen (0.0, 0.0, 0.0, 0.0) // no end on a transformer terminal? WTF?
+                                volt
                         }
+                    val impedance = element match
+                    {
+                        case line: ACLineSegment =>
+                            val dist_km = line.Conductor.len / 1000.0
+                            Impedanzen (
+                                Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
+                                Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
+                                Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
+                                Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
+                        case _: PowerTransformer =>
+                            terminal_end._2 match
+                            {
+                                case Some (end) =>
+                                    val z = Complex (end.r, end.x)
+                                    Impedanzen (z, z, z, z)
+                                case None =>
+                                    Impedanzen (0.0, 0.0, 0.0, 0.0) // no end on a transformer terminal? WTF?
+                            }
 
-                    case _ =>
-                        Impedanzen (0.0, 0.0, 0.0, 0.0)
+                        case _ =>
+                            Impedanzen (0.0, 0.0, 0.0, 0.0)
+                    }
+                    (terminal_end._1, voltage, impedance)
+                })
+                // make a short-circuit edge for each pair of terminals, zero and one length lists of terminals have been filtered out
+                val eq = terminals (0)._1.ConductingEquipment
+                val node1 = terminals (0)._1.TopologicalNode
+                val voltage1 = terminals (0)._2
+                val z = terminals (0)._3
+                for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                {
+                    val node2 = terminals (i)._1.TopologicalNode
+                    // eliminate edges with only one connectivity node, or the same connectivity node
+                    if (null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
+                        ret = ret :+ ScEdge (
+                            node1,
+                            voltage1,
+                            node2,
+                            terminals (i)._2,
+                            terminals.length,
+                            eq,
+                            element,
+                            z
+                        )
                 }
-                (terminal_end._1, voltage, impedance)
-            })
-            // make a short-circuit edge for each pair of terminals, zero and one length lists of terminals have been filtered out
-            val eq = terminals (0)._1.ConductingEquipment
-            val node1 = terminals (0)._1.TopologicalNode
-            val voltage1 = terminals (0)._2
-            val z = terminals (0)._3
-            for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-            {
-                val node2 = terminals (i)._1.TopologicalNode
-                // eliminate edges with only one connectivity node, or the same connectivity node
-                if (null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
-                    ret = ret :+ ScEdge (
-                        node1,
-                        voltage1,
-                        node2,
-                        terminals (i)._2,
-                        terminals.length,
-                        eq,
-                        element,
-                        z
-                    )
-            }
+            case _ =>
+                // shouldn't happen, terminals always reference ConductingEquipment, right?
         }
-        //else // shouldn't happen, terminals always reference ConductingEquipment, right?
 
         ret
     }

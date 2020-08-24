@@ -76,11 +76,7 @@ case class ScResult
 )
 {
     def csv (cmin: Double): String =
-        node + ";" + equipment + ";" + terminal + ";" + container + ";" + (if (null != errors) errors.mkString (",") else "") + ";" + tx + ";" +
-            low_ik + ";" + low_ik3pol + ";" + low_ip + ";" + low_r + ";" + low_x + ";" + low_r0 + ";" + low_x0 + ";" + low_sk + ";" + costerm + ";" +
-            imax_3ph_low + ";" + imax_1ph_low + ";" + imax_2ph_low + ";" + imax_3ph_med + ";" + imax_1ph_med + ";" + imax_2ph_med + ";" +
-            high_r + ";" + high_x + ";" + high_r0 + ";" + high_x0 + ";" + high_ik + ";" + high_ik3pol + ";" + high_ip + ";" + high_sk + ";" +
-            fuseString + ";" + lastFusesString + ";" + iksplitString + ";" + fuseMax + ";" + fuseOK (cmin)
+        s"$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString (",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;$fuseMax;${fuseOK (cmin)}"
 
     def fuseString: String =
     {
@@ -177,26 +173,27 @@ case class ScResult
             false
         else
         {
-            var network = branches
+            var network: Option[Branch] = Some (branches)
             var changed = false
             // recompute the impedance of the trafo and the EquivalentInjection together
             val high_z = Impedanzen (Complex (low_r, low_x), Complex (low_r0, low_x0), Complex (high_r, high_x), Complex (high_r0, high_x0))
-            val supply_z = high_z - network.z (Impedanzen ())
+            val supply_z = high_z - branches.z (Impedanzen ())
             do
             {
-                val z = network.z (supply_z)
-                // first time through this should be high_ik
-                val ik = calculate_ik (voltage, cmin, z.impedanz_high, z.null_impedanz_high)
-                val (blows, newnet) = network.checkFuses (ik)
-                changed = blows
-                network = newnet match
+                network match
                 {
-                    case Some (n) => n
-                    case None => null
+                    case Some (n) =>
+                        val z = n.z (supply_z)
+                        // first time through this should be high_ik
+                        val ik = calculate_ik (voltage, cmin, z.impedanz_high, z.null_impedanz_high)
+                        val (blows, newnet) = n.checkFuses (ik)
+                        changed = blows
+                        network = newnet
+                    case None =>
                 }
             }
-            while (changed && (null != network))
-            null == network
+            while (changed && network.isDefined)
+            network.isEmpty
         }
     }
 

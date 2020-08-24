@@ -13,19 +13,20 @@ import ch.ninecode.util.Complex
  * @param previous_node    the previous node mRID
  * @param errors           any errors encountered
  */
+@SuppressWarnings (Array ("org.wartremover.warts.Null"))
 case class ScMessage
 (
-    source_id: String,
-    source_impedance: Complex,
-    ref: Impedanzen,
-    edge: Impedanzen,
-    fuses: Branch,
-    previous_node: String,
-    errors: List[ScError])
+    source_id: String = null,
+    source_impedance: Complex = null,
+    ref: Impedanzen = null,
+    edge: Impedanzen = null,
+    fuses: Branch = null,
+    previous_node: String = null,
+    errors: List[ScError] = null)
 {
     def asString: String =
     {
-        val z = if ((null != ref) && (null != edge)) ref + edge else Complex (0.0)
+        val z = if ((null != ref) && (null != edge)) ref + edge else Impedanzen (0.0, 0.0, 0.0, 0.0)
         "[%s(%sΩ) %s(%sΩ)+%sΩ=%sΩ %s %s]".format (
             source_id,
             source_impedance,

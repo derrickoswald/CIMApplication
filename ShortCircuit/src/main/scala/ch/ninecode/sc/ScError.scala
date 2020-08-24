@@ -19,6 +19,7 @@ case class ScError
 
 object ScError
 {
+    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
     def combine_errors (list1: List[ScError], list2: List[ScError], max: Int): List[ScError] =
     {
         if (null == list1)

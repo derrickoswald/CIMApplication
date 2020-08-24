@@ -70,6 +70,7 @@ case class ScEdge
      * @param node TopologicalNode to test
      * @return <code>false</code> for open Switch objects and higher voltage transformer nodes, <code>true</code> otherwise
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
     def shouldContinueTo (node: ScNode, calculate_public_lighting: Boolean): Boolean =
     {
         if (node.id_prev == "network")
@@ -88,21 +89,24 @@ case class ScEdge
                 case breaker: Breaker => switchClosed (breaker.ProtectedSwitch.Switch)
                 case lbs: LoadBreakSwitch => switchClosed (lbs.ProtectedSwitch.Switch)
                 case recloser: Recloser => switchClosed (recloser.ProtectedSwitch.Switch)
-                case line: ACLineSegment => true
-                case trafo: PowerTransformer =>
+                case _: ACLineSegment => true
+                case _: PowerTransformer =>
                     if (v1 < 230.0 || v2 < 230.0)
-                        return false
+                        false
                     else
                         if (!calculate_public_lighting && (v1 == 230.0 || v2 == 230.0))
-                            return false
-                    val id_cn = node.id_seq // continue if voltage decreases or it stays below 1000.0
-                    if (id_cn == id_cn_1)
-                        v1 <= v2 || v1 <= 1000.0
-                    else
-                        if (id_cn == id_cn_2)
-                            v2 <= v1 || v2 <= 1000.0
+                            false
                         else
-                            throw new Exception ("edge %s is not connected to %s (only %s and %s)".format (id_equ, id_cn, id_cn_1, id_cn_2))
+                        {
+                            val id_cn = node.id_seq // continue if voltage decreases or it stays below 1000.0
+                            if (id_cn == id_cn_1)
+                                v1 <= v2 || v1 <= 1000.0
+                            else
+                                if (id_cn == id_cn_2)
+                                    v2 <= v1 || v2 <= 1000.0
+                                else
+                                    throw new Exception (s"edge $id_equ is not connected to $id_cn (only $id_cn_1 and $id_cn_2)")
+                        }
                 case _ =>
                     true
             }
@@ -167,7 +171,7 @@ case class ScEdge
     {
         element match
         {
-            case transformer: PowerTransformer =>
+            case _: PowerTransformer =>
                 if (id_cn == id_cn_1)
                 {
                     val ratio = v1 / v2
@@ -229,6 +233,7 @@ case class ScEdge
      * @param ref fuse network of the node at one end of the edge
      * @return network of fuses at the other end of the edge
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
     def fusesTo (ref: Branch): Branch =
     {
         element match
@@ -242,7 +247,7 @@ case class ScEdge
                     {
                         case sim: SimpleBranch => SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
                         case ser: SeriesBranch => SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
-                        case _ => throw new IllegalArgumentException ("unknown class for ref (%s)".format (ref.getClass.toString))
+                        case _ => throw new IllegalArgumentException (s"unknown class for ref (${ref.getClass.toString})")
                     }
             case breaker: Breaker =>
                 val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, breaker.id, breaker.ProtectedSwitch.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (breaker.ProtectedSwitch.Switch.ratedCurrent))
@@ -253,7 +258,7 @@ case class ScEdge
                     {
                         case sim: SimpleBranch => SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
                         case ser: SeriesBranch => SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
-                        case _ => throw new IllegalArgumentException ("unknown class for ref (%s)".format (ref.getClass.toString))
+                        case _ => throw new IllegalArgumentException (s"unknown class for ref (${ref.getClass.toString})")
                     }
             case _ =>
                 ref

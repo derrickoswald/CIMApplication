@@ -81,7 +81,7 @@ object FData
             Amp (2400, 500)
         )
 
-    var fuse: (Double, Branch) ⇒ Double = fuse1
+    var fuse: (Double, Branch) => Double = fuse1
 
     def fuse_sizing_table (number: Int): Unit =
     {
@@ -105,7 +105,9 @@ object FData
         }
     }
 
-    def fuse1 (ik: Double, branch: Branch = null): Double =
+    lazy val unused: Branch = SimpleBranch ("", "", 0.0, "", "", None)
+
+    def fuse1 (ik: Double, branch: Branch = unused): Double =
     {
         if (ik.isNaN)
             recommended_fuse_sizing_1.last.Rating
@@ -113,7 +115,7 @@ object FData
             recommended_fuse_sizing_1.filter (_.Ik <= Math.abs (ik)).last.Rating
     }
 
-    def fuse2 (ik: Double, branch: Branch = null): Double =
+    def fuse2 (ik: Double, branch: Branch = unused): Double =
     {
         if (ik.isNaN)
             recommended_fuse_sizing_2.last.Rating
@@ -138,7 +140,7 @@ object FData
             }
     }
 
-    def fuse4 (ik: Double, branch: Branch = null): Double =
+    def fuse4 (ik: Double, branch: Branch = unused): Double =
     {
         if (ik.isNaN)
             recommended_fuse_sizing_4.last.Rating
