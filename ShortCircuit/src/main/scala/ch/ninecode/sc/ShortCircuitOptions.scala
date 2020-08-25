@@ -1,10 +1,23 @@
 package ch.ninecode.sc
 
+import java.net.URI
+
+import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.ForceTrue
+import ch.ninecode.util.CIMAble
+import ch.ninecode.util.CIMReaderOptions
 import ch.ninecode.util.Complex
+import ch.ninecode.util.MainOptions
+import ch.ninecode.util.Mainable
+import ch.ninecode.util.SparkOptions
+import ch.ninecode.util.Sparkable
 
 /**
  * Short circuit calculation options.
  *
+ * @param main_options                        main() program options
+ * @param spark_options                       Spark session options
+ * @param cim_options                         CIMReader options
  * @param verbose                             flag to output progress and interesting values
  * @param description                         text describing this program execution
  * @param default_short_circuit_power_max     maximum available short circuit power (at transformer primary) to be used if no equivalent injection is found (VA)
@@ -32,6 +45,13 @@ import ch.ninecode.util.Complex
  */
 case class ShortCircuitOptions
 (
+    var main_options: MainOptions = MainOptions (),
+    var spark_options: SparkOptions = SparkOptions (),
+    var cim_options: CIMReaderOptions = CIMReaderOptions (
+        topology = true,
+        topology_options = CIMTopologyOptions (
+            identify_islands = true,
+            force_retain_fuses = ForceTrue)),
     verbose: Boolean = true,
     description: String = "",
     default_short_circuit_power_max: Double = 200.0e6,
@@ -56,4 +76,28 @@ case class ShortCircuitOptions
     cable_impedance_limit: Double = 5.0,
     workdir: String = "",
     calculate_public_lighting: Boolean = false
-)
+) extends Mainable with Sparkable with CIMAble
+{
+    def derive_work_dir (files: Seq[String]): String =
+    {
+        files.toList match
+        {
+            case paths :: _ =>
+                val file = paths.split (",")(0).replace (" ", "%20")
+                val uri = new URI (file)
+                val scheme = uri.getScheme
+                val auth = if (null == uri.getAuthority) "" else uri.getAuthority
+                if (null == scheme)
+                    "/simulation/"
+                else
+                    s"$scheme://$auth/simulation/"
+            case _ =>
+                "/simulation/"
+        }
+    }
+
+    /**
+     * Get user specified directory or generate a working directory matching the files.
+     */
+    def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir (cim_options.files)
+}

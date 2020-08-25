@@ -2,7 +2,6 @@ package ch.ninecode.sc
 
 import java.io.File
 
-import org.apache.commons.io.FileUtils
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 
@@ -28,57 +27,57 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     before
     {
         // unpack the zip files
-        if (!new File (s"${FILE_DEPOT}${FILENAME1}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME1}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME2}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME2}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME3}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME3}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME4}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME4}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME5}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME5}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME6}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME6}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME7}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME7}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME8}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME8}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME9}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME9}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME10}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME10}.zip", FILE_DEPOT)
-        if (!new File (s"${FILE_DEPOT}${FILENAME11}.rdf").exists)
-            new Unzip ().unzip (s"${FILE_DEPOT}${FILENAME11}.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME1.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME1.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME2.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME2.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME3.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME3.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME4.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME4.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME5.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME5.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME6.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME6.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME7.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME7.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME8.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME8.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME9.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME9.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME10.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME10.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME11.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME11.zip", FILE_DEPOT)
     }
 
     after
     {
-        new File (s"${FILE_DEPOT}${FILENAME1}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME1}.transformers").delete
-        new File (s"${FILE_DEPOT}${FILENAME2}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME2}.transformers").delete
-        new File (s"${FILE_DEPOT}${FILENAME3}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME3}.transformers").delete
-        new File (s"${FILE_DEPOT}${FILENAME4}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME4}.transformers").delete
-        new File (s"${FILE_DEPOT}${FILENAME5}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME5}.transformers").delete
-        new File (s"${FILE_DEPOT}${FILENAME6}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME6}.transformers").delete
-        new File (s"${FILE_DEPOT}${FILENAME7}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME7}.transformers").delete
-        new File (s"${FILE_DEPOT}${FILENAME8}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME9}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME10}.rdf").delete
-        new File (s"${FILE_DEPOT}${FILENAME11}.rdf").delete
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME1.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME1.transformers"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME2.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME2.transformers"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME3.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME3.transformers"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME4.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME4.transformers"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME5.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME5.transformers"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME6.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME6.transformers"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME7.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME7.transformers"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME8.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME9.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME10.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME11.rdf"))
     }
 
     test ("DACHCZ")
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME1}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME1.rdf"
             readCIMElements (session, filename)
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
@@ -87,7 +86,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 default_short_circuit_power_min = 600.0e6,
                 default_short_circuit_impedance_min = Complex (0.0, 20.166666666666667), // purely reactive
                 low_temperature = 20.0,
-                trafos = s"${FILE_DEPOT}${FILENAME1}.transformers")
+                trafos = s"$FILE_DEPOT$FILENAME1.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -95,12 +94,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -119,13 +117,13 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME2}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME2.rdf"
             readCIMElements (session, filename)
 
             // short circuit calculations
             val sc_options = ShortCircuitOptions (
                 low_temperature = 20.0,
-                trafos = s"${FILE_DEPOT}${FILENAME2}.transformers")
+                trafos = s"$FILE_DEPOT$FILENAME2.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -133,12 +131,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -157,7 +154,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME3}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME3.rdf"
 
             readCIMElements (session, filename)
 
@@ -165,7 +162,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val sc_options = ShortCircuitOptions (
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"${FILE_DEPOT}${FILENAME3}.transformers")
+                trafos = s"$FILE_DEPOT$FILENAME3.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -173,12 +170,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -199,7 +195,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME4}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME4.rdf"
 
             readCIMElements (session, filename)
 
@@ -208,7 +204,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"${FILE_DEPOT}${FILENAME4}.transformers")
+                trafos = s"$FILE_DEPOT$FILENAME4.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -216,12 +212,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -242,7 +237,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME5}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME5.rdf"
             readCIMElements (session, filename)
 
 
@@ -251,7 +246,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"${FILE_DEPOT}${FILENAME5}.transformers")
+                trafos = s"$FILE_DEPOT$FILENAME5.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -259,12 +254,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -285,7 +279,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME6}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME6.rdf"
             readCIMElements (session, filename, Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
@@ -301,7 +295,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val sc_options = ShortCircuitOptions (
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"${FILE_DEPOT}${FILENAME6}.transformers")
+                trafos = s"$FILE_DEPOT$FILENAME6.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -309,12 +303,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -323,7 +316,6 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             }
 
             val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
-            assert (null != consumer.errors)
             assert (consumer.errors.contains (
                 ScError (fatal = true, invalid = true, "non-radial network detected through Line2").toString)
             )
@@ -333,7 +325,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME7}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME7.rdf"
 
             readCIMElements (session, filename, Map [String, String](
                 "path" -> filename,
@@ -350,7 +342,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val sc_options = ShortCircuitOptions (
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"${FILE_DEPOT}${FILENAME7}.transformers")
+                trafos = s"$FILE_DEPOT$FILENAME7.transformers")
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
@@ -358,12 +350,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -372,7 +363,6 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             }
 
             val consumer = results.filter (_.equipment == "EnergyConsumer").first ()
-            assert (null != consumer.errors)
             assert (consumer.errors.contains (ScError (
                 fatal = true,
                 invalid = true,
@@ -384,7 +374,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME8}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME8.rdf"
             readCIMElements (session, filename)
 
             // short circuit calculations
@@ -401,15 +391,14 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             // output SQLite database
-            new Database (sc_options).store (results)
+            val _ = new Database (sc_options).store (results)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -438,7 +427,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME9}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME9.rdf"
             readCIMElements (session, filename)
 
             // short circuit calculations
@@ -453,12 +442,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -478,7 +466,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME10}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME10.rdf"
             readCIMElements (session, filename)
 
             // short circuit calculations
@@ -493,12 +481,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {
@@ -521,7 +508,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = s"${FILE_DEPOT}${FILENAME11}.rdf"
+            val filename = s"$FILE_DEPOT$FILENAME11.rdf"
             val MESSAGELIMIT = 2
             readCIMElements (session, filename, Map [String, String](
                 "path" -> filename,
@@ -544,12 +531,11 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val output = "target/result"
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
 
-            val path = new File (output)
-            FileUtils.deleteQuietly (path)
+            deleteRecursive (new File (output))
             string.saveAsTextFile (output)
 
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
             {

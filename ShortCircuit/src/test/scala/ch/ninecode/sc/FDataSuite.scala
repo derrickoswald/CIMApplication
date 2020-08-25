@@ -6,31 +6,33 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class FDataSuite extends AnyFunSuite
 {
+    lazy val unused: Branch = SimpleBranch ("", "", 0.0, "", "", None)
+
     test ("Fuse+")
     {
-        assert (FData.fuse (650.001, null) == 200.0, "expected 200A")
+        assert (FData.fuse (650.001, unused) == 200.0, "expected 200A")
     }
 
     test ("Fuse-")
     {
-        assert (FData.fuse (649.99, null) == 160.0, "expected 160A")
+        assert (FData.fuse (649.99, unused) == 160.0, "expected 160A")
     }
 
     test ("FuseSmall")
     {
-        assert (FData.fuse (25.0, null) == 0.0, "expected 0A")
+        assert (FData.fuse (25.0, unused) == 0.0, "expected 0A")
     }
 
     test ("FuseZero")
     {
-        assert (FData.fuse (0.0, null) == 0.0, "expected 0A")
+        assert (FData.fuse (0.0, unused) == 0.0, "expected 0A")
     }
 
     test ("FuseOK")
     {
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "", Some (400.0)),
@@ -49,7 +51,7 @@ class FDataSuite extends AnyFunSuite
     {
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "", Some (400.0)),
@@ -142,7 +144,7 @@ class FDataSuite extends AnyFunSuite
     {
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "", Some (288282.0)),
@@ -159,7 +161,7 @@ class FDataSuite extends AnyFunSuite
     {
         val branch =
             SeriesBranch ("c", "f", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "", Some (288282.0)),
@@ -177,7 +179,7 @@ class FDataSuite extends AnyFunSuite
     {
         val branch =
             ParallelBranch ("a", "z", 10.0,
-                List (
+                List[Branch] (
                     SimpleBranch ("a", "z", 6.0, "TEI11", "", Some (50.0)),
                     SeriesBranch ("a", "z", 4.0,
                         Seq (
@@ -194,25 +196,25 @@ class FDataSuite extends AnyFunSuite
     test ("Table 2 Fuse+")
     {
         FData.fuse_sizing_table (2)
-        assert (FData.fuse (690.001, null) == 200.0, "expected 200A")
+        assert (FData.fuse (690.001, unused) == 200.0, "expected 200A")
     }
 
     test ("Table 2 Fuse-")
     {
         FData.fuse_sizing_table (2)
-        assert (FData.fuse (689.99, null) == 160.0, "expected 160A")
+        assert (FData.fuse (689.99, unused) == 160.0, "expected 160A")
     }
 
     test ("Table 2 FuseSmall")
     {
         FData.fuse_sizing_table (2)
-        assert (FData.fuse (25.0, null) == 0.0, "expected 0A")
+        assert (FData.fuse (25.0, unused) == 0.0, "expected 0A")
     }
 
     test ("Table 2 FuseZero")
     {
         FData.fuse_sizing_table (2)
-        assert (FData.fuse (0.0, null) == 0.0, "expected 0A")
+        assert (FData.fuse (0.0, unused) == 0.0, "expected 0A")
     }
 
     test ("Table 2 FuseOK")
@@ -220,7 +222,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (2)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "", Some (288282.0)),
@@ -238,7 +240,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (2)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "", Some (288282.0)),
@@ -298,7 +300,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (2)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "", Some (288282.0)),
@@ -316,7 +318,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (2)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "", Some (288282.0)),
@@ -334,13 +336,13 @@ class FDataSuite extends AnyFunSuite
     {
         FData.fuse_sizing_table (2)
         FData.fuse_sizing_table (1)
-        assert (FData.fuse (650.001, null) == 200.0, "expected 200A")
+        assert (FData.fuse (650.001, unused) == 200.0, "expected 200A")
     }
 
     test ("Table 1 Fuse-")
     {
         FData.fuse_sizing_table (1)
-        assert (FData.fuse (649.99, null) == 160.0, "expected 160A")
+        assert (FData.fuse (649.99, unused) == 160.0, "expected 160A")
     }
 
     test ("Table 3 Fuse+ DIN")
@@ -404,7 +406,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (3)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "DIN yadda", Some (288282.0)),
@@ -422,7 +424,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (3)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "SEV yadda", Some (288282.0)),
@@ -524,7 +526,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (3)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "DIN yadda", Some (288282.0)),
@@ -542,7 +544,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (3)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "SEV yadda", Some (288282.0)),
@@ -560,7 +562,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (3)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "DIN yadda", Some (288282.0)),
@@ -579,7 +581,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (3)
         val branch =
             SeriesBranch ("a", "z", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("c", "d", 0.0,
                         List (
                             SimpleBranch ("c", "d", 0.0, "TEI124", "SEV yadda", Some (288282.0)),
@@ -680,7 +682,7 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (1)
         val branch =
             ParallelBranch ("a", "z", 10.0,
-                List (
+                List[Branch] (
                     SimpleBranch ("a", "z", 6.0, "TEI11", "", Some (50.0), z2),
                     SeriesBranch ("a", "z", 4.0,
                         Seq (
@@ -704,7 +706,7 @@ class FDataSuite extends AnyFunSuite
             equipment = "house",
             voltage = 400.0,
             terminal = 1,
-            container = null,
+            container = "",
             errors = List (),
             tx = "TRAXXX",
             tx_impedance = Complex (0),
@@ -736,9 +738,9 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (1)
         val branch =
             SeriesBranch ("wrap", "up", 10.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("a", "z", 10.0,
-                        List (
+                        List[Branch] (
                             SimpleBranch ("a", "z", 6.0, "TEI11", "", Some (50.0), z2),
                             SeriesBranch ("a", "z", 4.0,
                                 Seq (
@@ -764,7 +766,7 @@ class FDataSuite extends AnyFunSuite
             equipment = "house",
             voltage = 400.0,
             terminal = 1,
-            container = null,
+            container = "",
             errors = List (),
             tx = "TRAXXX",
             tx_impedance = Complex (0),
@@ -806,9 +808,9 @@ class FDataSuite extends AnyFunSuite
         FData.fuse_sizing_table (1)
         val branch =
             SeriesBranch ("wrap", "up", 10.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("a", "z", 10.0,
-                        List (
+                        List[Branch] (
                             SimpleBranch ("a", "z", 5.0, "TEI11", "", Some (50.0), z2),
                             SeriesBranch ("a", "z", 5.0,
                                 Seq (
@@ -834,7 +836,7 @@ class FDataSuite extends AnyFunSuite
             equipment = "house",
             voltage = 400.0,
             terminal = 1,
-            container = null,
+            container = "",
             errors = List (),
             tx = "TRAXXX",
             tx_impedance = Complex (0),

@@ -186,7 +186,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>ch.ninecode.sc.Main</mainClass>
+                            <mainClass>ch.ninecode.sc.ShortCircuit</mainClass>
                         </manifest>
                         <addMavenDescriptor>false</addMavenDescriptor>
                     </archive>

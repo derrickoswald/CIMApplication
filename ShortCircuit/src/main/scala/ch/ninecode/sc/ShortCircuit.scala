@@ -9,7 +9,20 @@ import java.util.TimeZone
 import scala.collection.Map
 import scala.io.Source
 
+import org.apache.log4j.Level
+import org.apache.log4j.LogManager
+import org.apache.spark.graphx.Edge
+import org.apache.spark.graphx.Graph
+import org.apache.spark.graphx.VertexId
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMRDD
+import ch.ninecode.cim.DefaultSource
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.GLMSwitchEdge
@@ -28,22 +41,20 @@ import ch.ninecode.model.TopologicalNode
 import ch.ninecode.model.VoltageLevel
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
+import ch.ninecode.net.Net
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.net.Transformers
 import ch.ninecode.sc.ScEdge.resistanceAt
+import ch.ninecode.util.CIMInitializer
 import ch.ninecode.util.Complex
 import ch.ninecode.util.Graphable
+import ch.ninecode.util.Main
+import ch.ninecode.util.MainOptions
+import ch.ninecode.util.SparkOptions
 import ch.ninecode.util.ThreePhaseComplexDataElement
-import org.apache.spark.graphx.Edge
-import org.apache.spark.graphx.Graph
-import org.apache.spark.graphx.VertexId
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import ch.ninecode.util.Util
 
 
 /**
@@ -51,19 +62,21 @@ import org.slf4j.LoggerFactory
  * Uses GraphX to trace the topology and generate the short circuit results at each node.
  *
  * @param session       the Spark session
- * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
+ * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a>
+ *                      used to persist and serialize the objects
  * @param options       options for short-circuit processing
  */
 case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions) extends CIMRDD with Graphable with Serializable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val storage: StorageLevel = storage_level
 
-    val default_node: ScNode = ScNode ("", 0.0, null, null, null, null, null, null)
+    val default_node: ScNode = ScNode ()
 
     def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
     {
-        var ret = List [ScEdge]()
+        var ret = List[ScEdge]()
 
         val element = arg._1
         val t_it = arg._2
@@ -180,46 +193,47 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         (terminal, end)
     }
 
+    def persist (x: RDD[_], name: String): Unit =
+    {
+        x.name = name
+        val _ = x.persist (storage_level)
+        if (spark.sparkContext.getCheckpointDir.isDefined)
+            x.checkpoint ()
+    }
+
     def get_inital_graph (): Graph[ScNode, ScEdge] =
     {
         // get a map of voltages
-        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals in the topology
-        val terminals = getOrElse [Terminal].filter (null != _.TopologicalNode)
+        val terminals = getOrElse[Terminal].filter (null != _.TopologicalNode)
 
         // handle transformers specially, by attaching PowerTransformerEnd objects to the terminals
 
         // get the transformer ends keyed by terminal, only one end can reference any one terminal
-        val ends = getOrElse [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
+        val ends = getOrElse[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
         // attach the ends to terminals
         val t = terminals.keyBy (_.id).leftOuterJoin (ends).values.map (make_ends_meet)
         // get the terminals keyed by equipment and filter for two (or more) terminals
         val terms = t.groupBy (_._1.ConductingEquipment).filter (_._2.size > 1)
 
         // map the terminal 'pairs' to edges
-        val edges = getOrElse [Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
+        val edges = getOrElse[Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
 
         // get the nodes and voltages from the edges
         val nodes = edges.flatMap (
             x => List (
-                ScNode (x.id_cn_1, x.v1, null, null, null, null, null, null),
-                ScNode (x.id_cn_2, x.v2, null, null, null, null, null, null))).distinct
+                ScNode (id_seq = x.id_cn_1, voltage = x.v1),
+                ScNode (id_seq = x.id_cn_2, voltage = x.v2))).distinct
 
         // persist edges and nodes to avoid recompute
         val xedges = edges.map (e => Edge (e.vertex_id (e.id_cn_1), e.vertex_id (e.id_cn_2), e))
         val xnodes = nodes.map (v => (v.vertex_id (v.id_seq), v))
-        xedges.name = "xedges"
-        xedges.persist (storage_level)
-        xnodes.name = "xnodes"
-        xnodes.persist (storage_level)
-        if (spark.sparkContext.getCheckpointDir.isDefined)
-        {
-            xedges.checkpoint ()
-            xnodes.checkpoint ()
-        }
+        persist (xedges, "xedges")
+        persist (xnodes, "xnodes")
 
-        Graph [ScNode, ScEdge](xnodes, xedges, default_node, storage_level, storage_level)
+        Graph[ScNode, ScEdge](xnodes, xedges, default_node, storage_level, storage_level)
     }
 
     def calculate_one (voltage: Double, impedanz: Complex, null_impedanz: Complex): ScIntermediate =
@@ -394,6 +408,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             var records: Int = 0
             val units = "Volts"
             val content = f.split ("\n")
+            val nothing = ThreePhaseComplexDataElement ("", 0L, 0.0, 0.0, 0.0, "")
 
             def makeResult (c: String): ThreePhaseComplexDataElement =
             {
@@ -407,11 +422,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                         timestamp = toTimeStamp (c.substring (matcher.start (2), matcher.end (2)))
                         records = c.substring (matcher.start (3), matcher.end (3)).toInt
                     }
-                    null
+                    nothing
                 }
                 else
                     if (c.startsWith ("node_name"))
-                        null
+                        nothing
                     else
                     {
                         val c_arr = c.split (",")
@@ -422,13 +437,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                 ThreePhaseComplexDataElement (c_arr (0), timestamp, Complex (toD (c_arr (1)), toD (c_arr (2))), Complex (toD (c_arr (3)), toD (c_arr (4))), Complex (toD (c_arr (5)), toD (c_arr (6))), units)
                         else
                         {
-                            log.error ("""%s voltage dump text "%s" cannot be interpreted as three phase complex %s""".format (experiment, c, units))
-                            null
+                            log.error (s"""$experiment voltage dump text "$c" cannot be interpreted as three phase complex $units""")
+                            nothing
                         }
                     }
             }
 
-            content.map (makeResult).filter (_ != null)
+            content.map (makeResult).filter ("" != _.element)
         }
 
         files.map (extract_trafo).flatMapValues (read)
@@ -446,7 +461,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // check for series elements, eliminate making a series connection across the house or trafo
         val prepend =
             for
-                {
+            {
                 branch <- network
                 house = branch.from == mrid
                 if !house
@@ -454,13 +469,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 if !trafo
                 buddies = network.filter (x => (branch.from == x.to) || (branch.from == x.from && branch != x))
                 if buddies.size == 1
-                buddy = buddies.head
+                buddy :: _ = buddies
             }
                 yield (branch, buddy)
 
         val append =
             for
-                {
+            {
                 branch <- network
                 house = branch.to == mrid
                 if !house
@@ -468,37 +483,37 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 if !trafo
                 buddies = network.filter (x => (branch.to == x.from) || (branch.to == x.to && branch != x))
                 if buddies.size == 1
-                buddy = buddies.head
+                buddy :: _ = buddies
             }
                 yield (branch, buddy)
 
         val series = prepend ++ append
 
-        if (series.nonEmpty)
+        series match
         {
-            // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-            val (branch, buddy) = series.head
-            val rest = network.filter (x => branch != x && buddy != x)
-            val new_series = if (buddy.to == branch.from)
-                buddy.add_in_series (branch)
-            else
-                if (branch.to == buddy.from)
-                    branch.add_in_series (buddy)
+            case (branch, buddy) :: _ =>
+                // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
+                val rest = network.filter (x => branch != x && buddy != x)
+                val new_series = if (buddy.to == branch.from)
+                    buddy.add_in_series (branch)
                 else
-                // choose the simplest element to reverse
-                    branch match
-                    {
-                        case _: SimpleBranch =>
-                            buddy.add_in_series (branch.reverse)
-                        case _: TransformerBranch =>
-                            buddy.add_in_series (branch.reverse)
-                        case _ =>
-                            buddy.reverse.add_in_series (branch)
-                    }
-            (true, Seq (new_series) ++ rest)
+                    if (branch.to == buddy.from)
+                        branch.add_in_series (buddy)
+                    else
+                    // choose the simplest element to reverse
+                        branch match
+                        {
+                            case _: SimpleBranch =>
+                                buddy.add_in_series (branch.reverse)
+                            case _: TransformerBranch =>
+                                buddy.add_in_series (branch.reverse)
+                            case _ =>
+                                buddy.reverse.add_in_series (branch)
+                        }
+                (true, Seq (new_series) ++ rest)
+            case _ =>
+                (false, network)
         }
-        else
-            (false, network)
     }
 
     /**
@@ -507,24 +522,25 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
      * @param network the current network to be reduced
      * @return the reduced network with one pair of parallel elements converted to a parallel branch
      */
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     def reduce_parallel (network: Iterable[Branch]): (Boolean, Iterable[Branch]) = // (reduced?, network)
     {
         // check for parallel elements
         val parallel = for
-            {
+        {
             branch <- network
             buddies = network.filter (x => ((branch.from == x.from) && (branch.to == x.to)) && (branch != x))
             if buddies.nonEmpty
         }
             yield buddies ++ Seq (branch)
-        if (parallel.nonEmpty)
+        parallel match
         {
-            // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-            val set = parallel.head
-            (true, Seq (set.head.add_in_parallel (set.tail)) ++ network.filter (x => !set.toSeq.contains (x)))
+            case set :: _ =>
+                // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
+                (true, Seq (set.head.add_in_parallel (set.tail)) ++ network.filter (x => !set.toSeq.contains (x)))
+            case _ =>
+                (false, network)
         }
-        else
-            (false, network)
     }
 
     def reduce (branches: Iterable[Branch], trafo_nodes: Array[String], mrid: String): Iterable[Branch] =
@@ -546,7 +562,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 if (done)
                     if (!network.forall (x => trafo_nodes.contains (x.from)))
                     {
-                        val max = network.map (_.current).max
+                        val max = network.map (_.current).foldLeft (Double.MinValue)((x: Double, y: Double) => if (x > y) x else y)
                         val significant = max * 0.01 // 1% of the maximum current
                         val filtered = network.filter (x =>
                             (x.current > significant)
@@ -565,6 +581,77 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         while (!done)
 
         network
+    }
+
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def makeCableBranch (cable: GLMLineEdge, voltage1: ThreePhaseComplexDataElement, voltage2: ThreePhaseComplexDataElement, v1: Double, v2: Double): List[Branch] =
+    {
+        // Adjust this threshold according the chosen "default_maximum_voltage_error" in gridlabd
+        if (Math.abs (v1 - v2) < 1e-5)
+            List ()
+        else
+        {
+            val line = cable.lines.head
+            val dist_km = line.Conductor.len / 1000.0
+            var z = Impedanzen (
+                Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
+                Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
+                Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
+                Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
+            for (l <- cable.lines.tail)
+            {
+                val z1 = Impedanzen (
+                    Complex (resistanceAt (options.low_temperature, options.base_temperature, l.r) * dist_km, l.x * dist_km),
+                    Complex (resistanceAt (options.low_temperature, options.base_temperature, l.r0) * dist_km, l.x0 * dist_km),
+                    Complex (resistanceAt (options.high_temperature, options.base_temperature, l.r) * dist_km, l.x * dist_km),
+                    Complex (resistanceAt (options.high_temperature, options.base_temperature, l.r0) * dist_km, l.x0 * dist_km))
+                z = Impedanzen (
+                    z.impedanz_low.parallel_impedanz (z1.impedanz_low),
+                    z.null_impedanz_low.parallel_impedanz (z1.null_impedanz_low),
+                    z.impedanz_high.parallel_impedanz (z1.impedanz_high),
+                    z.null_impedanz_high.parallel_impedanz (z1.null_impedanz_high))
+            }
+            val name = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
+            if (v1 > v2)
+                List (SimpleBranch (cable.cn1, cable.cn2, ((voltage1.value_a - voltage2.value_a) / z.impedanz_low).modulus, cable.id, name, None, z))
+            else
+                List (SimpleBranch (cable.cn2, cable.cn1, ((voltage2.value_a - voltage1.value_a) / z.impedanz_low).modulus, cable.id, name, None, z))
+        }
+    }
+
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    def makeSwitchBranch (switch: GLMSwitchEdge, lvnodes: Array[String], mrid: String, v1: Double, v2: Double): List[Branch] =
+    {
+        if (!switch.closed)
+            List ()
+        else
+        {
+            val rating = if (switch.fuse) Some (switch.ratedCurrent) else None
+            val name = switch.data.switches.head.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
+            if (lvnodes.contains (switch.cn1))
+                List (SimpleBranch (switch.cn1, switch.cn2, 0.0, switch.id, name, rating))
+            else
+                if (lvnodes.contains (switch.cn2))
+                    List (SimpleBranch (switch.cn2, switch.cn1, 0.0, switch.id, name, rating))
+                else
+                    if (mrid == switch.cn2)
+                        List (SimpleBranch (switch.cn1, switch.cn2, 0.0, switch.id, name, rating))
+                    else
+                        if (mrid == switch.cn1)
+                            List (SimpleBranch (switch.cn2, switch.cn1, 0.0, switch.id, name, rating))
+                        else
+                            if (v1 > v2)
+                                List (SimpleBranch (switch.cn1, switch.cn2, 0.0, switch.id, name, rating))
+                            else
+                                List (SimpleBranch (switch.cn2, switch.cn1, 0.0, switch.id, name, rating))
+        }
+    }
+
+    def makeTransformerBranch (transformer: GLMTransformerEdge, v1: Double, v2: Double): List[Branch] =
+    {
+        List (TransformerBranch (transformer.cn1, transformer.cn2, 0.0, transformer.transformer.transformer_name, transformer.id,
+            transformer.transformer.power_rating, v1, v2, transformer.transformer.total_impedance_per_unit._1))
+
     }
 
     /**
@@ -590,7 +677,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val lvnodes: Array[String] = trafokreis.island.transformers.flatMap (x => for (node <- x.transformers (0).nodes.tail) yield node.id)
 
         // get directed edges hi→lo voltage = Branch from→to
-        val graph_edges = edges.flatMap (
+        val graph_edges: Iterable[Branch] = edges.flatMap (
             x =>
             {
                 data.find (y => y.element == x.cn1) match
@@ -604,67 +691,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                 x match
                                 {
                                     case switch: GLMSwitchEdge =>
-                                        if (!switch.closed)
-                                            List ()
-                                        else
-                                        {
-                                            val rating = if (switch.fuse) Some (switch.ratedCurrent) else None
-                                            val name = switch.data.switches.head.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
-                                            if (lvnodes.contains (x.cn1))
-                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, name, rating))
-                                            else
-                                                if (lvnodes.contains (x.cn2))
-                                                    List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, name, rating))
-                                                else
-                                                    if (experiment.mrid == x.cn2)
-                                                        List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, name, rating))
-                                                    else
-                                                        if (experiment.mrid == x.cn1)
-                                                            List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, name, rating))
-                                                        else
-                                                            if (v1 > v2)
-                                                                List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, name, rating))
-                                                            else
-                                                                List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, name, rating))
-                                        }
+                                        makeSwitchBranch (switch, lvnodes, experiment.mrid, v1, v2)
                                     case cable: GLMLineEdge =>
-                                        // Adjust this threshold according the chosen "default_maximum_voltage_error" in gridlabd
-                                        if (Math.abs (v1 - v2) < 1e-5)
-                                            List ()
-                                        else
-                                        {
-                                            val line = cable.lines.head
-                                            val dist_km = line.Conductor.len / 1000.0
-                                            var z = Impedanzen (
-                                                Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
-                                                Complex (resistanceAt (options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
-                                                Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
-                                                Complex (resistanceAt (options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
-                                            for (l <- cable.lines.tail)
-                                            {
-                                                val z1 = Impedanzen (
-                                                    Complex (resistanceAt (options.low_temperature, options.base_temperature, l.r) * dist_km, l.x * dist_km),
-                                                    Complex (resistanceAt (options.low_temperature, options.base_temperature, l.r0) * dist_km, l.x0 * dist_km),
-                                                    Complex (resistanceAt (options.high_temperature, options.base_temperature, l.r) * dist_km, l.x * dist_km),
-                                                    Complex (resistanceAt (options.high_temperature, options.base_temperature, l.r0) * dist_km, l.x0 * dist_km))
-                                                z = Impedanzen (
-                                                    z.impedanz_low.parallel_impedanz (z1.impedanz_low),
-                                                    z.null_impedanz_low.parallel_impedanz (z1.null_impedanz_low),
-                                                    z.impedanz_high.parallel_impedanz (z1.impedanz_high),
-                                                    z.null_impedanz_high.parallel_impedanz (z1.null_impedanz_high))
-                                            }
-                                            val name = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
-                                            if (v1 > v2)
-                                                List (SimpleBranch (x.cn1, x.cn2, ((voltage1.value_a - voltage2.value_a) / z.impedanz_low).modulus, x.id, name, None, z))
-                                            else
-                                                List (SimpleBranch (x.cn2, x.cn1, ((voltage2.value_a - voltage1.value_a) / z.impedanz_low).modulus, x.id, name, None, z))
-                                        }
+                                        makeCableBranch (cable, voltage1, voltage2, v1, v2)
                                     case transformer: GLMTransformerEdge =>
-                                        List (TransformerBranch (x.cn1, x.cn2, 0.0, transformer.transformer.transformer_name, x.id,
-                                            transformer.transformer.power_rating, v1, v2, transformer.transformer.total_impedance_per_unit._1))
+                                        makeTransformerBranch (transformer, v1, v2)
                                     case _ =>
-                                        // e.g. transformer: TransformerEdge which never happens since the transformer is not included in the edges list
-                                        log.error ("unexpected edge type %s".format (x.toString))
+                                        log.error (s"unexpected edge type ${x.toString}")
                                         if (v1 > v2)
                                             List (SimpleBranch (x.cn1, x.cn2, 0.0, "", x.id))
                                         else
@@ -716,37 +749,36 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         while (count != family.size)
         val branches = reduce (family, lvnodes, experiment.mrid)
         // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers - finding the first is not sufficient
-        val branch = branches.find (
+        val twig = branches.find (
             branch =>
                 ((experiment.mrid == branch.to) && lvnodes.contains (branch.from)) ||
                     ((experiment.mrid == branch.from) && lvnodes.contains (branch.to))
-        ).orNull
+        )
 
         // compute the impedance from start to end
         // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers
         val tx = StartingTrafos (0L, 0L, trafokreis.island.transformers (0))
-        val (path, impedance) = if (null == branch)
+        val (path, impedance) = twig match
         {
-            val b = if (lvnodes.contains (experiment.mrid))
-                null
-            else
-            {
-                log.error (
-                    """complex branch network from %s to %s
-                      |%s""".stripMargin.format (lvnodes.mkString (","), experiment.mrid, branches.map (_.asString).mkString ("\n")))
-                // get the total current to the energy consumer
-                val directs = branches.filter (experiment.mrid == _.to)
-                val sum = directs.map (_.current).sum
-                // generate a fake impedance
-                ComplexBranch (lvnodes.mkString (","), experiment.mrid, sum, branches.toArray)
-            }
-            (b, tx.lv_impedance (experiment.voltage))
-        }
-        else
-        {
-            val _branch = if (experiment.mrid == branch.to) branch else branch.reverse
-            val v = experiment.voltage / _branch.voltageRatio
-            (_branch, tx.lv_impedance (v))
+            case Some (branch) =>
+                val _branch = if (experiment.mrid == branch.to) branch else branch.reverse
+                val v = experiment.voltage / _branch.voltageRatio
+                (_branch, tx.lv_impedance (v))
+            case _ =>
+                val b: Branch = if (lvnodes.contains (experiment.mrid))
+                    SimpleBranch (experiment.mrid, experiment.mrid, 0.0, experiment.mrid, "") // was null
+                else
+                {
+                    val lv = lvnodes.mkString (",")
+                    val trace = branches.map (_.asString).mkString ("\n")
+                    log.error (s"complex branch network from $lv to ${experiment.mrid}\n$trace")
+                    // get the total current to the energy consumer
+                    val directs = branches.filter (experiment.mrid == _.to)
+                    val sum = directs.map (_.current).sum
+                    // generate a fake impedance
+                    ComplexBranch (lvnodes.mkString (","), experiment.mrid, sum, branches.toArray)
+                }
+                (b, tx.lv_impedance (experiment.voltage))
         }
         (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, impedance, path)
     }
@@ -843,24 +875,20 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         def short (exp: ScExperiment): Array[Byte] =
         {
-            val ret = new StringBuilder ()
             val gigaohm = Complex (1e9)
 
-            def addrow (time: Calendar, impedance: Complex): Unit =
+            def addrow (time: Calendar, impedance: Complex): String =
             {
-                ret.append (_DateFormat.format (time.getTime))
-                ret.append (",")
-                ret.append (impedance.re)
-                ret.append (",")
-                ret.append (impedance.im)
-                ret.append ("\n")
+                val timestamp = _DateFormat.format (time.getTime)
+                s"$timestamp,${impedance.re},${impedance.im}"
             }
 
-            addrow (exp.t0, gigaohm) // gridlab extends the first and last rows till infinity -> make them zero
-            addrow (exp.t1, exp.impedance)
-            addrow (exp.t2, gigaohm) // gridlab extends the first and last rows till infinity -> make them zero
-
-            ret.toString.getBytes (StandardCharsets.UTF_8)
+            val content = List (
+                addrow (exp.t0, gigaohm), // gridlab extends the first and last rows till infinity -> make them zero
+                addrow (exp.t1, exp.impedance),
+                addrow (exp.t2, gigaohm) // gridlab extends the first and last rows till infinity -> make them zero
+            )
+            content.mkString ("", "\n", "\n").getBytes (StandardCharsets.UTF_8)
         }
 
         def generate_player_file (gridlabd: GridLABD)(experiment: ScExperiment): Int =
@@ -882,6 +910,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         solve_and_analyse (gridlabd = gridlabd, one_phase = true, isMax, simulations)
     }
 
+    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
     def zero (list: RDD[(String, String)], results: RDD[ScResult]): RDD[ScResult] =
     {
         results.keyBy (_.tx).leftOuterJoin (list).values.map
@@ -916,6 +945,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
     }
 
+    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
     def calculateTraceResults (starting_nodes: RDD[StartingTrafos]): RDD[ScResult] =
     {
         // create the initial Graph with ScNode vertices
@@ -925,16 +955,15 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         def add_starting_trafo (vid: VertexId, node: ScNode, attached: (StartingTrafos, Iterable[ScEdge])): ScNode =
         {
-            val trafo = attached._1
-            val edges = attached._2
+            val (trafo, edges) = attached
 
             val errors =
                 if (trafo.transformer.total_impedance._2)
-                    List (ScError (fatal = false, invalid = false, "transformer has no impedance value, using default %s".format (options.default_transformer_impedance)))
+                    List (ScError (fatal = false, invalid = false, s"transformer has no impedance value, using default ${options.default_transformer_impedance}"))
                 else
-                    null.asInstanceOf [List[ScError]]
+                    null
             val problems = edges.foldLeft (errors)((errors, edge) => edge.hasIssues (errors, options))
-            ScNode (node.id_seq, node.voltage, trafo.transformer.transformer_name, trafo.transformer.total_impedance._1, "self", trafo.lv_impedance (node.voltage), null, problems)
+            ScNode (id_seq = node.id_seq, voltage = node.voltage, source_id = trafo.transformer.transformer_name, source_impedance = trafo.transformer.total_impedance._1, id_prev = "self", impedance = trafo.lv_impedance (node.voltage), errors = problems)
         }
 
         val starting_trafos_with_edges = starting_nodes.keyBy (_.nsPin).join (initial.edges.flatMap (both_ends).groupByKey)
@@ -945,8 +974,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         // get the visited nodes with their data
         val result = graph.vertices.filter (null != _._2.impedance).values
-        result.setName ("scresult")
-        result.persist (storage_level)
+        persist (result, "scresult")
 
         log.info ("computing results")
         // join results with terminals to get equipment
@@ -968,7 +996,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 case Some (station: Substation) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, station.id)
                 case Some (bay: Bay) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
                 case Some (level: VoltageLevel) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, level.Substation)
-                case _ => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, null)
+                case _ => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, "")
             }
         }
 
@@ -979,6 +1007,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     }
 
     // execute GridLAB-D to approximate the impedances and replace the error records
+    @SuppressWarnings (Array ("org.wartremover.warts.Throw", "org.wartremover.warts.AsInstanceOf"))
     def fix (problem_transformers: RDD[TransformerIsland], original_results: RDD[ScResult], subtransmission_trafos: Array[TransformerData]): RDD[ScResult] =
     {
         val n = problem_transformers.count
@@ -1060,8 +1089,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                         original.terminal, original.equipment, original.container
                                     ))
                                 case None => // node without existing trace result
+                                    val errors = List (ScError (fatal = false, invalid = false, "computed by load-flow"))
                                     calculate_short_circuit ((
-                                        ScNode (node, v, transformer, Complex (0), null, ztrafo, null, List (ScError (fatal = false, invalid = false, "computed by load-flow"))),
+                                        ScNode (id_seq = node, voltage = v, source_id = transformer, source_impedance = Complex (0), impedance = ztrafo, errors = errors),
                                         1, equipment, ""
                                     ))
                             }
@@ -1084,6 +1114,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
     }
 
+    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     def run (): RDD[ScResult] =
     {
         FData.fuse_sizing_table (options.fuse_table)
@@ -1145,7 +1176,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         val verboten_trafos = trace_results
             .filter (result => result.errors.exists (other_error))
-            .map (result => (result.tx, result.errors.filter (other_error).head))
+            .flatMap (result => result.errors.filter (other_error).map (err => (result.tx, err)))
             .distinct
             .persist (storage_level)
 
@@ -1184,7 +1215,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     }
 }
 
-object ShortCircuit
+object ShortCircuit extends CIMInitializer[ShortCircuitOptions] with Main
 {
     /**
      * The list of classes that can be persisted in RDD.
@@ -1203,5 +1234,83 @@ object ShortCircuit
             classOf [ch.ninecode.sc.ShortCircuitOptions],
             classOf [ch.ninecode.sc.StartingTrafos]
         )
+    }
+
+    def execute (options: ShortCircuitOptions): Unit =
+    {
+        if (options.verbose)
+            LogManager.getLogger (getClass).setLevel (Level.INFO)
+        if (options.main_options.valid)
+        {
+            if (options.cim_options.files.nonEmpty)
+            {
+                val session: SparkSession = createSession (options)
+                readCIM (session, options)
+                time ("execution: %s seconds")
+                {
+                    val sc = ShortCircuit (session, options.cim_options.storage, options)
+                    val _ = sc.run ()
+                }
+            }
+            else
+                log.error ("no CIM files specified")
+        }
+    }
+
+    def main (args: Array[String])
+    {
+        val have = util.Properties.versionNumberString
+        val need = scala_library_version
+        if (have != need)
+        {
+            log.error (s"Scala version ($have) does not match the version ($need) used to build $application_name")
+            sys.exit (1)
+        }
+        else
+        {
+            // get the necessary jar files to send to the cluster
+            val jars = Set (
+                jarForObject (new DefaultSource ()),
+                jarForObject (ShortCircuitOptions ())
+            ).toArray
+
+            // compose the classes to be registered with Kryo
+            val kryo = Array.concat (
+                // register CIMReader classes
+                CIMClasses.list,
+                // register Net classes
+                Net.classes,
+                // register GridLAB-D classes
+                GridLABD.classes,
+                // register ShortCircuit classes
+                ShortCircuit.classes,
+                // register Util classes
+                Util.classes)
+
+            // initialize the default options
+            val temp = ShortCircuitOptions ()
+            val default = ShortCircuitOptions (
+                main_options = MainOptions (application_name, application_version),
+                spark_options = SparkOptions (jars = jars, kryo = kryo),
+                cim_options = temp.cim_options.copy (options = temp.cim_options.toMap)
+            )
+
+            // parse the command line arguments
+            new ShortCircuitOptionsParser (default).parse (args, default) match
+            {
+                case Some (options) =>
+                    // execute the main program if everything checks out
+                    if (options.verbose)
+                    {
+                        org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.ShortCircuit").setLevel (org.apache.log4j.Level.INFO)
+                        org.apache.log4j.LogManager.getLogger ("ch.ninecode.sc.Database").setLevel (org.apache.log4j.Level.INFO)
+                    }
+                    execute (options)
+                    if (!options.main_options.unittest)
+                        sys.exit (0)
+                case None =>
+                    sys.exit (1)
+            }
+        }
     }
 }

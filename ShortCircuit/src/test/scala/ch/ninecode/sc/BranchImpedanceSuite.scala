@@ -97,7 +97,7 @@ class BranchImpedanceSuite extends AnyFunSuite
     {
         val branch =
             SeriesBranch ("a", "c", 0.0,
-                Seq (
+                Seq[Branch] (
                     ParallelBranch ("a", "b", 0.0,
                         List (
                             SimpleBranch ("a", "b", 0.0, "KLE124", "", Some (288282.0), Impedanzen (
@@ -131,7 +131,7 @@ class BranchImpedanceSuite extends AnyFunSuite
 
     test ("FakeComplexImpedance")
     {
-        val branches = Array (
+        val branches: Array[Branch] = Array (
             SeriesBranch ("PIN26199_topo", "MUF103383_topo", 1.5770241595079082,
                 Seq (
                     SimpleBranch ("PIN26199_topo", "PIN26208_topo", 0.0, "TEI22090", "Sicherung (Sicherung)",
@@ -228,7 +228,7 @@ class BranchImpedanceSuite extends AnyFunSuite
             )
         )
 
-        val branch = ComplexBranch ("PIN26199_topo", "HAS118345_topo", 4.0, branches.asInstanceOf [Array[Branch]])
+        val branch = ComplexBranch ("PIN26199_topo", "HAS118345_topo", 4.0, branches)
         // fake z
         val z = Impedanzen (
             Complex ("0.03116704+0.01120796j"),
@@ -243,7 +243,7 @@ class BranchImpedanceSuite extends AnyFunSuite
     {
         val branch =
             SeriesBranch ("a", "d", 0.0,
-                Seq (
+                Seq[Branch] (
                     SimpleBranch ("a", "b", 0.0, "KLE123", "", Some (1.6), Impedanzen (
                         Complex (2.0, 2.0),
                         Complex (1.0, 1.0),
@@ -268,7 +268,7 @@ class BranchImpedanceSuite extends AnyFunSuite
     {
         val branch =
             SeriesBranch ("a", "d", 0.0,
-                Seq (
+                Seq[Branch] (
                     SimpleBranch ("a", "b", 0.0, "KLE123", "", Some (1.6), Impedanzen (
                         Complex (2.0, 2.0),
                         Complex (1.0, 1.0),

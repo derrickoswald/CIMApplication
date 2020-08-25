@@ -15,32 +15,31 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
-    val FILENAME1 = "DemoData.rdf"
-    val FILENAME2 = "three_winding_non-radial.rdf"
+    val FILENAME1 = "DemoData"
+    val FILENAME2 = "three_winding_non-radial"
 
     before
     {
         // unpack the zip files
-        if (!new File (FILE_DEPOT + FILENAME1).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME1.replace (".rdf", ".zip"), FILE_DEPOT)
-        if (!new File (FILE_DEPOT + FILENAME2).exists)
-            new Unzip ().unzip (FILE_DEPOT + FILENAME2.replace (".rdf", ".zip"), FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME1.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME1.zip", FILE_DEPOT)
+        if (!new File (s"$FILE_DEPOT$FILENAME2.rdf").exists)
+            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME2.zip", FILE_DEPOT)
     }
 
     after
     {
-        new File (FILE_DEPOT + FILENAME1).delete
-        new File (FILE_DEPOT + FILENAME2).delete
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME1.rdf"))
+        deleteRecursive (new File (s"$FILE_DEPOT$FILENAME2.rdf"))
     }
 
     test ("Basic")
     {
         session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME1
+            val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
-
-            val customOptions = Map [String, String](
+            val customOptions = Map[String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -64,11 +63,11 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // output SQLite database
-            new Database (sc_options).store (results)
+            val _ = new Database (sc_options).store (results)
 
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
                 println (csv (i))
@@ -78,8 +77,8 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
     {
         session: SparkSession =>
 
-            val filename = FILE_DEPOT + FILENAME2
-            val customOptions = Map [String, String](
+            val filename = s"$FILE_DEPOT$FILENAME2.rdf"
+            val customOptions = Map[String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -105,11 +104,11 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
             val results = shortcircuit.run ()
 
             // output SQLite database
-            new Database (sc_options).store (results)
+            val _ = new Database (sc_options).store (results)
 
             val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
             val csv = string.collect
-            println ("results: " + csv.length)
+            println (s"results: ${csv.length}")
             println (ScResult.csv_header)
             for (i <- csv.indices)
                 println (csv (i))
