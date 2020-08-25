@@ -104,7 +104,7 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
 
     def executeUpdate (statement: Statement, sql: String): Unit =
     {
-        val _ = executeUpdate (statement, sql)
+        val _ = statement.executeUpdate (sql)
     }
 
     def createTableShortcircuitrun (statement: Statement): Unit =
