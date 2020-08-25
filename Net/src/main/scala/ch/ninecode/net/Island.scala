@@ -10,16 +10,12 @@ import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.Element
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
-
-/**
- * Composite terminal object
- *
- * @param terminal the terminal
- * @param node     the node it is connected to
- * @param voltage  the voltage of the terminal if available, otherwise zero
- * @param element  the conducting equipment
- */
-case class TerminalPlus (id: Island.island_id, terminal: Terminal, node: TopologicalNode, voltage: Double, element: Element)
+import ch.ninecode.net.Island.Edges
+import ch.ninecode.net.Island.IslandMap
+import ch.ninecode.net.Island.Nodes
+import ch.ninecode.net.Island.identifier
+import ch.ninecode.net.Island.island_id
+import ch.ninecode.net.Island.node_id
 
 /**
  * A topological island utility class to get edges and nodes.
@@ -34,8 +30,6 @@ class Island (
 {
     implicit val session: SparkSession = spark
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
-
-    import Island._
 
     // get the edges we understand
     lazy val lines: RDD[LineData] = Lines (session, storage_level).getLines () // line filter
@@ -69,12 +63,12 @@ class Island (
         val voltages = Voltages (session).getVoltages
         islands_identifiers
             .join (
-                getOrElse [Terminal]
+                getOrElse[Terminal]
                     .keyBy (terminal => terminal.TopologicalNode)
-                    .join (getOrElse [TopologicalNode].keyBy (_.id))
+                    .join (getOrElse[TopologicalNode].keyBy (_.id))
                     .values
                     .keyBy (_._1.ConductingEquipment)
-                    .join (getOrElse [Element]("Elements").keyBy (_.id))
+                    .join (getOrElse[Element]("Elements").keyBy (_.id))
                     .values
                     .keyBy (_._1._2.TopologicalIsland)
             )
@@ -90,7 +84,7 @@ class Island (
 
     // for these network nodes, find single terminal equipment if possible
     lazy val one_terminal_equipment: RDD[(String, Iterable[Terminal])] =
-        getOrElse [Terminal]
+        getOrElse[Terminal]
             .groupBy (_.ConductingEquipment)
             .values
             .flatMap (
