@@ -37,13 +37,6 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ninecode.mfi</groupId>
-            <artifactId>MaximumFeedIn</artifactId>
-            <version>${project.version}</version>
-            <scope>compile</scope>
-        </dependency>
-
-        <dependency>
             <groupId>ch.ninecode.net</groupId>
             <artifactId>Net</artifactId>
             <version>${project.version}</version>
@@ -162,7 +155,7 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.lv.Main</mainClass>
+                                    <mainClass>ch.ninecode.lv.LowVoltage</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
