@@ -1,73 +1,55 @@
 package ch.ninecode.lv
 
-import java.net.URI
-import java.nio.file.Files
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
-import org.apache.spark.graphx.Graph
+import scala.io.Source
+
 import org.apache.spark.rdd.RDD
-import org.apache.spark.rdd.RDD.rddToPairRDDFunctions
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import ch.ninecode.gl.GridLABD
-import ch.ninecode.gl.PreNode
-import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.Solar
-import ch.ninecode.mfi.EinspeiseleistungOptions
-import ch.ninecode.mfi.PowerFeeding
-import ch.ninecode.mfi.PowerFeedingNode
-import ch.ninecode.mfi.MaxPowerFeedingNodeEEA
-import ch.ninecode.mfi.Trafokreis
-import ch.ninecode.net.Transformers
-import ch.ninecode.net.TransformerData
-import ch.ninecode.net.TransformerIsland
-import scala.io.Source
-
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 
 import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.DefaultSource
-import ch.ninecode.mfi.Einspeiseleistung
+import ch.ninecode.gl.GLMEdge
+import ch.ninecode.gl.GridLABD
+import ch.ninecode.model.TopologicalNode
+import ch.ninecode.net.Island.Edges
+import ch.ninecode.net.Island.Nodes
+import ch.ninecode.net.Island.identifier
+import ch.ninecode.net.Island.island_id
 import ch.ninecode.net.Net
+import ch.ninecode.net.TransformerData
+import ch.ninecode.net.TransformerIsland
+import ch.ninecode.net.TransformerServiceArea
+import ch.ninecode.net.TransformerSet
+import ch.ninecode.net.Transformers
 import ch.ninecode.util.CIMInitializer
 import ch.ninecode.util.Main
 import ch.ninecode.util.MainOptions
 import ch.ninecode.util.SparkOptions
 import ch.ninecode.util.Util
 
-//  <md:FullModel rdf:about="sias_current">
-//        <md:Model.created>2017-06-01T23:00:20</md:Model.created>
-//        <md:Model.description>NIS Strom CIM export (http://nis.ch/produkte#nisStrom)</md:Model.description>
-//        <md:Model.modelingAuthoritySet>http://9code.ch/</md:Model.modelingAuthoritySet>
-//        <md:Model.profile>https://github.com/derrickoswald/CIMReader</md:Model.profile>
-//        <md:Model.scenarioTime>2017-05-31T23:32:36</md:Model.scenarioTime>
-//        <md:Model.version>103</md:Model.version>
-//  </md:FullModel>
-case class Header
-(
-    created: Calendar,
-    description: String,
-    modelingAuthoritySet: String,
-    profile: String,
-    scenarioTime: Calendar,
-    version: String)
-
-case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
+/**
+ * Generate GridLAB-D model (.glm) files for all, or selected, transformer service areas in a CIM file.
+ *
+ * @param session the Spark session to use
+ * @param options the options for Spark, CIM, and this program
+ */
+case class LowVoltage (session: SparkSession, options: LowVoltageOptions) extends CIMRDD
 {
     if (options.verbose)
     {
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.lv.LowVoltage").setLevel (org.apache.log4j.Level.INFO)
         org.apache.log4j.LogManager.getLogger ("ch.ninecode.mfi.PowerFeeding$").setLevel (org.apache.log4j.Level.INFO)
     }
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val spark: SparkSession = session
+    implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     // for dates without time zones, the timezone of the machine is used:
     //    date +%Z
@@ -83,129 +65,29 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
     else
         _DateFormat.setTimeZone (TimeZone.getTimeZone ("CET"))
 
-    def getCIMheader (gridlabd: GridLABD): String =
+    def generate (gridlabd: GridLABD, trafokreise: RDD[LowVoltageTrafokreis]): Int =
     {
-        // need to watch out for comma separated file list
-        // only handle first file
-        val file = Array.concat (options.cim_options.files.map (_.split (",")).toArray: _ *)(scala.reflect.classTag [String])(0)
-        val lead = "<md:FullModel"
-        val trail = "</md:FullModel>"
-
-        val raw = if ((gridlabd.workdir_scheme == "file") || (gridlabd.workdir_scheme == ""))
-        {
-            val in = Files.newInputStream (java.nio.file.FileSystems.getDefault.getPath (file))
-            val buffer = new Array[Byte](4 * 1024)
-            val _ = in.read (buffer)
-            in.close ()
-            new String (buffer, java.nio.charset.StandardCharsets.UTF_8)
-        }
-        else
-        {
-            val hdfs_configuration = new Configuration ()
-            hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-            hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-            val hdfs = FileSystem.get (URI.create (gridlabd.workdir_uri), hdfs_configuration)
-
-            val in = hdfs.open (new Path (file))
-            val buffer = new Array[Byte](4 * 1024)
-            val _ = in.read (0L, buffer, 0, buffer.length)
-            in.close ()
-            new String (buffer, java.nio.charset.StandardCharsets.UTF_8)
-        }
-        val start = raw.indexOf (lead)
-        val end = raw.indexOf (trail)
-        if ((-1 != start) && (-1 != end))
-            raw.substring (start, end + trail.length ())
-        else
-            ""
-    }
-
-    def toDate (string: String): Calendar = javax.xml.bind.DatatypeConverter.parseDateTime (string)
-
-    def parseHeader (string: String): Header =
-    {
-        val x = scala.xml.XML.loadString (string)
-        try
-        {
-            Header (
-                (x \\ "Model.created").headOption match
-                {
-                    case Some (node) => toDate (node.text)
-                    case _ => Calendar.getInstance ()
-                },
-                (x \\ "Model.description").headOption match
-                {
-                    case Some (node) => node.text
-                    case _ => "no description"
-                },
-                (x \\ "Model.modelingAuthoritySet").headOption match
-                {
-                    case Some (node) => node.text
-                    case _ => "no modeling authority"
-                },
-                (x \\ "Model.profile").headOption match
-                {
-                    case Some (node) => node.text
-                    case _ => "no profile"
-                },
-                (x \\ "Model.scenarioTime").headOption match
-                {
-                    case Some (node) => toDate (node.text)
-                    case _ => Calendar.getInstance ()
-                },
-                (x \\ "Model.version").headOption match
-                {
-                    case Some (node) => node.text
-                    case _ => "no version"
-                }
-            )
-        }
-        catch
-        {
-            case e: Exception => log.error (s"exception caught parsing rdf header: ${e.getLocalizedMessage}")
-                val now = Calendar.getInstance ()
-                Header (now, "no description", "no modeling authority", "no profile", now, "no version")
-        }
-    }
-
-    def rename (gridlabd: GridLABD, new_name: String)
-    {
-        val hdfs_configuration = new Configuration ()
-        hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-        hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-        val hdfs = FileSystem.get (URI.create (gridlabd.workdir_uri), hdfs_configuration)
-
-        val output = new Path (gridlabd.workdir_slash)
-        val target = new Path ("/" + new_name + "/")
-        val _ = hdfs.rename (output, target)
-    }
-
-    def generate (gridlabd: GridLABD, trafokreise: RDD[Trafokreis]): Unit =
-    {
-        val start = System.nanoTime ()
-
-        def doit (trafokreis: Trafokreis): Int =
-        {
-            val generator = new LowVoltageGLMGenerator (!options.three, _DateFormat, trafokreis)
-            gridlabd.export (generator)
-            1
-        }
-
         log.info (s"exporting: ${trafokreise.count} transformer service areas")
-        val files = trafokreise.map (doit).cache
-        val fc = files.fold (0)(_ + _)
-        log.info (s"exported: $fc transformer service areas")
+        LowVoltage.time ("export: %s seconds")
+        {
+            def doit (trafokreis: LowVoltageTrafokreis): Int =
+            {
+                val generator = new LowVoltageGLMGenerator (!options.three, _DateFormat, trafokreis)
+                gridlabd.export (generator)
+                1
+            }
 
-        val write = System.nanoTime ()
-        log.info (s"export: ${(write - start) / 1e9} seconds")
+            val files = trafokreise.map (doit).cache
+            val fc = files.fold (0)(_ + _)
+            log.info (s"exported: $fc transformer service areas")
+            fc
+        }
     }
 
-    def run (): Long =
+    // determine transformer list if any
+    def getTrafos: Array[String] =
     {
-        val start = System.nanoTime ()
-
-        // determine transformer list if any
-        val trafos: Array[String] = if ("" != options.trafos)
+        if ("" != options.trafos)
         {
             // do all transformers listed in the file
             val source = Source.fromFile (options.trafos, "UTF-8")
@@ -215,106 +97,86 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions)
                 log.error ("no transformers to process")
                 sys.exit (1)
             }
+            source.close
             lines
         }
         else
             Array ()
+    }
 
-        // prepare for precalculation
-        val gridlabd = new GridLABD (session, options.cim_options.storage, options.getWorkDir)
+    def getTransformers: Map[String, TransformerSet] =
+    {
+        val transformer_data = Transformers (session, options.cim_options.storage).getTransformers ()
+        val tx = transformer_data.keyBy (_.node1.id) // (low_voltage_node_name, TransformerData)
+            .join (get [TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
+            .map (x => (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
+            .groupByKey.values
 
-        // prepare the initial graph edges and nodes
-        val (xedges, xnodes) = gridlabd.prepare ()
-
-        val _transformers = Transformers (session, options.cim_options.storage)
-        val transformer_data = _transformers.getTransformers ()
-
-        // get the existing photo-voltaic installations keyed by terminal
-        val solar = Solar (session, topologicalnodes = true, options.cim_options.storage)
-        val sdata = solar.getSolarInstallations
-
-        def island (td: TransformerData): String = td.node1.TopologicalIsland
-
-        // determine the set of transformers to work on
-        val transformers = if (0 != trafos.length)
+        def toTransformerSet (transformers: Iterable[(TransformerData, String)]): (String, TransformerSet) =
         {
-            val selected = transformer_data.filter (x => trafos.contains (x.transformer.id)).distinct
-            selected.groupBy (island).values.map (TransformerIsland.apply)
+            val islands = transformers.map (_._2).toSet
+            if (islands.size > 1)
+                log.error (s"not all transformers are members of the same island (${islands.mkString (",")})")
+            val set = TransformerSet (transformers.map (_._1).toArray)
+            (set.transformer_name, set)
+        }
+
+        tx.map (toTransformerSet).collect.toMap
+    }
+
+    def plural (number: Int): String = if (1 == number) "" else "s"
+
+    def run (): Long =
+    {
+        // determine transformer list if any
+        val trafos = getTrafos
+
+        // transformer area calculations
+        val tsa = TransformerServiceArea (session, options.cim_options.storage)
+        // only proceed if topological processing was done (there are TopologicalIslands)
+        if (tsa.hasIslands)
+        {
+            val islands_trafos: RDD[(island_id, identifier)] = tsa.getTransformerServiceAreas
+            val numareas = islands_trafos.map (_._2).distinct.count.toInt
+            log.info (s"""$numareas transformer service area${plural (numareas)} found""")
+
+            // maybe reduce the set of islands
+            val islands_to_do: RDD[(island_id, identifier)] =
+                if (0 != trafos.length)
+                    islands_trafos.filter (pair => trafos.contains (pair._2))
+                else
+                    islands_trafos
+
+            val island_helper = new LowVoltageIsland (session, options.cim_options.storage)
+//            Lines.DEFAULT_CABLE_RESISTANCE_LIMIT = options.cable_impedance_limit
+            val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do.map (_.swap))
+            @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
+            val nodes = graph_stuff._1.groupByKey.asInstanceOf[RDD[(identifier, Iterable[LowVoltageNode])]]
+            @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
+            val edges = graph_stuff._2.groupByKey.asInstanceOf[RDD[(identifier, Iterable[GLMEdge])]]
+            val areas = nodes.join (edges)
+
+            val transformers: Map[String, TransformerSet] = getTransformers
+            val start = Calendar.getInstance ()
+            val trafokreise: RDD[LowVoltageTrafokreis] = areas.flatMap (
+                area =>
+                {
+                    val (id, (nodes, edges)) = area
+                    transformers.find (_._1 == id) match
+                    {
+                        case Some (set) =>
+                            val island = new TransformerIsland (Array (set._2))
+                            Some (LowVoltageTrafokreis (start, island, nodes, edges))
+                        case _ =>
+                            None
+                    }
+                }
+            )
+            val gridlabd = new GridLABD (session, options.cim_options.storage, options.getWorkDir)
+            generate (gridlabd, trafokreise)
         }
         else
-            {
-                // do all low voltage power transformers
-                val niederspannug = transformer_data.filter (td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
-                niederspannug.groupBy (island).values.map (TransformerIsland.apply)
-            }
-                .persist (options.cim_options.storage)
-        transformers.name = "Transformers"
-
-        val prepare = System.nanoTime ()
-        log.info (s"prepare: ${(prepare - start) / 1e9} seconds")
-
-        val storage = options.cim_options.storage
-
-        // do the pre-calculation
-        val precalc_results =
-        {
-            // construct the initial graph from the real edges and nodes
-            val initial = Graph.apply[PreNode, PreEdge](xnodes, xedges, PreNode ("", 0.0, ""), storage, storage)
-            val options = EinspeiseleistungOptions ()
-            val pf = new PowerFeeding (session, storage, options.base_temperature, options.sim_temperature)
-            pf.threshold_calculation (initial, sdata, transformers, EinspeiseleistungOptions (cosphi = 1.0))
-        }
-
-        val houses = precalc_results.has
-
-        val trafo_island = transformers.flatMap (island => island.transformers.map (trafo => (trafo.transformer_name, island)))
-        val trafo_list = houses.keyBy (_.source_obj).groupByKey.join (trafo_island).values.map (_._2)
-        log.info (s"${trafo_list.count} transformers to process")
-
-        val precalc = System.nanoTime ()
-        log.info (s"precalculation: ${(precalc - prepare) / 1e9} seconds")
-
-        val vertices = precalc_results.vertices.filter (_.source_obj != null).keyBy (_.source_obj.trafo_id)
-        val edges = precalc_results.edges.filter (_._1 != null)
-        val has = precalc_results.has.keyBy (_.source_obj)
-        val grouped_precalc_results = vertices.groupWith (edges, has)
-
-        val raw = getCIMheader (gridlabd)
-        val header = if ("" != raw)
-            parseHeader (raw)
-        else
-            Header (Calendar.getInstance (), "generated header", "", "", Calendar.getInstance (), "")
-        val t0 = header.scenarioTime
-
-        @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
-        def makeTrafokreis (start: Calendar)(arg: (String, Iterable[(TransformerIsland, (Iterable[PowerFeedingNode], Iterable[PreEdge], Iterable[MaxPowerFeedingNodeEEA]))])): Trafokreis =
-        {
-            val (trafokreise, iter) = arg
-            val island: TransformerIsland = iter.head._1
-            val nodes = iter.flatMap (_._2._1)
-            val edges = iter.flatMap (_._2._2)
-            val mpfne = iter.flatMap (_._2._3)
-            Trafokreis (start, trafokreise, island, nodes, edges, mpfne, EinspeiseleistungOptions ())
-        }
-
-        val trafokreise = trafo_list
-            .flatMap (x => x.transformers.map (y => (y.transformer_name, x)))
-            .join (grouped_precalc_results)
-            .values
-            .groupBy (_._1.island_name)
-            .map (makeTrafokreis (t0))
-
-        log.info (s"filtered_trafos: ${trafokreise.count}")
-        generate (gridlabd, trafokreise)
-
-        // rename to the created date
-        val format = new java.text.SimpleDateFormat ("yyyyMMdd")
-        val timestamp = format.format (header.created.getTime)
-        rename (gridlabd, timestamp)
-
-        log.info (s"finished ${trafo_list.count} trafokreis")
-
-        trafo_list.count
+            0L
     }
 }
 
@@ -353,10 +215,10 @@ object LowVoltage extends CIMInitializer[LowVoltageOptions] with Main
         else
         {
             // get the necessary jar files to send to the cluster
-            val jars = Array (
+            val jars = Set (
                 jarForObject (new DefaultSource ()),
                 jarForObject (LowVoltageOptions ())
-            )
+            ).toArray
 
             // compose the classes to be registered with Kryo
             val kryo = Array.concat (
@@ -366,8 +228,6 @@ object LowVoltage extends CIMInitializer[LowVoltageOptions] with Main
                 Net.classes,
                 // register GridLAB-D classes
                 GridLABD.classes,
-                // register Einspeiseleistung classes
-                Einspeiseleistung.classes,
                 // register Util classes
                 Util.classes)
 

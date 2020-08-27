@@ -3,8 +3,6 @@ package ch.ninecode.lv
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import ch.ninecode.mfi.PowerFeedingNode
-import ch.ninecode.mfi.Trafokreis
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
@@ -16,7 +14,7 @@ class LowVoltageGLMGenerator
 (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
-    trafokreis: Trafokreis)
+    trafokreis: LowVoltageTrafokreis)
     extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
 {
     /**
@@ -31,54 +29,36 @@ class LowVoltageGLMGenerator
 
     override def start_time: Calendar = trafokreis.start
 
-    override def finish_time: Calendar =
+    override lazy val finish_time: Calendar =
     {
         val t = dup (start_time)
         t.add (Calendar.HOUR, 24)
         t
     }
 
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
-    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (edges => GLMEdge.toGLMEdge (edges.map (_.element), edges.head.cn1, edges.head.cn2))
+    override lazy val edges: Iterable[GLMEdge] = trafokreis.edges.filter (_ match { case _: GLMTransformerEdge => false case _ => true })
 
-    override def transformers: Iterable[GLMTransformerEdge] =
-        trafokreis.transformers.transformers.map (GLMTransformerEdge)
+    override lazy val transformers: Iterable[GLMTransformerEdge] = trafokreis.edges.flatMap (_ match { case tx: GLMTransformerEdge => Some (tx) case _ => None })
 
-    // the swing node is the low voltage pin
-    override def swing_nodes: Iterable[GLMNode] =
-        trafokreis.transformers.transformers.map (
-            transformers =>
-                SwingNode (transformers.node1, transformers.v1, transformers.transformer_name)
-        )
+    // the swing node is the high voltage pin
+    override lazy val swing_nodes: Iterable[GLMNode] =
+        transformers.map (tx => SwingNode (tx.transformer.node0, tx.transformer.v0, tx.transformer.transformer_name))
 
-    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
-    override def nodes: Iterable[GLMNode] =
-    {
-        val swings = swing_nodes.map (_.id).toArray
-        trafokreis.nodes.filter (x => !swings.contains (x.id)).++ (
-            trafokreis.transformers.transformers.map (
-                tx =>
-                    PowerFeedingNode (
-                        tx.node0,
-                        null,
-                        null,
-                        tx.v0,
-                        null,
-                        null,
-                        0.0,
-                        Double.PositiveInfinity)).toSeq)
-    }
+    override def nodes: Iterable[GLMNode] = trafokreis.nodes
 
     override def emit_node (node: GLMNode): String =
     {
-        super.emit_node (node) +
-            (if (node.id.startsWith ("HAS"))
-            {
-                generate_recorder (node) +
-                    generate_load (node)
-            }
-            else
-                "")
+        val extra = node match
+        {
+            case lv: LowVoltageNode =>
+                if (lv.isEnergyConsumer)
+                    s"${ generate_recorder (lv) }${ generate_load (lv) }"
+                else
+                    ""
+            case _ =>
+                ""
+        }
+        s"${ super.emit_node (node) }$extra"
     }
 
     override def emit_edge (edge: GLMEdge): String =
@@ -281,90 +261,83 @@ class LowVoltageGLMGenerator
             string
     }
 
-    def generate_recorder (node: GLMNode): String =
+    def generate_recorder (node: LowVoltageNode): String =
     {
-        val experiments = trafokreis.experiments
-        val house = nis_number (node.id)
-
-        experiments.find (p => p.house == house) match
+        if (node.isEnergyConsumer)
         {
-            case Some (_) =>
-                val id = node.id
-                val nis = nis_number (node.id)
-                val voltage = if (one_phase)
-                    "voltage_A.real,voltage_A.imag"
-                else
-                    "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag"
-                val power = if (one_phase)
-                    "power_A.real,power_A.imag"
-                else
-                    "power_A.real,power_A.imag,power_B.real,power_B.imag,power_C.real,power_C.imag"
-                s"""
-                   |        object recorder
-                   |        {
-                   |            name "${nis}_voltage_recorder";
-                   |            parent "${id}";
-                   |            property $voltage;
-                   |            interval 300;
-                   |            file "output_data/" + node.id + "_voltage.csv\";
-                   |        };
-                   |
-                   |        object recorder
-                   |        {
-                   |            name "${nis}_power_recorder\";
-                   |            parent "$id";
-                   |            property $power;
-                   |            interval 300;
-                   |            file "output_data/${id}_power.csv";
-                   |        };""".stripMargin
-            case None =>
-                ""
+            val id = node.id
+            val house = nis_number (id)
+            val voltage = if (one_phase)
+                "voltage_A.real,voltage_A.imag"
+            else
+                "voltage_A.real,voltage_A.imag,voltage_B.real,voltage_B.imag,voltage_C.real,voltage_C.imag"
+            val power = if (one_phase)
+                "power_A.real,power_A.imag"
+            else
+                "power_A.real,power_A.imag,power_B.real,power_B.imag,power_C.real,power_C.imag"
+            s"""
+               |        object recorder
+               |        {
+               |            name "${house}_voltage_recorder";
+               |            parent "$id";
+               |            property $voltage;
+               |            interval 300;
+               |            file "output_data/" + node.id + "_voltage.csv\";
+               |        };
+               |
+               |        object recorder
+               |        {
+               |            name "${house}_power_recorder\";
+               |            parent "$id";
+               |            property $power;
+               |            interval 300;
+               |            file "output_data/${id}_power.csv";
+               |        };""".stripMargin
         }
+        else
+            ""
     }
 
-    def generate_load (node: GLMNode): String =
+    def generate_load (node: LowVoltageNode): String =
     {
-        val experiments = trafokreis.experiments
-        val house = nis_number (node.id)
-
-        experiments.find (p => p.house == house) match
+        if (node.isEnergyConsumer)
         {
-            case Some (_) =>
-                val player = if (one_phase)
-                    s"""            object player
-                       |            {
-                       |                property "constant_current_A";
-                       |                file "input_data/$house.csv\";
-                       |            };""".stripMargin
-                else
-                    s"""            object player
-                       |            {
-                       |                property "constant_current_A";
-                       |                file "input_data/${house}_R.csv";
-                       |            };
-                       |            object player
-                       |            {
-                       |                property \"constant_current_B\";
-                       |                file "input_data/${house}_S.csv";
-                       |            };
-                       |            object player
-                       |            {
-                       |                property "constant_current_C";
-                       |                file "input_data/${house}_T.csv";
-                       |            };
-                       |""".stripMargin
-                val id = node.id
-                s"""
-                   |        object load
-                   |        {
-                   |            name "${id}_load";
-                   |            parent "$id";
-                   |            phases ${if (one_phase) "AN" else "ABCN"};
-                   |            nominal_voltage ${node.nominal_voltage}V;
-                   |$player
-                   |        };""".stripMargin
-            case None =>
-                ""
+            val id = node.id
+            val house = nis_number (node.equipment)
+            val player = if (one_phase)
+                s"""            object player
+                   |            {
+                   |                property "constant_current_A";
+                   |                file "input_data/$house.csv\";
+                   |            };""".stripMargin
+            else
+                s"""            object player
+                   |            {
+                   |                property "constant_current_A";
+                   |                file "input_data/${house}_R.csv";
+                   |            };
+                   |            object player
+                   |            {
+                   |                property \"constant_current_B\";
+                   |                file "input_data/${house}_S.csv";
+                   |            };
+                   |            object player
+                   |            {
+                   |                property "constant_current_C";
+                   |                file "input_data/${house}_T.csv";
+                   |            };
+                   |""".stripMargin
+            s"""
+               |        object load
+               |        {
+               |            name "${id}_load";
+               |            parent "$id";
+               |            phases ${if (one_phase) "AN" else "ABCN"};
+               |            nominal_voltage ${node.nominal_voltage}V;
+               |$player
+               |        };""".stripMargin
         }
+        else
+            ""
     }
 }
