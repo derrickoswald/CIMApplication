@@ -19,7 +19,8 @@ case class SparkOptions (
         "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
         "spark.kryo.registrator" -> "ch.ninecode.cim.CIMRegistrator",
         "spark.ui.showConsoleProgress" -> "false",
-        "spark.sql.debug.maxToStringFields" -> "250"
+        "spark.sql.debug.maxToStringFields" -> "250",
+        "spark.sql.catalog.casscatalog" -> "com.datastax.spark.connector.datasource.CassandraCatalog"
     ),
     log: Level = Level.OFF,
     jars: Array[String] = Array (),
