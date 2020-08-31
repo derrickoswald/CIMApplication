@@ -704,8 +704,9 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                         end = fields (index + 1);
                         startDateTime = if (start.length == 8) MeasurementDateTimeFormat3.parse (s"$date $start") else MeasurementDateTimeFormat2.parse (start);
                         endDateTime = if (end.length == 8) MeasurementDateTimeFormat3.parse (s"$date $end") else MeasurementDateTimeFormat2.parse (end);
-                        intervalTemp = (endDateTime.getTime - startDateTime.getTime).toInt;
-                        interval = if (intervalTemp == -85500000) intervalTemp + 86400000 else intervalTemp;
+                        passesMidnight = endDateTime.before(startDateTime);
+                        timeDiff = (endDateTime.getTime - startDateTime.getTime).toInt;
+                        interval = if (passesMidnight) timeDiff + 86400000 else timeDiff;
                         value = asDouble (fields (index + 2)) * factor
                     )
                         yield
