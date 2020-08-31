@@ -702,16 +702,17 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                         if 0 == (index - 7) % 3;
                         start = fields (index);
                         end = fields (index + 1);
-                        datetime1 = if (start.length == 8) MeasurementDateTimeFormat3.parse (s"$date $start") else MeasurementDateTimeFormat2.parse (start);
-                        timestamp = if (end.length == 8) MeasurementDateTimeFormat3.parse (s"$date $end") else MeasurementDateTimeFormat2.parse (end);
-                        interval = (timestamp.getTime - datetime1.getTime).toInt;
+                        startDateTime = if (start.length == 8) MeasurementDateTimeFormat3.parse (s"$date $start") else MeasurementDateTimeFormat2.parse (start);
+                        endDateTime = if (end.length == 8) MeasurementDateTimeFormat3.parse (s"$date $end") else MeasurementDateTimeFormat2.parse (end);
+                        intervalTemp = (endDateTime.getTime - startDateTime.getTime).toInt;
+                        interval = if (intervalTemp == -85500000) intervalTemp + 86400000 else intervalTemp;
                         value = asDouble (fields (index + 2)) * factor
                     )
                         yield
                             if (real)
-                                (mrid, typ, timestamp.getTime, interval, value, 0.0, units)
+                                (mrid, typ, startDateTime.getTime + interval, interval, value, 0.0, units)
                             else
-                                (mrid, typ, timestamp.getTime, interval, 0.0, value, units)
+                                (mrid, typ, startDateTime.getTime + interval, interval, 0.0, value, units)
                 else
                     List ()
             }
