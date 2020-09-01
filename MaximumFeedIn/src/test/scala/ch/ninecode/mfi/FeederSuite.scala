@@ -15,7 +15,7 @@ case class MyFeeders
 )
     extends Feeders (session)
 {
-    override def isFeeder (element: Element, terminal: Terminal): Boolean =
+    override def isFeeder (element: Element): Boolean =
     {
         element match
         {
