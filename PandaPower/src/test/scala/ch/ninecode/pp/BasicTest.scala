@@ -15,7 +15,8 @@ class BasicTest extends TestUtil
             val workdir = "simulation/"
             val trafo = "BASIC"
             val _ = new File (s"$workdir$trafo/output_data").mkdirs
-            val contents = s"""
+            val contents =
+                s"""
 import os
 import numpy as np
 import pandas as pd
@@ -119,7 +120,7 @@ timeseries_example(output_dir)
             pw.close ()
 
 
-            val files = session.sparkContext.parallelize (Seq(trafo))
+            val files = session.sparkContext.parallelize (Seq (trafo))
             val pp = PandaPower (session = session, workdir = workdir)
             val result = pp.solve (files)
             info (result.toString, None)
@@ -133,7 +134,8 @@ timeseries_example(output_dir)
             val workdir = "simulation/"
             val trafo = "BROKEN"
             val _ = new File (s"$workdir$trafo/output_data").mkdirs
-            val contents = s"""
+            val contents =
+                s"""
 import os
 import numpy as np
 import pandas as pd
@@ -237,7 +239,7 @@ timeseries_example(output_dir)
             pw.close ()
 
 
-            val files = session.sparkContext.parallelize (Seq(trafo))
+            val files = session.sparkContext.parallelize (Seq (trafo))
             val pp = PandaPower (session = session, workdir = workdir)
             val result = pp.solve (files)
             info (result.toString, None)

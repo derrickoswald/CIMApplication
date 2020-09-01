@@ -52,7 +52,8 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
         .valueName ("<map>")
         .action ((x, c) =>
         {
-            c.cim_options = CIMReaderOptions (x, Some (c.cim_options)); c
+            c.cim_options = CIMReaderOptions (x, Some (c.cim_options));
+            c
         })
         .text (s"CIM options [${default.cim_options.options.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
 
@@ -60,7 +61,8 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
         opt [Unit]("identify_islands")
             .action ((_, c) =>
             {
-                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (identify_islands = true)); c
+                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (identify_islands = true));
+                c
             })
             .text (s"perform island topological processing [${default.cim_options.topology_options.identify_islands}]"),
 
@@ -68,7 +70,8 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
             .valueName ("<state>")
             .action ((s, c) =>
             {
-                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (force_retain_switches = s)); c
+                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (force_retain_switches = s));
+                c
             })
             .text (s"attribute 'retain' for all switches except Fuse types, one of ${stateStrings.mkString (",")} [${default.cim_options.topology_options.force_retain_switches.toString}]"),
 
@@ -76,7 +79,8 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
             .valueName ("<state>")
             .action ((s, c) =>
             {
-                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (force_retain_fuses = s)); c
+                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (force_retain_fuses = s));
+                c
             })
             .text (s"attribute 'retain' for all fuses, one of ${stateStrings.mkString (",")} [${default.cim_options.topology_options.force_retain_fuses.toString}]"),
 
@@ -84,7 +88,8 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
             .valueName ("<state>")
             .action ((s, c) =>
             {
-                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (force_switch_separate_islands = s)); c
+                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (force_switch_separate_islands = s));
+                c
             })
             .text (s"switches (except Fuse) separate topological islands, one of ${stateStrings.mkString (",")} [${default.cim_options.topology_options.force_switch_separate_islands.toString}]"),
 
@@ -92,14 +97,16 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
             .valueName ("<state>")
             .action ((s, c) =>
             {
-                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (force_fuse_separate_islands = s)); c
+                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (force_fuse_separate_islands = s));
+                c
             })
             .text (s"fuses separate topological islands, one of ${stateStrings.mkString (",")} [${default.cim_options.topology_options.force_fuse_separate_islands.toString}]"),
 
         opt [Unit]("default_open")
             .action ((s, c) =>
             {
-                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (default_switch_open_state = true)); c
+                c.cim_options = c.cim_options.copy (topology_options = c.cim_options.topology_options.copy (default_switch_open_state = true));
+                c
             })
             .text (s"default switch open/normalOpen value if not specified [${default.cim_options.topology_options.default_switch_open_state.toString}]")
     )
@@ -107,7 +114,8 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
     opt [Unit]("topology")
         .action ((_, c) =>
         {
-            c.cim_options = c.cim_options.copy (topology = true); c
+            c.cim_options = c.cim_options.copy (topology = true);
+            c
         })
         .text (s"do topology processing (enables the following ${children.length} options) [${default.cim_options.topology}]")
         .children (
@@ -117,35 +125,40 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
     opt [Unit]("about")
         .action ((_, c) =>
         {
-            c.cim_options = c.cim_options.copy (about = true); c
+            c.cim_options = c.cim_options.copy (about = true);
+            c
         })
         .text (s"do about processing [${default.cim_options.about}]")
 
     opt [Unit]("normalize")
         .action ((_, c) =>
         {
-            c.cim_options = c.cim_options.copy (normalize = true); c
+            c.cim_options = c.cim_options.copy (normalize = true);
+            c
         })
         .text (s"do normalization processing [${default.cim_options.normalize}]")
 
     opt [Unit]("dedup")
         .action ((_, c) =>
         {
-            c.cim_options = c.cim_options.copy (dedup = true); c
+            c.cim_options = c.cim_options.copy (dedup = true);
+            c
         })
         .text (s"do deduplication processing [${default.cim_options.dedup}]")
 
     opt [Unit]("edges")
         .action ((_, c) =>
         {
-            c.cim_options = c.cim_options.copy (edges = true); c
+            c.cim_options = c.cim_options.copy (edges = true);
+            c
         })
         .text (s"do edge processing [${default.cim_options.edges}]")
 
     opt [Unit]("join")
         .action ((_, c) =>
         {
-            c.cim_options = c.cim_options.copy (join = true); c
+            c.cim_options = c.cim_options.copy (join = true);
+            c
         })
         .text (s"do asset join processing [${default.cim_options.join}]")
 
@@ -163,7 +176,8 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
     opt [Long]("splitsize")
         .action ((l, c) =>
         {
-            c.cim_options = c.cim_options.copy (splitsize = l); c
+            c.cim_options = c.cim_options.copy (splitsize = l);
+            c
         })
         .text (s"file read split size [${default.cim_options.splitsize}]")
 
@@ -171,7 +185,8 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
         .valueName ("<dir>")
         .action ((s, c) =>
         {
-            c.cim_options = c.cim_options.copy (cache = s); c
+            c.cim_options = c.cim_options.copy (cache = s);
+            c
         })
         .text (s"CIM cache location [${default.cim_options.cache}]")
 
@@ -191,7 +206,8 @@ class CIMReaderOptionsParser[T <: Mainable with Sparkable with CIMAble] (default
         .unbounded ()
         .action ((x, c) =>
         {
-            c.cim_options = c.cim_options.copy (files = c.cim_options.files :+ x); c
+            c.cim_options = c.cim_options.copy (files = c.cim_options.files :+ x);
+            c
         })
         .text ("CIM rdf files to process")
 }

@@ -36,13 +36,15 @@ class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](defa
         .hidden
         .validate (Unit =>
         {
-            helpout = true; Right (Unit)
+            helpout = true;
+            Right (Unit)
         })
 
     version ("version")
         .validate (Unit =>
         {
-            versionout = true; Right (Unit)
+            versionout = true;
+            Right (Unit)
         })
         .text (
             {
@@ -56,6 +58,7 @@ class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](defa
 
     checkConfig (o =>
     {
-        o.main_options = o.main_options.copy (valid = !(helpout || versionout)); Right (Unit)
+        o.main_options = o.main_options.copy (valid = !(helpout || versionout));
+        Right (Unit)
     })
 }

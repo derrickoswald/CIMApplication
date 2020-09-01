@@ -59,7 +59,7 @@ object AbgangKreis
             case conductor: Conductor =>
                 Some (ACLineSegment (conductor))
             case _ =>
-                log.error (s"unexpected class in edge elements (${ element.getClass })")
+                log.error (s"unexpected class in edge elements (${element.getClass})")
                 None
         }
     }
@@ -81,7 +81,7 @@ object AbgangKreis
             case r: Recloser => Some (r.ProtectedSwitch.Switch)
             case s: Sectionaliser => Some (s.Switch)
             case _ =>
-                log.error (s"non-switch (${ element.getClass }:${ element.id })")
+                log.error (s"non-switch (${element.getClass}:${element.id})")
                 None
         }
     }
@@ -137,11 +137,11 @@ object AbgangKreis
                     case Some (t) =>
                         GLMTransformerEdge (t)
                     case _ =>
-                        log.error (s"no transformer found for ${ element.id }") // ToDo: log somehow
+                        log.error (s"no transformer found for ${element.id}") // ToDo: log somehow
                         fakeEdge (element.id, cn1, cn2)
                 }
             case _ =>
-                log.error (s"edge ${ element.id } has unhandled class '${ element.getClass.getName }'") // ToDo: log somehow
+                log.error (s"edge ${element.id} has unhandled class '${element.getClass.getName}'") // ToDo: log somehow
                 fakeEdge (element.id, cn1, cn2)
         }
     }

@@ -63,6 +63,7 @@ case class ScExperiment
         s"Experiment($trafo,$mrid,$equipment,$time[${t0.getTimeInMillis}],$slot,$window,${voltage}V,${impedance.toString}Ω)"
     }
 }
+
 object ScExperiment
 {
     lazy val TIMEFORMAT = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")

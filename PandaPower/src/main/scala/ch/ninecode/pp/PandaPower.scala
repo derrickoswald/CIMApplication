@@ -26,7 +26,7 @@ case class PandaPower
     storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
     workdir: String = s"hdfs://${java.net.InetAddress.getLocalHost.getHostName}/simulation/"
 )
-extends Serializable
+    extends Serializable
 {
     val log: Logger = LoggerFactory.getLogger (getClass)
 
@@ -86,7 +86,7 @@ extends Serializable
     def parsePermissions (s: String): Set[PosixFilePermission] =
     {
         // ToDo: parse file permissions val pattern = Pattern.compile ("\\G\\s*([ugoa]*)([+=-]+)([rwx]*)([,\\s]*)\\s*")
-        Set[PosixFilePermission] (
+        Set [PosixFilePermission](
             PosixFilePermission.OWNER_READ,
             PosixFilePermission.OWNER_WRITE,
             PosixFilePermission.OWNER_EXECUTE,
@@ -180,7 +180,7 @@ extends Serializable
 
     def check (input: String): PandaPowerResult =
     {
-        if (   input.contains ("FAILED")
+        if (input.contains ("FAILED")
             || input.contains ("Errno")
             || input.contains ("command not found")
             || input.contains ("Cannot fork")
@@ -199,7 +199,7 @@ extends Serializable
         val pandapower =
             if (isLocal) // local[*]
             {
-                Array[String](
+                Array [String](
                     "bash",
                     "-c",
                     "while read line; do " +
@@ -213,7 +213,7 @@ extends Serializable
             }
             else // cluster, either hdfs://XX or wasb://YY
             {
-                Array[String](
+                Array [String](
                     "bash",
                     "-c",
                     "while read line; do " +
@@ -236,6 +236,7 @@ extends Serializable
         out.map (check).fold (PandaPowerResult ())((x, y) => x.combine (y))
     }
 }
+
 object PandaPower
 {
     /**
@@ -244,7 +245,7 @@ object PandaPower
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf[ch.ninecode.pp.PandaPowerResult]
+            classOf [ch.ninecode.pp.PandaPowerResult]
         )
     }
 }

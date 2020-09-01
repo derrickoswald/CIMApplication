@@ -130,7 +130,8 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
     version ("version")
         .validate (Unit =>
         {
-            versionout = true; Right (Unit)
+            versionout = true;
+            Right (Unit)
         })
         .text (
             {
@@ -143,7 +144,8 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         .hidden ()
         .action ((_, c) =>
         {
-            unittest = true; c.copy (unittest = true)
+            unittest = true;
+            c.copy (unittest = true)
         })
         .text (s"unit testing - don't call sys.exit() [${default.unittest}]")
 
@@ -293,12 +295,14 @@ class TimeSeriesOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: St
         .hidden ()
         .validate (Unit =>
         {
-            helpout = true; Right (Unit)
+            helpout = true;
+            Right (Unit)
         })
 
     checkConfig (o =>
     {
-        o.valid = !(helpout || versionout); Right (Unit)
+        o.valid = !(helpout || versionout);
+        Right (Unit)
     })
 
     note (

@@ -106,7 +106,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                 x =>
                 {
                     val (base, element) = x
-                    s"$base(${ classname (element) }:${element.id}})".format (x._1, classname (x._2), x._2.id)
+                    s"$base(${classname (element)}:${element.id}})".format (x._1, classname (x._2), x._2.id)
                 }
             ).mkString (",")
             log.error (s"edge from $cn1 to $cn2 has conflicting element types: $types")
@@ -152,10 +152,10 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
         val subtransmission_trafos = edges.flatMap (edge => edge match
-            {
-                case trafo: GLMTransformerEdge => Some(trafo)
-                case _ => None
-            }
+        {
+            case trafo: GLMTransformerEdge => Some (trafo)
+            case _ => None
+        }
         )
         val trafos = transformers ++ subtransmission_trafos
         val configurations = trafos.groupBy (_.configurationName).values

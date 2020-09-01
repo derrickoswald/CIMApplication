@@ -14,12 +14,12 @@ import ch.ninecode.model.TopologicalNode
  *
  * Everything you need to know about a transformer.
  *
- * @param transformer The PowerTransformer object.
- * @param ends The associated PowerTransformerEnd objects ordered by endNumber (which by convention is descending by voltage).
- * @param terminals The terminals ordered the same as the ends.
- * @param nodes The nodes ordered the same as the ends.
- * @param voltages The voltages ordered the same as the ends (V).
- * @param station The Substation object where the transformer is located.
+ * @param transformer  The PowerTransformer object.
+ * @param ends         The associated PowerTransformerEnd objects ordered by endNumber (which by convention is descending by voltage).
+ * @param terminals    The terminals ordered the same as the ends.
+ * @param nodes        The nodes ordered the same as the ends.
+ * @param voltages     The voltages ordered the same as the ends (V).
+ * @param station      The Substation object where the transformer is located.
  * @param shortcircuit The EquivalentInjection object with the available short circuit power and impedance at the primary.
  */
 case class TransformerData

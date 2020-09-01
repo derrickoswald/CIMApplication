@@ -8,10 +8,10 @@ import ch.ninecode.net.TransformerIsland
 /**
  * A work package for gridlab simulation.
  *
- * @param start                  Starting time to be used in the simulation.
- * @param transformers           The feeding transformers (or ganged transformers).
- * @param nodes                  The nodes in the transformer service area.
- * @param edges                  The edges in the transformer service area.
+ * @param start        Starting time to be used in the simulation.
+ * @param transformers The feeding transformers (or ganged transformers).
+ * @param nodes        The nodes in the transformer service area.
+ * @param edges        The edges in the transformer service area.
  */
 case class LowVoltageTrafokreis
 (

@@ -65,7 +65,8 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         .hidden ()
         .action ((_, c) =>
         {
-            unittest = true; c.copy (unittest = true)
+            unittest = true;
+            c.copy (unittest = true)
         })
         .text (s"unit testing - don't call sys.exit() [${default.unittest}]")
 
@@ -106,91 +107,104 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
     opt [String]("mapping")
         .action ((x, c) =>
         {
-            job = job.copy (mapping = x); updateJson (c)
+            job = job.copy (mapping = x);
+            updateJson (c)
         })
         .text (s"file name of mapping CSV or RDF [${job.mapping}] (required)")
 
     opt [String]("metercol")
         .action ((x, c) =>
         {
-            job = job.copy (metercol = x); updateJson (c)
+            job = job.copy (metercol = x);
+            updateJson (c)
         })
         .text (s"column name of meter id in mapping CSV [${job.metercol}]")
 
     opt [String]("mridcol")
         .action ((x, c) =>
         {
-            job = job.copy (mridcol = x); updateJson (c)
+            job = job.copy (mridcol = x);
+            updateJson (c)
         })
         .text (s"column name of CIM mRID in mapping CSV [${job.mridcol}]")
 
     opt [String]("timezone")
         .action ((x, c) =>
         {
-            job = job.copy (timezone = x); updateJson (c)
+            job = job.copy (timezone = x);
+            updateJson (c)
         })
         .text (s"measurement time zone for measurements [${job.timezone}]")
 
     opt [String]("mintime")
         .action ((x, c) =>
         {
-            job = job.copy (mintime = parseTime (x)); updateJson (c)
+            job = job.copy (mintime = parseTime (x));
+            updateJson (c)
         })
         .text (s"minimum time for ingestion timespan [${formatTime (job.mintime)}]")
 
     opt [String]("maxtime")
         .action ((x, c) =>
         {
-            job = job.copy (maxtime = parseTime (x)); updateJson (c)
+            job = job.copy (maxtime = parseTime (x));
+            updateJson (c)
         })
         .text (s"maximum time for ingestion timespan [${formatTime (job.maxtime)}]")
 
     opt [String]("keyspace")
         .action ((x, c) =>
         {
-            job = job.copy (keyspace = x); updateJson (c)
+            job = job.copy (keyspace = x);
+            updateJson (c)
         })
         .text (s"target Cassandra keyspace [${job.keyspace}]")
 
     opt [Int]("replication")
         .action ((x, c) =>
         {
-            job = job.copy (replication = x); updateJson (c)
+            job = job.copy (replication = x);
+            updateJson (c)
         })
         .text (s"keyspace replication if the Cassandra keyspace needs creation [${job.replication}]")
 
     opt [Formats.Value]("format")
         .action ((x, c) =>
         {
-            job = job.copy (format = x); updateJson (c)
+            job = job.copy (format = x);
+            updateJson (c)
         })
         .text (s"format of the data files, one of ${Formats.values.iterator.mkString (",")} [${job.format}]")
 
     opt [Modes.Value]("mode")
         .action ((x, c) =>
         {
-            job = job.copy (mode = x); updateJson (c)
+            job = job.copy (mode = x);
+            updateJson (c)
         })
         .text (s"ingest mode, one of ${Modes.values.iterator.mkString (",")} [${job.mode}]")
 
     opt [Unit]("nocopy")
         .action ((_, c) =>
         {
-            job = job.copy (nocopy = true); updateJson (c)
+            job = job.copy (nocopy = true);
+            updateJson (c)
         })
         .text (s"use files 'as is' without unzipping and copying to HDFS [${job.nocopy}]")
 
     opt [String]("aws_s3a_access_key")
         .action ((x, c) =>
         {
-            job = job.copy (aws_s3a_access_key = x); updateJson (c)
+            job = job.copy (aws_s3a_access_key = x);
+            updateJson (c)
         })
         .text (s"aws access key [${job.aws_s3a_access_key}]")
 
     opt [String]("aws_s3a_secret_key")
         .action ((x, c) =>
         {
-            job = job.copy (aws_s3a_secret_key = x); updateJson (c)
+            job = job.copy (aws_s3a_secret_key = x);
+            updateJson (c)
         })
         .text (s"aws seceret key [${job.aws_s3a_secret_key}]")
 
@@ -228,13 +242,15 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
         .hidden ()
         .validate (Unit =>
         {
-            helpout = true; Right (Unit)
+            helpout = true;
+            Right (Unit)
         })
 
     version ("version")
         .validate (Unit =>
         {
-            versionout = true; Right (Unit)
+            versionout = true;
+            Right (Unit)
         })
         .text (
             {
@@ -245,7 +261,8 @@ class IngestOptionsParser (APPLICATION_NAME: String, APPLICATION_VERSION: String
 
     checkConfig (o =>
     {
-        o.valid = !(helpout || versionout); Right (Unit)
+        o.valid = !(helpout || versionout);
+        Right (Unit)
     })
 
     note (

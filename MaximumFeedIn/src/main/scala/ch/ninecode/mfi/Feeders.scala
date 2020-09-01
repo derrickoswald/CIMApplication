@@ -44,7 +44,7 @@ class Feeders (
      * All elements with associated terminals will be called with this predicate.
      * If the feeder is a two (or more) terminal device this predicate should be careful to select the correct one.
      *
-     * @param element  the element (subclass of ConductingEquipment) to test
+     * @param element the element (subclass of ConductingEquipment) to test
      * @return <code>true</code> if the equipment at this terminal is a feeder
      */
     def isFeeder (element: Element): Boolean =

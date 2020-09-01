@@ -23,5 +23,5 @@ case class FeederNode
             case _ => _id
         },
         nominal_voltage)
-    with GLMNode
+        with GLMNode
 

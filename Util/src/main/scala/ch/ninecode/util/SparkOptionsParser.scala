@@ -30,7 +30,8 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         .valueName ("<master_url>")
         .action ((x, c) =>
         {
-            c.spark_options = c.spark_options.copy (master = x); c
+            c.spark_options = c.spark_options.copy (master = x);
+            c
         })
         .text (s"local[*], spark://host:port/, mesos://host:port or yarn [${default.spark_options.master}]")
 
@@ -38,7 +39,8 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         .valueName ("<map>")
         .action ((x, c) =>
         {
-            c.spark_options = c.spark_options.copy (options = x); c
+            c.spark_options = c.spark_options.copy (options = x);
+            c
         })
         .text (s"Spark options [${default.spark_options.options.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
 
@@ -46,7 +48,8 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         .valueName ("<enum>")
         .action ((x, c) =>
         {
-            c.spark_options = c.spark_options.copy (log = x); c
+            c.spark_options = c.spark_options.copy (log = x);
+            c
         })
         .text (s"log level, one of ${logLevels.mkString (",")} [${default.spark_options.log}]")
 
@@ -54,7 +57,8 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         .valueName ("<list>")
         .action ((x, c) =>
         {
-            c.spark_options = c.spark_options.copy (jars = x); c
+            c.spark_options = c.spark_options.copy (jars = x);
+            c
         })
         .text (s"names of jars to send to Spark [${default.spark_options.jars.mkString (COMMA)}]")
 
@@ -62,7 +66,8 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         .valueName ("<dir>")
         .action ((x, c) =>
         {
-            c.spark_options = c.spark_options.copy (checkpoint = x); c
+            c.spark_options = c.spark_options.copy (checkpoint = x);
+            c
         })
         .text (s"checkpoint directory on HDFS, e.g. hdfs://... [${default.spark_options.checkpoint}]")
 }

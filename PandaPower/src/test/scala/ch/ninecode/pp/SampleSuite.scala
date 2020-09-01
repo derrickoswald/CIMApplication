@@ -26,9 +26,18 @@ case class MyPandaPowerGenerator (
     _edges: Iterable[LoadFlowEdge]) extends PandaPowerGenerator
 {
     override val directory: String = s"$basedir$name"
-    override val lines: Iterable[LineEdge] = _edges.flatMap (_ match { case l: LineEdge => Some (l); case _ => None })
-    override val switches: Iterable[SwitchEdge] = _edges.flatMap (_ match { case s: SwitchEdge => Some (s); case _ => None })
-    override val transformers: Iterable[TransformerEdge] = _edges.flatMap (_ match { case t: TransformerEdge => Some (t); case _ => None })
+    override val lines: Iterable[LineEdge] = _edges.flatMap (_ match
+    { case l: LineEdge => Some (l);
+        case _ => None
+    })
+    override val switches: Iterable[SwitchEdge] = _edges.flatMap (_ match
+    { case s: SwitchEdge => Some (s);
+        case _ => None
+    })
+    override val transformers: Iterable[TransformerEdge] = _edges.flatMap (_ match
+    { case t: TransformerEdge => Some (t);
+        case _ => None
+    })
     override val swing_nodes: Iterable[LoadFlowNode] = transformers.map (transformer => PandaPowerExternalGridNode (transformer))
     override val extra: Iterable[String] = Array (
         """sc.calc_sc(net, case="max", ip=True, ith=True, branch_results=True)""",
@@ -67,9 +76,9 @@ class SampleSuite extends TestUtil with BeforeAndAfter
             implicit val spark: SparkSession = session
             val WORKDIR = "target/"
             LineDetails.PROPERTIES_ARE_ERRONEOUSLY_PER_KM = false
-            val options = Map[String,String] ("ch.ninecode.cim.do_topo_islands" -> "true")
+            val options = Map [String, String]("ch.ninecode.cim.do_topo_islands" -> "true")
             readCIMElements (session, s"$FILE_DEPOT$FILENAME1$CIM_EXTENSION", options)
-            val islands = get[TopologicalIsland]
+            val islands = get [TopologicalIsland]
             val island = new Island (session)
             val (nodes, edges) = island.queryNetwork (islands.map (island => ("GettingStarted", island.id)))
             val tasks = nodes.groupByKey.join (edges.groupByKey)

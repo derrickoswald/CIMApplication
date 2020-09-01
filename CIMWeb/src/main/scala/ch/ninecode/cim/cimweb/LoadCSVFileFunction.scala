@@ -21,7 +21,8 @@ case class LoadCSVFileFunction (paths: Array[String], options: Iterable[(String,
                 val prefix = hdfs.getUri.toString
                 val files = paths.map (s =>
                 {
-                    val file = if (s.startsWith ("/")) s else s"/$s"; new Path (prefix, file).toString
+                    val file = if (s.startsWith ("/")) s else s"/$s";
+                    new Path (prefix, file).toString
                 })
                 val filelist = files.foldLeft (Json.createArrayBuilder)((b, f) => b.add (f))
                 val reader_options = Map [String, String](

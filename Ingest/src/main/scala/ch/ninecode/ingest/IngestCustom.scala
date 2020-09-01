@@ -47,7 +47,7 @@ case class IngestCustom (session: SparkSession, options: IngestOptions) extends 
                             end = fields (index + 1);
                             startDateTime = if (start.length == 8) measurementDateTimeFormat3.parse (s"$date $start") else measurementDateTimeFormat2.parse (start);
                             endDateTime = if (end.length == 8) measurementDateTimeFormat3.parse (s"$date $end") else measurementDateTimeFormat2.parse (end);
-                            passesMidnight = endDateTime.before(startDateTime);
+                            passesMidnight = endDateTime.before (startDateTime);
                             timeDiff = (endDateTime.getTime - startDateTime.getTime).toInt;
                             interval = if (passesMidnight) timeDiff + 86400000 else timeDiff;
                             value = asDouble (fields (index + 2)) * factor

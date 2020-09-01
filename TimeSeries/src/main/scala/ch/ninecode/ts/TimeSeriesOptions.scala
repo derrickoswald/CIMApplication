@@ -54,11 +54,17 @@ case class TimeSeriesOptions
     synthesis: String = "HASFAKE",
     start: Calendar =
     {
-        val d = "2017-07-19T00:00:00.000+0000"; val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT")); c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime); c
+        val d = "2017-07-19T00:00:00.000+0000";
+        val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT"));
+        c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime);
+        c
     },
     end: Calendar =
     {
-        val d = "2018-03-31T23:45:00.000+0000"; val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT")); c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime); c
+        val d = "2018-03-31T23:45:00.000+0000";
+        val c = Calendar.getInstance (TimeZone.getTimeZone ("GMT"));
+        c.setTimeInMillis (new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ").parse (d).getTime);
+        c
     },
     period: Int = 900000,
     yearly_kWh: Double = 7200.0,

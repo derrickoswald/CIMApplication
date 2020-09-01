@@ -13,7 +13,7 @@ case class PandaPowerExternalGridNode
     zmax: Complex,
     zmin: Complex
 )
-extends LoadFlowNode (_id, _nominal_voltage)
+    extends LoadFlowNode (_id, _nominal_voltage)
 {
 }
 

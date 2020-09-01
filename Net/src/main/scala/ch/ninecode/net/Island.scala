@@ -63,12 +63,12 @@ class Island (
         val voltages = Voltages (session).getVoltages
         islands_identifiers
             .join (
-                getOrElse[Terminal]
+                getOrElse [Terminal]
                     .keyBy (terminal => terminal.TopologicalNode)
-                    .join (getOrElse[TopologicalNode].keyBy (_.id))
+                    .join (getOrElse [TopologicalNode].keyBy (_.id))
                     .values
                     .keyBy (_._1.ConductingEquipment)
-                    .join (getOrElse[Element]("Elements").keyBy (_.id))
+                    .join (getOrElse [Element]("Elements").keyBy (_.id))
                     .values
                     .keyBy (_._1._2.TopologicalIsland)
             )
@@ -84,7 +84,7 @@ class Island (
 
     // for these network nodes, find single terminal equipment if possible
     lazy val one_terminal_equipment: RDD[(String, Iterable[Terminal])] =
-        getOrElse[Terminal]
+        getOrElse [Terminal]
             .groupBy (_.ConductingEquipment)
             .values
             .flatMap (

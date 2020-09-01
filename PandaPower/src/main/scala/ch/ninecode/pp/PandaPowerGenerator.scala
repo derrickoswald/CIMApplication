@@ -94,29 +94,29 @@ class PandaPowerGenerator extends Serializable
     def prefix: Array[String] =
     {
         val preamble =
-         s"""# $header
-            |
-            |import os
-            |import numpy as np
-            |import pandas as pd
-            |import tempfile
-            |import pandapower as pp
-            |import pandapower.shortcircuit as sc
-            |from pandapower.control import ConstControl
-            |from pandapower.timeseries import DFData
-            |from pandapower.timeseries import OutputWriter
-            |from pandapower.timeseries.run_time_series import run_timeseries
-            |""".stripMargin
+            s"""# $header
+               |
+               |import os
+               |import numpy as np
+               |import pandas as pd
+               |import tempfile
+               |import pandapower as pp
+               |import pandapower.shortcircuit as sc
+               |from pandapower.control import ConstControl
+               |from pandapower.timeseries import DFData
+               |from pandapower.timeseries import OutputWriter
+               |from pandapower.timeseries.run_time_series import run_timeseries
+               |""".stripMargin
 
         val net =
-          """net = pp.create_empty_network()
-            |pp.set_user_pf_options(net, init_vm_pu = "flat", init_va_degree = "dc", calculate_voltage_angles=True)
-            |""".stripMargin
+            """net = pp.create_empty_network()
+              |pp.set_user_pf_options(net, init_vm_pu = "flat", init_va_degree = "dc", calculate_voltage_angles=True)
+              |""".stripMargin
 
         val index =
-          """def busIndex(name):
-            |   return net.bus[(net.bus.name==name)].index.values[0]
-            |""".stripMargin
+            """def busIndex(name):
+              |   return net.bus[(net.bus.name==name)].index.values[0]
+              |""".stripMargin
 
         Array (preamble, net, index)
     }
@@ -144,22 +144,22 @@ class PandaPowerGenerator extends Serializable
         // see https://pandapower.readthedocs.io/en/latest/elements/trafo.html
         val details = for (edge <- templates)
             yield
-             s"""    "${edge.configurationName}":
-                |    {
-                |        "sn_mva":       ${ edge.transformer.power_rating / 1000000.0 },
-                |        "vn_hv_kv":     ${ edge.transformer.v0 / 1000.0 },
-                |        "vn_lv_kv":     ${ edge.transformer.v1 / 1000.0 },
-                |        "vk_percent":   ${ getShortCircuitVoltage (edge).modulus / edge.transformer.v0 * 100.0 },
-                |        "vkr_percent":  ${ getShortCircuitVoltage (edge).re / edge.transformer.v0 * 100.0 },
-                |        "pfe_kw":       $getIronLosses,
-                |        "i0_percent":   $getOpenLoopLosses,
-                |        "shift_degree": $getPhaseShift
-                |    }""".stripMargin
+                s"""    "${edge.configurationName}":
+                   |    {
+                   |        "sn_mva":       ${edge.transformer.power_rating / 1000000.0},
+                   |        "vn_hv_kv":     ${edge.transformer.v0 / 1000.0},
+                   |        "vn_lv_kv":     ${edge.transformer.v1 / 1000.0},
+                   |        "vk_percent":   ${getShortCircuitVoltage (edge).modulus / edge.transformer.v0 * 100.0},
+                   |        "vkr_percent":  ${getShortCircuitVoltage (edge).re / edge.transformer.v0 * 100.0},
+                   |        "pfe_kw":       $getIronLosses,
+                   |        "i0_percent":   $getOpenLoopLosses,
+                   |        "shift_degree": $getPhaseShift
+                   |    }""".stripMargin
 
         val types =
-         s"""transformertypes = {
-            |${details.mkString (",\n")}
-            |}""".stripMargin
+            s"""transformertypes = {
+               |${details.mkString (",\n")}
+               |}""".stripMargin
 
         Array (
             types,
@@ -188,24 +188,24 @@ class PandaPowerGenerator extends Serializable
         // see https://pandapower.readthedocs.io/en/latest/elements/line.html
         val details = for
             (
-                line: LineEdge <- templates;
-                z = line.data.perLengthImpedance // ToDo: temperature
-            )
+            line: LineEdge <- templates;
+            z = line.data.perLengthImpedance // ToDo: temperature
+        )
             yield
-             s"""    "${line.configurationName}":
-                |    {
-                |        "r_ohm_per_km": ${ z.z1.re * 1000.0 },
-                |        "x_ohm_per_km": ${ z.z1.im * 1000.0 },
-                |        "c_nf_per_km":  ${ getCapacitance (line) * 1e-9 * 1000.0 },
-                |        "max_i_ka":     ${ getCurrentRating (line) / 1000.0 },
-                |        "type":         "${getType (line)}",
-                |        "q_mm2":        ${getCrossSectionalArea (line)},
-                |        "alpha":        ${LineDetails.ALPHA}
-                |    }""".stripMargin
+                s"""    "${line.configurationName}":
+                   |    {
+                   |        "r_ohm_per_km": ${z.z1.re * 1000.0},
+                   |        "x_ohm_per_km": ${z.z1.im * 1000.0},
+                   |        "c_nf_per_km":  ${getCapacitance (line) * 1e-9 * 1000.0},
+                   |        "max_i_ka":     ${getCurrentRating (line) / 1000.0},
+                   |        "type":         "${getType (line)}",
+                   |        "q_mm2":        ${getCrossSectionalArea (line)},
+                   |        "alpha":        ${LineDetails.ALPHA}
+                   |    }""".stripMargin
         val types =
-         s"""linetypes = {
-             |${details.mkString (",\n")}
-             |}""".stripMargin
+            s"""linetypes = {
+               |${details.mkString (",\n")}
+               |}""".stripMargin
 
         Array (
             types,
@@ -214,8 +214,8 @@ class PandaPowerGenerator extends Serializable
     }
 
     def emitNode (node: LoadFlowNode): String =
-        // pandapower.create_bus(net, vn_kv, name=None, index=None, geodata=None, type='b', zone=None, in_service=True,
-        // max_vm_pu=nan, min_vm_pu=nan, coords=None, **kwargs)
+    // pandapower.create_bus(net, vn_kv, name=None, index=None, geodata=None, type='b', zone=None, in_service=True,
+    // max_vm_pu=nan, min_vm_pu=nan, coords=None, **kwargs)
         s"""pp.create_bus(net, ${node.nominal_voltage / 1000.0}, "${node.id}")"""
 
     /**
@@ -261,14 +261,14 @@ class PandaPowerGenerator extends Serializable
     }
 
     def emitLine (line: LineEdge): String =
-        // pandapower.create_line(net, from_bus, to_bus, length_km, std_type, name=None,
-        //    index=None, geodata=None, df=1.0, parallel=1, in_service=True, max_loading_percent=nan, alpha=None, temperature_degree_celsius=None)
-        // ToDo: can we use alpha and temperature_degree_celsius to perform the temperature compensation?
-        // ToDo: should we use parallel>1 given that it is limited to cables of the same type
+    // pandapower.create_line(net, from_bus, to_bus, length_km, std_type, name=None,
+    //    index=None, geodata=None, df=1.0, parallel=1, in_service=True, max_loading_percent=nan, alpha=None, temperature_degree_celsius=None)
+    // ToDo: can we use alpha and temperature_degree_celsius to perform the temperature compensation?
+    // ToDo: should we use parallel>1 given that it is limited to cables of the same type
         s"""pp.create_line(net, ${busIndex (line.cn1)}, ${busIndex (line.cn2)}, ${line.length / 1000.0}, "${line.configurationName}", "${line.id}")"""
 
     def emitSwitch (switch: SwitchEdge): String =
-        // pandapower.create_switch(net, bus, element, et, closed=True, type=None, name=None, index=None, z_ohm=0)
+    // pandapower.create_switch(net, bus, element, et, closed=True, type=None, name=None, index=None, z_ohm=0)
         s"""pp.create.switch(net, ${busIndex (switch.cn1)}, ${busIndex (switch.cn2)}, "b", ${switch.closed}, name="${switch.id}")"""
 
     /**
@@ -283,15 +283,15 @@ class PandaPowerGenerator extends Serializable
     {
         // create the output script
         val allstrings = Array.concat (
-            prefix,                                     // emit the prefix text
-            getTransformerConfigurations,               // emit the transformer configurations
-            getLineConfigurations,                      // emit line configurations
-            nodes.map (emitNode).toArray,               // emit the node strings
-            swing_nodes.map (emitGrid).toArray,         // emit the swing node
+            prefix, // emit the prefix text
+            getTransformerConfigurations, // emit the transformer configurations
+            getLineConfigurations, // emit line configurations
+            nodes.map (emitNode).toArray, // emit the node strings
+            swing_nodes.map (emitGrid).toArray, // emit the swing node
             transformers.map (emitTransformer).toArray, // emit the transformers
-            lines.map (emitLine).toArray,               // emit the cables
-            switches.map (emitSwitch).toArray,          // emit the switches
-            extra.toArray                               // emit any extra text
+            lines.map (emitLine).toArray, // emit the cables
+            switches.map (emitSwitch).toArray, // emit the switches
+            extra.toArray // emit any extra text
         )
 
         allstrings.mkString ("\n")
