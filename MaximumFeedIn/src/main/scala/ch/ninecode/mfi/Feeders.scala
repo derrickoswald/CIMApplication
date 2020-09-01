@@ -45,10 +45,9 @@ class Feeders (
      * If the feeder is a two (or more) terminal device this predicate should be careful to select the correct one.
      *
      * @param element  the element (subclass of ConductingEquipment) to test
-     * @param terminal the terminal of the conducting equipment
      * @return <code>true</code> if the equipment at this terminal is a feeder
      */
-    def isFeeder (element: Element, terminal: Terminal): Boolean =
+    def isFeeder (element: Element): Boolean =
     {
         element match
         {
@@ -66,7 +65,7 @@ class Feeders (
      * @param test predicate to determine if this element:terminal pair is a feeder
      * @return the RDD of feeders
      */
-    def getFeeders (test: (Element, Terminal) => Boolean = isFeeder): RDD[Feeder] =
+    def getFeeders (test: Element => Boolean = isFeeder): RDD[Feeder] =
     {
         // get terminals keyed by their conducting equipment
         val terminals = getOrElse [Terminal].keyBy (_.ConductingEquipment)
@@ -83,7 +82,7 @@ class Feeders (
             .keyBy (_.id)
             .join (terminals)
             .values
-            .filter (x => test (x._1, x._2))
+            .filter (x => test (x._1))
             .keyBy (_._2.TopologicalNode)
             .leftOuterJoin (switches)
             .values

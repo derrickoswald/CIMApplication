@@ -122,7 +122,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                 t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
                 val t2 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID = "terminal_2"))), TopologicalNode = cn2)
                 t2.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
-                implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
+                LineDetails.StaticLineDetails ()
                 GLMLineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None, tbase))))
             // base_temperature: Double = 20.0,
             // DEFAULT_R: Double = 0.225,
