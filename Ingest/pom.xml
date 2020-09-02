@@ -339,7 +339,7 @@ enable_scripted_user_defined_functions: true
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.ingest.Main</mainClass>
+                                    <mainClass>ch.ninecode.ingest.Ingest</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
