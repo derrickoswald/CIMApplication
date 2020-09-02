@@ -84,8 +84,16 @@ trait SparkInitializer[T <: Mainable with Sparkable]
                     .setMaster (options.spark_options.master)
                     .setJars (options.spark_options.jars)
                     .registerKryoClasses (options.spark_options.kryo)
-            // register GraphX classes
-            GraphXUtils.registerKryoClasses (configuration)
+            // register GraphX classes if the package is available
+            try
+            {
+                val _ = Class.forName ("org.apache.spark.graphx.GraphXUtils$", java.lang.Boolean.FALSE, getClass.getClassLoader)
+                GraphXUtils.registerKryoClasses (configuration)
+            }
+            catch
+            {
+                case _: ClassNotFoundException =>
+            }
             options.spark_options.options.foreach ((pair: (String, String)) => configuration.set (pair._1, pair._2))
 
             // make a Spark session

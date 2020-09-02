@@ -261,7 +261,7 @@ enable_scripted_user_defined_functions: true
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.copy.Main</mainClass>
+                                    <mainClass>ch.ninecode.copy.Copy</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>

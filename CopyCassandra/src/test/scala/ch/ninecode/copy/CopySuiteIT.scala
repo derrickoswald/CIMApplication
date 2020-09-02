@@ -9,7 +9,7 @@ import com.datastax.oss.driver.api.core.CqlSession
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
-import ch.ninecode.copy.Main.main
+import Copy.main
 import ch.ninecode.testutil.TestUtil
 
 class CopySuiteIT extends TestUtil
@@ -69,8 +69,8 @@ class CopySuiteIT extends TestUtil
         val source_session = getSourceSession
         val target_session = getTargetSession
 
-        val exists = target_session.execute (s"select * from system_schema.keyspaces where keyspace_name='$SOURCE_KEYSPACE'").all.asScala
-        assumeTrue (s"""keyspace "$SOURCE_KEYSPACE" doesn't exist""", 1 == exists.size)
+        val exists = source_session.execute (s"select * from system_schema.keyspaces where keyspace_name='$SOURCE_KEYSPACE'").all.asScala
+        assumeTrue (s"""keyspace "$SOURCE_KEYSPACE" doesn't exist in $SOURCE_HOST:9042""", 1 == exists.size)
 
         main (Array ("--unittest",
             "--master", "local[*]",
