@@ -16,4 +16,6 @@ class NetworkParametersOptionsParser (options: NetworkParametersOptions) extends
         .valueName ("<RDF file>")
         .action ((x, c) => c.copy (export = x))
         .text (s"save processed RDF file as this name [${options.export}]")
+
+    note ("Creates EquivalentInjection objects for the network that is supplying transformers using an external data file.\n")
 }
