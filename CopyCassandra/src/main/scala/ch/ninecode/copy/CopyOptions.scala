@@ -30,4 +30,4 @@ case class CopyOptions (
     target_port: Int = 9042,
     target_keyspace: String = "cimapplication",
     target_replication: Int = 1
-)  extends Mainable with Sparkable
+) extends Mainable with Sparkable
