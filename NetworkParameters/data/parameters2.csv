@@ -1,0 +1,3 @@
+nis_number;Name_Netzeinspeisung;Name_Station;Gemeinde_Station;article_id;Type;kf_neplan_typ;nominal_voltage;max_connections
+TX0001;Middelbeers (20kV-SS);Andreasstaat;Oirschot (North Brabant);1;630_Oil;20/0.4 kV 0630 kVA (Oel);20000;2
+TX0002;Middelbeers (20kV-SS);Driehoek;Oirschot (North Brabant);2;630_Oil;20/0.4 kV 0630 kVA (Oel);20000;2

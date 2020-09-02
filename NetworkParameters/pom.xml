@@ -37,6 +37,13 @@
         </dependency>
 
         <dependency>
+            <groupId>ch.ninecode.util</groupId>
+            <artifactId>Util</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.github.scopt</groupId>
             <artifactId>scopt_${version.dependency.scala}</artifactId>
             <version>${version.dependency.scopt}</version>
@@ -159,7 +166,7 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.np.MainCustomer1</mainClass>
+                                    <mainClass>ch.ninecode.np.ShortCircuitInfo1</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
@@ -177,7 +184,7 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.np.MainCustomer2</mainClass>
+                                    <mainClass>ch.ninecode.np.ShortCircuitInfo2</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
@@ -195,7 +202,7 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.np.MainCustomer3</mainClass>
+                                    <mainClass>ch.ninecode.np.ShortCircuitInfo3</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
