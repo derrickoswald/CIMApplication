@@ -704,7 +704,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                         end = fields (index + 1);
                         startDateTime = if (start.length == 8) MeasurementDateTimeFormat3.parse (s"$date $start") else MeasurementDateTimeFormat2.parse (start);
                         endDateTime = if (end.length == 8) MeasurementDateTimeFormat3.parse (s"$date $end") else MeasurementDateTimeFormat2.parse (end);
-                        passesMidnight = endDateTime.before(startDateTime);
+                        passesMidnight = endDateTime.before (startDateTime);
                         timeDiff = (endDateTime.getTime - startDateTime.getTime).toInt;
                         interval = if (passesMidnight) timeDiff + 86400000 else timeDiff;
                         value = asDouble (fields (index + 2)) * factor
@@ -722,6 +722,31 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
         }
         else
             List ()
+    }
+
+    def line_nyquist (join_table: Map[String, String])(line: String): Seq[MeasuredValue] =
+    {
+        val fields: Array[String] = line.split (";")
+        val mrid = join_table.getOrElse (fields (0), null)
+        if (null != mrid)
+        {
+            //val (typ, real, imag, units, factor) = decode_obis (fields (3), fields (5), "1.0") // TODO: don't hardcode OBIS
+            val (typ, real, imag, units, factor) = if (fields(2).equals("1.1.1.8.0.255") )
+                ("energy", true, false, "Wh", 1.0)
+            else if (fields(2).equals("1.1.2.8.0.255"))
+                ("energy", true, false, "Wh" , -1.0)
+            else
+                ("", false, false, "OBIS code format error", 0.0)
+
+            val timestamp = MeasurementDateTimeFormat2.parse(fields (1))
+            val value = asDouble (fields (3)) * factor
+            if (real)
+                Seq[MeasuredValue] ((mrid, typ, timestamp.getTime, 900000, value, 0.0, units))
+            else
+                Seq[MeasuredValue] ((mrid, typ, timestamp.getTime , 900000, 0.0, value, units))
+        } else {
+            List ()
+        }
     }
 
 
@@ -766,6 +791,49 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
             log.info (s"process $filename: ${(end - start) / 1e9} seconds")
         }
     }
+
+    def process_nyquist (join_table: Map[String, String])(file: String): Unit =
+    {
+        val files: Seq[String] = getFiles (file)
+        for (filename ← files)
+        {
+            val start = System.nanoTime ()
+            sub_nyquist (filename, join_table)
+            if (!options.nocopy)
+                hdfs.delete (new Path (filename), false)
+            val end = System.nanoTime ()
+            log.info (s"process $filename: ${(end - start) / 1e9} seconds")
+        }
+    }
+
+    def sub_nyquist (filename: String, join_table: Map[String, String]): Unit =
+    {
+        val lines: RDD[String] = session.sparkContext.textFile (filename)
+        val rdd = lines.flatMap (line_nyquist (join_table))
+        // combine real and imaginary parts
+        if (options.mode == Modes.Append)
+        {
+            val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+            implicit val configuration: ReadConf =
+                ReadConf
+                    .fromSparkConf (session.sparkContext.getConf)
+                    .copy (splitCount = Some (executors))
+            val df =
+                session
+                    .sparkContext
+                    .cassandraTable[MeasuredValue](options.keyspace, "measured_value")
+                    .select ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val unioned = rdd.union (df)
+            val grouped = unioned.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
+        else
+        {
+            val grouped: RDD[MeasuredValue] = rdd.groupBy (x => (x._1, x._2, x._3)).values.map (complex)
+            grouped.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        }
+    }
+
 
     def process_parquet (): Unit =
     {
@@ -890,6 +958,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                 case "LPEx" => options.datafiles.foreach (process_lpex (join_table))
                 case "MSCONS" => process_mscons (join_table)(options.datafiles)
                 case "Custom" => options.datafiles.foreach (process_custom (join_table))
+                case "Nyquist" => options.datafiles.foreach (process_nyquist (join_table))
                 case "Parquet" => process_parquet ()
             }
 

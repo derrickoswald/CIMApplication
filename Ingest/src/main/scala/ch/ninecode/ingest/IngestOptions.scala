@@ -9,7 +9,7 @@ object LogLevels extends Enumeration
 object Formats extends Enumeration
 {
     type Formats = Value
-    val Belvis, LPEx, MSCONS, Custom, Parquet = Value
+    val Belvis, LPEx, MSCONS, Custom, Parquet, Nyquist = Value
 }
 
 object Modes extends Enumeration
