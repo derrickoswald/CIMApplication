@@ -86,7 +86,7 @@ class IngestSuiteIT
     @Test def doIngest ()
     {
         val port = cassandra_port.toString
-println (s"calling main with $LOCALHOST:$port")
+
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
             "--host", LOCALHOST,
