@@ -11,6 +11,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 
 import ch.ninecode.cim.CIMClasses
+import ch.ninecode.util.MainOptions
 
 class EventAndFactorSuiteIT
 {
@@ -54,7 +55,7 @@ class EventAndFactorSuiteIT
     {
         val access = SimulationCassandraAccess (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List [SimulationAggregate]()
-        val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
+        val options = SimulationOptions (verbose = true, main_options = MainOptions (unittest = true), three_phase = true)
         val coincidence = SimulationCoincidenceFactor (IGNORED_AGGREGATES)(_Spark, options)
         coincidence.run (access)
     }
@@ -63,7 +64,7 @@ class EventAndFactorSuiteIT
     {
         val access = SimulationCassandraAccess (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List [SimulationAggregate]()
-        val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
+        val options = SimulationOptions (verbose = true, main_options = MainOptions (unittest = true), three_phase = true)
         val load = SimulationLoadFactor (IGNORED_AGGREGATES)(_Spark, options)
         load.run (access)
     }
@@ -72,7 +73,7 @@ class EventAndFactorSuiteIT
     {
         val access = SimulationCassandraAccess (_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List [SimulationAggregate]()
-        val options = SimulationOptions (verbose = true, unittest = true, three_phase = true)
+        val options = SimulationOptions (verbose = true, main_options = MainOptions (unittest = true), three_phase = true)
         val responsibility = SimulationResponsibilityFactor (IGNORED_AGGREGATES)(_Spark, options)
         responsibility.run (access)
     }

@@ -3,6 +3,8 @@ package ch.ninecode.sim
 import java.io.Closeable
 import java.io.StringReader
 import java.io.StringWriter
+import java.io.UnsupportedEncodingException
+import java.net.URLDecoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -17,8 +19,11 @@ import javax.json.stream.JsonGenerator
 import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
 import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.tools.nsc.io.Jar
+import scala.util.Random
 
 import org.apache.log4j.LogManager
+import org.apache.log4j.Level
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
@@ -32,18 +37,26 @@ import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.TTLOption
 import com.datastax.spark.connector.writer.WriteConf
 
+import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
 import ch.ninecode.net.Lines
+import ch.ninecode.net.Net
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.net.Transformers
+import ch.ninecode.util.CIMInitializer
+import ch.ninecode.util.Main
+import ch.ninecode.util.MainOptions
 import ch.ninecode.util.Schema
+import ch.ninecode.util.SparkOptions
+import ch.ninecode.util.Util
 
 /**
  * Execute simulations using GridLAB-D.
@@ -158,7 +171,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         Json.createReader (new StringReader (string)).readArray match
         {
             case obj: JsonArray =>
-                obj.getValuesAs (classOf [JsonObject]).asScala
+                obj.getValuesAs (classOf[JsonObject]).asScala
             case _ =>
                 log.error ("""not a JsonArray""")
                 Seq ()
@@ -241,7 +254,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         log.info (s"""preparing simulation job "${job.name}"""")
 
         // transformer area calculations
-        val tsa = TransformerServiceArea (session, options.storage_level)
+        val tsa = TransformerServiceArea (session, options.cim_options.storage)
         // only proceed if topological processing was done (there are TopologicalIslands)
         if (tsa.hasIslands)
         {
@@ -249,7 +262,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             val numareas = islands_trafos.map (_._2).distinct.count.toInt
             log.info (s"""$numareas transformer service area${plural (numareas)} found""")
 
-            val q = SimulationSparkQuery (session, options.storage_level, options.verbose)
+            val q = SimulationSparkQuery (session, options.cim_options.storage, options.verbose)
 
             // query the players
             log.info ("""querying players""")
@@ -275,7 +288,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 else
                     islands_trafos
 
-            val island_helper = new SimulationIsland (session, options.storage_level)
+            val island_helper = new SimulationIsland (session, options.cim_options.storage)
             Lines.DEFAULT_CABLE_RESISTANCE_LIMIT = options.cable_impedance_limit
             val graph_stuff = island_helper.queryNetwork (islands_to_do.map (_.swap))
             val areas: RDD[(identifier, (Iterable[SimulationNode], Iterable[SimulationEdge]))] =
@@ -324,7 +337,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                                 recorders)
                         }
                     )
-                    .persist (options.storage_level)
+                    .persist (options.cim_options.storage)
                     .setName (s"${job.id}_tasks")
             ret
         }
@@ -419,12 +432,12 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             measured_df
                 .rdd
                 .map (function ("")) // convert to case class early
-                .persist (options.storage_level)
+                .persist (options.cim_options.storage)
         val raw_synthesised: RDD[SimulationPlayerData] =
             synthesised_df
                 .rdd
                 .map (function ("")) // convert to case class early
-                .persist (options.storage_level)
+                .persist (options.cim_options.storage)
         val queries_measured: RDD[(House, Trafo)] = simulations.flatMap (
             x =>
             {
@@ -447,7 +460,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             .mapValues (x => x._1.copy (transformer = x._2)) // use real trafo
             .groupByKey
             .groupBy (theTransformer)
-            .persist (options.storage_level)
+            .persist (options.cim_options.storage)
             .setName (s"${job.id}_player_data")
         log.info (s"""${ret.count} player data results""")
         vanishRDD (raw_measured)
@@ -502,7 +515,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def getTransformers: (Map[String, TransformerSet], Array[TransformerData]) =
     {
-        val transformer_data = Transformers (session, options.storage_level).getTransformers ()
+        val transformer_data = Transformers (session, options.cim_options.storage).getTransformers ()
         val tx = transformer_data.keyBy (_.node1.id) // (low_voltage_node_name, TransformerData)
             .join (get [TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
             .map (x => (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
@@ -545,9 +558,9 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 .join (player_rdd)
                 .values
                 .map (x => runner.execute (x._1, x._2.toMap))
-                .persist (options.storage_level)
+                .persist (options.cim_options.storage)
         raw_results.flatMap (_._1).collect.foreach (log.error)
-        val results = raw_results.flatMap (_._2).persist (options.storage_level).setName (s"${job.id}_results")
+        val results = raw_results.flatMap (_._2).persist (options.cim_options.storage).setName (s"${job.id}_results")
         results
     }
 
@@ -585,7 +598,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                             List ()
                     }
                 }
-            ).persist (options.storage_level).setName (s"${job.id}_simulations")
+            ).persist (options.cim_options.storage).setName (s"${job.id}_simulations")
         val numsimulations = _simulations.count.toInt
         log.info (s"$numsimulations GridLAB-D simulation${plural (numsimulations)} to do for simulation ${job.id} batch $batchno")
 
@@ -594,7 +607,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         {
             val direction = SimulationDirection (options.workdir, options.verbose)
             simulations = _simulations.map (x => x.copy (directions = direction.execute (x)))
-                .persist (options.storage_level).setName (s"${job.id}_simulations")
+                .persist (options.cim_options.storage).setName (s"${job.id}_simulations")
             val _ = _simulations.unpersist (false)
         }
         simulations
@@ -617,7 +630,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
         // clean up in case there was a file already loaded
         cleanRDDs ()
-        read (ajob.cim, ajob.cimreaderoptions, options.storage_level)
+        read (ajob.cim, ajob.cimreaderoptions, options.cim_options.storage)
 
         var batchno = 1
         val ids = batch.map (
@@ -686,7 +699,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             {
                 case Some ((id, input, output)) =>
                     implicit val access: SimulationCassandraAccess =
-                        SimulationCassandraAccess (spark, options.storage_level, id, input, output, options.verbose)
+                        SimulationCassandraAccess (spark, options.cim_options.storage, id, input, output, options.verbose)
                     // ToDo: this isn't quite right, take the first job matching the output keyspace
                     val batches = jobs.groupBy (_.output_keyspace)
                     val job = aJob (batches (output))
@@ -744,7 +757,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     }
 }
 
-object Simulation
+object Simulation extends CIMInitializer[SimulationOptions] with Main
 {
     /**
      * The list of classes that can be persisted in RDD.
@@ -752,26 +765,130 @@ object Simulation
     lazy val classes: Array[Class[_]] =
     {
         Array (
-            classOf [ch.ninecode.sim.Simulation],
-            classOf [ch.ninecode.sim.SimulationAggregate],
-            classOf [ch.ninecode.sim.SimulationDirectionGenerator],
-            classOf [ch.ninecode.sim.SimulationEdge],
-            classOf [ch.ninecode.sim.SimulationExtraQuery],
-            classOf [ch.ninecode.sim.SimulationGLMGenerator],
-            classOf [ch.ninecode.sim.SimulationJob],
-            classOf [ch.ninecode.sim.SimulationNode],
-            classOf [ch.ninecode.sim.SimulationOptions],
-            classOf [ch.ninecode.sim.SimulationPlayer],
-            classOf [ch.ninecode.sim.SimulationPlayerData],
-            classOf [ch.ninecode.sim.SimulationPlayerQuery],
-            classOf [ch.ninecode.sim.SimulationPlayerResult],
-            classOf [ch.ninecode.sim.SimulationRecorder],
-            classOf [ch.ninecode.sim.SimulationRecorderQuery],
-            classOf [ch.ninecode.sim.SimulationRecorderResult],
-            classOf [ch.ninecode.sim.SimulationResult],
-            classOf [ch.ninecode.sim.SimulationSparkQuery],
-            classOf [ch.ninecode.sim.SimulationTask],
-            classOf [ch.ninecode.sim.SimulationTrafoKreis]
+            classOf[ch.ninecode.sim.Simulation],
+            classOf[ch.ninecode.sim.SimulationAggregate],
+            classOf[ch.ninecode.sim.SimulationDirectionGenerator],
+            classOf[ch.ninecode.sim.SimulationEdge],
+            classOf[ch.ninecode.sim.SimulationExtraQuery],
+            classOf[ch.ninecode.sim.SimulationGLMGenerator],
+            classOf[ch.ninecode.sim.SimulationJob],
+            classOf[ch.ninecode.sim.SimulationNode],
+            classOf[ch.ninecode.sim.SimulationOptions],
+            classOf[ch.ninecode.sim.SimulationPlayer],
+            classOf[ch.ninecode.sim.SimulationPlayerData],
+            classOf[ch.ninecode.sim.SimulationPlayerQuery],
+            classOf[ch.ninecode.sim.SimulationPlayerResult],
+            classOf[ch.ninecode.sim.SimulationRecorder],
+            classOf[ch.ninecode.sim.SimulationRecorderQuery],
+            classOf[ch.ninecode.sim.SimulationRecorderResult],
+            classOf[ch.ninecode.sim.SimulationResult],
+            classOf[ch.ninecode.sim.SimulationSparkQuery],
+            classOf[ch.ninecode.sim.SimulationTask],
+            classOf[ch.ninecode.sim.SimulationTrafoKreis]
         )
+    }
+
+    def jarForClass (cls: Class[_]): String =
+    {
+        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+        var ret = cls.getProtectionDomain.getCodeSource.getLocation.getPath
+        try
+        {
+            ret = URLDecoder.decode (ret, "UTF-8")
+        }
+        catch
+        {
+            case e: UnsupportedEncodingException => e.printStackTrace ()
+        }
+        if (!ret.toLowerCase ().endsWith (".jar"))
+        {
+            // as an aid to debugging, make jar in tmp and pass that name
+            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
+            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
+            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
+            writer.close ()
+            ret = name
+        }
+
+        ret
+    }
+
+    def run (options: SimulationOptions): Unit =
+    {
+        if (options.verbose)
+            LogManager.getLogger (getClass).setLevel (Level.INFO)
+        if (options.main_options.valid)
+        {
+            if (options.simulation.nonEmpty)
+            {
+                val session: SparkSession = createSession (options)
+                time ("execution: %s seconds")
+                {
+                    val ids = Simulation (session, options).run ()
+                    log.info (s"simulated ${ids.mkString (",")}")
+                }
+            }
+            else
+                log.error ("no simulation JSON files specified")
+        }
+    }
+
+    def main (args: Array[String])
+    {
+        val have = scala.util.Properties.versionNumberString
+        val need = scala_library_version
+        if (have != need)
+        {
+            log.error (s"Scala version ($have) does not match the version ($need) used to build $application_name")
+            sys.exit (1)
+        }
+        else
+        {
+            // get the necessary jar files to send to the cluster
+            val jars = Set (
+                jarForClass (SimulationOptions ().getClass), // sim
+                jarForClass (Class.forName ("ch.ninecode.gl.GLMEdge")), // glm
+                jarForClass (Class.forName ("ch.ninecode.cim.DefaultSource")), // CIMReader
+                jarForClass (Class.forName ("ch.ninecode.util.Complex")), // util
+                jarForClass (Class.forName ("javax.json.JsonStructure")), // json
+                jarForClass (Class.forName ("org.glassfish.json.JsonProviderImpl")), // json_impl
+                jarForClass (Class.forName ("com.datastax.oss.driver.api.core.CqlSession")) // Cassandra
+            ).toArray
+
+            // compose the classes to be registered with Kryo
+            val kryo = Array.concat (
+                // register CIMReader classes
+                CIMClasses.list,
+                // register GridLAB-D classes
+                GridLABD.classes,
+                // register Net classes
+                Net.classes,
+                // register GridLAB-D classes
+                GridLABD.classes,
+                // register Simulation analysis classes
+                Simulation.classes,
+                // register Util classes
+                Util.classes)
+
+            // initialize the default options
+            val temp = SimulationOptions ()
+            val default = SimulationOptions (
+                main_options = MainOptions (application_name, application_version),
+                spark_options = SparkOptions (jars = jars, kryo = kryo),
+                cim_options = temp.cim_options.copy (options = temp.cim_options.toMap)
+            )
+
+            // parse the command line arguments
+            new SimulationOptionsParser (default).parse (args, default) match
+            {
+                case Some (options) =>
+                    // execute the main program if everything checks out
+                    run (options)
+                    if (!options.main_options.unittest)
+                        sys.exit (0)
+                case None =>
+                    sys.exit (1)
+            }
+        }
     }
 }

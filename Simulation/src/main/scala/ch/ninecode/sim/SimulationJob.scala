@@ -333,7 +333,7 @@ object SimulationJob
         val MEMBERNAME = "cimreaderoptions"
         val map = Map [String, String](
             "path" -> cim, // add path to support multiple files
-            "StorageLevel" -> storage_level_tostring (options.storage_level) // add storage option from command line
+            "StorageLevel" -> storage_level_tostring (options.cim_options.storage) // add storage option from command line
         )
 
         if (json.containsKey (MEMBERNAME))

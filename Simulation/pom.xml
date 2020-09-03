@@ -329,7 +329,7 @@ enable_scripted_user_defined_functions: true
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>ch.ninecode.sim.Main</mainClass>
+                                    <mainClass>ch.ninecode.sim.Simulation</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>

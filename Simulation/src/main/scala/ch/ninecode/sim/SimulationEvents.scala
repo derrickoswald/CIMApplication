@@ -717,13 +717,13 @@ case class SimulationEvents (triggers: Iterable[Trigger])(spark: SparkSession, o
         for (((typ, ref, default), thresholds) <- sets)
         {
             log.info (s"$typ events with reference $ref and default $default")
-            DoubleChecker (spark, options.storage_level, options.three_phase).checkFor (thresholds)
+            DoubleChecker (spark, options.cim_options.storage, options.three_phase).checkFor (thresholds)
             log.info (s"$typ deviation events saved to ${access.output_keyspace}.simulation_event")
         }
 
         // perform the summary
         log.info ("summarizing events")
-        Summarizer (spark, options.storage_level).summarize ()
+        Summarizer (spark, options.cim_options.storage).summarize ()
         log.info (s"event summary saved to ${access.output_keyspace}.simulation_event_summary")
     }
 }

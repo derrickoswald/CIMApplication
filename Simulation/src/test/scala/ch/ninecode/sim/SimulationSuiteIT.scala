@@ -50,7 +50,7 @@ class SimulationSuiteIT
 
     @Test def Help ()
     {
-        Main.main (Array ("--unittest", "--help"))
+        Simulation.main (Array ("--unittest", "--help"))
     }
 
     @Test def SimulationDemoData ()
@@ -339,7 +339,7 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Main.main (
+        Simulation.main (
             Array (
                 "--unittest",
                 "--master", "local[2]",
@@ -535,11 +535,11 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Main.main (
+        Simulation.main (
             Array (
                 "--unittest",
                 "--master", "local[2]",
-                "--opts", "spark.driver.memory=2g,spark.executor.memory=2g",
+                "--spark_options", "spark.driver.memory=2g,spark.executor.memory=2g,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.sql.catalog.casscatalog=com.datastax.spark.connector.datasource.CassandraCatalog,spark.kryo.registrator=ch.ninecode.cim.CIMRegistrator,spark.graphx.pregel.checkpointInterval=8,spark.ui.showConsoleProgress=false,spark.sql.debug.maxToStringFields=250",
                 "--verbose",
                 "--keep",
                 "--host", "localhost",
@@ -949,7 +949,7 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Main.main (
+        Simulation.main (
             Array (
                 "--unittest",
                 "--master", "local[2]",
@@ -1102,7 +1102,7 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Main.main (
+        Simulation.main (
             Array (
                 "--unittest",
                 "--master", "local[2]",

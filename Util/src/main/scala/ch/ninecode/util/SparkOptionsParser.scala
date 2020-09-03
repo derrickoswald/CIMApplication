@@ -26,7 +26,7 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
 
     implicit val arrayRead: scopt.Read[Array[String]] = scopt.Read.reads (_.split (COMMA))
 
-    opt [String]("master")
+    opt[String]("master")
         .valueName ("<master_url>")
         .action ((x, c) =>
         {
@@ -35,7 +35,7 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         })
         .text (s"local[*], spark://host:port/, mesos://host:port or yarn [${default.spark_options.master}]")
 
-    opt [Map[String, String]]("spark_options")
+    opt[Map[String, String]]("spark_options")
         .valueName ("<map>")
         .action ((x, c) =>
         {
@@ -44,7 +44,7 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         })
         .text (s"Spark options [${default.spark_options.options.map (x => s"${x._1}$EQUAL${x._2}").mkString (COMMA)}]")
 
-    opt [Level]("log")
+    opt[Level]("log")
         .valueName ("<enum>")
         .action ((x, c) =>
         {
@@ -53,7 +53,7 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         })
         .text (s"log level, one of ${logLevels.mkString (",")} [${default.spark_options.log}]")
 
-    opt [Array[String]]("jars")
+    opt[Array[String]]("jars")
         .valueName ("<list>")
         .action ((x, c) =>
         {
@@ -62,7 +62,7 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         })
         .text (s"names of jars to send to Spark [${default.spark_options.jars.mkString (COMMA)}]")
 
-    opt [String]("checkpoint")
+    opt[String]("checkpoint")
         .valueName ("<dir>")
         .action ((x, c) =>
         {
