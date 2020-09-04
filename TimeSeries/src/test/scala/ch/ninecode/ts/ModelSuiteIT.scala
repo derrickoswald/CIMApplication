@@ -51,7 +51,7 @@ class ModelSuiteIT
                 main (Array (
                     "Model", "--unittest",
                     "--master", "local[*]",
-                    "--logging", "INFO",
+                    "--log", "INFO",
                     "--host", "localhost",
                     "--port", cassandra_port.toString,
                     "--keyspace", KEYSPACE,
@@ -64,7 +64,7 @@ class ModelSuiteIT
                 main (Array (
                     "Synthesize", "--unittest",
                     "--master", "local[*]",
-                    "--logging", "INFO",
+                    "--log", "INFO",
                     "--host", "localhost",
                     "--port", cassandra_port.toString,
                     "--keyspace", KEYSPACE,

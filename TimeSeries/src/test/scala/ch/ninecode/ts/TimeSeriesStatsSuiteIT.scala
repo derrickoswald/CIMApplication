@@ -47,7 +47,7 @@ class TimeSeriesStatsSuiteIT
         main (Array (
             "Statistics", "--unittest",
             "--master", "local[*]",
-            "--logging", "INFO",
+            "--log", "INFO",
             "--host", "localhost",
             "--port", cassandra_port,
             "--keyspace", "test"))

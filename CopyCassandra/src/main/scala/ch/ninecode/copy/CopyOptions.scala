@@ -9,8 +9,8 @@ import ch.ninecode.util.Sparkable
  *
  * Options for copy between Cassandra instances.
  *
- * @param main_options            main() program options
- * @param spark_options           Spark session options
+ * @param main_options       main() program options
+ * @param spark_options      Spark session options
  * @param source_host        Cassandra source connection host.
  * @param source_port        Cassandra source connection port.
  * @param source_keyspace    Cassandra source keyspace.

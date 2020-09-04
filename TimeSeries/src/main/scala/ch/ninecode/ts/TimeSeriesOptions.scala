@@ -4,18 +4,20 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import ch.ninecode.ts.LogLevels.LogLevels
+import org.apache.spark.storage.StorageLevel
+
 import ch.ninecode.ts.Operations.Operations
+import ch.ninecode.util.MainOptions
+import ch.ninecode.util.Mainable
+import ch.ninecode.util.SparkOptions
+import ch.ninecode.util.Sparkable
 
 /**
  * Options for time series processing.
  *
- * @param valid         <code>false</code> if either help or version requested (i.e. don't proceed with execution).
- * @param unittest      If <code>true</code>, don't call sys.exit().
- * @param master        Spark master.
- * @param spark_options Spark options.
- * @param storage_level Storage level for RDD serialization.
- * @param log_level     Logging level.
+ * @param main_options  main() program options
+ * @param spark_options Spark session options
+ * @param storage       the RDD storage level
  * @param host          Cassandra connection host.
  * @param port          Cassandra nativeTransportPort port.
  * @param keyspace      Cassandra keyspace.
@@ -35,12 +37,9 @@ import ch.ninecode.ts.Operations.Operations
  */
 case class TimeSeriesOptions
 (
-    var valid: Boolean = true,
-    unittest: Boolean = false,
-    master: String = "",
-    spark_options: Map[String, String] = Map (),
-    storage_level: String = "MEMORY_AND_DISK_SER",
-    log_level: LogLevels = LogLevels.OFF,
+    var main_options: MainOptions = MainOptions (),
+    var spark_options: SparkOptions = SparkOptions (),
+    storage: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER,
     host: String = "localhost",
     port: Int = 9042,
     keyspace: String = "cimapplication",
@@ -69,4 +68,30 @@ case class TimeSeriesOptions
     period: Int = 900000,
     yearly_kWh: Double = 7200.0,
     classes: Map[String, Int] = Map ()
-)
+) extends Mainable with Sparkable
+{
+    /**
+     * Convert storage level to a string.
+     *
+     * @return a String that would generate level from StorageLevel.fromString
+     */
+    def storageAsString: String =
+    {
+        storage match
+        {
+            case StorageLevel.NONE => "NONE"
+            case StorageLevel.DISK_ONLY => "DISK_ONLY"
+            case StorageLevel.DISK_ONLY_2 => "DISK_ONLY_2"
+            case StorageLevel.MEMORY_ONLY => "MEMORY_ONLY"
+            case StorageLevel.MEMORY_ONLY_2 => "MEMORY_ONLY_2"
+            case StorageLevel.MEMORY_ONLY_SER => "MEMORY_ONLY_SER"
+            case StorageLevel.MEMORY_ONLY_SER_2 => "MEMORY_ONLY_SER_2"
+            case StorageLevel.MEMORY_AND_DISK => "MEMORY_AND_DISK"
+            case StorageLevel.MEMORY_AND_DISK_2 => "MEMORY_AND_DISK_2"
+            case StorageLevel.MEMORY_AND_DISK_SER => "MEMORY_AND_DISK_SER"
+            case StorageLevel.MEMORY_AND_DISK_SER_2 => "MEMORY_AND_DISK_SER_2"
+            case StorageLevel.OFF_HEAP => "OFF_HEAP"
+            case _ => ""
+        }
+    }
+}

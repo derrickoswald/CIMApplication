@@ -10,7 +10,6 @@ import scala.reflect.runtime.universe.TypeTag
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
-import org.apache.log4j.Level
 import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.regression.DecisionTreeRegressionModel
@@ -29,7 +28,6 @@ import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import com.datastax.spark.connector._
@@ -41,7 +39,7 @@ import com.intel.analytics.bigdl.tensor.TensorNumericMath.TensorNumeric.NumericF
 
 case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 {
-    org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (Level.toLevel (options.log_level.toString))
+    org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (options.spark_options.log)
     val log: Logger = LoggerFactory.getLogger (getClass)
 
     /**
@@ -123,7 +121,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .options (Map ("table" -> "measured_value_stats", "keyspace" -> options.keyspace))
             .load
             .select ("mrid", "type", "average")
-            .persist (StorageLevel.fromString (options.storage_level))
+            .persist (options.storage)
 
     def meta: DataFrame =
         session
@@ -132,7 +130,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
             .options (Map ("table" -> "measured_value_meta", "keyspace" -> options.keyspace))
             .load
             .select ("mrid", "classes")
-            .persist (StorageLevel.fromString (options.storage_level))
+            .persist (options.storage)
 
     def gen_day_columns (frame: DataFrame, day_col: String): DataFrame =
     {
@@ -166,7 +164,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         data
             .selectExpr (cols: _*)
             .drop ("type")
-            .persist (StorageLevel.fromString (options.storage_level))
+            .persist (options.storage)
     }
 
     def getMetaRawData: DataFrame =
@@ -194,7 +192,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names ++ class_names
         data
             .selectExpr (cols: _*)
-            .persist (StorageLevel.fromString (options.storage_level))
+            .persist (options.storage)
     }
 
     def getSingleMetaRawData (cls: String): DataFrame =
@@ -222,7 +220,7 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names
         data
             .selectExpr (cols: _*)
-            .persist (StorageLevel.fromString (options.storage_level))
+            .persist (options.storage)
     }
 
     def makeDecisionTreeRegressorModel ()
