@@ -480,7 +480,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info ("solve and analyse: " + (analyse - export2) / 1e9 + " seconds " + ret.count + " results")
 
             val b4_db = System.nanoTime ()
-            Database.store ("Einspeiseleistung", Calendar.getInstance (), options.outputfile)(ret.collect)
+            Database.store ("Einspeiseleistung", options.outputfile)(ret.collect)
             val dbsave = System.nanoTime ()
             log.info ("database save: " + (dbsave - b4_db) / 1e9 + " seconds")
 

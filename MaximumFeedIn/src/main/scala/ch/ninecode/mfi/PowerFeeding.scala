@@ -105,8 +105,8 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val feeder = if (null != to.feeder) to.feeder else from.feeder
         val problem =
             if (from.nominal_voltage < to.nominal_voltage && to.nominal_voltage <= 1000.0) // ToDo: don't hard code these values
-            s"low voltage (${to.nominal_voltage}V:${from.nominal_voltage}V) subtransmission edge ${edge.id}"
-                else
+                s"low voltage (${to.nominal_voltage}V:${from.nominal_voltage}V) subtransmission edge ${edge.id}"
+            else
                 if (from.hasIssues) from.problem
                 else
                     if (to.hasIssues) to.problem
@@ -341,7 +341,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         )
             .persist (storage_level)
 
-        val simulation = Database.store_precalculation ("Threshold Precalculation", Calendar.getInstance (), options.outputfile)(has.filter (_.mrid != null))
+        val simulation = Database.store_precalculation ("Threshold Precalculation", options.outputfile)(has.filter (_.mrid != null))
         log.info ("the simulation number is " + simulation)
 
         def mapGraphEdges (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =

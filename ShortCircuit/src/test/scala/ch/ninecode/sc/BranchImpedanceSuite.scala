@@ -97,7 +97,7 @@ class BranchImpedanceSuite extends AnyFunSuite
     {
         val branch =
             SeriesBranch ("a", "c", 0.0,
-                Seq[Branch] (
+                Seq [Branch](
                     ParallelBranch ("a", "b", 0.0,
                         List (
                             SimpleBranch ("a", "b", 0.0, "KLE124", "", Some (288282.0), Impedanzen (
@@ -243,7 +243,7 @@ class BranchImpedanceSuite extends AnyFunSuite
     {
         val branch =
             SeriesBranch ("a", "d", 0.0,
-                Seq[Branch] (
+                Seq [Branch](
                     SimpleBranch ("a", "b", 0.0, "KLE123", "", Some (1.6), Impedanzen (
                         Complex (2.0, 2.0),
                         Complex (1.0, 1.0),
@@ -268,7 +268,7 @@ class BranchImpedanceSuite extends AnyFunSuite
     {
         val branch =
             SeriesBranch ("a", "d", 0.0,
-                Seq[Branch] (
+                Seq [Branch](
                     SimpleBranch ("a", "b", 0.0, "KLE123", "", Some (1.6), Impedanzen (
                         Complex (2.0, 2.0),
                         Complex (1.0, 1.0),

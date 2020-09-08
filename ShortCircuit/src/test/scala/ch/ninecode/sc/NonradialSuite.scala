@@ -39,7 +39,7 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
 
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
-            val customOptions = Map[String, String](
+            val customOptions = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",
@@ -78,7 +78,7 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
         session: SparkSession =>
 
             val filename = s"$FILE_DEPOT$FILENAME2.rdf"
-            val customOptions = Map[String, String](
+            val customOptions = Map [String, String](
                 "path" -> filename,
                 "StorageLevel" -> "MEMORY_AND_DISK_SER",
                 "ch.ninecode.cim.do_topo" -> "true",

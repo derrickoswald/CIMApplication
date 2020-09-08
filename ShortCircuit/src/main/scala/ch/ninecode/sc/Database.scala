@@ -114,7 +114,7 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
         resultset1.close ()
         if (!exists1)
         {
-            executeUpdate (statement, 
+            executeUpdate (statement,
                 """create table shortcircuit_run
                   |    -- table of parameters used for each program execution
                   |(
@@ -146,7 +146,7 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
         resultset2.close ()
         if (!exists2)
         {
-            executeUpdate (statement, 
+            executeUpdate (statement,
                 """create table shortcircuit
                   |    -- table of maximum fault level values (impedances at low_temperature)
                   |(
@@ -187,7 +187,7 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
         resultset3.close ()
         if (!exists3)
         {
-            executeUpdate (statement, 
+            executeUpdate (statement,
                 """create table nullungsbedingung
                   |    -- table of minimum fault level values (impedances at high_temperature)
                   |(
@@ -227,7 +227,7 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
         resultset4.close ()
         if (!exists4)
         {
-            executeUpdate (statement, 
+            executeUpdate (statement,
                 """create table fusesummary
                   |    -- table summarizing fuse results
                   |(

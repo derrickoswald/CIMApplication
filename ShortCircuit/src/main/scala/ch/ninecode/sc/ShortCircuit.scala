@@ -76,7 +76,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
     def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
     {
-        var ret = List[ScEdge]()
+        var ret = List [ScEdge]()
 
         val element = arg._1
         val t_it = arg._2
@@ -155,7 +155,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                         )
                 }
             case _ =>
-                // shouldn't happen, terminals always reference ConductingEquipment, right?
+            // shouldn't happen, terminals always reference ConductingEquipment, right?
         }
 
         ret
@@ -204,22 +204,22 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def get_inital_graph (): Graph[ScNode, ScEdge] =
     {
         // get a map of voltages
-        val voltages = getOrElse[BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
+        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage)).collectAsMap ()
 
         // get the terminals in the topology
-        val terminals = getOrElse[Terminal].filter (null != _.TopologicalNode)
+        val terminals = getOrElse [Terminal].filter (null != _.TopologicalNode)
 
         // handle transformers specially, by attaching PowerTransformerEnd objects to the terminals
 
         // get the transformer ends keyed by terminal, only one end can reference any one terminal
-        val ends = getOrElse[PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
+        val ends = getOrElse [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal)
         // attach the ends to terminals
         val t = terminals.keyBy (_.id).leftOuterJoin (ends).values.map (make_ends_meet)
         // get the terminals keyed by equipment and filter for two (or more) terminals
         val terms = t.groupBy (_._1.ConductingEquipment).filter (_._2.size > 1)
 
         // map the terminal 'pairs' to edges
-        val edges = getOrElse[Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
+        val edges = getOrElse [Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
 
         // get the nodes and voltages from the edges
         val nodes = edges.flatMap (
@@ -233,7 +233,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         persist (xedges, "xedges")
         persist (xnodes, "xnodes")
 
-        Graph[ScNode, ScEdge](xnodes, xedges, default_node, storage_level, storage_level)
+        Graph [ScNode, ScEdge](xnodes, xedges, default_node, storage_level, storage_level)
     }
 
     def calculate_one (voltage: Double, impedanz: Complex, null_impedanz: Complex): ScIntermediate =
@@ -461,7 +461,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // check for series elements, eliminate making a series connection across the house or trafo
         val prepend =
             for
-            {
+                {
                 branch <- network
                 house = branch.from == mrid
                 if !house
@@ -475,7 +475,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         val append =
             for
-            {
+                {
                 branch <- network
                 house = branch.to == mrid
                 if !house
@@ -527,7 +527,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     {
         // check for parallel elements
         val parallel = for
-        {
+            {
             branch <- network
             buddies = network.filter (x => ((branch.from == x.from) && (branch.to == x.to)) && (branch != x))
             if buddies.nonEmpty

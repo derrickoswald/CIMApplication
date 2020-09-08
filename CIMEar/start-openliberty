@@ -35,7 +35,7 @@ else
 fi
 
 # Wait for the name node to be online
-while ! nc -z $NAMENODE 50070; do
+while ! nc -z $NAMENODE 9870; do
   sleep 2;
 done;
 

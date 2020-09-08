@@ -9,7 +9,7 @@ import com.datastax.oss.driver.api.core.CqlSession
 
 import org.junit.Test
 
-import ch.ninecode.ingest.Main.main
+import Ingest.main
 
 class IngestSuiteIT
 {
@@ -85,13 +85,15 @@ class IngestSuiteIT
 
     @Test def doIngest ()
     {
+        val port = cassandra_port.toString
+
         main (Array ("--unittest", "--verbose",
             "--master", "local[2]",
             "--host", LOCALHOST,
-            "--port", cassandra_port.toString,
+            "--port", port,
             "--keyspace", KEYSPACE,
             "--nocopy",
-            "--mapping", s"${FILE_DEPOT}${MAPPING_FILE}",
+            "--mapping", s"$FILE_DEPOT$MAPPING_FILE",
             "--metercol", "meter",
             "--mridcol", "mRID",
             "--format", "LPEx",

@@ -5,9 +5,7 @@ import java.util.Date
 import scala.collection.JavaConverters._
 
 import org.apache.commons.lang.StringUtils
-import org.apache.log4j.Level
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -29,9 +27,8 @@ import com.datastax.spark.connector.writer.WriteConf
  */
 case class TimeSeriesStats (session: SparkSession, options: TimeSeriesOptions)
 {
-    org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (Level.toLevel (options.log_level.toString))
+    org.apache.log4j.LogManager.getLogger (getClass).setLevel (options.spark_options.log)
     val log: Logger = LoggerFactory.getLogger (getClass)
-    val storage_level: StorageLevel = StorageLevel.fromString (options.storage_level)
 
     def Scope: Seq[(String, String)] =
     {

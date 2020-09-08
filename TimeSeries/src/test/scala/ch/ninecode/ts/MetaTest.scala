@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
+import org.apache.log4j.Level
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.junit.AfterClass
@@ -40,7 +41,9 @@ class MetaTest
 
         time ("total execution: %s seconds")
         {
-            val model = TimeSeriesModel (session, TimeSeriesOptions (keyspace = KEYSPACE, log_level = LogLevels.INFO, tree_depth = Array (8), model_file = "hdfs://sandbox:8020/models/myMetaModel16"))
+            val temp = TimeSeriesOptions ()
+            val options = TimeSeriesOptions (spark_options = temp.spark_options.copy (log = Level.INFO), keyspace = KEYSPACE, tree_depth = Array (8), model_file = "hdfs://sandbox:8020/models/myMetaModel16")
+            val model = TimeSeriesModel (session, options)
             time ("modelling time: %s seconds")
             {
                 model.makeMetaDecisionTreeRegressorModel ()

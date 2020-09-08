@@ -11,7 +11,6 @@ import scala.util.Random
 import org.apache.spark.SparkConf
 import org.apache.spark.graphx.GraphXUtils
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMClasses

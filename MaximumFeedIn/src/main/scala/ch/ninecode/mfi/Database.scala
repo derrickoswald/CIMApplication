@@ -140,7 +140,7 @@ object Database
         statement.close ()
     }
 
-    def store (description: String, t1: Calendar, outputfile: String)(records: Array[MaxEinspeiseleistung]): Int = synchronized
+    def store (description: String, outputfile: String)(records: Array[MaxEinspeiseleistung]): Int = synchronized
     {
         // make the directory
         val file = Paths.get (outputfile)
@@ -233,7 +233,7 @@ object Database
 
     }
 
-    def store_precalculation (description: String, t1: Calendar, outputfile: String)(results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
+    def store_precalculation (description: String, outputfile: String)(results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
         val file = Paths.get (outputfile)

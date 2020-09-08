@@ -50,7 +50,7 @@ class SimulationSuiteIT
 
     @Test def Help ()
     {
-        Main.main (Array ("--unittest", "--help"))
+        Simulation.main (Array ("--unittest", "--help"))
     }
 
     @Test def SimulationDemoData ()
@@ -331,7 +331,7 @@ class SimulationSuiteIT
                        |        },
                        |        {
                        |            "title": "stationratedS",
-                       |            "query": "select first_value (c.substation) key, cast (sum(e.ratedS) as string) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, ( select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u ) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
+                       |            "query": "select first_value (c.substation) key, cast (sum(e.ratedS) as string) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, ( select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u ) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.TransformerEnd.BaseVoltage = 'BaseVoltage_400' and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
                        |        }
                        |    ],
                        |    "postprocessing": []
@@ -339,7 +339,7 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Main.main (
+        Simulation.main (
             Array (
                 "--unittest",
                 "--master", "local[2]",
@@ -535,11 +535,11 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Main.main (
+        Simulation.main (
             Array (
                 "--unittest",
                 "--master", "local[2]",
-                "--opts", "spark.driver.memory=2g,spark.executor.memory=2g",
+                "--spark_options", "spark.driver.memory=2g,spark.executor.memory=2g,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.sql.catalog.casscatalog=com.datastax.spark.connector.datasource.CassandraCatalog,spark.kryo.registrator=ch.ninecode.cim.CIMRegistrator,spark.graphx.pregel.checkpointInterval=8,spark.ui.showConsoleProgress=false,spark.sql.debug.maxToStringFields=250",
                 "--verbose",
                 "--keep",
                 "--host", "localhost",
@@ -813,7 +813,7 @@ class SimulationSuiteIT
                        |        },
                        |        {
                        |            "title": "stationratedS",
-                       |            "query": "select first_value (c.substation) key, cast (sum(e.ratedS) as string) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, ( select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u ) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
+                       |            "query": "select first_value (c.substation) key, cast (sum(e.ratedS) as string) value from Terminal t, PowerTransformerEnd e, PowerTransformer p, ( select u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID mrid, u.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID substation from Substation u ) c where t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and e.TransformerEnd.endNumber = 2 and e.TransformerEnd.BaseVoltage = 'BaseVoltage_400' and e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid group by t.TopologicalNode"
                        |        }
                        |    ],
                        |    "postprocessing":
@@ -949,7 +949,7 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Main.main (
+        Simulation.main (
             Array (
                 "--unittest",
                 "--master", "local[2]",
@@ -1102,7 +1102,7 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Main.main (
+        Simulation.main (
             Array (
                 "--unittest",
                 "--master", "local[2]",

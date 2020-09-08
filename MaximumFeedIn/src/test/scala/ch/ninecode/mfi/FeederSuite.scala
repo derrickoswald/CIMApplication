@@ -4,7 +4,6 @@ import java.io.File
 
 import ch.ninecode.model.Connector
 import ch.ninecode.model.Element
-import ch.ninecode.model.Terminal
 import org.apache.spark.sql.SparkSession
 import org.scalatest.BeforeAndAfter
 
@@ -15,7 +14,7 @@ case class MyFeeders
 )
     extends Feeders (session)
 {
-    override def isFeeder (element: Element, terminal: Terminal): Boolean =
+    override def isFeeder (element: Element): Boolean =
     {
         element match
         {

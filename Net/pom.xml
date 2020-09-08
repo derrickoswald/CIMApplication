@@ -35,6 +35,7 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${version.dependency.scalalibrary}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>

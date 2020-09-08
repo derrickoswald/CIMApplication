@@ -112,40 +112,40 @@ class SmartMeter (
                 // see also NE-51 NIS.CIM: Export / Missing 230V connectivity
                 if (!volts.contains (230.0))
                 // make a pre-edge for each pair of terminals
-                ret = terminals.length match
-                {
-                    case 1 =>
-                        ret :+
-                            PreEdge (
-                                terminals (0).ACDCTerminal.id,
-                                node_name (terminals (0)),
-                                volts (0),
-                                "",
-                                "",
-                                volts (0),
-                                terminals (0).ConductingEquipment,
-                                ratedCurrent,
-                                equipment,
-                                e,
-                                span (e))
-                    case _ =>
-                        for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                        {
-                            ret = ret :+ PreEdge (
-                                terminals (0).ACDCTerminal.id,
-                                node_name (terminals (0)),
-                                volts (0),
-                                terminals (i).ACDCTerminal.id,
-                                node_name (terminals (i)),
-                                volts (i),
-                                terminals (0).ConductingEquipment,
-                                ratedCurrent,
-                                equipment,
-                                e,
-                                span (e))
-                        }
-                        ret
-                }
+                    ret = terminals.length match
+                    {
+                        case 1 =>
+                            ret :+
+                                PreEdge (
+                                    terminals (0).ACDCTerminal.id,
+                                    node_name (terminals (0)),
+                                    volts (0),
+                                    "",
+                                    "",
+                                    volts (0),
+                                    terminals (0).ConductingEquipment,
+                                    ratedCurrent,
+                                    equipment,
+                                    e,
+                                    span (e))
+                        case _ =>
+                            for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
+                            {
+                                ret = ret :+ PreEdge (
+                                    terminals (0).ACDCTerminal.id,
+                                    node_name (terminals (0)),
+                                    volts (0),
+                                    terminals (i).ACDCTerminal.id,
+                                    node_name (terminals (i)),
+                                    volts (i),
+                                    terminals (0).ConductingEquipment,
+                                    ratedCurrent,
+                                    equipment,
+                                    e,
+                                    span (e))
+                            }
+                            ret
+                    }
             case _ =>
             // shouldn't happen, terminals always reference ConductingEquipment, right?
         }

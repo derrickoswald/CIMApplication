@@ -36,9 +36,15 @@ class LowVoltageGLMGenerator
         t
     }
 
-    override lazy val edges: Iterable[GLMEdge] = trafokreis.edges.filter (_ match { case _: GLMTransformerEdge => false case _ => true })
+    override lazy val edges: Iterable[GLMEdge] = trafokreis.edges.filter (_ match
+    { case _: GLMTransformerEdge => false
+        case _ => true
+    })
 
-    override lazy val transformers: Iterable[GLMTransformerEdge] = trafokreis.edges.flatMap (_ match { case tx: GLMTransformerEdge => Some (tx) case _ => None })
+    override lazy val transformers: Iterable[GLMTransformerEdge] = trafokreis.edges.flatMap (_ match
+    { case tx: GLMTransformerEdge => Some (tx)
+        case _ => None
+    })
 
     // the swing node is the high voltage pin
     override lazy val swing_nodes: Iterable[GLMNode] =
@@ -52,13 +58,13 @@ class LowVoltageGLMGenerator
         {
             case lv: LowVoltageNode =>
                 if (lv.isEnergyConsumer)
-                    s"${ generate_recorder (lv) }${ generate_load (lv) }"
+                    s"${generate_recorder (lv)}${generate_load (lv)}"
                 else
                     ""
             case _ =>
                 ""
         }
-        s"${ super.emit_node (node) }$extra"
+        s"${super.emit_node (node)}$extra"
     }
 
     override def emit_edge (edge: GLMEdge): String =

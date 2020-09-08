@@ -27,7 +27,7 @@ case class OneOfNGLMGenerator
     voltages: collection.Map[String, Double])
     extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = false)
 {
-    override def name: String = s"${ feeder.metadata.station }_${ feeder.metadata.connector }"
+    override def name: String = s"${feeder.metadata.station}_${feeder.metadata.connector}"
 
     override def header: String = feeder.metadata.description
 
@@ -80,9 +80,9 @@ case class OneOfNGLMGenerator
 
     def three_or_one (property: String): String =
         if (one_phase)
-            s"${ property }_A"
+            s"${property}_A"
         else
-            s"${ property }_A,${ property }_B,${ property }_C"
+            s"${property}_A,${property}_B,${property}_C"
 
     def three_or_one (value: Complex): String =
         (for (_ <- 1 to (if (one_phase) 1 else 3)) yield value.toString).mkString (",")
@@ -102,32 +102,32 @@ case class OneOfNGLMGenerator
                 s"""
                    |        object meter
                    |        {
-                   |            name "${ swing.id }_swing";
+                   |            name "${swing.id}_swing";
                    |            phases $phases;
                    |            bustype SWING;
-                   |            nominal_voltage ${ swing.nominal_voltage }V;
-                   |            ${ three_or_one ("voltage") } ${ three_or_one (Complex (swing.nominal_voltage, 0.0)) };
+                   |            nominal_voltage ${swing.nominal_voltage}V;
+                   |            ${three_or_one ("voltage")} ${three_or_one (Complex (swing.nominal_voltage, 0.0))};
                    |        };
                    |
                    |        object switch
                    |        {
-                   |            name "${ swing.id }_switch";
+                   |            name "${swing.id}_switch";
                    |            phases $phases;
-                   |            from "${ swing.id }_swing";
-                   |            to "${ swing._id }";
+                   |            from "${swing.id}_swing";
+                   |            to "${swing._id}";
                    |            object player
                    |            {
                    |                property "status";
-                   |                file "input_data/${ swing._id }.csv";
+                   |                file "input_data/${swing._id}.csv";
                    |            };
                    |        };
                    |
                    |        object meter
                    |        {
-                   |            name "${ swing._id }";
+                   |            name "${swing._id}";
                    |            phases $phases;
                    |            bustype PQ;
-                   |            nominal_voltage ${ swing.nominal_voltage }V;
+                   |            nominal_voltage ${swing.nominal_voltage}V;
                    |        };
                    |""".stripMargin
             case _ =>
@@ -145,14 +145,14 @@ case class OneOfNGLMGenerator
     {
         val name = transformer.transformer.transformer_name
         val phases = if (one_phase) "AN" else "ABCN"
-        s"""${ super.emit_transformer (transformer) }
+        s"""${super.emit_transformer (transformer)}
            |        object load
            |        {
-           |            name "${ name }_load";
-           |            parent "${ transformer.cn2 }";
+           |            name "${name}_load";
+           |            parent "${transformer.cn2}";
            |            phases $phases;
-           |            ${ three_or_one ("constant_power") } ${ three_or_one (Complex (10000, 0)) };
-           |            nominal_voltage ${ transformer.transformer.v1 }V;
+           |            ${three_or_one ("constant_power")} ${three_or_one (Complex (10000, 0))};
+           |            nominal_voltage ${transformer.transformer.v1}V;
            |            load_class R;
            |        };
         """.stripMargin

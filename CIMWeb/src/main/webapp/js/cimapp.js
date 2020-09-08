@@ -83,7 +83,7 @@ define
                         const ui = result.spark_instance.spark_application_ui_url;
                         document.getElementById ("spark_master").setAttribute ("href", "http://" + namenode + ":8080");
                         document.getElementById ("spark_job").setAttribute ("href", ui);
-                        document.getElementById ("hadoop_hdfs").setAttribute ("href", "http://" + namenode + ":50070")
+                        document.getElementById ("hadoop_hdfs").setAttribute ("href", "http://" + namenode + ":9870")
                     }
                     else
                         document.getElementById ("spark_master").style.display = "none";

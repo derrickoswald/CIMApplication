@@ -1,138 +1,88 @@
 package ch.ninecode.ts
 
-import java.io.UnsupportedEncodingException
-import java.net.URLDecoder
-import java.util.Properties
-
-import scala.tools.nsc.io.Jar
-import scala.util.Random
-
-import org.apache.log4j.Level
-import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+
+import ch.ninecode.util.Main
+import ch.ninecode.util.MainOptions
+import ch.ninecode.util.SparkInitializer
+import ch.ninecode.util.SparkOptions
 
 // import com.intel.analytics.bigdl.utils.Engine
 
-object TimeSeries
+object TimeSeries extends SparkInitializer[TimeSeriesOptions] with Main
 {
-    val properties: Properties =
+    def run (options: TimeSeriesOptions): Unit =
     {
-        val in = this.getClass.getResourceAsStream ("/application.properties")
-        val p = new Properties ()
-        p.load (in)
-        in.close ()
-        p
+        if (options.main_options.valid)
+        {
+            org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.INFO)
+            val session: SparkSession = createSession (options)
+            //Engine.init
+            time ("execution: %s seconds")
+            {
+                options.operation match
+                {
+                    case Operations.Statistics =>
+                        val ts = TimeSeriesStats (session, options)
+                        ts.run ()
+                    case Operations.Meta =>
+                        val meta = TimeSeriesMeta (session, options)
+                        meta.run ()
+                    case Operations.Model =>
+                        val model = TimeSeriesModel (session, options)
+                        model.makeDecisionTreeRegressorModel ()
+                    case Operations.MetaModel =>
+                        val model = TimeSeriesModel (session, options)
+                        model.makeMetaDecisionTreeRegressorModel ()
+                    case Operations.SimpleMetaModel =>
+                        val model = TimeSeriesModel (session, options)
+                        model.makeSingleMetaDecisionTreeRegressorModel ()
+                    case Operations.Synthesize =>
+                        val model = TimeSeriesModel (session, options)
+                        if (options.classes.isEmpty)
+                            model.generateSimpleTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh)
+                        else
+                            model.generateMetaTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh, options.classes)
+                }
+            }
+        }
     }
-    val APPLICATION_NAME: String = properties.getProperty ("artifactId")
-    val APPLICATION_VERSION: String = properties.getProperty ("version")
-    val SPARK: String = properties.getProperty ("spark")
 
-    def jarForObject (obj: Object): String =
-    {
-        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
-        var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
-        try
-        {
-            ret = URLDecoder.decode (ret, "UTF-8")
-        }
-        catch
-        {
-            case e: UnsupportedEncodingException => e.printStackTrace ()
-        }
-        if (!ret.toLowerCase ().endsWith (".jar"))
-        {
-            // as an aid to debugging, make jar in tmp and pass that name
-            val name = s"/tmp/${Random.nextInt (99999999).toString}.jar"
-            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
-            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
-            writer.close ()
-            ret = name
-        }
-
-        ret
-    }
-
-    /**
-     * Build jar with dependencies (creates target/program_name_and_version-jar-with-dependencies.jar):
-     * mvn package
-     * Invoke (on the cluster) with:
-     * spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=2g --conf spark.executor.memory=4g /opt/code/program_name_and_version-jar-with-dependencies.jar --verbose --host sandbox 20180405_073251_Belvis_STA206.csv
-     * or on AWS:
-     * /opt/spark/bin/spark-submit --master yarn /disktemp/transfer/program_name_and_version-jar-with-dependencies.jar --host sandbox 20180405_073251_Belvis_STA206.csv
-     */
     def main (args: Array[String])
     {
-        new TimeSeriesOptionsParser (APPLICATION_NAME, APPLICATION_VERSION).parse (args, TimeSeriesOptions ()) match
+        val have = scala.util.Properties.versionNumberString
+        val need = scala_library_version
+        if (have != need)
         {
-            case Some (options) =>
-                if (options.valid)
-                {
-                    org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (Level.toLevel (options.log_level.toString))
-                    val log: Logger = LoggerFactory.getLogger (getClass)
+            log.error (s"Scala version ($have) does not match the version ($need) used to build $application_name")
+            sys.exit (1)
+        }
+        else
+        {
+            // get the necessary jar files to send to the cluster
+            val jars = Set (
+                jarForObject (com.datastax.spark.connector.mapper.ColumnMapper),
+                jarForObject (TimeSeriesOptions ())
+            ).toArray
 
-                    val begin = System.nanoTime ()
+            // initialize the default options
+            val default = TimeSeriesOptions (
+                main_options = MainOptions (application_name, application_version),
+                spark_options = SparkOptions (jars = jars),
+            )
 
-                    // get the necessary jar files to send to the cluster
-                    val s1 = jarForObject (TimeSeriesOptions ())
-                    val s2 = jarForObject (com.datastax.spark.connector.mapper.ColumnMapper)
-                    val jars = Set (s1, s2)
-                    // create the configuration
-                    val configuration = new SparkConf (false)
-                        .setAppName (APPLICATION_NAME)
-                        .set ("spark.cassandra.connection.host", options.host)
-                        .set ("spark.cassandra.connection.port", options.port.toString)
-                        .set ("spark.ui.showConsoleProgress", "false")
-                        .setJars (jars.toArray)
-                    options.spark_options.foreach ((pair: (String, String)) => configuration.set (pair._1, pair._2))
-                    if ("" != options.master)
-                    {
-                        val _ = configuration.setMaster (if ("" != options.master) options.master else "")
-                    }
-
-                    // make a Spark session
-                    val session = SparkSession.builder ().config (configuration).getOrCreate ()
-                    val version = session.version
-                    log.info (s"Spark $version session established")
-                    if (version.take (SPARK.length) != SPARK.take (version.length))
-                        log.warn (s"Spark version ($version) does not match the version ($SPARK) used to build $APPLICATION_NAME")
-                    //Engine.init
-
-                    val setup = System.nanoTime ()
-                    log.info (s"setup: ${(setup - begin) / 1e9} seconds")
-
-                    options.operation match
-                    {
-                        case Operations.Statistics =>
-                            val ts = TimeSeriesStats (session, options)
-                            ts.run ()
-                        case Operations.Meta =>
-                            val meta = TimeSeriesMeta (session, options)
-                            meta.run ()
-                        case Operations.Model =>
-                            val model = TimeSeriesModel (session, options)
-                            model.makeDecisionTreeRegressorModel ()
-                        case Operations.MetaModel =>
-                            val model = TimeSeriesModel (session, options)
-                            model.makeMetaDecisionTreeRegressorModel ()
-                        case Operations.SimpleMetaModel =>
-                            val model = TimeSeriesModel (session, options)
-                            model.makeSingleMetaDecisionTreeRegressorModel ()
-                        case Operations.Synthesize =>
-                            val model = TimeSeriesModel (session, options)
-                            if (options.classes.isEmpty)
-                                model.generateSimpleTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh)
-                            else
-                                model.generateMetaTimeSeries (options.synthesis, options.start, options.end, options.period, options.yearly_kWh, options.classes)
-                    }
-                    val calculate = System.nanoTime ()
-                    log.info (s"execution: ${(calculate - setup) / 1e9} seconds")
-                }
-                if (!options.unittest)
-                    sys.exit (0)
-            case None =>
-                sys.exit (1)
+            // parse the command line arguments
+            new TimeSeriesOptionsParser (default).parse (args, default) match
+            {
+                case Some (options) =>
+                    // execute the main program if everything checks out
+                    run (options)
+                    if (!options.main_options.unittest)
+                        sys.exit (0)
+                case None =>
+                    sys.exit (1)
+            }
         }
     }
+
 }

@@ -148,12 +148,12 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions) extend
                     islands_trafos
 
             val island_helper = new LowVoltageIsland (session, options.cim_options.storage)
-//            Lines.DEFAULT_CABLE_RESISTANCE_LIMIT = options.cable_impedance_limit
+            // Lines.DEFAULT_CABLE_RESISTANCE_LIMIT = options.cable_impedance_limit
             val graph_stuff: (Nodes, Edges) = island_helper.queryNetwork (islands_to_do.map (_.swap))
             @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-            val nodes = graph_stuff._1.groupByKey.asInstanceOf[RDD[(identifier, Iterable[LowVoltageNode])]]
+            val nodes = graph_stuff._1.groupByKey.asInstanceOf [RDD[(identifier, Iterable[LowVoltageNode])]]
             @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-            val edges = graph_stuff._2.groupByKey.asInstanceOf[RDD[(identifier, Iterable[GLMEdge])]]
+            val edges = graph_stuff._2.groupByKey.asInstanceOf [RDD[(identifier, Iterable[GLMEdge])]]
             val areas = nodes.join (edges)
 
             val transformers: Map[String, TransformerSet] = getTransformers

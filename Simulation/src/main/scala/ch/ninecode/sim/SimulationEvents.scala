@@ -290,7 +290,8 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
             case h: HighTrigger => if (h.ratio < minratio) minratio = h.ratio
             case l: LowTrigger => if (l.ratio > maxratio) maxratio = l.ratio
         }
-        def kernel (dohi: Boolean, dolo: Boolean) (row: Row) =
+
+        def kernel (dohi: Boolean, dolo: Boolean)(row: Row) =
         {
             val value = row.getDouble (column)
             val reference = row.getDouble (nominal)
@@ -387,7 +388,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * Compute the maximum magnitude of three phases.
      */
     def maximum_magnitude[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag, Type_d: TypeTag, Type_e: TypeTag, Type_f: TypeTag]: UserDefinedFunction =
-        udf[Double, Double, Double, Double, Double, Double, Double](
+        udf [Double, Double, Double, Double, Double, Double, Double](
             (a_r: Double, a_i: Double, b_r: Double, b_i: Double, c_r: Double, c_i: Double) =>
             {
                 val a = mag (a_r, a_i)
@@ -401,7 +402,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * Compute the minimum magnitude of three phases.
      */
     def minimum_magnitude[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag, Type_d: TypeTag, Type_e: TypeTag, Type_f: TypeTag]: UserDefinedFunction =
-        udf[Double, Double, Double, Double, Double, Double, Double](
+        udf [Double, Double, Double, Double, Double, Double, Double](
             (a_r: Double, a_i: Double, b_r: Double, b_i: Double, c_r: Double, c_i: Double) =>
             {
                 val a = mag (a_r, a_i)
@@ -415,7 +416,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * Convert between single phase reference and three phase reference.
      */
     def per_phase[Type_x: TypeTag]: UserDefinedFunction =
-        udf[Double, Double]((x: Double) => x / Math.sqrt (3.0))
+        udf [Double, Double]((x: Double) => x / Math.sqrt (3.0))
 
     /**
      * Apply a set of thresholds (with the same type, table, reference and default) to the data.
@@ -437,12 +438,12 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         val values = if (three_phase)
         {
             val references = keyvalues
-                .withColumn ("reference", per_phase[Double].apply (keyvalues.col ("value").cast ("double")))
+                .withColumn ("reference", per_phase [Double].apply (keyvalues.col ("value").cast ("double")))
                 .drop ("value")
             simulated_values
-                .withColumn ("value_max", maximum_magnitude[Double, Double, Double, Double, Double, Double].apply (
+                .withColumn ("value_max", maximum_magnitude [Double, Double, Double, Double, Double, Double].apply (
                     functions.col ("real_a"), functions.col ("imag_a"), functions.col ("real_b"), functions.col ("imag_b"), functions.col ("real_c"), functions.col ("imag_c")))
-                .withColumn ("value_min", minimum_magnitude[Double, Double, Double, Double, Double, Double].apply (
+                .withColumn ("value_min", minimum_magnitude [Double, Double, Double, Double, Double, Double].apply (
                     functions.col ("real_a"), functions.col ("imag_a"), functions.col ("real_b"), functions.col ("imag_b"), functions.col ("real_c"), functions.col ("imag_c")))
                 .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
                 .join (references, Seq ("mrid"))
@@ -453,7 +454,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
                 .withColumn ("reference", keyvalues.col ("value").cast ("double"))
                 .drop ("value")
             simulated_values
-                .withColumn ("value1", magnitude[Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
+                .withColumn ("value1", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
                 .drop ("value", "real_a", "imag_a")
                 .join (references, Seq ("mrid"))
         }
@@ -492,16 +493,22 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
 
         save (highEvents.union (lowEvents))
 
-        { val _ = values_rdd.unpersist (false) }
-        { val _ = keyvalues.unpersist (false) }
-        { val _ = simulated_values.unpersist (false) }
+        {
+            val _ = values_rdd.unpersist (false)
+        }
+        {
+            val _ = keyvalues.unpersist (false)
+        }
+        {
+            val _ = simulated_values.unpersist (false)
+        }
     }
 }
 
 //@UDT(name="event_number")
 @UserDefinedType (
     name = "event_number",
-    columns = IndexedSeq[UDTFieldDef](
+    columns = IndexedSeq [UDTFieldDef](
         UDTFieldDef ("orange", IntType),
         UDTFieldDef ("red", IntType)
     ))
@@ -573,7 +580,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
             sum.get (mrid) match
             {
                 case Some (total: Total) => sum.updated (mrid, accumulate (total, (color, 1)))
-                case None => sum.updated (mrid, Map[Color, Count](color -> 1))
+                case None => sum.updated (mrid, Map [Color, Count](color -> 1))
             }
         }
 
@@ -597,7 +604,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
 
     def severities (total: Summary): Total =
     {
-        total.foldLeft (Map[Color, Count]())((map: Total, tot: Sum) => tot._2.foldLeft (map)(accumulate))
+        total.foldLeft (Map [Color, Count]())((map: Total, tot: Sum) => tot._2.foldLeft (map)(accumulate))
     }
 
     def summary (arg: (Transformer, Day, Iterable[(Type, mRID, Severity)])):
@@ -710,13 +717,13 @@ case class SimulationEvents (triggers: Iterable[Trigger])(spark: SparkSession, o
         for (((typ, ref, default), thresholds) <- sets)
         {
             log.info (s"$typ events with reference $ref and default $default")
-            DoubleChecker (spark, options.storage_level, options.three_phase).checkFor (thresholds)
+            DoubleChecker (spark, options.cim_options.storage, options.three_phase).checkFor (thresholds)
             log.info (s"$typ deviation events saved to ${access.output_keyspace}.simulation_event")
         }
 
         // perform the summary
         log.info ("summarizing events")
-        Summarizer (spark, options.storage_level).summarize ()
+        Summarizer (spark, options.cim_options.storage).summarize ()
         log.info (s"event summary saved to ${access.output_keyspace}.simulation_event_summary")
     }
 }
@@ -726,7 +733,7 @@ case class SimulationEvents (triggers: Iterable[Trigger])(spark: SparkSession, o
  */
 object SimulationEvents extends SimulationPostProcessorParser
 {
-    val STANDARD_TRIGGERS: Iterable[Trigger] = List[Trigger](
+    val STANDARD_TRIGGERS: Iterable[Trigger] = List [Trigger](
         // voltage exceeds ±10% of nominal = red, voltage exceeds ±6%=orange
         HighTrigger ("voltage", 1, "ratedVoltage", 400.0, 1.06, 15 * 60 * 1000),
         LowTrigger ("voltage", 1, "ratedVoltage", 400.0, 0.94, 15 * 60 * 1000),

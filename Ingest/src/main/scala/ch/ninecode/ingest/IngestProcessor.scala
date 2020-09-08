@@ -21,6 +21,8 @@ import org.slf4j.LoggerFactory
 
 trait IngestProcessor
 {
+    type AOID = String
+    type MstID = String
     type Mrid = String
     type Type = String
     type Time = Long

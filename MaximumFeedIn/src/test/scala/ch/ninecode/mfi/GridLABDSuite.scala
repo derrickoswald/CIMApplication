@@ -150,10 +150,10 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
                     if (result.getString (1) == "TX0002")
                     {
                         if (result.getObject (3) != null) // some fuse nodes have no mrid
-                            {
-                                assert (result.getString (4) == "current limit", "load-flow should find a current limit")
-                                assert (result.getString (5).contains (" > 67.0 Amps"), "limit should be set by GKN 3x10re/10 1/0.6 kV limit of 67 Amps")
-                            }
+                        {
+                            assert (result.getString (4) == "current limit", "load-flow should find a current limit")
+                            assert (result.getString (5).contains (" > 67.0 Amps"), "limit should be set by GKN 3x10re/10 1/0.6 kV limit of 67 Amps")
+                        }
                     }
             }
         }

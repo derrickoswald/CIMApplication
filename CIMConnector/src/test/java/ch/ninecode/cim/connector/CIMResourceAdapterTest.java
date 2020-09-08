@@ -88,7 +88,7 @@ public class CIMResourceAdapterTest
 
         // build a simplified rar
         final JavaArchive jar = ShrinkWrap.create (JavaArchive.class, "CIMConnector.jar");
-        jar.addPackage (java.lang.Package.getPackage ("ch.ninecode.cim.connector"));
+        jar.addPackage (CIMConnection.class.getClassLoader ().getDefinedPackage ("ch.ninecode.cim.connector"));
 
         rar = ShrinkWrap.create (ResourceAdapterArchive.class, "CIMConnector.rar");
         rar.addAsLibrary (jar);

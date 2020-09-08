@@ -8,14 +8,13 @@ import javax.json.Json
 import javax.json.JsonObject
 import javax.json.JsonStructure
 import javax.json.JsonException
-
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.ingest.IngestOptions
-import ch.ninecode.ingest.LogLevels
+import ch.ninecode.util.SparkOptions
 
 /**
  * Ingest smart meter data.
@@ -65,16 +64,18 @@ case class IngestFunction (job: String) extends CIMWebFunction
      */
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
+        val temp = IngestOptions ()
+        val host = spark.sparkContext.getConf.get ("spark.cassandra.connection.host", "localhost")
+        val port = spark.sparkContext.getConf.get ("spark.cassandra.connection.port", "9042")
         val options = IngestOptions (
-            valid = true,
-            unittest = false,
+            spark_options = SparkOptions (
+                master = spark.sparkContext.master,
+                options = temp.spark_options.options + (
+                    "spark.cassandra.connection.host" -> host,
+                    "spark.cassandra.connection.port" -> port)),
             verbose = true,
-            master = spark.sparkContext.master,
-            options = Map (),
-            host = spark.sparkContext.getConf.get ("spark.cassandra.connection.host", "localhost"),
-            port = spark.sparkContext.getConf.get ("spark.cassandra.connection.port", "9042").toInt,
-            storage = "MEMORY_AND_DISK_SER", // currently not used
-            log_level = LogLevels.OFF, // set at context creation time
+            host = host,
+            port = port.toInt,
             workdir = "/work/",
             ingestions = Seq (job)
         )

@@ -3,6 +3,8 @@ package ch.ninecode.np
 import scala.collection.Map
 import scala.reflect.runtime.universe
 
+import org.apache.log4j.Level
+import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
@@ -17,8 +19,11 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CHIM
+import ch.ninecode.cim.CIMClasses
+import ch.ninecode.cim.CIMExport
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMSubsetter
+import ch.ninecode.cim.DefaultSource
 import ch.ninecode.model.ACDCTerminal
 import ch.ninecode.model.BasicElement
 import ch.ninecode.model.ConductingEquipment
@@ -31,6 +36,11 @@ import ch.ninecode.model.Location
 import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.model.Terminal
+import ch.ninecode.util.CIMInitializer
+import ch.ninecode.util.Main
+import ch.ninecode.util.MainOptions
+import ch.ninecode.util.SparkOptions
+import ch.ninecode.util.Util
 
 
 /**
@@ -38,11 +48,11 @@ import ch.ninecode.model.Terminal
  * Reads a CSV (in a particular format) to extract the ShortCircuitData information.
  *
  * @param session       the Spark session
- * @param storage_level specifies the <a href="https://spark.apache.org/docs/latest/programming-guide.html#which-storage-level-to-choose">Storage Level</a> used to persist and serialize the objects
+ * @param options       options for processing
  */
 case class ShortCircuitInfo2 (
     session: SparkSession,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
+    options: NetworkParametersOptions
 )
     extends CIMRDD
 {
@@ -50,7 +60,7 @@ case class ShortCircuitInfo2 (
     import session.sqlContext.implicits._
 
     implicit val spark: SparkSession = session
-    implicit val storage: StorageLevel = storage_level
+    implicit val storage: StorageLevel = options.cim_options.storage
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
 
     // get a map of voltages
@@ -396,7 +406,7 @@ case class ShortCircuitInfo2 (
         val injections: RDD[(String, EquivalentInjection)] = equivalents.keyBy (_.EquivalentEquipment.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName)
         val transformers: RDD[(String, TransformerDetails)] = transformerdetails.keyBy (_.transformer)
         val all = injections.join (transformers).values.flatMap (toTerminalsAndLocations)
-        val _ = all.persist (storage_level)
+        val _ = all.persist (storage)
         all
     }
 
@@ -444,5 +454,97 @@ case class ShortCircuitInfo2 (
         // replace elements in Elements
         val new_elements: RDD[Element] = old_elements.union (elements)
         val _ = put (new_elements, "Elements", true)
+    }
+
+
+    def run (): Unit =
+    {
+        val equivalents = getShortCircuitInfo (options.available_power_csv, options.station_transformer_csv)
+        val export = new CIMExport (session)
+        export.export (equivalents, options.available_power_csv.replace (".csv", ".rdf"))
+        if ("" != options.export)
+        {
+            merge (equivalents)
+            export.exportAll (options.export)
+        }
+    }
+}
+
+object ShortCircuitInfo2 extends CIMInitializer[NetworkParametersOptions] with Main
+{
+    def run (options: NetworkParametersOptions): Unit =
+    {
+        if (options.verbose)
+        {
+            LogManager.getLogger (getClass).setLevel (Level.INFO)
+            LogManager.getLogger (classOf[ShortCircuitInfo2]).setLevel (org.apache.log4j.Level.INFO)
+        }
+        if (options.main_options.valid)
+        {
+            if (options.cim_options.files.nonEmpty)
+            {
+                if ("" != options.available_power_csv && "" != options.station_transformer_csv)
+                {
+                    val session: SparkSession = createSession (options)
+                    readCIM (session, options)
+                    time ("execution: %s seconds")
+                    {
+                        ShortCircuitInfo2 (session, options).run ()
+                    }
+                }
+                else
+                    log.error (s"no CSV file (${ if ("" != options.available_power_csv) "csv1" else "csv2" }) specified")
+            }
+            else
+                log.error ("no CIM files specified")
+        }
+    }
+
+    def main (args: Array[String])
+    {
+        val have = util.Properties.versionNumberString
+        val need = scala_library_version
+        if (have != need)
+        {
+            log.error (s"Scala version ($have) does not match the version ($need) used to build $application_name")
+            sys.exit (1)
+        }
+        else
+        {
+            // get the necessary jar files to send to the cluster
+            val jars = Set (
+                jarForObject (new DefaultSource ()),
+                jarForObject (NetworkParametersOptions ())
+            ).toArray
+
+            // compose the classes to be registered with Kryo
+            val kryo = Array.concat (
+                // register CIMReader classes
+                CIMClasses.list,
+                // register Util classes
+                Util.classes)
+
+            // initialize the default options
+            val temp = NetworkParametersOptions ()
+            val default = NetworkParametersOptions (
+                main_options = MainOptions (s"Customer2_NetworkParameters", application_version),
+                spark_options = SparkOptions (jars = jars, kryo = kryo),
+                cim_options = temp.cim_options.copy (options = temp.cim_options.toMap),
+                available_power_csv = "Trafos_fuer_Analytiks.csv",
+                station_transformer_csv = "Netzeinspeisungen.csv"
+            )
+
+            // parse the command line arguments
+            new Customer2OptionsParser (default).parse (args, default) match
+            {
+                case Some (options) =>
+                    // execute the main program if everything checks out
+                    run (options)
+                    if (!options.main_options.unittest)
+                        sys.exit (0)
+                case None =>
+                    sys.exit (1)
+            }
+        }
     }
 }
