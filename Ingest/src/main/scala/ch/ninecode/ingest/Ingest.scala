@@ -51,6 +51,8 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
 {
 
     type Mrid = String
+    type AOID = String
+    type MstID = String
     type Type = String
     type Time = Long
     type Period = Int
@@ -839,30 +841,60 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
     {
         readCIM ()
         val synthLoadProfile: RDD[MeasuredValue] = import_parquet ()
-        val mapping: RDD[(String, String)] = getMappingAoHas ()
-        val joinedData: RDD[MeasuredValue] = synthLoadProfile.keyBy (_._1).join (mapping).values.map (v => v._1.copy (_1 = v._2))
+        val aoNisMapping: RDD[(AOID, Iterable[Mrid])] = getMappingAoHas ()
 
-        def aggregateData (data: Iterable[MeasuredValue]): MeasuredValue =
+        val joinedData: RDD[(MeasuredValue, Iterable[Mrid])] = synthLoadProfile
+            .keyBy (_._1)
+            .join (aoNisMapping)
+            .values
+
+        def splitAoWithMultipleHAS(joinedData: (MeasuredValue, Iterable[Mrid])): Iterable[MeasuredValue] = {
+            val numberOfHAS = joinedData._2.size
+            val real_a = joinedData._1._5 / numberOfHAS
+            val imag_a = joinedData._1._6 / numberOfHAS
+
+            joinedData._2.map(m => {
+                joinedData._1.copy(
+                    _1 = m,
+                    _5 = real_a,
+                    _6 = imag_a)
+            })
+        }
+
+        def aggregateDataPerHAS (data: Iterable[MeasuredValue]): MeasuredValue =
         {
             val real_a = data.map (_._5).sum
             val imag_a = data.map (_._6).sum
             data.head.copy (_5 = real_a, _6 = imag_a)
         }
 
-        val aggregatedData: RDD[MeasuredValue] = joinedData.groupBy (k => (k._1, k._3)).values.map (aggregateData)
-        aggregatedData.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        val dataPerHas: RDD[(MeasuredValue)] = joinedData.flatMap(splitAoWithMultipleHAS)
+        val aggregatedDataPerHAS: RDD[MeasuredValue] = dataPerHas.groupBy (k => (k._1, k._3)).values.map(aggregateDataPerHAS)
+        aggregatedDataPerHAS.saveToCassandra (options.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
     }
 
-    def getMappingAoHas (): RDD[(String, String)] =
+    def getMappingAoHas (): RDD[(AOID, Iterable[Mrid])] =
     {
-        val name: RDD[Name] = getOrElse [Name]
-        val serviceLocation: RDD[ServiceLocation] = getOrElse [ServiceLocation]
-        val userAttribute: RDD[UserAttribute] = getOrElse [UserAttribute]
-        val stringQuantity: RDD[StringQuantity] = getOrElse [StringQuantity]
+        val name: RDD[(String, Name)] = getOrElse [Name].keyBy (_.IdentifiedObject)
+        val serviceLocation: RDD[(String, ServiceLocation)] = getOrElse [ServiceLocation].keyBy (_.id)
+        val userAttribute: RDD[(String, UserAttribute)] = getOrElse [UserAttribute].keyBy (_.value)
+        val stringQuantity: RDD[(String, StringQuantity)] = getOrElse [StringQuantity].keyBy (_.id)
 
-        val MstHasMapping: RDD[(String, String)] = userAttribute.keyBy (_.value).join (stringQuantity.keyBy (_.id)).values.map (x => (x._1.name, x._2.value))
-        val MstAoMapping: RDD[(String, String)] = serviceLocation.keyBy (_.id).join (name.keyBy (_.IdentifiedObject)).values.map (x => (x._1.WorkLocation.Location.IdentifiedObject.name, x._2.name))
-        MstAoMapping.join (MstHasMapping).values
+        val MstHasMapping: RDD[(MstID, Mrid)] = userAttribute
+            .join (stringQuantity)
+            .values
+            .map (x => (x._1.name, x._2.value))
+
+        val MstAoMapping: RDD[(MstID, AOID)] = serviceLocation
+            .join (name)
+            .values
+            .map (x => (x._1.WorkLocation.Location.IdentifiedObject.name, x._2.name))
+
+        MstAoMapping
+            .join (MstHasMapping)
+            .groupByKey
+            .flatMap(_._2.toList)
+            .groupByKey()
     }
 
     def import_parquet (): RDD[MeasuredValue] =
