@@ -936,6 +936,7 @@ truncate table cimapplication.responsibility_by_day;
                     where
                         t.ACDCTerminal.IdentifiedObject.mRID = e.TransformerEnd.Terminal and
                         e.TransformerEnd.endNumber = 2 and
+                        e.TransformerEnd.BaseVoltage = 'BaseVoltage_400' and
                         e.PowerTransformer = p.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID and
                         p.ConductingEquipment.Equipment.EquipmentContainer = c.mrid
                     group by
