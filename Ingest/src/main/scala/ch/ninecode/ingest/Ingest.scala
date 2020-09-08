@@ -17,7 +17,8 @@ import ch.ninecode.util.SparkOptions
 /**
  * Import measured data into Cassandra.
  *
- * Copies files to HDFS, reads them into Spark, executes a join across a CH### to mRID mapping table and stores them in Cassandra.
+ * Copies files to HDFS, reads them into Spark,
+ * executes a join across a CH### to mRID mapping table and stores them in Cassandra.
  *
  * @param session The Spark session to use.
  * @param options Options regarding Spark master, Cassandra host, processing details, etc.

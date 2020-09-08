@@ -29,20 +29,22 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
     {
         readCIM (job)
         val synthLoadProfile: RDD[MeasuredValue] = import_parquet (job)
-        val aoNisMapping: RDD[(AOID, Iterable[Mrid])] = getMappingAoHas ()
+        val aoNisMapping: RDD[(AOID, Iterable[Mrid])] = getMappingAoHas
 
         val joinedData: RDD[(MeasuredValue, Iterable[Mrid])] = synthLoadProfile
             .keyBy (_._1)
             .join (aoNisMapping)
             .values
 
-        def splitAoWithMultipleHAS(joinedData: (MeasuredValue, Iterable[Mrid])): Iterable[MeasuredValue] = {
+        def splitAoWithMultipleHAS (joinedData: (MeasuredValue, Iterable[Mrid])): Iterable[MeasuredValue] =
+        {
             val numberOfHAS = joinedData._2.size
             val real_a = joinedData._1._5 / numberOfHAS
             val imag_a = joinedData._1._6 / numberOfHAS
 
-            joinedData._2.map(m => {
-                joinedData._1.copy(
+            joinedData._2.map (m =>
+            {
+                joinedData._1.copy (
                     _1 = m,
                     _5 = real_a,
                     _6 = imag_a)
@@ -56,12 +58,18 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
             data.head.copy (_5 = real_a, _6 = imag_a)
         }
 
-        val dataPerHas: RDD[(MeasuredValue)] = joinedData.flatMap(splitAoWithMultipleHAS)
-        val aggregatedDataPerHAS: RDD[MeasuredValue] = dataPerHas.groupBy (k => (k._1, k._3)).values.map(aggregateDataPerHAS)
-        aggregatedDataPerHAS.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+        val dataPerHas: RDD[MeasuredValue] = joinedData.flatMap (splitAoWithMultipleHAS)
+        val aggregatedDataPerHAS: RDD[MeasuredValue] = dataPerHas
+            .groupBy (k => (k._1, k._3))
+            .values
+            .map (aggregateDataPerHAS)
+
+        aggregatedDataPerHAS.saveToCassandra (job.keyspace, "measured_value",
+            SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+        )
     }
 
-    def getMappingAoHas (): RDD[(AOID, Iterable[Mrid])] =
+    def getMappingAoHas: RDD[(AOID, Iterable[Mrid])] =
     {
         val name: RDD[(String, Name)] = getOrElse [Name].keyBy (_.IdentifiedObject)
         val serviceLocation: RDD[(String, ServiceLocation)] = getOrElse [ServiceLocation].keyBy (_.id)
@@ -81,8 +89,8 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
         MstAoMapping
             .join (MstHasMapping)
             .groupByKey
-            .flatMap(_._2.toList)
-            .groupByKey()
+            .flatMap (_._2.toList)
+            .groupByKey ()
     }
 
     def import_parquet (job: IngestJob): RDD[MeasuredValue] =
