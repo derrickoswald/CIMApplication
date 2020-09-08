@@ -24,7 +24,7 @@ if [[ $# -eq 0 ]] ; then
     master=localhost
     cassandra=localhost
     network=
-    publish="--publish 8080:8080 --publish 4040:4040 --publish 50070:50070"
+    publish="--publish 8080:8080 --publish 4040:4040 --publish 9870:9870"
     format="{{.NetworkSettings.IPAddress}}"
 else
     master=$1

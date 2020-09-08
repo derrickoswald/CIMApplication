@@ -32,9 +32,9 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
-import com.intel.analytics.bigdl.dlframes.DLEstimator
-import com.intel.analytics.bigdl.nn._
-import com.intel.analytics.bigdl.tensor.TensorNumericMath.TensorNumeric.NumericFloat
+//import com.intel.analytics.bigdl.dlframes.DLEstimator
+//import com.intel.analytics.bigdl.nn._
+//import com.intel.analytics.bigdl.tensor.TensorNumericMath.TensorNumeric.NumericFloat
 
 
 case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
@@ -430,30 +430,30 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         }
     }
 
-    def makeDLModel ()
-    {
-        // split the data into training and test sets (30% held out for testing)
-        val raw = getRawData
-        val splits = raw.randomSplit (Array (0.7, 0.3))
-        val (trainingData, testData) = (splits (0), splits (1))
-
-        val cols = Seq ("average", "tick", "week") ++ day_names
-        val assembler = new VectorAssembler ()
-            .setInputCols (cols.toArray)
-            .setOutputCol ("features")
-        val train_df = assembler.transform (trainingData)
-        val test_df = assembler.transform (testData)
-
-        val model = Sequential ().add (Linear (10, 1))
-        val criterion = MSECriterion ()
-        val estimator = new DLEstimator (model, criterion, Array (10), Array (1))
-            .setLabelCol ("value")
-            .setBatchSize (4)
-            .setMaxEpoch (2)
-
-        val dlModel = estimator.fit (train_df)
-        dlModel.transform (test_df).show (false)
-    }
+//    def makeDLModel ()
+//    {
+//        // split the data into training and test sets (30% held out for testing)
+//        val raw = getRawData
+//        val splits = raw.randomSplit (Array (0.7, 0.3))
+//        val (trainingData, testData) = (splits (0), splits (1))
+//
+//        val cols = Seq ("average", "tick", "week") ++ day_names
+//        val assembler = new VectorAssembler ()
+//            .setInputCols (cols.toArray)
+//            .setOutputCol ("features")
+//        val train_df = assembler.transform (trainingData)
+//        val test_df = assembler.transform (testData)
+//
+//        val model = Sequential ().add (Linear (10, 1))
+//        val criterion = MSECriterion ()
+//        val estimator = new DLEstimator (model, criterion, Array (10), Array (1))
+//            .setLabelCol ("value")
+//            .setBatchSize (4)
+//            .setMaxEpoch (2)
+//
+//        val dlModel = estimator.fit (train_df)
+//        dlModel.transform (test_df).show (false)
+//    }
 
     def save (predictions: DataFrame, synthesis: String, period: Int): Unit =
     {
