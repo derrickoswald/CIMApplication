@@ -226,6 +226,26 @@
                     <skipTests>true</skipTests>
                 </configuration>
             </plugin>
+            <!-- enable scalatest -->
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>${version.dependency.scalatest-maven-plugin}</version>
+                <configuration>
+                    <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+                    <junitxml>.</junitxml>
+                    <filereports>TestSuite.txt</filereports>
+                    <suites>ch.ninecode.ingest.IngestCustomSuite</suites>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
@@ -249,7 +269,10 @@
                         <goals>
                             <goal>reserve-network-port</goal>
                         </goals>
-                        <!-- reserve the ports in the phase before process-test-resources (where the resources are filtered and copied) -->
+                        <!--
+                        reserve the ports in the phase before process-test-resources
+                        (where the resources are filtered and copied)
+                         -->
                         <phase>generate-test-resources</phase>
                         <configuration>
                             <portNames>

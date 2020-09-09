@@ -1,8 +1,5 @@
 package ch.ninecode.ingest
 
-import java.text.SimpleDateFormat
-import java.util.Calendar
-
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SparkSession
@@ -21,6 +18,9 @@ class IngestCustomSuite extends FixtureAnyFunSuite with BeforeAndAfterAll
         val fixtureParam = FixtureParam(ingestCustom, session)
         try {
             withFixture(test.toNoArgTest(fixtureParam))
+        } finally
+        {
+            session.stop ()
         }
     }
 
