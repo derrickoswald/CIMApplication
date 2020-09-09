@@ -58,6 +58,8 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
                 val max_precalc = result.getDouble ("maximum")
                 assert (result.next, "expected pairs of results")
                 val max_loadflow = result.getDouble ("maximum")
+                println(max_precalc)
+                println(max_loadflow)
                 assert (max_precalc - max_loadflow <= 1500.0, "compare precalc with loadflow")
             }
         }
