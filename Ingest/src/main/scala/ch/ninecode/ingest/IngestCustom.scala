@@ -25,9 +25,16 @@ case class IngestCustom (session: SparkSession, options: IngestOptions) extends 
      *
      * @param line one line from the data file
      */
-    def line_custom (join_table: Map[String, String], measurementDateTimeFormat2: SimpleDateFormat, measurementDateTimeFormat3: SimpleDateFormat)
-        (line: String): Seq[MeasuredValue] =
+    def line_custom (join_table: Map[String, String], job: IngestJob)(line: String): Seq[MeasuredValue] =
     {
+        val measurementTimeZone: TimeZone = TimeZone.getTimeZone (job.timezone)
+        val measurementCalendar: Calendar = Calendar.getInstance ()
+        measurementCalendar.setTimeZone (measurementTimeZone)
+        val measurementDateTimeFormat2: SimpleDateFormat = new SimpleDateFormat ("dd.MM.yyyy HH:mm")
+        measurementDateTimeFormat2.setCalendar (measurementCalendar)
+        val measurementDateTimeFormat3: SimpleDateFormat = new SimpleDateFormat ("dd.MM.yyyy HH:mm:ss")
+        measurementDateTimeFormat3.setCalendar (measurementCalendar)
+
         // LDN-Messpunkt;Einheitennummer...
         // 730154;39580894;Wirkenergie A+ 15;1-1:1.8.0*255;15;kWh;2019.08.24;24.08.2019 00:00;24.08.2019 00:15;0.038;...
         val fields: Array[String] = line.split (";")
@@ -70,16 +77,8 @@ case class IngestCustom (session: SparkSession, options: IngestOptions) extends 
 
     def sub_custom (filename: String, join_table: Map[String, String], job: IngestJob): Unit =
     {
-        val measurementTimeZone: TimeZone = TimeZone.getTimeZone (job.timezone)
-        val measurementCalendar: Calendar = Calendar.getInstance ()
-        measurementCalendar.setTimeZone (measurementTimeZone)
-        val measurementDateTimeFormat2: SimpleDateFormat = new SimpleDateFormat ("dd.MM.yyyy HH:mm")
-        measurementDateTimeFormat2.setCalendar (measurementCalendar)
-        val measurementDateTimeFormat3: SimpleDateFormat = new SimpleDateFormat ("dd.MM.yyyy HH:mm:ss")
-        measurementDateTimeFormat3.setCalendar (measurementCalendar)
-
         val lines: RDD[String] = session.sparkContext.textFile (filename)
-        val rdd = lines.flatMap (line_custom (join_table, measurementDateTimeFormat2, measurementDateTimeFormat3))
+        val rdd = lines.flatMap (line_custom (join_table, job))
         // combine real and imaginary parts
         if (job.mode == Modes.Append)
         {
