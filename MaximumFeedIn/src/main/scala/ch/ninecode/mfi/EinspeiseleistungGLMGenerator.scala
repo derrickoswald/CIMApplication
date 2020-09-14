@@ -3,28 +3,25 @@ package ch.ninecode.mfi
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import scala.math.acos
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
-import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GLMLineEdge
-import ch.ninecode.gl.SwingNode
+import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GLMSwitchEdge
 import ch.ninecode.gl.GLMTransformerEdge
+import ch.ninecode.gl.PV
+import ch.ninecode.gl.SwingNode
 import ch.ninecode.model.ACDCTerminal
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BasicElement
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Conductor
 import ch.ninecode.model.Element
-import ch.ninecode.model.GeneratingUnit
 import ch.ninecode.model.IdentifiedObject
 import ch.ninecode.model.PowerTransformerEnd
-import ch.ninecode.model.SolarGeneratingUnit
 import ch.ninecode.model.Terminal
 import ch.ninecode.net.LineData
 import ch.ninecode.net.LineDetails
@@ -176,12 +173,15 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def extra: Iterable[String] =
     {
-        def extra_nodes: Iterable[MaxPowerFeedingNodeEEA] = trafokreis.houses.filter (_.eea != null).groupBy (_.id_seq).values.map (_.head)
+        def extra_nodes: Iterable[MaxPowerFeedingNodeEEA] = trafokreis.houses
+            .filter (_.eea != null)
+            .groupBy (_.id_seq)
+            .values
+            .map (_.head)
 
         def emit_extra_node (node: MaxPowerFeedingNodeEEA): String =
         {
-            val solargeneratingunits = node.eea.map (_.solar).toList
-            emit_pv (solargeneratingunits, node)
+            emit_pv (node.eea, node)
         }
 
         extra_nodes.map (emit_extra_node)
@@ -344,40 +344,32 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             ""
     }
 
-    def emit_pv (solargeneratingunits: List[SolarGeneratingUnit], node: MaxPowerFeedingNodeEEA): String =
+    def emit_pv (pvUnits: Iterable[PV], node: MaxPowerFeedingNodeEEA): String =
     {
         val parent = node.id_seq
         val voltage = node.voltage
         var load = ""
         var index = 1
 
-        for (solargeneratingunit <- solargeneratingunits)
+        for (photoVoltaicUnit <- pvUnits)
         {
-            val ratedNetMaxP = solargeneratingunit.GeneratingUnit.ratedNetMaxP * 1000
-            val normalPFMask = GeneratingUnit.fields.indexOf ("normalPF")
-            val cosPhi = if (0 != (solargeneratingunit.GeneratingUnit.bitfields (normalPFMask / 32) & (1 << (normalPFMask % 32))))
-                solargeneratingunit.GeneratingUnit.normalPF
-            else
-                1.0
-
-            def PVPower (maxp: Double): String =
+            val ratedP = photoVoltaicUnit.connection.p * 1000 // [W]
+            val ratedQ = photoVoltaicUnit.connection.q * 1000 // [var]
+            val ratedS = Complex(ratedP, ratedQ) // [VA]
+            if (ratedS.modulus != photoVoltaicUnit.connection.ratedS)
             {
-                // https://en.wikipedia.org/wiki/Power_factor
-                // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
-                // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
-                // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-                val phi = -math.signum (cosPhi) * acos (math.abs (cosPhi))
-                new Complex (-maxp * math.cos (phi), -maxp * math.sin (phi)).asString (6)
+                val warningMessage = "Calculated different ratedS for "+photoVoltaicUnit.connection.id+"("+ratedS.modulus+") and ("+photoVoltaicUnit.connection.ratedS+")"
+                log.warn(warningMessage)
             }
 
-            if (ratedNetMaxP > 0)
+            if (ratedS.modulus > 0)
             {
                 val phase = if (one_phase) "AN" else "ABCN"
                 val power = if (one_phase)
-                    s"""            constant_power_A ${PVPower (ratedNetMaxP)};""".stripMargin
+                    s"""            constant_power_A ${(ratedS).asString(6)};""".stripMargin
                 else
                 {
-                    val maxP3 = PVPower (ratedNetMaxP / 3.0)
+                    val maxP3 = (ratedS / 3.0)
                     s"""            constant_power_A $maxP3;
                        |            constant_power_B $maxP3;
                        |            constant_power_C $maxP3;""".stripMargin

@@ -1,16 +1,5 @@
 package ch.ninecode.mfi
 
-import java.util.Calendar
-
-import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.PV
-import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.PreNode
-import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Terminal
-import ch.ninecode.net.TransformerIsland
-import ch.ninecode.util.Complex
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
@@ -23,6 +12,16 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.gl.PV
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.PreNode
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Terminal
+import ch.ninecode.net.TransformerIsland
+import ch.ninecode.util.Complex
 
 class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER, tbase: Double = 20, tsim: Double) extends CIMRDD with Serializable
 {
@@ -303,7 +302,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val new_nodes = nodes_with_edge.map (x => if (bad_tx.contains (x.source_obj)) x.copy (problem = "non-radial network") else x)
         // then get the threshold:
         val house_nodes = get_threshold_per_has (new_nodes, options)
-        val traced_house_nodes_EEA = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values
+        val traced_house_nodes_EEA: RDD[(MaxPowerFeedingNodeEEA, Option[Iterable[PV]])] = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values
 
         // prioritize unhandled issues over a non-radial network problem
         def pickWorst (pfn: Iterable[PowerFeedingNode]): String =
