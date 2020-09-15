@@ -34,22 +34,20 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
     // get the existing photo-voltaic installations keyed by terminal
     def getSolarInstallations: RDD[(String, Iterable[PV])] =
     {
-        // note there are two independent linkages happening here through the UserAttribute class:
-        // - SolarGeneratingUnit to ServiceLocation
-        // - ServiceLocation to EnergyConsumer
-
-         // get the pv stations
+         // get the pv units
         val pv_cim = getOrElse[PhotoVoltaicUnit]
-
+        // get electronics connections
         val pv_connection = getOrElse[PowerElectronicsConnection]
-        val pv_join: RDD[(String, (PhotoVoltaicUnit, PowerElectronicsConnection))] = pv_cim.keyBy(_.id).join (pv_connection.keyBy (_.RegulatingCondEq.EnergyConnection.ConductingEquipment.id))
 
         // get the terminals
         val terminals = getOrElse [Terminal]
 
-        // link to the connectivity/topological node through the terminal
-        val t: RDD[PV] = terminals.keyBy (_.ConductingEquipment).join (pv_join.keyBy (_._2._1.id)).values.map (
-            x => PV (if (topologicalnodes) x._1.TopologicalNode else x._1.ConnectivityNode, x._2._2._1, x._2._2._2))
+        val pv_connection_terminals = terminals.keyBy(_.ConductingEquipment).join (pv_cim.keyBy (_.id))
+        val pv_cim_pv_connection = pv_cim.keyBy(_.PowerElectronicsUnit.PowerElectronicsConnection).join(pv_connection.keyBy(_.id)).values
+
+        val t: RDD[PV] = pv_connection_terminals.join(pv_cim_pv_connection.keyBy(_._1.id)).map(
+            x => PV(if (topologicalnodes) x._2._1._1.TopologicalNode else x._2._1._1.ConnectivityNode,x._2._2._1, x._2._2._2)
+        )
 
         val pv = t.groupBy (_.node).persist (storage_level)
 
