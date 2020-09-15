@@ -356,7 +356,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             val ratedP = photoVoltaicUnit.connection.p * 1000 // [W]
             val ratedQ = photoVoltaicUnit.connection.q * 1000 // [var]
             val ratedS = Complex(ratedP, ratedQ) // [VA]
-            if (ratedS.modulus != photoVoltaicUnit.connection.ratedS)
+            if (ratedS.modulus != photoVoltaicUnit.connection.ratedS*1000)
             {
                 val warningMessage = "Calculated different ratedS for "+photoVoltaicUnit.connection.id+"("+ratedS.modulus+") and ("+photoVoltaicUnit.connection.ratedS+")"
                 log.warn(warningMessage)
