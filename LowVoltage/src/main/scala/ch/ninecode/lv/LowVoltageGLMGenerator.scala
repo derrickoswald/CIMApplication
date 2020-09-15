@@ -288,7 +288,7 @@ class LowVoltageGLMGenerator
                |            parent "$id";
                |            property $voltage;
                |            interval 300;
-               |            file "output_data/" + node.id + "_voltage.csv\";
+               |            file "output_data/${id}_voltage.csv\";
                |        };
                |
                |        object recorder
