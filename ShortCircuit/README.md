@@ -32,53 +32,72 @@ For example ShortCircuit-2.12-3.0.0-3.0.1-jar-with-dependencies.jar is built for
 
 To execute the standalone program use the spark-submit command from within the Spark cluster and specify the CIM file(s) to process:
 ```
-spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=1g --conf spark.executor.memory=1g ShortCircuit-*-jar-with-dependencies.jar --logging WARN hdfs://sandbox:8020/cimfile.rdf
+spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=1g --conf spark.executor.memory=1g ShortCircuit-*-jar-with-dependencies.jar --log WARN hdfs://sandbox:8020/cimfile.rdf
 ```
 
 The `--help` option generates a description of the options available:
 
 ```
 ShortCircuit 2.12-3.0.0-3.0.1
-Usage: ShortCircuit [options] <CIM>,<CIM>...
+Usage: ShortCircuit [options] [<CIM> <CIM> ...]
 
-  --quiet                  suppress informational messages [false]
-  --master MASTER_URL      spark://host:port, mesos://host:port, yarn, or local[*]
-  --opts k1=v1,k2=v2       Spark options [spark.graphx.pregel.checkpointInterval=8,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.ui.showConsoleProgress=false]
-  --storage <value>        storage level for RDD serialization [MEMORY_AND_DISK_SER]
-  --splitsize <value>      file input format maximum size [67108864]
-  --deduplicate            de-duplicate input (striped) files [false]
-  --logging <value>        log level, one of ALL,DEBUG,ERROR,FATAL,INFO,OFF,TRACE,WARN [OFF]
-  --checkpoint <dir>       checkpoint directory on HDFS, e.g. hdfs://...
+  --version                Scala: 2.12, Spark: 3.0.0, ShortCircuit: 3.0.1
+  --master <master_url>    local[*], spark://host:port/, mesos://host:port or yarn [local[*]]
+  --spark_options <map>    Spark options [spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.sql.catalog.casscatalog=com.datastax.spark.connector.datasource.CassandraCatalog,spark.kryo.registrator=ch.ninecode.cim.CIMRegistrator,spark.graphx.pregel.checkpointInterval=8,spark.ui.showConsoleProgress=false,spark.sql.debug.maxToStringFields=250]
+  --log <enum>             log level, one of OFF,FATAL,ERROR,WARN,INFO,DEBUG,TRACE,ALL [OFF]
+  --jars <list>            names of jars to send to Spark [./ShortCircuit/target/ShortCircuit-2.12-3.0.0-3.0.1-jar-with-dependencies.jar]
+  --checkpoint <dir>       checkpoint directory on HDFS, e.g. hdfs://... []
+  --cim_options <map>      CIM options [ch.ninecode.cim.do_topo=true,ch.ninecode.cim.do_normalize=false,ch.ninecode.cim.do_join=false,ch.ninecode.cim.default_switch_open_state=false,ch.ninecode.cim.do_deduplication=false,path=,ch.ninecode.cim.debug=false,ch.ninecode.cim.split_maxsize=67108864,ch.ninecode.cim.force_retain_fuses=ForceTrue,ch.ninecode.cim.force_switch_separate_islands=Unforced,ch.ninecode.cim.do_topo_islands=true,ch.ninecode.cim.force_fuse_separate_islands=Unforced,ch.ninecode.cim.force_retain_switches=Unforced,ch.ninecode.cim.make_edges=false,StorageLevel=MEMORY_AND_DISK_SER,ch.ninecode.cim.cache=,ch.ninecode.cim.do_about=false]
+  --topology               do topology processing (enables the following 6 options) [true]
+  --identify_islands       perform island topological processing [true]
+  --retain_switch <state>  attribute 'retain' for all switches except Fuse types, one of ForceTrue,ForceFalse,Unforced [Unforced]
+  --retain_fuse <state>    attribute 'retain' for all fuses, one of ForceTrue,ForceFalse,Unforced [ForceTrue]
+  --switch_island <state>  switches (except Fuse) separate topological islands, one of ForceTrue,ForceFalse,Unforced [Unforced]
+  --fuse_island <state>    fuses separate topological islands, one of ForceTrue,ForceFalse,Unforced [Unforced]
+  --default_open           default switch open/normalOpen value if not specified [false]
+  --about                  do about processing [false]
+  --normalize              do normalization processing [false]
+  --dedup                  do deduplication processing [false]
+  --edges                  do edge processing [false]
+  --join                   do asset join processing [false]
+  --debug                  enable debug messages [false]
+  --splitsize <value>      file read split size [67108864]
+  --cache <dir>            CIM cache location []
+  --storage <enum>         storage level for RDD serialization, one of NONE,DISK_ONLY,DISK_ONLY_2,MEMORY_ONLY,MEMORY_ONLY_2,MEMORY_ONLY_SER,MEMORY_ONLY_SER_2,MEMORY_AND_DISK,MEMORY_AND_DISK_2,MEMORY_AND_DISK_SER,MEMORY_AND_DISK_SER_2,OFF_HEAP [MEMORY_AND_DISK_SER]
+  <CIM> <CIM> ...          CIM rdf files to process
+  --verbose                log informational messages [false]
   --description <text>     text describing this program execution for SQLite run table
-  --netp_max <Sk_max>      maximum network power if not in CIM, VA [2.00000e+08]
-  --netz_max <r + xj>      maximum network impedance if not in CIM, Ω [0.43778578-1.20280655j]
-  --netp_min <Sk_min>      minimum network power if not in CIM, VA [1.00000e+08]
-  --netz_min <r + xj>      minimum network impedance if not in CIM, Ω [0.43778578-1.20280655j]
-  --tbase <value>          temperature assumed in CIM file (°C) [20.0000]
-  --tlow <value>           low temperature for maximum fault (°C) [60.0000]
-  --thigh <value>          high temperature for minimum fault (°C) [90.0000]
+  --netp_max <Sk_max>      maximum network power if not in CIM, VA [2.0E8]
+  --netz_max <r + xj>      network impedance at maximum power if not in CIM, Ω [0.43778578-1.20280655j]
+  --neta_max <angle>       network power factor angle at maximum power if not in CIM, overrides impedance, ° [NaN]
+  --netp_min <Sk_min>      minimum network power if not in CIM, VA [1.0E8]
+  --netz_min <r + xj>      network impedance at minumum power if not in CIM, Ω [0.87557157-2.40561311j]
+  --neta_min <angle>       network power factor angle at minimum power if not in CIM, overrides impedance, ° [NaN]
+  --tbase <value>          temperature assumed in CIM file (°C) [20.0]
+  --tlow <value>           low temperature for maximum fault (°C) [60.0]
+  --thigh <value>          high temperature for minimum fault (°C) [90.0]
   --trafos <TRA file>      file of transformer names (one per line) to process
-  --trafop <ratedS>        transformer power if not in CIM, VA [630000]
+  --trafop <ratedS>        transformer power if not in CIM, VA [630000.0]
   --trafoz <r + xj>        transformer impedance if not in CIM, Ω [0.0059+0.03956248j]
-  --cmax <value>           voltage factor for maximum fault level, used for rating equipment [1.00000]
-  --cmin <value>           voltage factor for minimum fault level, used for protections settings [0.900000]
+  --cmax <value>           voltage factor for maximum fault level, used for rating equipment [1.0]
+  --cmin <value>           voltage factor for minimum fault level, used for protections settings [0.9]
   --cosphi <value>         load power factor, used for maximum inrush current [worst case]
-  --fuse_table <value>     recommended fuse sizing table, #1 from 65A⇒25 to 2400A⇒630, #2 from 28A⇒10 to 2500A⇒630 [1], #3 DIN as #1, SEV 200A⇒60 to 1150A⇒400
+  --fuse_table <value>     recommended fuse sizing table, #1 from 65A⇒25 to 2400A⇒630, #2 from 28A⇒10 to 2500A⇒630, #3 DIN as #1, SEV 200A⇒60 to 1150A⇒400, #4 0⇒6,65A⇒25 to 2400A⇒500 [1]
   --messagemax <value>     maximum number of warning and error messages per node [5]
   --batchsize <value>      size of result collections for driver database writes [10000]
   --cable_impedance_limit <value>
-                           cables with higher impedances for R1 will not be processed with gridlabd [5.00000]
+                           cables with higher impedances for R1 will not be processed with gridlabd [5.0]
+  --calculate_public_lighting <value>
+                           calculate public lighting [false]
   --workdir <dir>          shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files
-  --help                   prints this usage text
-  <CIM>,<CIM>...           CIM rdf files to process
-
 ```
 
 ## Options
 
-### quiet
-Together with the --logging option and log4j.properties configuration of Spark,
-this controls if informational messages from the application are emitted.
+### verbose
+Logs messages at the INFO level for ShortCircuit classes
+(as opposed to other Spark and CIMApplication classes which is handled by --log,
+together with the log4j.properties configuration of Spark).
 
 ### master
 Allows specifying the Spark master (same meaning as spark-submit) when `ShortCircuit` is run in debug mode in a development environment.
@@ -86,7 +105,7 @@ Normally this should not be used by end users.
 Within the program, the Spark session is accessed via `getOrCreate`,
 so it should be benign to specify the same master as for `spark-submit`.
 
-### opts
+### spark_options
 Allows specifying Spark options when `ShortCircuit` is run.
 When specified, options are in the form of
 [Spark Properties](https://spark.apache.org/docs/latest/configuration.html#viewing-spark-properties)
@@ -94,7 +113,7 @@ When specified, options are in the form of
 and not the form used by spark-submit.
 For example spark-submit uses `--driver-memory 2g`, while `--opts` uses `spark.driver.memory=2g`.
 
-### storage_level
+### storage
 The [object serialization](http://spark.apache.org/docs/latest/tuning.html#data-serialization) storage level
 to use for the [`CIMReader`](https://derrickoswald.github.io/CIMSpark/CIMReader/) and `ShortCircuit`.
 
@@ -102,15 +121,15 @@ to use for the [`CIMReader`](https://derrickoswald.github.io/CIMSpark/CIMReader/
 Same as specifying `ch.ninecode.cim.split_maxsize=XXX` for the CIMReader.
 A file larger than this threshold is split into multiple partitions when being read in.
 
-### deduplicate
+### dedup
 Same as specifying `ch.ninecode.cim.do_deduplication=???` for the CIMReader.
 When using striped or tiled RDF files as input, this option will eliminate
 duplicated elements contained in multiple files.
 Only distinctly identified (rdf:ID) CIM elements are kept, duplicates are discarded.
 
-### logging
+### log
 Specifies the logging level (verbosity) of log records.
-This overrides the logging level specified in log4j.properties for some ShortCircuit class files.
+This overrides the logging level specified in log4j.properties file.
 
 ### checkpointdir
 Specifies the checkpoint directory and turns checkpointing on - if not specified no checkpointing occurs.
@@ -231,6 +250,25 @@ I<sub>k</sub>|Rating (A)
 720|250
 850|300
 1150|400
+
+For fuse table #4, the lowest value is a 6A fuse, otherwise the breakpoints are:
+
+I<sub>k</sub>|Rating (A)
+-------------|----------
+65|25
+105|35
+140|50
+180|50
+240|63
+320|100
+380|100
+500|160
+650|160
+800|200
+1050|250
+1300|400
+1750|400
+2400|500
 
 ### messagemax
 Specifies the maximum number of warning and error messages per node.
