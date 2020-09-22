@@ -45,7 +45,8 @@ case class Solar (session: SparkSession, topologicalnodes: Boolean, storage_leve
         val pv_connection_terminals = terminals.keyBy(_.ConductingEquipment).join (pv_cim.keyBy (_.id))
         val pv_cim_pv_connection = pv_cim.keyBy(_.PowerElectronicsUnit.PowerElectronicsConnection).join(pv_connection.keyBy(_.id)).values
 
-        val t: RDD[PV] = pv_connection_terminals.join(pv_cim_pv_connection.keyBy(_._1.id)).map(
+        val pv_joined = pv_connection_terminals.join (pv_cim_pv_connection.keyBy (_._1.id))
+        val t: RDD[PV] = pv_joined.map(
             x => PV(if (topologicalnodes) x._2._1._1.TopologicalNode else x._2._1._1.ConnectivityNode,x._2._2._1, x._2._2._2)
         )
 

@@ -315,8 +315,13 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         }
 
         // update each element in the transformer service area with bad value
-        val problem_trafos = graph.vertices.values.filter (x => x.source_obj != null && (x.hasIssues || x.hasNonRadial)).keyBy (_.source_obj).groupByKey.map (x => (x._1.trafo_id, pickWorst (x._2)))
-        val has = traced_house_nodes_EEA.map (
+        val problem_trafos = graph.vertices
+            .values
+            .filter (x => x.source_obj != null && (x.hasIssues || x.hasNonRadial))
+            .keyBy (_.source_obj)
+            .groupByKey
+            .map (x => (x._1.trafo_id, pickWorst (x._2)))
+        val intermediate_houses = traced_house_nodes_EEA.map (
             node =>
             {
                 node._2 match
@@ -328,6 +333,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 }
             }
         )
+        val has = intermediate_houses
             .keyBy (_.source_obj).leftOuterJoin (problem_trafos).values.map (
             arg =>
             {
