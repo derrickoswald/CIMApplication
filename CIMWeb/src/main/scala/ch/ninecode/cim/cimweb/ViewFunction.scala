@@ -144,9 +144,9 @@ case class ViewFunction (
         val file: Path = new Path ("/tmp/view.rdf")
         val f: Path = new Path (hdfs.getUri.toString, file)
         val _ = hdfs.delete (f, false)
-        log.info ("exporting %s".format (file.toString))
+        log.info ("exporting %s".format (f.toString))
         val export = new CIMExport (spark)
-        export.export (elements, file.toString, about)
+        export.export (elements, f.toString)
 
         // read the file
         log.info ("reading %s".format (f.toString))
