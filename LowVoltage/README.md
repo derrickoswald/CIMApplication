@@ -18,7 +18,7 @@ mvn package
 ```
 
 This will produce a jar file in the `target/` directory with a name that indicates the Scala, Spark and program versions.
-For example LowVoltage-2.12-3.0.0-3.0.1-jar-with-dependencies.jar is built for Scala 2.12, Spark 3.0.0 and is version 3.0.1 of the program.
+For example LowVoltage-<version>-jar-with-dependencies.jar is built for Scala 2.12, Spark 3.0.0 and is version 3.0.1 of the program.
 
 To execute the standalone program use the
 [spark-submit](https://spark.apache.org/docs/latest/submitting-applications.html#launching-applications-with-spark-submit)
@@ -30,14 +30,14 @@ spark-submit --master spark://sandbox:7077 --conf spark.driver.memory=1g --conf 
 The `--help` option generates a description of the options available:
 
 ```
-LowVoltage 2.12-3.0.0-3.0.1
+LowVoltage <version>
 Usage: LowVoltage [options] [<CIM> <CIM> ...]
 
-  --version                Scala: 2.12, Spark: 3.0.0, LowVoltage: 3.0.1
+  --version                Scala: 2.12, Spark: 3.0.0, LowVoltage: <version>
   --master <master_url>    local[*], spark://host:port/, mesos://host:port or yarn [local[*]]
   --spark_options <map>    Spark options [spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.sql.catalog.casscatalog=com.datastax.spark.connector.datasource.CassandraCatalog,spark.kryo.registrator=ch.ninecode.cim.CIMRegistrator,spark.graphx.pregel.checkpointInterval=8,spark.ui.showConsoleProgress=false,spark.sql.debug.maxToStringFields=250]
   --log <enum>             log level, one of OFF,FATAL,ERROR,WARN,INFO,DEBUG,TRACE,ALL [OFF]
-  --jars <list>            names of jars to send to Spark [./LowVoltage/target/LowVoltage-2.12-3.0.0-3.0.1-jar-with-dependencies.jar]
+  --jars <list>            names of jars to send to Spark [./LowVoltage/target/LowVoltage-<version>-jar-with-dependencies.jar]
   --checkpoint <dir>       checkpoint directory on HDFS, e.g. hdfs://... []
   --cim_options <map>      CIM options [ch.ninecode.cim.do_topo=true,ch.ninecode.cim.do_normalize=false,ch.ninecode.cim.do_join=false,ch.ninecode.cim.default_switch_open_state=false,ch.ninecode.cim.do_deduplication=true,path=,ch.ninecode.cim.debug=false,ch.ninecode.cim.split_maxsize=67108864,ch.ninecode.cim.force_retain_fuses=Unforced,ch.ninecode.cim.force_switch_separate_islands=Unforced,ch.ninecode.cim.do_topo_islands=true,ch.ninecode.cim.force_fuse_separate_islands=Unforced,ch.ninecode.cim.force_retain_switches=Unforced,ch.ninecode.cim.make_edges=false,StorageLevel=MEMORY_AND_DISK_SER,ch.ninecode.cim.cache=,ch.ninecode.cim.do_about=false]
   --topology               do topology processing (enables the following 6 options) [true]

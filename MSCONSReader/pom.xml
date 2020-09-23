@@ -4,7 +4,7 @@
     <parent>
         <artifactId>CIMApplication</artifactId>
         <groupId>ch.ninecode.cim</groupId>
-        <version>2.12-3.0.0-3.0.1</version>
+        <version>2.12-3.0.0-3.0.2</version>
     </parent>
     <artifactId>MSCONSReader</artifactId>
     <groupId>ch.ninecode.mscons</groupId>

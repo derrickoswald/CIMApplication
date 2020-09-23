@@ -63,14 +63,14 @@ $ spark-submit Customer2_NetworkParameters-*-jar-with-dependencies.jar --help
 ```
 will print out a short summary of available parameters like so:
 ```
-Customer2_NetworkParameters 2.12-3.0.0-5.0.3
+Customer2_NetworkParameters <version>
 Usage: Customer2_NetworkParameters [options] [<CIM> <CIM> ...]
 
-  --version                Scala: 2.12, Spark: 3.0.0, Customer2_NetworkParameters: 5.0.3
+  --version                Scala: 2.12, Spark: 3.0.0, Customer2_NetworkParameters: <version>
   --master <master_url>    local[*], spark://host:port/, mesos://host:port or yarn [local[*]]
   --spark_options <map>    Spark options [spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.sql.catalog.casscatalog=com.datastax.spark.connector.datasource.CassandraCatalog,spark.kryo.registrator=ch.ninecode.cim.CIMRegistrator,spark.graphx.pregel.checkpointInterval=8,spark.ui.showConsoleProgress=false,spark.sql.debug.maxToStringFields=250]
   --log <enum>             log level, one of OFF,FATAL,ERROR,WARN,INFO,DEBUG,TRACE,ALL [OFF]
-  --jars <list>            names of jars to send to Spark [/home/derrick/code/CIMApplication/NetworkParameters/target/Customer2_NetworkParameters-2.12-3.0.0-3.0.1-jar-with-dependencies.jar]
+  --jars <list>            names of jars to send to Spark [/home/derrick/code/CIMApplication/NetworkParameters/target/Customer2_NetworkParameters-<-jar-with-dependencies.jar]
   --checkpoint <dir>       checkpoint directory on HDFS, e.g. hdfs://... []
   --cim_options <map>      CIM options [ch.ninecode.cim.do_topo=true,ch.ninecode.cim.do_normalize=false,ch.ninecode.cim.do_join=false,ch.ninecode.cim.default_switch_open_state=false,ch.ninecode.cim.do_deduplication=true,path=,ch.ninecode.cim.debug=false,ch.ninecode.cim.split_maxsize=67108864,ch.ninecode.cim.force_retain_fuses=ForceTrue,ch.ninecode.cim.force_switch_separate_islands=Unforced,ch.ninecode.cim.do_topo_islands=true,ch.ninecode.cim.force_fuse_separate_islands=Unforced,ch.ninecode.cim.force_retain_switches=Unforced,ch.ninecode.cim.make_edges=false,StorageLevel=MEMORY_AND_DISK_SER,ch.ninecode.cim.cache=,ch.ninecode.cim.do_about=false]
   --topology               do topology processing (enables the following 6 options) [true]
