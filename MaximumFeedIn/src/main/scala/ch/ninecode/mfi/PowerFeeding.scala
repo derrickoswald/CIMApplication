@@ -1,16 +1,5 @@
 package ch.ninecode.mfi
 
-import java.util.Calendar
-
-import ch.ninecode.cim.CIMRDD
-import ch.ninecode.gl.PV
-import ch.ninecode.gl.PreEdge
-import ch.ninecode.gl.PreNode
-import ch.ninecode.model.ACLineSegment
-import ch.ninecode.model.ConductingEquipment
-import ch.ninecode.model.Terminal
-import ch.ninecode.net.TransformerIsland
-import ch.ninecode.util.Complex
 import org.apache.spark.graphx.EdgeDirection
 import org.apache.spark.graphx.EdgeTriplet
 import org.apache.spark.graphx.Graph
@@ -23,6 +12,17 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import ch.ninecode.cim.CIMRDD
+import ch.ninecode.gl.PV
+import ch.ninecode.gl.PreEdge
+import ch.ninecode.gl.PreNode
+import ch.ninecode.model.ACLineSegment
+import ch.ninecode.model.ConductingEquipment
+import ch.ninecode.model.Terminal
+import ch.ninecode.net.TransformerIsland
+import ch.ninecode.util.Complex
+
 
 class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER, tbase: Double = 20, tsim: Double) extends CIMRDD with Serializable
 {

@@ -52,10 +52,10 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
+                cim_options = setFiles (filename),
                 verbose = true,
                 all = true,
-                workdir = "simulation",
-                files = List (filename)
+                workdir = "simulation"
             )
 
             val einspeiseleistung: Einspeiseleistung = new Einspeiseleistung (session, options)
@@ -94,10 +94,10 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME2.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
+                cim_options = setFiles (filename),
                 verbose = true,
                 all = true,
-                workdir = "simulation",
-                files = List (filename)
+                workdir = "simulation"
             )
 
             val einspeiseleistung: Einspeiseleistung = new Einspeiseleistung (session, options)
@@ -135,10 +135,10 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME3.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
+                cim_options = setFiles (filename),
                 verbose = true,
                 all = true,
-                workdir = "simulation",
-                files = List (filename)
+                workdir = "simulation"
             )
 
             val einspeiseleistung: Einspeiseleistung = new Einspeiseleistung (session, options)
@@ -181,10 +181,10 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME4.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
+                cim_options = setFiles (filename),
                 verbose = true,
                 all = true,
-                workdir = "simulation",
-                files = List (filename)
+                workdir = "simulation"
             )
 
             val einspeiseleistung: Einspeiseleistung = new Einspeiseleistung (session, options)
@@ -226,10 +226,10 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME5.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
+                cim_options = setFiles (filename),
                 verbose = true,
                 all = true,
-                workdir = "simulation",
-                files = List (filename)
+                workdir = "simulation"
             )
 
             val einspeiseleistung: Einspeiseleistung = new Einspeiseleistung (session, options)
@@ -267,10 +267,10 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME6.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
+                cim_options = setFiles (filename),
                 verbose = true,
                 all = true,
-                workdir = "simulation",
-                files = List (filename)
+                workdir = "simulation"
             )
 
             val einspeiseleistung: Einspeiseleistung = new Einspeiseleistung (session, options)

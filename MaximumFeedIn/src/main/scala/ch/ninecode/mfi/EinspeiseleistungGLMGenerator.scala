@@ -63,16 +63,16 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         classname (ret)
     }
 
-    def multiconductor (element: Element): ACLineSegment =
+    def multiconductor (element: Element): Option[ACLineSegment] =
     {
         element match
         {
-            case acline: ACLineSegment => acline
+            case acline: ACLineSegment => Some (acline)
             case conductor: Conductor =>
-                new ACLineSegment (conductor)
+                Some (new ACLineSegment (conductor))
             case _ =>
                 log.error (s"unexpected class in edge elements (${element.getClass})")
-                null
+                None
         }
     }
 
@@ -122,8 +122,8 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                 t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
                 val t2 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID = "terminal_2"))), TopologicalNode = cn2)
                 t2.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
-                LineDetails.StaticLineDetails ()
-                GLMLineEdge (LineData (elements.map (multiconductor).map (x => LineDetails (x, t1, t2, None, None, tbase))))
+                implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails (CIMBaseTemperature = tbase)
+                GLMLineEdge (LineData (elements.flatMap (multiconductor).map (x => LineDetails (x, t1, t2, None, None, tbase))))
             // base_temperature: Double = 20.0,
             // DEFAULT_R: Double = 0.225,
             // DEFAULT_X: Double = 0.068

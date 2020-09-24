@@ -1,6 +1,5 @@
 package ch.ninecode.mfi
 
-import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -50,8 +49,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     }
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger (getClass)
-    var storage_level: StorageLevel = StorageLevel.fromString (options.storage)
-    val workdir: String = if ("" == options.workdir) derive_work_dir (options.files) else options.workdir
+    val storage_level: StorageLevel = options.cim_options.storage
+    val workdir: String = options.getWorkDir
     var gridlabd: GridLABD = new GridLABD (session, storage_level, workdir, options.cable_impedance_limit)
 
     // for dates without time zones, the timezone of the machine is used:
@@ -490,19 +489,6 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         ret
     }
 
-    /**
-     * Generate a working directory matching the files.
-     */
-    def derive_work_dir (files: Seq[String]): String =
-    {
-        val file = files.head.split (",")(0).replace (" ", "%20")
-        val uri = new URI (file)
-        if (null == uri.getScheme)
-            "simulation/"
-        else
-            uri.getScheme + "://" + (if (null == uri.getAuthority) "" else uri.getAuthority) + "/simulation/"
-    }
-
     def combinePFN (arg: Iterable[Iterable[PowerFeedingNode]]): Iterable[PowerFeedingNode] =
     {
         val the_map = mutable.Map[String, PowerFeedingNode]()
@@ -611,13 +597,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         val start = System.nanoTime ()
 
         // read the file
-        val reader_options = Map [String, String](
-            "path" -> options.files.mkString (","),
-            "ch.ninecode.cim.do_deduplication" -> options.dedup.toString) ++
-            options.cim_reader_options
-        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (options.files: _*)
-        log.info (s"${elements.count ()} elements")
-
+        val elements = session
+            .read
+            .format ("ch.ninecode.cim")
+            .options (options.cim_options.toMap)
+            .load (options.cim_options.files: _*)
+            .count
+        log.info (s"$elements elements")
         val read = System.nanoTime ()
         log.info (s"read: ${(read - start) / 1e9} seconds")
 
