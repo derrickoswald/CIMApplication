@@ -51,18 +51,23 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
             })
         }
 
-        def aggregateDataPerHAS (data: Iterable[MeasuredValue]): MeasuredValue =
+        def aggregateDataPerHAS (data: Iterable[MeasuredValue]): Option[MeasuredValue] =
         {
             val real_a = data.map (_._5).sum
             val imag_a = data.map (_._6).sum
-            data.head.copy (_5 = real_a, _6 = imag_a)
+            data.headOption match {
+                case Some (head) =>
+                    Some (head.copy (_5 = real_a, _6 = imag_a))
+                case None =>
+                    None
+            }
         }
 
         val dataPerHas: RDD[MeasuredValue] = joinedData.flatMap (splitAoWithMultipleHAS)
         val aggregatedDataPerHAS: RDD[MeasuredValue] = dataPerHas
             .groupBy (k => (k._1, k._3))
             .values
-            .map (aggregateDataPerHAS)
+            .flatMap (aggregateDataPerHAS)
 
         aggregatedDataPerHAS.saveToCassandra (job.keyspace, "measured_value",
             SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
