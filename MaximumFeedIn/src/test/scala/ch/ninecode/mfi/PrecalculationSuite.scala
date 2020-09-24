@@ -52,7 +52,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
-                cim_options = setFiles (filename),
+                cim_options = setFile (filename),
                 verbose = true,
                 all = true,
                 workdir = "simulation"
@@ -94,7 +94,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME2.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
-                cim_options = setFiles (filename),
+                cim_options = setFile (filename),
                 verbose = true,
                 all = true,
                 workdir = "simulation"
@@ -135,7 +135,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME3.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
-                cim_options = setFiles (filename),
+                cim_options = setFile (filename),
                 verbose = true,
                 all = true,
                 workdir = "simulation"
@@ -181,7 +181,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME4.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
-                cim_options = setFiles (filename),
+                cim_options = setFile (filename),
                 verbose = true,
                 all = true,
                 workdir = "simulation"
@@ -226,7 +226,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME5.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
-                cim_options = setFiles (filename),
+                cim_options = setFile (filename),
                 verbose = true,
                 all = true,
                 workdir = "simulation"
@@ -267,7 +267,7 @@ class PrecalculationSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME6.rdf"
             readFile (session, filename)
             val options = EinspeiseleistungOptions (
-                cim_options = setFiles (filename),
+                cim_options = setFile (filename),
                 verbose = true,
                 all = true,
                 workdir = "simulation"

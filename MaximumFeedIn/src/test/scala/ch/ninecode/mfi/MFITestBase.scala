@@ -20,10 +20,16 @@ class MFITestBase extends TestUtil
         Util.classes)
     val FILE_DEPOT = "data/"
 
-    def setFiles (filename: String): CIMReaderOptions =
+    def setFile (filename: String): CIMReaderOptions =
     {
         val default = EinspeiseleistungOptions ().cim_options
         default.copy (files = Seq (filename))
+    }
+
+    def setFiles (filenames: Seq[String], dedup: Boolean = false): CIMReaderOptions =
+    {
+        val default = EinspeiseleistungOptions ().cim_options
+        default.copy (dedup = dedup, files = filenames)
     }
 
     def runMFI (session: SparkSession, options: EinspeiseleistungOptions): Unit =
