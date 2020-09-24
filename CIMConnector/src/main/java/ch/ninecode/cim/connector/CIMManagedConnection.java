@@ -118,7 +118,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find the CIMReader jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-2.12-3.0.0-5.0.2.jar)
+        // ToDo: find a better way to find the CIMReader jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMReader-<version>.jar)
         return (jarForObject (new DefaultSource ()));
     }
 
@@ -126,8 +126,24 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find the CIMExport jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMExport-2.12-3.0.0-5.0.2.jar)
-        return (jarForObject (new CIMExportOptionsParser ("CIMExport", "2.12-3.0.0-5.0.2")));
+        // ToDo: find a better way to find the CIMExport jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMExport-<version>.jar)
+        return (jarForObject (new CIMExportOptionsParser ("CIMExport", "2.12-3.0.0-5.0.4")));
+    }
+
+    protected String CassandraPath1 ()
+        throws ResourceException
+    {
+        // arbitrarily pick a class to instantiate
+        // ToDo: find a better way to find the spark-cassandra-connector_x.yy jar
+        return (jarForObject (new com.datastax.spark.connector.BytesInBatch (0)));
+    }
+
+    protected String CassandraPath2 ()
+        throws ResourceException
+    {
+        // arbitrarily pick a class to instantiate
+        // ToDo: find a better way to find the spark-cassandra-connector-driver_x.yy jar
+        return (jarForObject (new com.datastax.spark.connector.cql.Schema (null)));
     }
 
     protected String CIMConnectorLibJarPath ()
@@ -239,10 +255,13 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             // set up the list of jars to send with the connection request: CIMReader and CIMConnector
             String reader = CIMReaderJarPath ();
             String export = CIMExportJarPath ();
+            String cassandra_connector = CassandraPath1 ();
+            String cassandra_driver = CassandraPath2 ();
             String connector = CIMConnectorLibJarPath ();
             String j2ee = J2EEAPIJarPath ();
             int size = _RequestInfo.getJars ().size ();
-            String[] jars = new String[size + (null == reader ? 0 : 1) + (null == export ? 0 : 1) + (null == connector ? 0 : 1) + (null == j2ee ? 0 : 1)];
+            String[] jars = new String[size + (null == reader ? 0 : 1) + (null == export ? 0 : 1) + (null == connector ? 0 : 1)
+                + (null == j2ee ? 0 : 1) + (null == cassandra_connector ? 0 : 1) + (null == cassandra_driver ? 0 : 1)];
             jars = _RequestInfo.getJars ().toArray (jars);
             if (null != reader)
                 jars[size++] = reader;
@@ -251,7 +270,11 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             if (null != connector)
                 jars[size++] = connector;
             if (null != j2ee)
-                jars[size] = j2ee;
+                jars[size++] = j2ee;
+            if (null != cassandra_connector)
+                jars[size++] = cassandra_connector;
+            if (null != cassandra_driver)
+                jars[size] = cassandra_driver;
             configuration.setJars (jars);
 
             // so far, it only works for Spark standalone (as above with master set to spark://sandbox:7077
