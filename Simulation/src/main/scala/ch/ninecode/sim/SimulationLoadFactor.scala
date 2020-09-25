@@ -2,13 +2,9 @@ package ch.ninecode.sim
 
 import javax.json.JsonObject
 
-import scala.reflect.runtime.universe.TypeTag
-
 import com.datastax.spark.connector._
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.types.DateType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -37,70 +33,46 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(sp
     {
         log.info ("Load Factor")
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-
-        def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
-
         val typ = "power"
-        val to_drop = if (options.three_phase)
-            Seq ("simulation", "type", "period", "units")
-        else
-            Seq ("simulation", "type", "period", "real_b", "imag_b", "real_c", "imag_c", "units")
-        val raw = access.raw_values (typ, to_drop)
+        val queries = access.mrids_for_recorders (typ)
+        log.info (s"Computing ${queries.length} load factors")
 
-        val trafo_loads = access.players ("energy")
-        val trafos = trafo_loads
-            .drop ("name", "property", "mrid")
-            .distinct
-            .withColumnRenamed ("transformer", "mrid")
+        for ((trafo, mrids) <- queries)
+        {
+            // get the mrid,power,date DataFrame for the trafo
+            log.info (trafo)
+            val simulated_power_values = simulatedPowerValues (mrids)
+                .drop ("time")
+                .persist (options.cim_options.storage)
 
-        val simulated_values = raw
-            .withColumn ("date", raw ("time").cast (DateType))
-            .drop ("time")
-            .join (
-                trafos,
-                Seq ("mrid"))
+            // get the trafo aggregates
+            val _mrid = simulated_power_values.schema.fieldIndex ("mrid")
+            val trafo_aggregates = simulated_power_values
+                .filter (trafo == _.getString (_mrid))
+                .groupBy ("date") // sum and average over times for each day
+                .agg ("power" -> "avg", "power" -> "max")
+                .withColumnRenamed ("avg(power)", "avg_power")
+                .withColumnRenamed ("max(power)", "peak_power")
 
-        val simulated_power_values =
-            if (options.three_phase)
-            {
-                val intermediate = simulated_values
-                    .withColumn ("power_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                    .withColumn ("power_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
-                    .withColumn ("power_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
-                    .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
-                intermediate
-                    .withColumn ("power", summation [Double, Double, Double].apply (intermediate ("power_a"), intermediate ("power_b"), intermediate ("power_c")))
-                    .drop ("power_a", "power_b", "power_c")
-            }
-            else
-                simulated_values
-                    .withColumn ("power", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                    .drop ("real_a", "imag_a")
+            val loadfactors = trafo_aggregates
+                .withColumn ("load_factor", trafo_aggregates ("avg_power") / trafo_aggregates ("peak_power"))
 
-        val aggregates = simulated_power_values
-            .groupBy ("mrid", "date") // sum over time for each day
-            .agg ("power" -> "avg", "power" -> "max")
-            .withColumnRenamed ("avg(power)", "avg_power")
-            .withColumnRenamed ("max(power)", "peak_power")
-        val loadfactors = aggregates
-            .withColumn ("load_factor", aggregates ("avg_power") / aggregates ("peak_power"))
+            val date = loadfactors.schema.fieldIndex ("date")
+            val avg_power = loadfactors.schema.fieldIndex ("avg_power")
+            val peak_power = loadfactors.schema.fieldIndex ("peak_power")
+            val load_factor = loadfactors.schema.fieldIndex ("load_factor")
 
-        val mrid = loadfactors.schema.fieldIndex ("mrid")
-        val date = loadfactors.schema.fieldIndex ("date")
-        val avg_power = loadfactors.schema.fieldIndex ("avg_power")
-        val peak_power = loadfactors.schema.fieldIndex ("peak_power")
-        val load_factor = loadfactors.schema.fieldIndex ("load_factor")
+            val work = loadfactors.rdd.map (
+                row => (trafo, typ, row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA÷VA", access.simulation))
 
-        val work = loadfactors.rdd.map (
-            row => (row.getString (mrid), typ, row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA÷VA", access.simulation))
+            // save to Cassandra
+            work.saveToCassandra (access.output_keyspace, "load_factor_by_day",
+                SomeColumns ("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
 
-        // save to Cassandra
-        work.saveToCassandra (access.output_keyspace, "load_factor_by_day",
-            SomeColumns ("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
-        log.info ("""Load Factor: load factor records saved to %s.load_factor_by_day""".format (access.output_keyspace))
-        unpersistDataFrame (raw)
-        unpersistDataFrame (trafo_loads)
+            unpersistDataFrame (simulated_power_values)
+        }
+
+        log.info (s"""Load Factor: load factor records saved to ${access.output_keyspace}.load_factor_by_day""")
     }
 }
 

@@ -2,14 +2,9 @@ package ch.ninecode.sim
 
 import javax.json.JsonObject
 
-import scala.reflect.runtime.universe.TypeTag
-
 import com.datastax.spark.connector._
-
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.round
-import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.types.DateType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -38,114 +33,77 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
     {
         log.info ("Responsibility Factor")
 
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-
-        def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
-
         val typ = "power"
-        val to_drop = if (options.three_phase)
-            Seq ("simulation", "type", "period", "units")
-        else
-            Seq ("simulation", "type", "period", "real_b", "imag_b", "real_c", "imag_c", "units")
-        val simulated_values = access.raw_values (typ, to_drop)
+        val queries = access.mrids_for_recorders (typ)
+        log.info (s"Computing ${queries.length} responsibility factors")
 
-        val players = access.players ("energy")
-        val trafo_loads = players
-            .drop ("name", "property")
-        val trafos = trafo_loads
-            .drop ("mrid")
-            .distinct
-            .withColumnRenamed ("transformer", "mrid")
+        for ((trafo, mrids) <- queries)
+        {
+            // get the mrid,power,time,date DataFrame for the trafo
+            log.info (trafo)
+            val simulated_power_values = simulatedPowerValues (mrids)
+                .persist (options.cim_options.storage)
 
-        val simulated_power_values =
-            if (options.three_phase)
-            {
-                val intermediate = simulated_values
-                    .withColumn ("power_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                    .withColumn ("power_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
-                    .withColumn ("power_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
-                    .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
-                intermediate
-                    .withColumn ("power", summation [Double, Double, Double].apply (intermediate ("power_a"), intermediate ("power_b"), intermediate ("power_c")))
-                    .drop ("power_a", "power_b", "power_c")
-                    .withColumn ("date", intermediate ("time").cast (DateType))
-            }
-            else
-                simulated_values
-                    .withColumn ("power", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                    .drop ("real_a", "imag_a")
-                    .withColumn ("date", simulated_values ("time").cast (DateType))
+            // get the time at system peak for each day
+            val _mrid = simulated_power_values.schema.fieldIndex ("mrid")
+            val trafo_max_per_day = simulated_power_values
+                .filter (trafo == _.getString (_mrid))
+                .groupBy ("date")
+                .agg ("power" -> "max")
+                .withColumnRenamed ("max(power)", "power")
 
-        // get the system peaks at each trafo for each day
+            val trafo_max_per_day_with_time = trafo_max_per_day
+                .join (simulated_power_values, Seq ("date", "power"))
+                .drop ("mrid", "power")
 
-        val simulated_value_trafos = simulated_power_values
-            .join (
-                trafos,
-                Seq ("mrid"))
+            // get the peak for each house on each day
+            val house_max_per_day = simulated_power_values
+                .filter (trafo != _.getString (_mrid))
+                .groupBy ("mrid", "date")
+                .agg ("power" -> "max")
+                .drop ("power")
+                .withColumnRenamed ("max(power)", "peak")
 
-        val trafo_max_per_day = simulated_value_trafos
-            .groupBy ("mrid", "date")
-            .agg ("power" -> "max")
-            .drop ("power")
-            .withColumnRenamed ("max(power)", "power")
+            // get the house power at the trafo peak time for each day
+            val house_power_at_max = simulated_power_values
+                .filter (trafo != _.getString (_mrid))
+                .join (trafo_max_per_day_with_time, Seq ("date", "time"))
 
-        val trafo_max_per_day_with_time = trafo_max_per_day.join (simulated_value_trafos, Seq ("mrid", "date", "power"))
-            .withColumnRenamed ("mrid", "transformer")
-            .drop ("power")
+            val peak_times = house_max_per_day
+                .join (house_power_at_max, Seq ("mrid", "date"))
 
-        // get the peak for each house on each day
+            val responsibilities = peak_times
+                .withColumn ("responsibility", round (peak_times ("power") / peak_times ("peak") * 100.0 * 100.0) / 100.0)
 
-        val simulated_value_houses = simulated_power_values
-            .join (
-                trafo_loads,
-                Seq ("mrid"))
+            val mrid = responsibilities.schema.fieldIndex ("mrid")
+            val date = responsibilities.schema.fieldIndex ("date")
+            val time = responsibilities.schema.fieldIndex ("time")
+            val power = responsibilities.schema.fieldIndex ("power")
+            val peak = responsibilities.schema.fieldIndex ("peak")
+            val responsibility = responsibilities.schema.fieldIndex ("responsibility")
 
-        val house_max_per_day = simulated_value_houses
-            .groupBy ("mrid", "date", "transformer")
-            .agg ("power" -> "max")
-            .drop ("power")
-            .withColumnRenamed ("max(power)", "peak")
+            val work = responsibilities.rdd.map (
+                row =>
+                {
+                    val resp = if (row.isNullAt (responsibility)) 0.0 else row.getDouble (responsibility)
+                    (row.getString (mrid), typ, row.getDate (date), row.getTimestamp (time), trafo, row.getDouble (power), row.getDouble (peak), resp, "VA÷VA×100", access.simulation)
+                }
+            )
+            // save to Cassandra
+            work.saveToCassandra (access.output_keyspace, "responsibility_by_day",
+                SomeColumns ("mrid", "type", "date", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
 
-        // get the house power at the trafo peak time for each day
+            unpersistDataFrame (simulated_power_values)
+        }
 
-        val house_power_at_max = simulated_value_houses
-            .join (trafo_max_per_day_with_time, Seq ("date", "time", "transformer"))
-
-        val peak_times = house_max_per_day
-            .join (house_power_at_max, Seq ("mrid", "date", "transformer"))
-
-        val responsibilities = peak_times
-            .withColumn ("responsibility", round (peak_times ("power") / peak_times ("peak") * 100.0 * 100.0) / 100.0)
-            .filter ("transformer != mrid")
-
-        val mrid = responsibilities.schema.fieldIndex ("mrid")
-        val date = responsibilities.schema.fieldIndex ("date")
-        val time = responsibilities.schema.fieldIndex ("time")
-        val transformer = responsibilities.schema.fieldIndex ("transformer")
-        val power = responsibilities.schema.fieldIndex ("power")
-        val peak = responsibilities.schema.fieldIndex ("peak")
-        val responsibility = responsibilities.schema.fieldIndex ("responsibility")
-
-        val work = responsibilities.rdd.map (
-            row =>
-            {
-                val resp = if (row.isNullAt (responsibility)) 0.0 else row.getDouble (responsibility)
-                (row.getString (mrid), typ, row.getDate (date), row.getTimestamp (time), row.getString (transformer), row.getDouble (power), row.getDouble (peak), resp, "VA÷VA×100", access.simulation)
-            }
-        )
-        // save to Cassandra
-        work.saveToCassandra (access.output_keyspace, "responsibility_by_day",
-            SomeColumns ("mrid", "type", "date", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
-        log.info ("""Responsibility Factor: responsibility records saved to %s.responsibility_by_day""".format (access.output_keyspace))
-        unpersistDataFrame (simulated_values)
-        unpersistDataFrame (players)
+        log.info (s"""responsibility records saved to ${access.output_keyspace}.responsibility_by_day""")
     }
 }
 
 object SimulationResponsibilityFactor extends SimulationPostProcessorParser
 {
     // standard aggregation is daily
-    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List [SimulationAggregate](
+    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate](
         SimulationAggregate (96, 0)
     )
 
