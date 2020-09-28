@@ -81,10 +81,10 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
         val userAttribute: RDD[(String, UserAttribute)] = getOrElse [UserAttribute].keyBy (_.value)
         val stringQuantity: RDD[(String, StringQuantity)] = getOrElse [StringQuantity].keyBy (_.id)
 
-        val MstHasMapping: RDD[(MstID, Mrid)] = userAttribute
+        val MstHasMapping: RDD[(MstID, Iterable[Mrid])] = userAttribute
             .join (stringQuantity)
             .values
-            .map (x => (x._1.name, x._2.value))
+            .map (x => (x._1.name, x._2.value)).groupByKey()
 
         val MstAoMapping: RDD[(MstID, AOID)] = serviceLocation
             .join (name)
@@ -93,9 +93,7 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
 
         MstAoMapping
             .join (MstHasMapping)
-            .groupByKey
-            .flatMap (_._2.toList)
-            .groupByKey ()
+            .values
     }
 
     def import_parquet (job: IngestJob): RDD[MeasuredValue] =
