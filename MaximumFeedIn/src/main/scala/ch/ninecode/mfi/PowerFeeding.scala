@@ -23,7 +23,6 @@ import ch.ninecode.model.Terminal
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.util.Complex
 
-
 class PowerFeeding (session: SparkSession, storage_level: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER, tbase: Double = 20, tsim: Double) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
@@ -303,7 +302,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val new_nodes = nodes_with_edge.map (x => if (bad_tx.contains (x.source_obj)) x.copy (problem = "non-radial network") else x)
         // then get the threshold:
         val house_nodes = get_threshold_per_has (new_nodes, options)
-        val traced_house_nodes_EEA = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values
+        val traced_house_nodes_EEA: RDD[(MaxPowerFeedingNodeEEA, Option[Iterable[PV]])] = house_nodes.keyBy (_.id_seq).leftOuterJoin (sdata).values
 
         // prioritize unhandled issues over a non-radial network problem
         def pickWorst (pfn: Iterable[PowerFeedingNode]): String =
@@ -316,8 +315,13 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         }
 
         // update each element in the transformer service area with bad value
-        val problem_trafos = graph.vertices.values.filter (x => x.source_obj != null && (x.hasIssues || x.hasNonRadial)).keyBy (_.source_obj).groupByKey.map (x => (x._1.trafo_id, pickWorst (x._2)))
-        val has = traced_house_nodes_EEA.map (
+        val problem_trafos = graph.vertices
+            .values
+            .filter (x => x.source_obj != null && (x.hasIssues || x.hasNonRadial))
+            .keyBy (_.source_obj)
+            .groupByKey
+            .map (x => (x._1.trafo_id, pickWorst (x._2)))
+        val intermediate_houses = traced_house_nodes_EEA.map (
             node =>
             {
                 node._2 match
@@ -329,6 +333,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                 }
             }
         )
+        val has = intermediate_houses
             .keyBy (_.source_obj).leftOuterJoin (problem_trafos).values.map (
             arg =>
             {
