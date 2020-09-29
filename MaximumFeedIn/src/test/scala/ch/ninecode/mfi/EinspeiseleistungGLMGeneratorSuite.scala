@@ -101,8 +101,9 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
 
         val pvgen = parseSolarGen (xml)
         val peconn = parsePowerElectronicsConnection(xml)
+        assert (peconn.p == -4.0, "p should be -4.0")
+        assert (peconn.q == 3.0, "q should be 3.0")
         assert (peconn.ratedS == 5.0, "ratedS should be 5.0")
-        //        assert (pvgen.sup.normalPF == 0.8, "normalPf should be 0.8")
 
         val power_list = getConstantPower (pvgen,peconn)
         assert (power_list.length == 1, "1 phase")
@@ -125,8 +126,9 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
 
         val solargen = parseSolarGen (xml)
         val peconn = parsePowerElectronicsConnection(xml)
-//        assert (solargen.sup.normalPF == -0.8, "normalPf should be -0.8")
-//        assert (solargen.sup.ratedNetMaxP == 5.0, "ratedNetMaxP should be 5.0")
+        assert (peconn.p == -4.0, "p should be -4.0")
+        assert (peconn.q == -3.0, "q should be -3.0")
+        assert (peconn.ratedS == 5.0, "ratedS should be 5.0")
 
         val power_list = getConstantPower (solargen,peconn)
         assert (power_list.length == 1, "1 phase")
@@ -149,8 +151,9 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
 
         val solargen = parseSolarGen (xml)
         val peconn = parsePowerElectronicsConnection(xml)
-//        assert (solargen.sup.normalPF == 0.8, "normalPf should be 0.8")
-//        assert (solargen.sup.ratedNetMaxP == 15.0, "ratedNetMaxP should be 15.0")
+        assert (peconn.p == -12.0, "p")
+        assert (peconn.q == 9.0, "q")
+        assert (peconn.ratedS == 15.0, "ratedS")
 
         val power_list = getConstantPower (solargen, peconn, one_phase = false)
         assert (power_list.length == 3, "3 phase")
@@ -181,8 +184,9 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
 
         val solargen = parseSolarGen (xml)
         val peconn = parsePowerElectronicsConnection(xml)
-//        assert (solargen.sup.normalPF == -0.8, "normalPf should be -0.8")
-//        assert (solargen.sup.ratedNetMaxP == 15.0, "ratedNetMaxP should be 15.0")
+        assert (peconn.p == -12.0, "p")
+        assert (peconn.q == -9.0, "q")
+        assert (peconn.ratedS == 15.0, "ratedS")
 
         val power_list = getConstantPower (solargen,peconn, one_phase = false)
         assert (power_list.length == 3, "3 phase")
