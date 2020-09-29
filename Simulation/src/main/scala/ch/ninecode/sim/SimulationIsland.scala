@@ -61,11 +61,22 @@ class SimulationIsland (spark: SparkSession, storage_level: StorageLevel)
     override def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
     {
         val just_one: RDD[TerminalPlus] = rdd.map (getOne)
-        val with_psr: RDD[(TerminalPlus, PowerSystemResource)] = just_one.keyBy (_.element.id).join (get [PowerSystemResource].keyBy (_.id)).values
+        val with_psr: RDD[(TerminalPlus, PowerSystemResource)] = just_one
+            .keyBy (_.element.id)
+            .join (get [PowerSystemResource].keyBy (_.id))
+            .values
 
-        val with_world = with_psr.map (x => (x._2.Location, x._1)).leftOuterJoin (world_points).values.mapValues (positionPointToCoordinates)
-        val with_coordinates =
-            with_world.map (x => (x._1.element.id, (x._1, x._2))).leftOuterJoin (schematic_points).values.mapValues (diagramObjectPointToCoordinates).map (x => (x._1._1, x._1._2, x._2))
+        val with_world: RDD[(TerminalPlus, Iterable[(Double, Double)])] = with_psr
+            .map (x => (x._2.Location, x._1))
+            .leftOuterJoin (world_points)
+            .values
+            .mapValues (positionPointToCoordinates)
+        val with_coordinates = with_world
+            .map (x => (x._1.element.id, (x._1, x._2)))
+            .leftOuterJoin (schematic_points)
+            .values
+            .mapValues (diagramObjectPointToCoordinates)
+            .map (x => (x._1._1, x._1._2, x._2))
         with_coordinates.map (x => (x._1.id, SimulationNode (x._1.node.id, x._1.voltage, x._1.element.id, x._2.take (1), x._3.take (1))))
     }
 
