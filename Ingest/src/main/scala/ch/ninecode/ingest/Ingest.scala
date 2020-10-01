@@ -335,10 +335,14 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                 val what = matcher.group (6).toInt
                 var (typ, real, imag, factor, unit) = quantity match
                 {
-                    // active power +
+                    // active power p+
                     case 1 => ("power", true, false, 1.0, "W")
-                    // active power -
+                    // active power p-
                     case 2 => ("power", true, false, -1.0, "W")
+                    // reactive power q+
+                    case 3 => ("power", false, true, 1.0, "W")
+                    // reactive power q-
+                    case 4 => ("power", false, true, -1.0, "W")
                     // reactive power Q I
                     case 5 => ("power", false, true, 1.0, "W")
                     // reactive power Q II
@@ -365,6 +369,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                     {
                         case "kWh" => factor = factor * 1000.0 * scale.toDouble;
                         case "kvarh" => factor = factor * 1000.0 * scale.toDouble;
+                        case "kVArh" => factor * 1000.0 * scale.toDouble;
                         case _ =>
                     }
                     (typ, real, imag, unit, factor)
@@ -732,20 +737,18 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
         val mrid = join_table.getOrElse (fields (0), null)
         if (null != mrid)
         {
-            //val (typ, real, imag, units, factor) = decode_obis (fields (3), fields (5), "1.0") // TODO: don't hardcode OBIS
-            val (typ, real, imag, units, factor) = if (fields(2).equals("1.1.1.8.0.255") )
-                ("energy", true, false, "Wh", 1.0)
-            else if (fields(2).equals("1.1.2.8.0.255"))
-                ("energy", true, false, "Wh" , -1.0)
-            else
-                ("", false, false, "OBIS code format error", 0.0)
-
-            val timestamp = MeasurementDateTimeFormat2.parse(fields (1))
-            val value = asDouble (fields (3)) * factor
-            if (real)
-                Seq[MeasuredValue] ((mrid, typ, timestamp.getTime, 900000, value, 0.0, units))
-            else
-                Seq[MeasuredValue] ((mrid, typ, timestamp.getTime , 900000, 0.0, value, units))
+            val (typ, real, imag, units, factor) = decode_obis (fields (1), fields (5), "1.0")
+            if (real || imag)
+            {
+                val timestamp = MeasurementDateTimeFormat2.parse (fields (2))
+                val value = asDouble (fields (3)) * factor
+                if (real)
+                    Seq [MeasuredValue]((mrid, typ, timestamp.getTime, 900000, value, 0.0, units))
+                else
+                    Seq [MeasuredValue]((mrid, typ, timestamp.getTime, 900000, 0.0, value, units))
+            } else {
+                List ()
+            }
         } else {
             List ()
         }
