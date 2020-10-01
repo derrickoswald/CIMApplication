@@ -76,21 +76,18 @@ case class IngestNyquist (session: SparkSession, options: IngestOptions) extends
         join_table.get (fields (0)) match
         {
             case Some (mrid) =>
-                //val (typ, real, imag, units, factor) = decode_obis (fields (3), fields (5), "1.0") // TODO: don't hardcode OBIS
-                val (typ, real, _, units, factor) = if (fields (2).equals ("1.1.1.8.0.255"))
-                    ("energy", true, false, "Wh", 1.0)
-                else
-                    if (fields (2).equals ("1.1.2.8.0.255"))
-                        ("energy", true, false, "Wh", -1.0)
+                val (typ, real, imag, units, factor) = decode_obis (fields (1), fields (5), "1.0")
+                if (real || imag)
+                {
+                    val timestamp = nyquistDateTimeFormat.parse (fields (2))
+                    val value = asDouble (fields (3)) * factor
+                    if (real)
+                        Seq [MeasuredValue]((mrid, typ, timestamp.getTime, 900000, value, 0.0, units))
                     else
-                        ("", false, false, "OBIS code format error", 0.0)
-
-                val timestamp = nyquistDateTimeFormat.parse (fields (1))
-                val value = asDouble (fields (3)) * factor
-                if (real)
-                    Seq [MeasuredValue]((mrid, typ, timestamp.getTime, 900000, value, 0.0, units))
-                else
-                    Seq [MeasuredValue]((mrid, typ, timestamp.getTime, 900000, 0.0, value, units))
+                        Seq [MeasuredValue]((mrid, typ, timestamp.getTime, 900000, 0.0, value, units))
+                } else {
+                    List ()
+                }
             case None =>
                 List ()
         }
