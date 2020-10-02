@@ -369,7 +369,7 @@ case class Ingest (session: SparkSession, options: IngestOptions) extends CIMRDD
                     {
                         case "kWh" => factor = factor * 1000.0 * scale.toDouble;
                         case "kvarh" => factor = factor * 1000.0 * scale.toDouble;
-                        case "kVArh" => factor * 1000.0 * scale.toDouble;
+                        case "kVArh" => factor = factor * 1000.0 * scale.toDouble;
                         case _ =>
                     }
                     (typ, real, imag, unit, factor)
