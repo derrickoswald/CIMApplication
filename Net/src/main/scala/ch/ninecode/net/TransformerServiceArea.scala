@@ -61,7 +61,7 @@ case class TransformerServiceArea (
 
     val voltage_rdd: RDD[BaseVoltage] = getOrElse [BaseVoltage]
     val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse [ConductingEquipment]
-    val element_rdd: RDD[Element] = getOrElse [Element]("Elements")
+    val element_rdd: RDD[Element] = getOrElse[Element]
     val power_transformer_rdd: RDD[PowerTransformer] = getOrElse [PowerTransformer]
     val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse [PowerTransformerEnd]
     val terminal_rdd: RDD[Terminal] = getOrElse [Terminal]

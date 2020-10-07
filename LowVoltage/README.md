@@ -18,7 +18,6 @@ mvn package
 ```
 
 This will produce a jar file in the `target/` directory with a name that indicates the Scala, Spark and program versions.
-For example LowVoltage-<version>-jar-with-dependencies.jar is built for Scala 2.12, Spark 3.0.0 and is version 3.0.1 of the program.
 
 To execute the standalone program use the
 [spark-submit](https://spark.apache.org/docs/latest/submitting-applications.html#launching-applications-with-spark-submit)
@@ -33,7 +32,7 @@ The `--help` option generates a description of the options available:
 LowVoltage <version>
 Usage: LowVoltage [options] [<CIM> <CIM> ...]
 
-  --version                Scala: 2.12, Spark: 3.0.0, LowVoltage: <version>
+  --version                Scala: 2.12, Spark: 3.0.1, LowVoltage: <version>
   --master <master_url>    local[*], spark://host:port/, mesos://host:port or yarn [local[*]]
   --spark_options <map>    Spark options [spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.sql.catalog.casscatalog=com.datastax.spark.connector.datasource.CassandraCatalog,spark.kryo.registrator=ch.ninecode.cim.CIMRegistrator,spark.graphx.pregel.checkpointInterval=8,spark.ui.showConsoleProgress=false,spark.sql.debug.maxToStringFields=250]
   --log <enum>             log level, one of OFF,FATAL,ERROR,WARN,INFO,DEBUG,TRACE,ALL [OFF]

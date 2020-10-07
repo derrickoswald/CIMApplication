@@ -94,7 +94,7 @@ final case class Switches (
         // get the subclass Element
         val elements_terminals_parameters_info: RDD[(Element, Terminal, Terminal, Option[Element])] =
             switches_terminals_parameters_info.keyBy (_._1.id)
-                .join (getOrElse [Element]("Elements").keyBy (_.id))
+                .join (getOrElse[Element].keyBy (_.id))
                 .values
                 .map (x => (x._2, x._1._2, x._1._3, x._1._4))
 

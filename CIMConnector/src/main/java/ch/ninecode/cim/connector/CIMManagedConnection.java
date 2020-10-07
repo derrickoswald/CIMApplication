@@ -127,7 +127,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
     {
         // arbitrarily pick a class to instantiate
         // ToDo: find a better way to find the CIMExport jar (/usr/local/tomee/apps/CIMApplication/CIMConnector/CIMExport-<version>.jar)
-        return (jarForObject (new CIMExportOptionsParser ("CIMExport", "2.12-3.0.0-5.0.4")));
+        return (jarForObject (new CIMExportOptionsParser ("CIMExport", "2.12-3.0.1-5.1.0")));
     }
 
     protected String CassandraPath1 ()

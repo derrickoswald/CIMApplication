@@ -221,7 +221,7 @@ class SmartMeter (
         val terms = terminals.groupBy (_.ConductingEquipment)
 
         // get all elements
-        val elements = get [Element]("Elements")
+        val elements = getOrElse[Element]
 
         // join with WireInfo to get ratedCurrent (only for ACLineSegments)
         val cableMaxCurrent = getCableMaxCurrent

@@ -25,7 +25,7 @@ trait OptionsSuiteMain extends CIMInitializer[OptionsSuiteOptions] with Main wit
                 time ("execution: %s seconds")
                 {
                     // do something
-                    val elements = get [Element]("Elements")
+                    val elements = getOrElse[Element]
                     val s = elements.take (10).map (_.toString)
                     s.foreach (log.info)
 

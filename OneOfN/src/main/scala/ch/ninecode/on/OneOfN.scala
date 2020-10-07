@@ -120,7 +120,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // delete all CIM elements and their terminals where EquipmentContainer is in that RDD
         // except for equipment (cables) with PSRType_Underground or PSRType_Overhead
         // and excluding the feeder objects from the first step
-        val elements = get [Element]("Elements")
+        val elements = getOrElse[Element]
         val kelements = elements.keyBy (_.id).persist (storage)
         val in_station = get [Equipment].filter (!externalCable (_)).keyBy (_.EquipmentContainer).join (containers)
             .map (x => (x._2._1.id, x._2._1.id))
@@ -134,7 +134,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         val new_elements = kelements.subtractByKey (doomed.union (doomed_terminals)).map (_._2)
 
         // update Elements named RDD
-        put (new_elements, "Elements", true)
+        put (new_elements, true)
         val _ = kelements.unpersist (false)
 
         // update all persistent RDD
@@ -168,7 +168,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
 
         // eliminate elements in substations
         val new_elements = deleteSubstationElements ()
-        put (new_elements, "Elements", true)
+        put (new_elements, true)
         log.info (s"${new_elements.count} elements after substation deletion")
 
         // identify topological nodes
@@ -181,7 +181,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
                 storage = storage,
                 debug = true))
         val ele = ntp.process.persist (storage)
-        put (ele, "Elements", true)
+        put (ele, true)
         log.info (s"${ele.count} elements after topology generation")
 
         val topo = System.nanoTime ()
@@ -242,7 +242,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
         // eliminate 0Ω links
         val hh = gg.filter (x => x._2.groupBy (_._1).size > 1)
         val eq: RDD[(Iterable[(String, Terminal)], Element)] = get [ConductingEquipment]
-            .keyBy (_.id).join (get [Element]("Elements").keyBy (_.id)).map (x => (x._1, x._2._2)) // (elementid, Element)
+            .keyBy (_.id).join (getOrElse[Element].keyBy (_.id)).map (x => (x._1, x._2._2)) // (elementid, Element)
             .join (hh).values.map (_.swap) // ([(nodeid, terminal)], Element)
             // eliminate edges with only one end
             .filter (x => (x._1.size > 1) && x._1.map (_._1).forall (_ != null)) // ([(nodeid, terminal)], Element)

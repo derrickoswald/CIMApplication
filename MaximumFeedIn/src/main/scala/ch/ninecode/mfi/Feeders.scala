@@ -78,7 +78,7 @@ class Feeders (
             .filter (x => x._2.size < 2)
             .map (x => (x._1, x._2.headOption.orNull))
         // join filtered feeders with swtches and create Feeder objects
-        val feeders = getOrElse [Element]("Elements")
+        val feeders = getOrElse[Element]
             .keyBy (_.id)
             .join (terminals)
             .values

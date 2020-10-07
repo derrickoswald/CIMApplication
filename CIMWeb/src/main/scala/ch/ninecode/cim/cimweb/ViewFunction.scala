@@ -115,7 +115,7 @@ case class ViewFunction (
         }
 
         val elements = if (all)
-            get [Element]("Elements")
+            getOrElse[Element]
         else
         {
             // get the spatially filtered points

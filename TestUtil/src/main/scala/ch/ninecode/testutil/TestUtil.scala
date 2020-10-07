@@ -176,10 +176,6 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
      * @param spark The Spark session which persisted the named RDD.
      * @tparam T The type of objects contained in the named RDD.
      * @return The typed RDD, e.g. <code>RDD[T]</code>.
-     * @example                                                   The RDD of all elements is somewhat special,
-     *                                                            currently it is named Elements (plural), so this method must be used:
-     * {{{val elements: RDD[Element] = get[Element]("Elements")}}}.
-     *
      */
     @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
     def get[T: ClassTag] (name: String)(implicit spark: SparkSession): RDD[T] =

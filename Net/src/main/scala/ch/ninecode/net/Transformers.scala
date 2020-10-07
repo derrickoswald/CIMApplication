@@ -287,7 +287,7 @@ final case class Transformers (
         // ToDo: should we invent a dummy station?
         val substations_by_id = getOrElse [Substation].filter (substation_filter).keyBy (_.id)
         val transformers_stations = transformers.keyBy (_.transformer.ConductingEquipment.Equipment.EquipmentContainer)
-            .leftOuterJoin (get [Element]("Elements").keyBy (_.id)).values
+            .leftOuterJoin (getOrElse[Element].keyBy (_.id)).values
             .map (x => (station_fn (x._2), x._1))
             .leftOuterJoin (substations_by_id).values
             .map (x => x._1.copy (station = x._2))

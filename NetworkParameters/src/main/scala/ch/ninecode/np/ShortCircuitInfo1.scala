@@ -342,7 +342,7 @@ case class ShortCircuitInfo1 (
     {
         val chim = new CHIM ("")
         val subsetters: List[String] = chim.classes.map (info => info.name)
-        val old_elements = get [Element]("Elements")
+        val old_elements = getOrElse[Element]
 
         // get the list of classes that need to be merged
         def supers (element: Element): List[String] =
@@ -381,7 +381,7 @@ case class ShortCircuitInfo1 (
 
         // replace elements in Elements
         val new_elements: RDD[Element] = old_elements.union (elements)
-        val _ = put (new_elements, "Elements", true)
+        val _ = put (new_elements, true)
     }
 
     def run (): Unit =
