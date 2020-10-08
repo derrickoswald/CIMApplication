@@ -59,7 +59,7 @@ class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
                 implicit val tag: TypeTag[T] = subsetter.tag.asInstanceOf [TypeTag[T]]
 
                 // get the RDD of desired objects
-                val rdd: RDD[T] = getOrElse [T](subsetter.cls)
+                val rdd: RDD[T] = getOrElse [T]
 
                 // get the points
                 val points = getOrElse [PositionPoint]

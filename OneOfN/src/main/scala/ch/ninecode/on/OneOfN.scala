@@ -142,7 +142,7 @@ case class OneOfN (session: SparkSession, options: OneOfNOptions) extends CIMRDD
             subsetter =>
             {
                 if (session.sparkContext.getPersistentRDDs.exists (_._2.name == subsetter.cls))
-                    subsetter.make (session.sqlContext, new_elements, storage)
+                    subsetter.make (session.sqlContext, new_elements, storage, "%s")
             }
         )
 
