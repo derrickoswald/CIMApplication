@@ -29,6 +29,20 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
         s => Complex.fromString (s)
     )
 
+    def readFuseTable (file: String): Option[FuseData] =
+    {
+        readFile (file) match
+        {
+            case Some (text) =>
+                readJSON (text) match
+                {
+                    case Some (obj) => parseFuseTables (obj)
+                    case None => None
+                }
+            case None => None
+        }
+    }
+
     opt[Unit]("verbose").
         action ((_, c) => c.copy (verbose = true)).
         text ("log informational messages [false]")
@@ -101,20 +115,9 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
         action (
             (x, c) =>
             {
-                readFile (x) match
+                readFuseTable (x) match
                 {
-                    case Some (text) =>
-                        readJSON (text) match
-                        {
-                            case Some (obj) =>
-                                parseFuseTables (obj) match
-                                {
-                                    case Some (fuse_table) => c.copy (fuse_table = fuse_table)
-                                    case None => c
-                                }
-
-                            case None => c
-                        }
+                    case Some (fuse_table) => c.copy (fuse_table = fuse_table)
                     case None => c
                 }
             }
