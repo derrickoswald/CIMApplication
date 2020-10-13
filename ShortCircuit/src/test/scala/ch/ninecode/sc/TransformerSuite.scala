@@ -50,7 +50,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
             val csv = string.collect
             println (s"results: ${csv.length}")
             println (ScResult.csv_header)
@@ -96,7 +96,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
             val csv = string.collect
             println (s"results: ${csv.length}")
             println (ScResult.csv_header)
@@ -144,7 +144,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
             val shortcircuit = ShortCircuit (session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run ()
 
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
             val csv = string.collect
             println (s"results: ${csv.length}")
             println (ScResult.csv_header)

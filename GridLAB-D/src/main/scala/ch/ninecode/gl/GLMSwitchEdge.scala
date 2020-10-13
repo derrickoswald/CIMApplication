@@ -74,6 +74,6 @@ object GLMSwitchEdge
         val t2 = Terminal (ac2, TopologicalNode = cn2)
         t2.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
 
-        GLMSwitchEdge (SwitchData (switches.map (x => SwitchDetails (x, t1, t2, None))))
+        GLMSwitchEdge (SwitchData (switches.map (x => SwitchDetails (x, t1, t2, None, None))))
     }
 }

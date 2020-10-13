@@ -69,7 +69,7 @@ case class ShortCircuitOptions
     cmin: Double = 0.90,
     worstcasepf: Boolean = true,
     cosphi: Double = 0.5,
-    fuse_table: Int = 1,
+    fuse_table: FuseData = FuseData (Array (FuseTable.default)),
     messagemax: Int = 5,
     batchsize: Long = 10000,
     trafos: String = "",

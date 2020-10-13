@@ -28,12 +28,14 @@ import ch.ninecode.model.Terminal
  * @param terminal1   associated Terminal one
  * @param terminal2   associated Terminal two
  * @param switch_info asset information for this switch
+ * @param standard    the DIN/SEV standard associated with the switch
  */
 final case class SwitchDetails (
     element: Element,
     terminal1: Terminal,
     terminal2: Terminal,
-    switch_info: Option[Element])
+    switch_info: Option[Element],
+    standard: Option[String])
 {
 
     import SwitchDetails._

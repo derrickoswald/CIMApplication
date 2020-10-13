@@ -27,6 +27,7 @@ import ch.ninecode.util.Graphable
  * @param num_terminals the number of terminals on the equipment (could be more than 2)
  * @param id_equ        ConductingEquipment mRID
  * @param element       conducting equipment subclass object
+ * @param standard      the fuse standard (DIN or SEV) if applicable
  * @param impedance     impedance of the edge (Ω)
  */
 case class ScEdge
@@ -38,6 +39,7 @@ case class ScEdge
     num_terminals: Int,
     id_equ: String,
     element: Element,
+    standard: Option[String],
     impedance: Impedanzen) extends Graphable with Serializable
 {
 
@@ -239,7 +241,8 @@ case class ScEdge
         element match
         {
             case fuse: Fuse =>
-                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (fuse.Switch.ratedCurrent))
+                val std = standard.getOrElse ("")
+                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (fuse.Switch.ratedCurrent), std)
                 if (null == ref)
                     next
                 else
@@ -250,7 +253,8 @@ case class ScEdge
                         case _ => throw new IllegalArgumentException (s"unknown class for ref (${ref.getClass.toString})")
                     }
             case breaker: Breaker =>
-                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, breaker.id, breaker.ProtectedSwitch.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (breaker.ProtectedSwitch.Switch.ratedCurrent))
+                val std = standard.getOrElse ("")
+                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, breaker.id, breaker.ProtectedSwitch.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (breaker.ProtectedSwitch.Switch.ratedCurrent), std)
                 if (null == ref)
                     next
                 else
