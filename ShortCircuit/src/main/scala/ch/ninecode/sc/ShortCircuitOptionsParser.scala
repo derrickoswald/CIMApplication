@@ -1,16 +1,17 @@
 package ch.ninecode.sc
 
+import java.io.FileNotFoundException
 import java.io.StringReader
+
+import scala.collection.JavaConverters.asScalaBufferConverter
+import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.collection.mutable
 
 import javax.json.Json
 import javax.json.JsonArray
 import javax.json.JsonException
 import javax.json.JsonObject
 import javax.json.JsonValue
-import scala.collection.JavaConverters.asScalaBufferConverter
-import scala.collection.JavaConverters.mapAsScalaMapConverter
-import scala.collection.mutable
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -31,16 +32,9 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
 
     def readFuseTable (file: String): Option[FuseData] =
     {
-        readFile (file) match
-        {
-            case Some (text) =>
-                readJSON (text) match
-                {
-                    case Some (obj) => parseFuseTables (obj)
-                    case None => None
-                }
-            case None => None
-        }
+        val fileText = readFile (file)
+        val json = readJSON(fileText)
+        parseFuseTables (json)
     }
 
     opt[Unit]("verbose").
@@ -193,8 +187,8 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
                     case obj: JsonObject =>
                         parseAmp (obj)
                     case x: Any =>
-                        log.error (s"""expected JSON object type, got "${ typeString (x) }"""")
-                        None
+                        log.error (s"""expected JSON object type, got "${typeString (x)}"""")
+                        throw new FileNotFoundException ("non valid input for fuse table mapping")
                 }
             )
             .toArray
@@ -203,9 +197,11 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
         else
         {
             log.error (s"""no fuse elements found""")
-            None
+            throw new FileNotFoundException ("non valid input for fuse table mapping")
         }
     }
+
+
 
     def parseFuseTables (json: JsonObject): Option[FuseData] =
     {
@@ -228,8 +224,8 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
                                     case _ => None
                                 }
                             case (_, x: JsonValue) =>
-                                log.error (s"""expected JSON array type, got "${ typeString (x) }"""")
-                                None
+                                log.error (s"""expected JSON array type, got "${typeString (x)}"""")
+                                throw new JsonException ("non valid input for fuse table mapping")
                         }
                     ).toArray
                     if (0 != array.length)
@@ -237,62 +233,49 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
                     else
                     {
                         log.error (s"""no mappings found""")
-                        None
+                        throw new JsonException ("non valid input for fuse table mapping")
                     }
                 case _ =>
-                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${ typeString (value) }")""")
-                    None
+                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
+                    throw new JsonException ("non valid input for fuse table mapping")
             }
         }
         else
-            None
+        {
+            log.error(s"$MEMBERNAME missing in fuse mapping table")
+            throw new JsonException ("non valid input for fuse table mapping")
+        }
     }
 
-    def readJSON (json: String): Option[JsonObject] =
+    def readJSON (json: String): JsonObject =
     {
         try
         {
-            try
-            Json.createReader (new StringReader (json)).readObject match
-            {
-                case obj: JsonObject => Some (obj)
-                case _ =>
-                    log.error ("not a JsonObject")
-                    None
-            }
-            catch
-            {
-                case je: JsonException =>
-                    log.error (s"""unparseable as JSON (${ je.getMessage })""")
-                    None
-            }
-        }
-        catch
+            Json.createReader (new StringReader (json)).readObject
+        } catch
         {
-            case e: Exception =>
-                log.error (e.getMessage)
-                None
+            case je: JsonException =>
+                log.error (s"""non valid input for fuse table mapping (${je.getMessage})""")
+                throw new JsonException ("non valid input for fuse table mapping")
         }
     }
 
-    def readFile (filename: String): Option[String] =
+    def readFile (filename: String): String =
     {
         try
         {
             val sep = System.getProperty ("file.separator")
-            val file = if (filename.startsWith (sep)) filename else s"${ new java.io.File (".").getCanonicalPath }$sep$filename"
+            val file = if (filename.startsWith (sep)) filename else s"${new java.io.File (".").getCanonicalPath}$sep$filename"
             val source = scala.io.Source.fromFile (file, "UTF-8")
             val text = source.mkString
             source.close
-            Some (text)
+            text
         }
         catch
         {
             case e: Exception =>
-                val log = LoggerFactory.getLogger (getClass.getName)
-                log.error ("bad input file name", e)
-                helpout = true
-                None
+                log.error ("bad input file for fuse table mapping", e)
+                throw new FileNotFoundException ("bad input file for fuse table mapping")
         }
     }
 }
