@@ -1,42 +1,24 @@
 package ch.ninecode.mfi
 
-import scala.collection.Map
+import java.net.URI
 
-/**
- * Logging level enumeration.
- */
-object LogLevels extends Enumeration
-{
-    type LogLevels = Value
-    val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
-
-    def toLog4j (level: Value): org.apache.log4j.Level =
-        level match
-        {
-            case ALL => org.apache.log4j.Level.ALL
-            case DEBUG => org.apache.log4j.Level.DEBUG
-            case ERROR => org.apache.log4j.Level.ERROR
-            case FATAL => org.apache.log4j.Level.FATAL
-            case INFO => org.apache.log4j.Level.INFO
-            case OFF => org.apache.log4j.Level.ALL
-            case TRACE => org.apache.log4j.Level.ALL
-            case WARN => org.apache.log4j.Level.WARN
-        }
-}
+import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.ForceTrue
+import ch.ninecode.util.CIMAble
+import ch.ninecode.util.CIMReaderOptions
+import ch.ninecode.util.MainOptions
+import ch.ninecode.util.Mainable
+import ch.ninecode.util.SparkOptions
+import ch.ninecode.util.Sparkable
 
 /**
  * Options for the Einspeiseleistung calculation.
  *
- * @param valid                 <code>false</code> if either help or version requested (i.e. don't proceed with execution).
- * @param unittest              If <code>true</code>, don't call sys.exit().
- * @param master                Spark master, e.g. spark://host:port, mesos://host:port, yarn, or local[*].
- * @param spark_options         Spark options.
- * @param storage               Storage level for RDD serialization.
- * @param dedup                 Perform de-duplication on (striped) input files.
- * @param log_level             Logging level.
+ * @param main_options          main() program options
+ * @param spark_options         Spark session options
+ * @param cim_options           CIMReader options
  * @param checkpoint_dir        Checkpoint directory on HDFS, e.g. hdfs://...
  * @param verbose               If <code>true</code> turns on the INFO logging if it was not on. Default <code>false</code>.
- * @param cim_reader_options    Options to the CIMReader, such as <code>ch.ninecode.cim.do_deduplication</code>.
  * @param three                 If <code>true</code> uses three-phase calculations. Default <code>false</code> - single phase caclulations.
  * @param precalculation        If <code>true</code> performs only the precalculation and stores the results in the database.
  * @param trafos                The list of transformers to process. Default is an empty list which means all low voltage transformers in the input file(s) are processeed.
@@ -54,35 +36,23 @@ object LogLevels extends Enumeration
  * @param cable_impedance_limit Cables with a R1 value higher than this are not calculated with GridLAB-D, the reason is bad performance in GridLAB-D for very high impedance values. Default 5.0.
  * @param workdir               The shared directory (among Spark executors) to use for staging GridLAB-D simulations. Each simulation is created in a subdirectory of this directory.
  * @param outputfile            The name of the SQLite database results file.
- * @param files                 The list of input CIM files (RDF).
  * @param base_temperature      Temperature of elements in the input CIM file (°C)
  * @param sim_temperature       Temperature at which the simulation should be done (°C)
  */
 case class EinspeiseleistungOptions
 (
-    var valid: Boolean = true,
-    unittest: Boolean = false,
-    master: String = "",
-    spark_options: Map[String, String] = Map (
-        "spark.graphx.pregel.checkpointInterval" -> "8",
-        "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
-        "spark.ui.showConsoleProgress" -> "false"
+    var main_options: MainOptions = MainOptions (),
+    var spark_options: SparkOptions = SparkOptions (),
+    var cim_options: CIMReaderOptions = CIMReaderOptions (
+        topology = true,
+        topology_options = CIMTopologyOptions (
+            identify_islands = true,
+            force_retain_switches = ForceTrue,
+            force_retain_fuses = ForceTrue
+        )
     ),
-    storage: String = "MEMORY_AND_DISK_SER",
-    dedup: Boolean = false,
-    log_level: LogLevels.Value = LogLevels.OFF,
     checkpoint_dir: String = "",
     verbose: Boolean = false,
-    cim_reader_options: Map[String, String] = Map [String, String](
-        "ch.ninecode.cim.do_topo" -> "true",
-        "ch.ninecode.cim.do_topo_islands" -> "true",
-        "ch.ninecode.cim.force_retain_switches" -> "ForceTrue",
-        "ch.ninecode.cim.force_retain_fuses" -> "ForceTrue",
-        "ch.ninecode.cim.force_switch_separate_islands" -> "Unforced",
-        "ch.ninecode.cim.force_fuse_separate_islands" -> "Unforced",
-        "ch.ninecode.cim.default_switch_open_state" -> "false",
-        "StorageLevel" -> "MEMORY_AND_DISK_SER"
-    ),
     three: Boolean = false,
     precalculation: Boolean = false,
     trafos: String = "",
@@ -100,7 +70,30 @@ case class EinspeiseleistungOptions
     cable_impedance_limit: Double = 5.0,
     workdir: String = "",
     outputfile: String = "simulation/results.db",
-    files: Seq[String] = Seq (),
     base_temperature: Double = 20.0,
     sim_temperature: Double = 20.0
-)
+) extends Mainable with Sparkable with CIMAble
+{
+    def derive_work_dir (files: Seq[String]): String =
+    {
+        files.toList match
+        {
+            case paths :: _ =>
+                val file = paths.split (",")(0).replace (" ", "%20")
+                val uri = new URI (file)
+                val scheme = uri.getScheme
+                val auth = if (null == uri.getAuthority) "" else uri.getAuthority
+                if (null == scheme)
+                    "simulation/"
+                else
+                    s"$scheme://$auth/simulation/"
+            case _ =>
+                "simulation/"
+        }
+    }
+
+    /**
+     * Get user specified directory or generate a working directory matching the files.
+     */
+    def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir (cim_options.files)
+}

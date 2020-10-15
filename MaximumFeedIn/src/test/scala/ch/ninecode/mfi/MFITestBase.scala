@@ -7,6 +7,7 @@ import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.net.Net
 import ch.ninecode.testutil.TestUtil
+import ch.ninecode.util.CIMReaderOptions
 import ch.ninecode.util.Util
 
 class MFITestBase extends TestUtil
@@ -18,6 +19,18 @@ class MFITestBase extends TestUtil
         Net.classes,
         Util.classes)
     val FILE_DEPOT = "data/"
+
+    def setFile (filename: String): CIMReaderOptions =
+    {
+        val default = EinspeiseleistungOptions ().cim_options
+        default.copy (files = Seq (filename))
+    }
+
+    def setFiles (filenames: Seq[String], dedup: Boolean = false): CIMReaderOptions =
+    {
+        val default = EinspeiseleistungOptions ().cim_options
+        default.copy (dedup = dedup, files = filenames)
+    }
 
     def runMFI (session: SparkSession, options: EinspeiseleistungOptions): Unit =
     {

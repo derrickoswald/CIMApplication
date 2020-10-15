@@ -87,7 +87,7 @@ object EventAndFactorSuiteIT
     {
         // create the configuration
         val configuration = new SparkConf (false)
-            .setAppName ("SummarySuiteIT")
+            .setAppName ("EventAndFactorSuiteIT")
             .setMaster ("local[*]")
             .set ("spark.driver.memory", "2g")
             .set ("spark.executor.memory", "2g")
@@ -97,6 +97,8 @@ object EventAndFactorSuiteIT
             .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
             .set ("spark.cassandra.connection.host", "localhost")
             .set ("spark.cassandra.connection.port", PORT)
+            .set ("spark.sql.debug.maxToStringFields", "250")
+            .set ("spark.sql.catalog.casscatalog", "com.datastax.spark.connector.datasource.CassandraCatalog")
             // register CIMReader classes
             .registerKryoClasses (CIMClasses.list)
             // use the custom registrator

@@ -104,10 +104,11 @@ abstract class Branch (val from: String, val to: String, val current: Double)
      * Check if a fuse would blow given the short circuit power and the network of cables and fuses.
      *
      * @param ik short-circuit current to check against
+     * @param options the options containing cmin and the fuse table
      * @return tuple with a boolean <code>true</code> if the network would change because of the short circuit, or <code>false</code> if it would not,
      *         and either the remaining network with the change, or the original network if there would be no change
      */
-    def checkFuses (ik: Double): (Boolean, Option[Branch])
+    def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch])
 }
 
 /**
@@ -121,7 +122,8 @@ abstract class Branch (val from: String, val to: String, val current: Double)
  * @param rating  the current rating if it is a fuse
  * @param z       the positive and zero sequence impedances at the operational temperatures
  */
-case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String, name: String, rating: Option[Double] = None,
+case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String,
+    name: String, rating: Option[Double] = None, standard: String,
     z: Impedanzen = Impedanzen (0.0, 0.0, 0.0, 0.0)) extends Branch (from, to, current)
 {
     override def toString: String =
@@ -159,7 +161,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def justFuses: Option[Branch] = if (isFuse) Some (this) else None
 
-    def reverse: Branch = SimpleBranch (to, from, current, mRID, name, rating, z)
+    def reverse: Branch = SimpleBranch (to, from, current, mRID, name, rating, standard, z)
 
     def ratios: Iterable[(Double, Branch)] = List ((1.0, this))
 
@@ -169,7 +171,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def contents: Iterable[SimpleBranch] = Iterable (this)
 
-    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
+    def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
         if (isFuse)
         {
@@ -177,7 +179,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
             if (0.0 == _rating)
                 (false, None)
             else
-                if (FData.fuse (ik, this) >= _rating)
+                if (options.fuse_table.fuse (ik, standard) >= _rating)
                     (true, None)
                 else
                     (false, Some (this))
@@ -234,7 +236,7 @@ case class TransformerBranch (override val from: String, override val to: String
 
     def contents: Iterable[TransformerBranch] = Iterable (this)
 
-    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
+    def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
         (false, Some (this))
     }
@@ -292,7 +294,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
                 single match
                 {
                     case b: SimpleBranch =>
-                        Some (SimpleBranch (from, to, current, b.mRID, b.name, b.rating, b.z))
+                        Some (SimpleBranch (from, to, current, b.mRID, b.name, b.rating, b.standard, b.z))
                     case p: ParallelBranch =>
                         Some (ParallelBranch (from, to, current, p.parallel))
                     case s: SeriesBranch =>
@@ -322,7 +324,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def contents: Iterable[Branch] = series
 
-    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
+    def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
         // check if the last fuse blows, ToDo: not quite right, another series element could blow
         def fuses (arg: (Boolean, Option[Branch])): Option[(Boolean, Option[Branch])] =
@@ -343,7 +345,7 @@ case class SeriesBranch (override val from: String, override val to: String, ove
                 }
         }
 
-        val new_series: List[(Boolean, Option[Branch])] = series.map (_.checkFuses (ik)).flatMap (fuses).toList
+        val new_series: List[(Boolean, Option[Branch])] = series.map (_.checkFuses (ik, options)).flatMap (fuses).toList
         new_series match
         {
             case Nil =>
@@ -393,7 +395,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
                 single match
                 {
                     case b: SimpleBranch =>
-                        Some (SimpleBranch (from, to, current, b.mRID, b.name, b.rating, b.z))
+                        Some (SimpleBranch (from, to, current, b.mRID, b.name, b.rating, b.standard, b.z))
                     case p: ParallelBranch =>
                         Some (ParallelBranch (from, to, current, p.parallel))
                     case s: SeriesBranch =>
@@ -441,7 +443,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
 
     def contents: Iterable[Branch] = parallel
 
-    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
+    def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
         val new_parallel = ratios.map (
             pair =>
@@ -451,7 +453,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
                 if (current.isNaN)
                     (false, None)
                 else
-                    branch.checkFuses (current)
+                    branch.checkFuses (current, options)
             }
         )
         val blows = new_parallel.exists (_._1)
@@ -506,7 +508,7 @@ case class ComplexBranch (override val from: String, override val to: String, ov
             fuses.head match
             {
                 case b: SimpleBranch =>
-                    Some (SimpleBranch (from, to, current, b.mRID, b.name, b.rating, b.z))
+                    Some (SimpleBranch (from, to, current, b.mRID, b.name, b.rating, b.standard, b.z))
                 case p: ParallelBranch =>
                     Some (ParallelBranch (from, to, current, p.parallel))
                 case s: SeriesBranch =>
@@ -550,7 +552,7 @@ case class ComplexBranch (override val from: String, override val to: String, ov
 
     def contents: Iterable[Branch] = basket
 
-    def checkFuses (ik: Double): (Boolean, Option[Branch]) =
+    def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
         val new_complex = ratios.map (
             pair =>
@@ -560,7 +562,7 @@ case class ComplexBranch (override val from: String, override val to: String, ov
                 if (current.isNaN)
                     (false, None)
                 else
-                    branch.checkFuses (current)
+                    branch.checkFuses (current, options)
             }
         )
         val blows = new_complex.exists (_._1)
@@ -573,7 +575,7 @@ case class ComplexBranch (override val from: String, override val to: String, ov
 
 object Branch
 {
-    def apply (from: String, to: String, current: Double, mRID: String, name: String, rating: Option[Double]): SimpleBranch = SimpleBranch (from, to, current, mRID, name, rating)
+    def apply (from: String, to: String, current: Double, mRID: String, name: String, standard: String, rating: Option[Double]): SimpleBranch = SimpleBranch (from, to, current, mRID, name, rating, standard)
 
     def apply (from: String, to: String, current: Double, mRID: String, name: String, s: Double, vfrom: Double, vto: Double, pu: Complex): TransformerBranch = TransformerBranch (from, to, current, mRID, name, s, vfrom, vto, pu)
 

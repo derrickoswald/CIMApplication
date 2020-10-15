@@ -237,10 +237,14 @@ trait IngestProcessor
                 val what = matcher.group (6).toInt
                 val (typ, real, imag, factor, unit) = quantity match
                 {
-                    // active power +
+                    // active power p+
                     case 1 => ("power", true, false, 1.0, "W")
-                    // active power -
+                    // active power p-
                     case 2 => ("power", true, false, -1.0, "W")
+                    // reactive power q+
+                    case 3 => ("power", false, true, 1.0, "W")
+                    // reactive power q-
+                    case 4 => ("power", false, true, -1.0, "W")
                     // reactive power Q I
                     case 5 => ("power", false, true, 1.0, "W")
                     // reactive power Q II
@@ -267,6 +271,7 @@ trait IngestProcessor
                     {
                         case "kWh" => factor * 1000.0 * scale.toDouble;
                         case "kvarh" => factor * 1000.0 * scale.toDouble;
+                        case "kVArh" => factor * 1000.0 * scale.toDouble;
                         case _ => factor
                     }
                     (_type, real, imag, _unit, _factor)

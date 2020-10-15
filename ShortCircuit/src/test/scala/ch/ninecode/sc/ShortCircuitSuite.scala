@@ -92,7 +92,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -129,7 +129,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -168,7 +168,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -210,7 +210,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -252,7 +252,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -301,7 +301,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -348,7 +348,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -389,7 +389,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -440,7 +440,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -479,7 +479,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)
@@ -529,7 +529,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 
             // write output to file and console
             val output = "target/result"
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
 
             deleteRecursive (new File (output))
             string.saveAsTextFile (output)

@@ -336,11 +336,11 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
             insert.setString (19, result.lastFusesString)
             insert.setString (20, result.lastFusesId)
             insert.setString (21, result.iksplitString)
-            insert.setString (22, result.fuseMax)
+            insert.setString (22, result.fuseMax (options))
             if (result.lastFuseHasMissingValues)
                 insert.setNull (23, Types.BOOLEAN)
             else
-                insert.setBoolean (23, result.fuseOK (options.cmin))
+                insert.setBoolean (23, result.fuseOK (options))
         }
         val _ = insert.executeUpdate ()
     }

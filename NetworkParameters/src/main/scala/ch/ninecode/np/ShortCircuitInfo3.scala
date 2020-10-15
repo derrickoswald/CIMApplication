@@ -359,7 +359,7 @@ case class ShortCircuitInfo3 (
     {
         val chim = new CHIM ("")
         val subsetters: List[String] = chim.classes.map (info => info.name)
-        val old_elements = get [Element]("Elements")
+        val old_elements = getOrElse[Element]
 
         // get the list of classes that need to be merged
         def supers (element: Element): List[String] =
@@ -389,7 +389,7 @@ case class ShortCircuitInfo3 (
             implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T](subsetter.runtime_class)
             implicit val tag: universe.TypeTag[T] = subsetter.tag
             val subrdd: RDD[T] = elements.flatMap (subsetter.asThisClass)
-            val existing: RDD[T] = getOrElse [subsetter.basetype](subsetter.cls)
+            val existing: RDD[T] = getOrElse [subsetter.basetype]
             val _ = put [T](subrdd.union (existing))
         }
 
@@ -398,7 +398,7 @@ case class ShortCircuitInfo3 (
 
         // replace elements in Elements
         val new_elements: RDD[Element] = old_elements.union (elements)
-        val _ = put (new_elements, "Elements", true)
+        val _ = put (new_elements, true)
     }
 
     def run (): Unit =

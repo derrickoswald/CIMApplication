@@ -135,7 +135,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
 
         // get the list of N5 level feeders in substations
         // ToDo: is it faster to use RDD[Connector] and join with RDD[Element] ?
-        getOrElse [Element]("Elements").filter (isFeeder (medium_voltages, Array ("PSRType_Substation")))
+        getOrElse[Element].filter (isFeeder (medium_voltages, Array ("PSRType_Substation")))
             .persist (storage)
             .setName ("Feeders")
     }
@@ -219,7 +219,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         }
 
         val connectors = feeders.map (_.asInstanceOf [Connector])
-        connectors.keyBy (_.ConductingEquipment.Equipment.EquipmentContainer).join (getOrElse [Element]("Elements").keyBy (_.id)).values.map (station_fn)
+        connectors.keyBy (_.ConductingEquipment.Equipment.EquipmentContainer).join (getOrElse[Element].keyBy (_.id)).values.map (station_fn)
             .persist (storage)
             .setName ("feederStations")
     }
@@ -233,7 +233,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     {
         val equipment_islands = getOrElse [Terminal].keyBy (_.TopologicalNode).join (getOrElse [TopologicalNode].keyBy (_.id)).values
             .map (x => (x._1.ConductingEquipment, x._2.TopologicalIsland)).groupByKey // (equipmentid, [islandid])
-        val equipment = getOrElse [ConductingEquipment].keyBy (_.id).join (getOrElse [Element]("Elements").keyBy (_.id)).map (x => (x._1, x._2._2)) // (equipmentid, element)
+        val equipment = getOrElse [ConductingEquipment].keyBy (_.id).join (getOrElse[Element].keyBy (_.id)).map (x => (x._1, x._2._2)) // (equipmentid, element)
             .join (equipment_islands).values // (Element, [islandid])
         equipment.flatMap (
             x =>

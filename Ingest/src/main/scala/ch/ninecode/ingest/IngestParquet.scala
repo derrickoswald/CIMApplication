@@ -51,18 +51,23 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
             })
         }
 
-        def aggregateDataPerHAS (data: Iterable[MeasuredValue]): MeasuredValue =
+        def aggregateDataPerHAS (data: Iterable[MeasuredValue]): Option[MeasuredValue] =
         {
             val real_a = data.map (_._5).sum
             val imag_a = data.map (_._6).sum
-            data.head.copy (_5 = real_a, _6 = imag_a)
+            data.headOption match {
+                case Some (head) =>
+                    Some (head.copy (_5 = real_a, _6 = imag_a))
+                case None =>
+                    None
+            }
         }
 
         val dataPerHas: RDD[MeasuredValue] = joinedData.flatMap (splitAoWithMultipleHAS)
         val aggregatedDataPerHAS: RDD[MeasuredValue] = dataPerHas
             .groupBy (k => (k._1, k._3))
             .values
-            .map (aggregateDataPerHAS)
+            .flatMap (aggregateDataPerHAS)
 
         aggregatedDataPerHAS.saveToCassandra (job.keyspace, "measured_value",
             SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
@@ -76,10 +81,10 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
         val userAttribute: RDD[(String, UserAttribute)] = getOrElse [UserAttribute].keyBy (_.value)
         val stringQuantity: RDD[(String, StringQuantity)] = getOrElse [StringQuantity].keyBy (_.id)
 
-        val MstHasMapping: RDD[(MstID, Mrid)] = userAttribute
+        val MstHasMapping: RDD[(MstID, Iterable[Mrid])] = userAttribute
             .join (stringQuantity)
             .values
-            .map (x => (x._1.name, x._2.value))
+            .map (x => (x._1.name, x._2.value)).groupByKey()
 
         val MstAoMapping: RDD[(MstID, AOID)] = serviceLocation
             .join (name)
@@ -88,9 +93,7 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
 
         MstAoMapping
             .join (MstHasMapping)
-            .groupByKey
-            .flatMap (_._2.toList)
-            .groupByKey ()
+            .values
     }
 
     def import_parquet (job: IngestJob): RDD[MeasuredValue] =

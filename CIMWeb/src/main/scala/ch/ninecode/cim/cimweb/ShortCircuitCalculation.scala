@@ -22,6 +22,10 @@ import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
 
+import ch.ninecode.sc.Amp
+import ch.ninecode.sc.FuseData
+import ch.ninecode.sc.FuseTable
+
 @Stateless
 @Path ("short_circuit")
 class ShortCircuitCalculation extends RESTful
@@ -152,6 +156,129 @@ class ShortCircuitCalculation extends RESTful
 
     def parseOptions (json: JsonObject): ShortCircuitOptions =
     {
+        val table = json.getInt ("fuse_table", 1)
+        val fuse_table: FuseData = table match
+        {
+            case 2 =>
+                FuseData (
+                    Array (
+                        FuseTable (
+                            "",
+                            Array (
+                                Amp (0, 0), // failsafe fallback for currents less than 28A
+                                Amp (28, 10),
+                                Amp (40, 16),
+                                Amp (55, 20),
+                                Amp (70, 25),
+                                Amp (93, 32),
+                                Amp (120, 40),
+                                Amp (160, 50),
+                                Amp (190, 63),
+                                Amp (230, 80),
+                                Amp (305, 100),
+                                Amp (380, 125),
+                                Amp (490, 160),
+                                Amp (690, 200),
+                                Amp (820, 250),
+                                Amp (1150, 315),
+                                Amp (1350, 400),
+                                Amp (1900, 500),
+                                Amp (2500, 630)
+                            )
+                        )
+                    )
+                )
+            case 3 =>
+                FuseData (
+                    Array (
+                        FuseTable (
+                            "DIN",
+                            Array (
+                                Amp (0, 0), // failsafe fallback for currents less than 65A
+                                Amp (65, 25),
+                                Amp (105, 40),
+                                Amp (140, 50),
+                                Amp (180, 63),
+                                Amp (240, 80),
+                                Amp (320, 100),
+                                Amp (380, 125),
+                                Amp (500, 160),
+                                Amp (650, 200),
+                                Amp (800, 250),
+                                Amp (1050, 315),
+                                Amp (1300, 400),
+                                Amp (1750, 500),
+                                Amp (2400, 630)
+                            )
+                        ),
+                        FuseTable (
+                            "SEV",
+                            Array (
+                                Amp (0, 0), // failsafe fallback for currents less than 200A
+                                Amp (200, 60),
+                                Amp (250, 75),
+                                Amp (300, 100),
+                                Amp (340, 125),
+                                Amp (500, 150),
+                                Amp (600, 200),
+                                Amp (720, 250),
+                                Amp (850, 300),
+                                Amp (1150, 400)
+                            )
+                        )
+                    )
+                )
+            case 4 =>
+                FuseData (
+                    Array (
+                        FuseTable (
+                            "",
+                            Array (
+                                Amp (0, 6), // failsafe fallback for currents less than 65A
+                                Amp (65, 25),
+                                Amp (105, 35),
+                                Amp (140, 50),
+                                Amp (180, 50),
+                                Amp (240, 63),
+                                Amp (320, 100),
+                                Amp (380, 100),
+                                Amp (500, 160),
+                                Amp (650, 160),
+                                Amp (800, 200),
+                                Amp (1050, 250),
+                                Amp (1300, 400),
+                                Amp (1750, 400),
+                                Amp (2400, 500)
+                            )
+                        )
+                    )
+                )
+            case _ =>
+                FuseData (
+                    Array (
+                        FuseTable (
+                            "DIN",
+                            Array (
+                                Amp (0, 0), // failsafe fallback for currents less than 65A
+                                Amp (65, 25),
+                                Amp (105, 40),
+                                Amp (140, 50),
+                                Amp (180, 63),
+                                Amp (240, 80),
+                                Amp (320, 100),
+                                Amp (380, 125),
+                                Amp (500, 160),
+                                Amp (650, 200),
+                                Amp (800, 250),
+                                Amp (1050, 315),
+                                Amp (1300, 400),
+                                Amp (1750, 500),
+                                Amp (2400, 630)
+                            )
+                        )
+                    )
+                )
+        }
         ShortCircuitOptions (
             verbose = json.getBoolean ("verbose", false),
             description = json.getString ("description", ""),
@@ -168,7 +295,7 @@ class ShortCircuitCalculation extends RESTful
             cmin = getDouble (json, "cmin", 0.9),
             worstcasepf = json.getBoolean ("worstcasepf", if (!json.containsKey ("cosphi") || json.isNull ("cosphi") || getDouble (json, "cosphi", 0.5).isNaN) true else false),
             cosphi = getDouble (json, "cosphi", 0.5),
-            fuse_table = json.getInt ("fuse_table", 1),
+            fuse_table = fuse_table,
             messagemax = json.getInt ("messagemax", 5),
             batchsize = getLong (json, "batchsize", 10000),
             trafos = json.getString ("trafos", ""),
@@ -230,7 +357,7 @@ class ShortCircuitCalculation extends RESTful
             .add ("cmin", options.cmin)
             .add ("worstcasepf", options.worstcasepf)
             .add ("cosphi", options.cosphi)
-            .add ("fuse_table", options.fuse_table)
+            .add ("fuse_table", options.fuse_table.toString)
             .add ("messagemax", options.messagemax)
             .add ("batchsize", options.batchsize)
             .add ("trafos", options.trafos)

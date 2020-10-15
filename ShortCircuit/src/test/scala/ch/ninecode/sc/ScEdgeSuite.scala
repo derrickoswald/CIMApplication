@@ -27,7 +27,7 @@ class ScEdgeSuite extends AnyFunSuite
         val result = CHIM.parse (parser)
         val transformerMock = result._1 ("ID123")
 
-        val scEdgeMock = ScEdge ("ID121", 400.0, "ID123", 230.0, 2, "", transformerMock, Impedanzen ())
+        val scEdgeMock = ScEdge ("ID121", 400.0, "ID123", 230.0, 2, "", transformerMock, None, Impedanzen ())
         val scNodeMock = ScNode (id_seq = "ID123", voltage = 230.0, source_id = "", id_prev = "")
         assert (!scEdgeMock.shouldContinueTo (scNodeMock, false), "should not continue on transformer with 230V")
     }

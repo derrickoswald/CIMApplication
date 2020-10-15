@@ -75,8 +75,8 @@ case class ScResult
     branches: Branch
 )
 {
-    def csv (cmin: Double): String =
-        s"$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString (",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;$fuseMax;${fuseOK (cmin)}"
+    def csv (options: ShortCircuitOptions): String =
+        s"$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString (",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;${fuseMax (options)};${fuseOK (options)}"
 
     def fuseString: String =
     {
@@ -129,23 +129,58 @@ case class ScResult
             }
     }
 
-    def fuseMax: String =
+    def std (branch: Branch): String =
+    {
+        branch match
+        {
+            case simple: SimpleBranch => simple.standard
+            case _ => ""
+        }
+
+    }
+
+    def fuses (ik: Double, options: ShortCircuitOptions, branches: Branch): String =
+    {
+        if (ik.isNaN || (null == branches))
+            options.fuse_table.fuse (Double.NaN, std (branches)).toInt.toString
+        else
+            branches.ratios.map (x => (x._1 * Math.abs (ik), x._2)).map (x => options.fuse_table.fuse (x._1, std (x._2)).toInt).mkString (",")
+    }
+
+    def fuseMax (options: ShortCircuitOptions): String =
     {
         if (null == branches)
             ""
         else
             branches.justFuses match
             {
-                case Some (branch) => FData.fuses (high_ik, branch)
+                case Some (branch) => fuses (high_ik, options, branch)
                 case None => ""
             }
+    }
+
+    def lastFuseHasMissingValues (branches: Branch): Boolean =
+    {
+        if (null == branches)
+            true
+        else
+        {
+            val missing = branches match
+            {
+                case sim: SimpleBranch => sim.rating.getOrElse (Double.MinValue) <= 0.0
+                case ser: SeriesBranch => ser.lastFuses.exists (lastFuseHasMissingValues)
+                case par: ParallelBranch => par.parallel.exists (lastFuseHasMissingValues)
+                case com: ComplexBranch => com.basket.exists (lastFuseHasMissingValues)
+            }
+            missing
+        }
     }
 
     def lastFuseHasMissingValues: Boolean =
     {
         branches.justFuses match
         {
-            case Some (branch) => FData.lastFuseHasMissingValues (branch)
+            case Some (branch) => lastFuseHasMissingValues (branch)
             case None => true
         }
     }
@@ -167,7 +202,7 @@ case class ScResult
      *
      * @return <code>true</code> if the network would be interrupted because of the short circuit, or <code>false</code> otherwise
      */
-    def fuseOK (cmin: Double): Boolean =
+    def fuseOK (options: ShortCircuitOptions): Boolean =
     {
         if (null == branches)
             false
@@ -185,8 +220,8 @@ case class ScResult
                     case Some (n) =>
                         val z = n.z (supply_z)
                         // first time through this should be high_ik
-                        val ik = calculate_ik (voltage, cmin, z.impedanz_high, z.null_impedanz_high)
-                        val (blows, newnet) = n.checkFuses (ik)
+                        val ik = calculate_ik (voltage, options.cmin, z.impedanz_high, z.null_impedanz_high)
+                        val (blows, newnet) = n.checkFuses (ik, options)
                         changed = blows
                         network = newnet
                     case None =>

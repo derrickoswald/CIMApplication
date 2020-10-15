@@ -38,6 +38,7 @@ import ch.ninecode.model.PowerTransformerEnd
 import ch.ninecode.model.Substation
 import ch.ninecode.model.Terminal
 import ch.ninecode.model.TopologicalNode
+import ch.ninecode.model.UserAttribute
 import ch.ninecode.model.VoltageLevel
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
@@ -74,12 +75,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
     val default_node: ScNode = ScNode ()
 
-    def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])])): List[ScEdge] =
+    def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])], Option[String])): List[ScEdge] =
     {
-        var ret = List [ScEdge]()
-
-        val element = arg._1
-        val t_it = arg._2
+        val (element, t_it, standard) = arg
 
         // get the ConductingEquipment
         var c = element
@@ -138,27 +136,26 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 val node1 = terminals (0)._1.TopologicalNode
                 val voltage1 = terminals (0)._2
                 val z = terminals (0)._3
-                for (i <- 1 until terminals.length) // for comprehension: iterate omitting the upper bound
-                {
-                    val node2 = terminals (i)._1.TopologicalNode
-                    // eliminate edges with only one connectivity node, or the same connectivity node
-                    if (null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
-                        ret = ret :+ ScEdge (
-                            node1,
-                            voltage1,
-                            node2,
-                            terminals (i)._2,
-                            terminals.length,
-                            eq,
-                            element,
-                            z
-                        )
-                }
+                val ret = for (i <- 1 until terminals.length; // for comprehension: iterate omitting the upper bound
+                     node2 = terminals (i)._1.TopologicalNode;
+                     // eliminate edges with only one connectivity node, or the same connectivity node
+                     if null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
+                         yield ScEdge (
+                             node1,
+                             voltage1,
+                             node2,
+                             terminals (i)._2,
+                             terminals.length,
+                             eq,
+                             element,
+                             standard,
+                             z
+                         )
+                ret.toList
             case _ =>
-            // shouldn't happen, terminals always reference ConductingEquipment, right?
+                // shouldn't happen, terminals always reference ConductingEquipment, right?
+                List ()
         }
-
-        ret
     }
 
     def trafo_mapping (transformer_island: TransformerIsland): Iterator[StartingTrafos] =
@@ -201,6 +198,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             x.checkpoint ()
     }
 
+    def getFuseStandards: RDD[(String, String)] =
+    {
+        val types = Array ("DIN", "SEV")
+        val attributes = getOrElse[UserAttribute]
+        attributes.filter (x => types.contains (x.name)).map (x => (x.value, x.name))
+    }
+
     def get_inital_graph (): Graph[ScNode, ScEdge] =
     {
         // get a map of voltages
@@ -219,7 +223,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val terms = t.groupBy (_._1.ConductingEquipment).filter (_._2.size > 1)
 
         // map the terminal 'pairs' to edges
-        val edges = getOrElse [Element]("Elements").keyBy (_.id).join (terms).values.flatMap (edge_operator (voltages))
+        val edges = getOrElse[Element]
+            .keyBy (_.id)
+            .join (terms)
+            .leftOuterJoin (getFuseStandards)
+            .values
+            .map (x => (x._1._1, x._1._2, x._2))
+            .flatMap (edge_operator (voltages))
 
         // get the nodes and voltages from the edges
         val nodes = edges.flatMap (
@@ -613,9 +623,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             }
             val name = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
             if (v1 > v2)
-                List (SimpleBranch (cable.cn1, cable.cn2, ((voltage1.value_a - voltage2.value_a) / z.impedanz_low).modulus, cable.id, name, None, z))
+                List (SimpleBranch (cable.cn1, cable.cn2, ((voltage1.value_a - voltage2.value_a) / z.impedanz_low).modulus, cable.id, name, None, "", z))
             else
-                List (SimpleBranch (cable.cn2, cable.cn1, ((voltage2.value_a - voltage1.value_a) / z.impedanz_low).modulus, cable.id, name, None, z))
+                List (SimpleBranch (cable.cn2, cable.cn1, ((voltage2.value_a - voltage1.value_a) / z.impedanz_low).modulus, cable.id, name, None, "", z))
         }
     }
 
@@ -628,22 +638,24 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         {
             val rating = if (switch.fuse) Some (switch.ratedCurrent) else None
             val name = switch.data.switches.head.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
+            val stds = switch.data.switches.flatMap (_.standard).toArray.distinct
+            val std = if (0 == stds.length) "" else stds(0)// ToDo: what if parallel switches have different standards?
             if (lvnodes.contains (switch.cn1))
-                List (SimpleBranch (switch.cn1, switch.cn2, 0.0, switch.id, name, rating))
+                List (SimpleBranch (switch.cn1, switch.cn2, 0.0, switch.id, name, rating, std))
             else
                 if (lvnodes.contains (switch.cn2))
-                    List (SimpleBranch (switch.cn2, switch.cn1, 0.0, switch.id, name, rating))
+                    List (SimpleBranch (switch.cn2, switch.cn1, 0.0, switch.id, name, rating, std))
                 else
                     if (mrid == switch.cn2)
-                        List (SimpleBranch (switch.cn1, switch.cn2, 0.0, switch.id, name, rating))
+                        List (SimpleBranch (switch.cn1, switch.cn2, 0.0, switch.id, name, rating, std))
                     else
                         if (mrid == switch.cn1)
-                            List (SimpleBranch (switch.cn2, switch.cn1, 0.0, switch.id, name, rating))
+                            List (SimpleBranch (switch.cn2, switch.cn1, 0.0, switch.id, name, rating, std))
                         else
                             if (v1 > v2)
-                                List (SimpleBranch (switch.cn1, switch.cn2, 0.0, switch.id, name, rating))
+                                List (SimpleBranch (switch.cn1, switch.cn2, 0.0, switch.id, name, rating, std))
                             else
-                                List (SimpleBranch (switch.cn2, switch.cn1, 0.0, switch.id, name, rating))
+                                List (SimpleBranch (switch.cn2, switch.cn1, 0.0, switch.id, name, rating, std))
         }
     }
 
@@ -699,9 +711,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                     case _ =>
                                         log.error (s"unexpected edge type ${x.toString}")
                                         if (v1 > v2)
-                                            List (SimpleBranch (x.cn1, x.cn2, 0.0, "", x.id))
+                                            List (SimpleBranch (x.cn1, x.cn2, 0.0, x.id, "", None, ""))
                                         else
-                                            List (SimpleBranch (x.cn2, x.cn1, 0.0, "", x.id))
+                                            List (SimpleBranch (x.cn2, x.cn1, 0.0, x.id, "", None, ""))
                                 }
                             case None =>
                                 List ()
@@ -766,7 +778,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 (_branch, tx.lv_impedance (v))
             case _ =>
                 val b: Branch = if (lvnodes.contains (experiment.mrid))
-                    SimpleBranch (experiment.mrid, experiment.mrid, 0.0, experiment.mrid, "") // was null
+                    SimpleBranch (experiment.mrid, experiment.mrid, 0.0, experiment.mrid, "", None, "")
                 else
                 {
                     val lv = lvnodes.mkString (",")
@@ -981,7 +993,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val d = result.keyBy (_.id_seq).join (getOrElse [Terminal].keyBy (_.TopologicalNode)).values
         // join with equipment to get containers
         val e = d.keyBy (_._2.ConductingEquipment).join (getOrElse [ConductingEquipment].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._2))
-        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (getOrElse [Element]("Elements").keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
+        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (getOrElse[Element].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
 
         // resolve to top level containers
         // the equipment container for a transformer could be a Station or a Bay or VoltageLevel ... the last two of which have a reference to their station
@@ -1117,7 +1129,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
     def run (): RDD[ScResult] =
     {
-        FData.fuse_sizing_table (options.fuse_table)
         assert (null != getOrElse [TopologicalNode], "no topology")
 
         val transformer_data = Transformers (

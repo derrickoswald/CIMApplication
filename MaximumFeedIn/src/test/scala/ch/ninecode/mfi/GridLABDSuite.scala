@@ -39,9 +39,9 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
             val options = EinspeiseleistungOptions (
+                cim_options = setFile (filename),
                 verbose = true,
-                all = true,
-                files = List (filename)
+                all = true
             )
             runMFI (session, options)
 
@@ -70,10 +70,10 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
             val options = EinspeiseleistungOptions (
+                cim_options = setFile (filename),
                 verbose = true,
                 all = true,
                 workdir = "simulation/",
-                files = List (filename),
                 cable_impedance_limit = 0.14
             )
             runMFI (session, options)
@@ -103,9 +103,9 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME2.rdf"
 
             val options = EinspeiseleistungOptions (
+                cim_options = setFile (filename),
                 verbose = true,
-                workdir = "simulation/",
-                files = List (filename)
+                workdir = "simulation/"
             )
             runMFI (session, options)
 
@@ -132,9 +132,9 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME3.rdf"
 
             val options = EinspeiseleistungOptions (
+                cim_options = setFile (filename),
                 verbose = true,
-                workdir = "simulation/",
-                files = List (filename)
+                workdir = "simulation/"
             )
             runMFI (session, options)
 
@@ -170,20 +170,20 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
             val options_one_phase = EinspeiseleistungOptions (
+                cim_options = setFile (filename),
                 verbose = true,
                 all = true,
-                workdir = "simulation_three_phase/",
-                files = List (filename)
+                workdir = "simulation_three_phase/"
             )
             runMFI (session, options_one_phase)
             val one_phase = getMaxSimulation (options_one_phase.outputfile)
 
             val options_three_phase = EinspeiseleistungOptions (
+                cim_options = setFile (filename),
                 verbose = true,
                 three = true,
                 all = true,
-                workdir = "simulation_three_phase/",
-                files = List (filename)
+                workdir = "simulation_three_phase/"
             )
             runMFI (session, options_one_phase)
             val three_phase = getMaxSimulation (options_three_phase.outputfile)

@@ -1,14 +1,10 @@
 package ch.ninecode.sim
 
 import javax.json.JsonObject
-import scala.reflect.runtime.universe.TypeTag
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.types.DateType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import com.datastax.spark.connector._
 
 /**
@@ -32,107 +28,76 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
      */
     def run (implicit access: SimulationCassandraAccess): Unit =
     {
-        log.info ("Coincidence Factor")
-
-        def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf [Double, Double, Double]((x: Double, y: Double) => Math.sqrt (x * x + y * y))
-
-        def summation[Type_a: TypeTag, Type_b: TypeTag, Type_c: TypeTag] = udf [Double, Double, Double, Double]((a: Double, b: Double, c: Double) => a + b + c)
+        log.info (s"Coincidence Factor")
 
         val typ = "power"
-        val to_drop = if (options.three_phase)
-            Seq ("simulation", "type", "period", "units")
-        else
-            Seq ("simulation", "type", "period", "real_b", "imag_b", "real_c", "imag_c", "units")
-        val simulated_values = access.raw_values (typ, to_drop)
-        val simulated_power_values =
-            if (options.three_phase)
-            {
-                val intermediate = simulated_values
-                    .withColumn ("power_a", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                    .withColumn ("power_b", magnitude [Double, Double].apply (simulated_values ("real_b"), simulated_values ("imag_b")))
-                    .withColumn ("power_c", magnitude [Double, Double].apply (simulated_values ("real_c"), simulated_values ("imag_c")))
-                    .drop ("real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
-                intermediate
-                    .withColumn ("power", summation [Double, Double, Double].apply (intermediate ("power_a"), intermediate ("power_b"), intermediate ("power_c")))
-                    .drop ("power_a", "power_b", "power_c")
-            }
-            else
-                simulated_values
-                    .withColumn ("power", magnitude [Double, Double].apply (simulated_values ("real_a"), simulated_values ("imag_a")))
-                    .drop ("real_a", "imag_a")
-        val simulated_power_values_by_day = simulated_power_values
-            .withColumn ("date", simulated_values ("time").cast (DateType))
-            .drop ("time")
+        val queries = access.mrids_for_recorders (typ)
+        log.info (s"Computing ${queries.length} coincidence factors")
 
-        val players = access.players ("energy")
-        val trafo_loads = players
-            .drop ("name", "property")
-        val trafos = trafo_loads
-            .drop ("mrid")
-            .distinct
-            .withColumnRenamed ("transformer", "mrid")
+        for ((trafo, mrids) <- queries)
+        {
+            // get the mrid,power,date DataFrame for the trafo
+            log.info (trafo)
+            val simulated_power_values_by_day = simulatedPowerValues (mrids)
+                .drop ("time")
+                .persist (options.cim_options.storage)
 
-        val simulated_value_trafos = simulated_power_values_by_day
-            .join (
-                trafos,
-                Seq ("mrid"))
+            // compute the peak power of the transformer
+            val mrid = simulated_power_values_by_day.schema.fieldIndex ("mrid")
+            val peaks_trafos = simulated_power_values_by_day
+                .filter (trafo == _.getString (mrid))
+                .drop ("mrid")
+                .groupBy ("date")
+                .agg ("power" -> "max")
+                .drop ("power")
+                .withColumnRenamed ("max(power)", "peak_power")
 
-        val peaks_trafos = simulated_value_trafos
-            .groupBy ("mrid", "date")
-            .agg ("power" -> "max")
-            .withColumnRenamed ("mrid", "transformer")
-            .withColumnRenamed ("max(power)", "peak_power")
+            // now do the peaks for the energy consumers
+            val peak_consumers = simulated_power_values_by_day
+                .filter (trafo != _.getString (mrid))
+                .groupBy ("mrid", "date")
+                .agg ("power" -> "max")
+                .withColumnRenamed ("max(power)", "power")
 
-        // now do the peaks for the energy consumers
+            // sum up the individual peaks for each date
+            val sums_houses = peak_consumers
+                .groupBy ("date")
+                .agg ("power" -> "sum")
+                .withColumnRenamed ("sum(power)", "sum_power")
 
-        val peak_consumers = simulated_power_values_by_day
-            .groupBy ("mrid", "date")
-            .agg ("power" -> "max")
-            .withColumnRenamed ("max(power)", "power")
+            val _coincidences = peaks_trafos
+                .join (sums_houses, "date")
+            val coincidences = _coincidences
+                .withColumn ("coincidence", _coincidences ("peak_power") / _coincidences ("sum_power"))
 
-        val peak_houses = peak_consumers
-            .join (
-                trafo_loads,
-                Seq ("mrid"))
+            val date = coincidences.schema.fieldIndex ("date")
+            val peak_power = coincidences.schema.fieldIndex ("peak_power")
+            val sum_power = coincidences.schema.fieldIndex ("sum_power")
+            val coincidence = coincidences.schema.fieldIndex ("coincidence")
 
-        // sum up the individual peaks for each transformer and date combination
-        val sums_houses = peak_houses
-            .groupBy ("transformer", "date")
-            .agg ("power" -> "sum")
-            .withColumnRenamed ("sum(power)", "sum_power")
+            val work = coincidences.rdd.map (
+                row =>
+                {
+                    val factor = if (row.isNullAt (coincidence)) 0.0 else row.getDouble (coincidence)
+                    (trafo, typ, row.getDate (date), row.getDouble (peak_power), row.getDouble (sum_power), factor, "VA÷VA", access.simulation)
+                }
+            )
 
-        val _coincidences = peaks_trafos
-            .join (sums_houses, Seq ("transformer", "date"))
-        val coincidences = _coincidences
-            .withColumn ("coincidence", _coincidences ("peak_power") / _coincidences ("sum_power"))
+            // save to Cassandra
+            work.saveToCassandra (access.output_keyspace, "coincidence_factor_by_day",
+                SomeColumns ("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
 
-        val transformer = coincidences.schema.fieldIndex ("transformer")
-        val date = coincidences.schema.fieldIndex ("date")
-        val peak_power = coincidences.schema.fieldIndex ("peak_power")
-        val sum_power = coincidences.schema.fieldIndex ("sum_power")
-        val coincidence = coincidences.schema.fieldIndex ("coincidence")
+            unpersistDataFrame (simulated_power_values_by_day)
+        }
 
-        val work = coincidences.rdd.map (
-            row =>
-            {
-                val factor = if (row.isNullAt (coincidence)) 0.0 else row.getDouble (coincidence)
-                (row.getString (transformer), typ, row.getDate (date), row.getDouble (peak_power), row.getDouble (sum_power), factor, "VA÷VA", access.simulation)
-            }
-        )
-
-        // save to Cassandra
-        work.saveToCassandra (access.output_keyspace, "coincidence_factor_by_day",
-            SomeColumns ("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
-        log.info ("""Coincidence Factor: coincidence factor records saved to %s.coincidence_factor_by_day""".format (access.output_keyspace))
-        unpersistDataFrame (players)
-        unpersistDataFrame (simulated_values)
+        log.info (s"""coincidence factor records saved to ${access.output_keyspace}.coincidence_factor_by_day""")
     }
 }
 
 object SimulationCoincidenceFactor extends SimulationPostProcessorParser
 {
     // standard aggregation is daily
-    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List [SimulationAggregate](
+    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate](
         SimulationAggregate (96, 0)
     )
 

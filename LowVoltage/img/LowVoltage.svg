@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   inkscape:export-ydpi="96"
+   inkscape:export-xdpi="96"
+   inkscape:export-filename="/home/derrick/Documents/9code/nis/powerfactory/processing.png"
+   inkscape:version="1.1-dev (63fcaa5b48, 2020-04-12)"
+   sodipodi:docname="overview.svg"
+   width="161.73184mm"
+   height="138.0157mm"
+   viewBox="0 0 161.73184 138.01571"
+   version="1.1"
+   id="svg8">
+  <sodipodi:namedview
+     inkscape:current-layer="svg8"
+     inkscape:window-maximized="1"
+     inkscape:window-y="0"
+     inkscape:window-x="2632"
+     inkscape:cy="285.7388"
+     inkscape:cx="412.38031"
+     inkscape:zoom="1.6835589"
+     showgrid="false"
+     id="namedview893"
+     inkscape:window-height="1403"
+     inkscape:window-width="2488"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0"
+     guidetolerance="10"
+     gridtolerance="10"
+     objecttolerance="10"
+     borderopacity="1"
+     bordercolor="#666666"
+     pagecolor="#ffffff"
+     inkscape:snap-midpoints="true" />
+  <defs
+     id="defs2">
+    <marker
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker1474"
+       style="overflow:visible">
+      <path
+         id="path1472"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker1452"
+       refX="0"
+       refY="0"
+       orient="auto">
+      <path
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         id="path1450" />
+    </marker>
+    <marker
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker1430"
+       style="overflow:visible">
+      <path
+         id="path1428"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker1408"
+       refX="0"
+       refY="0"
+       orient="auto">
+      <path
+         transform="matrix(-0.8,0,0,-0.8,-10,0)"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         id="path1406" />
+    </marker>
+    <marker
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow1Lend"
+       style="overflow:visible">
+      <path
+         id="path939"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="marker1366"
+       refX="0"
+       refY="0"
+       orient="auto">
+      <path
+         transform="matrix(-0.4,0,0,-0.4,-4,0)"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         id="path1364" />
+    </marker>
+    <marker
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker1408-3"
+       style="overflow:visible">
+      <path
+         id="path1406-6"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1pt;stroke-opacity:1"
+         transform="matrix(-0.8,0,0,-0.8,-10,0)" />
+    </marker>
+  </defs>
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <flowRoot
+     style="font-size:8.46667px;line-height:100%;font-family:sans-serif;text-decoration:none;text-decoration-line:none;text-decoration-color:#000000;letter-spacing:0px;word-spacing:0px;fill:#000000;stroke:#000000;stroke-width:0.115117;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stop-color:#000000"
+     id="flowRoot839"
+     xml:space="preserve"
+     transform="translate(57.534527,-61.169156)"><flowRegion
+       id="flowRegion841"><rect
+         style="stroke-width:0.264583"
+         y="76.273407"
+         x="75.89679"
+         height="42.577457"
+         width="27.619341"
+         id="rect843" /></flowRegion><flowPara
+       id="flowPara845" /></flowRoot>
+  <path
+     style="font-variation-settings:normal;vector-effect:none;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker1408);stop-color:#000000"
+     d="M 31.371155,75.956817 H 42.455816"
+     id="path1212" />
+  <rect
+     style="font-variation-settings:normal;vector-effect:none;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;stop-color:#000000"
+     id="rect932"
+     width="53.330814"
+     height="31.012249"
+     x="43.463097"
+     y="60.450703" />
+  <a
+     transform="translate(-57.343203,1.5384094)"
+     id="a863"
+     href="https://github.com/derrickoswald/CIMApplication/tree/master/LowVoltage">
+    <text
+       xml:space="preserve"
+       style="font-size:8.46667px;line-height:100%;font-family:sans-serif;text-decoration:none;text-decoration-line:none;text-decoration-color:#000000;letter-spacing:0px;word-spacing:0px;fill:#000000;stroke:none;stroke-width:0.115117;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stop-color:#000000"
+       x="103.06595"
+       y="77.574806"
+       id="text936"><tspan
+         id="tspan934"
+         x="103.06595"
+         y="77.574806"
+         style="stroke:none;stroke-width:0.115117">LowVoltage</tspan></text>
+  </a>
+  <path
+     style="font-variation-settings:normal;vector-effect:none;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker1452);stop-color:#000000"
+     d="M 96.930847,76.061334 117.44468,55.723205"
+     id="path1027" />
+  <path
+     style="font-variation-settings:normal;vector-effect:none;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.265;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker1474);stop-color:#000000"
+     d="M 96.930847,76.061334 117.44468,110.29758"
+     id="path1029" />
+  <circle
+     style="fill:#000000;fill-opacity:1;stroke-width:0.264999;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stop-color:#000000"
+     id="circle1031"
+     cx="138.06609"
+     cy="85.311958"
+     r="1.0342214" />
+  <circle
+     r="1.0342214"
+     cy="88.666931"
+     cx="138.06609"
+     id="circle1033"
+     style="fill:#000000;fill-opacity:1;stroke-width:0.264999;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stop-color:#000000" />
+  <circle
+     style="fill:#000000;fill-opacity:1;stroke-width:0.264999;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stop-color:#000000"
+     id="circle1035"
+     cx="138.06609"
+     cy="92.021912"
+     r="1.0342214" />
+  <path
+     style="font-variation-settings:normal;vector-effect:none;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;marker-end:url(#marker1430);stop-color:#000000"
+     d="M 96.930847,76.061334 117.44469,14.619083"
+     id="path1037"
+     sodipodi:nodetypes="cc" />
+  <g
+     transform="translate(-57.343203,1.5384094)"
+     id="g956">
+    <path
+       id="path997"
+       style="font-variation-settings:normal;vector-effect:none;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;stop-color:#000000"
+       d="m 174.78785,0.264583 h 41.81785 v 38.357451 c 0,0 -15.18195,0.828913 -22.05165,-1.85838 -5.08981,-1.991033 -7.87794,-8.00384 -12.93585,-10.07456 -2.12117,-0.86841 -6.83035,-0.79233 -6.83035,-0.79233 z" />
+    <text
+       xml:space="preserve"
+       style="font-size:8.46667px;line-height:100%;font-family:sans-serif;text-decoration:none;text-decoration-line:none;text-decoration-color:#000000;letter-spacing:0px;word-spacing:0px;fill:#000000;stroke:none;stroke-width:0.115117;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stop-color:#000000"
+       x="186.58105"
+       y="12.689199"
+       id="text1174"><tspan
+         id="tspan1166"
+         x="186.58105"
+         y="12.689199"
+         style="stroke:none;stroke-width:0.115117">GLM</tspan></text>
+    <text
+       id="text900"
+       y="22.214203"
+       x="185.15479"
+       style="font-size:8.46667px;line-height:100%;font-family:sans-serif;text-decoration:none;text-decoration-line:none;text-decoration-color:#000000;letter-spacing:0px;word-spacing:0px;fill:#000000;stroke:none;stroke-width:0.115117;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stop-color:#000000"
+       xml:space="preserve"><tspan
+         style="stroke:none;stroke-width:0.115117"
+         y="22.214203"
+         x="185.15479"
+         id="tspan898">TRA1</tspan></text>
+  </g>
+  <g
+     transform="translate(-57.343203,1.5384094)"
+     id="g968">
+    <g
+       id="g1015"
+       transform="translate(-26.246602,-11.496464)">
+      <path
+         id="path1007"
+         style="font-variation-settings:normal;vector-effect:none;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;stop-color:#000000"
+         d="m 201.03446,52.865171 h 41.81785 v 38.357451 c 0,0 -15.18195,0.828913 -22.05165,-1.85838 -5.08981,-1.991033 -7.87794,-8.00384 -12.93585,-10.07456 -2.12117,-0.86841 -6.83035,-0.79233 -6.83035,-0.79233 z" />
+    </g>
+    <text
+       id="text925"
+       y="54.493385"
+       x="186.58105"
+       style="font-size:8.46667px;line-height:100%;font-family:sans-serif;text-decoration:none;text-decoration-line:none;text-decoration-color:#000000;letter-spacing:0px;word-spacing:0px;fill:#000000;stroke:none;stroke-width:0.115117;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stop-color:#000000"
+       xml:space="preserve"><tspan
+         style="stroke:none;stroke-width:0.115117"
+         y="54.493385"
+         x="186.58105"
+         id="tspan923">GLM</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:8.46667px;line-height:100%;font-family:sans-serif;text-decoration:none;text-decoration-line:none;text-decoration-color:#000000;letter-spacing:0px;word-spacing:0px;fill:#000000;stroke:none;stroke-width:0.115117;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stop-color:#000000"
+       x="185.15479"
+       y="64.018387"
+       id="text929"><tspan
+         id="tspan927"
+         x="185.15479"
+         y="64.018387"
+         style="stroke:none;stroke-width:0.115117">TRA2</tspan></text>
+  </g>
+  <path
+     d="M 1.9546998,60.759377 H 31.634941 v 38.357452 c 0,0 -6.84883,-0.47668 -9.914044,-1.85838 -4.982558,-2.24598 -7.877935,-8.00384 -12.9358412,-10.07456 -2.121171,-0.86841 -6.830356,-0.79233 -6.830356,-0.79233 z"
+     style="font-variation-settings:normal;vector-effect:none;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;stop-color:#000000"
+     id="rect847" />
+  <text
+     id="text852"
+     y="74.128471"
+     x="9.1136303"
+     style="font-size:8.46667px;line-height:100%;font-family:sans-serif;text-decoration:none;text-decoration-line:none;text-decoration-color:#000000;letter-spacing:0px;word-spacing:0px;fill:#000000;stroke:none;stroke-width:0.115117;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stop-color:#000000"
+     xml:space="preserve"><tspan
+       style="stroke:none;stroke-width:0.115117"
+       y="74.128471"
+       x="9.1136303"
+       id="tspan850">CIM</tspan><tspan
+       style="stroke:none;stroke-width:0.115117"
+       y="74.128471"
+       x="9.1136303"
+       id="tspan1126" /><tspan
+       style="stroke:none;stroke-width:0.115117"
+       y="74.128471"
+       x="9.1136303"
+       id="tspan1128" /><tspan
+       style="stroke:none;stroke-width:0.115117"
+       y="74.128471"
+       x="9.1136303"
+       id="tspan1130" /></text>
+  <g
+     transform="translate(-57.343203,1.5384094)"
+     id="g975">
+    <path
+       id="path1017"
+       style="font-variation-settings:normal;vector-effect:none;fill:none;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.529167;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;stop-color:#000000"
+       d="m 174.78785,95.94309 h 41.81785 v 38.35745 c 0,0 -15.18195,0.82891 -22.05165,-1.85838 -5.08981,-1.99103 -7.87794,-8.00384 -12.93585,-10.07456 -2.12117,-0.86841 -6.83035,-0.79233 -6.83035,-0.79233 z" />
+    <text
+       xml:space="preserve"
+       style="font-size:8.46667px;line-height:100%;font-family:sans-serif;text-decoration:none;text-decoration-line:none;text-decoration-color:#000000;letter-spacing:0px;word-spacing:0px;fill:#000000;stroke:none;stroke-width:0.115117;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stop-color:#000000"
+       x="186.58105"
+       y="108.99759"
+       id="text935"><tspan
+         id="tspan933"
+         x="186.58105"
+         y="108.99759"
+         style="stroke:none;stroke-width:0.115117">GLM</tspan></text>
+    <text
+       id="text939"
+       y="118.52259"
+       x="185.15479"
+       style="font-size:8.46667px;line-height:100%;font-family:sans-serif;text-decoration:none;text-decoration-line:none;text-decoration-color:#000000;letter-spacing:0px;word-spacing:0px;fill:#000000;stroke:none;stroke-width:0.115117;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;stop-color:#000000"
+       xml:space="preserve"><tspan
+         style="stroke:none;stroke-width:0.115117"
+         y="118.52259"
+         x="185.15479"
+         id="tspan937">TRAn</tspan></text>
+  </g>
+</svg>

@@ -16,6 +16,7 @@ import ch.ninecode.model.RecloserInfo
 import ch.ninecode.model.Switch
 import ch.ninecode.model.SwitchInfo
 import ch.ninecode.model.Terminal
+import ch.ninecode.model.UserAttribute
 
 final case class Switches (
     session: SparkSession,
@@ -70,6 +71,13 @@ final case class Switches (
             else
                 s"${t2.TopologicalNode}_${t1.TopologicalNode}"
 
+    def getFuseStandards: RDD[(String, String)] =
+    {
+        val types = Array ("DIN", "SEV")
+        val attributes = getOrElse[UserAttribute]
+        attributes.filter (x => types.contains (x.name)).map (x => (x.value, x.name))
+    }
+
     /**
      * Create an RDD of composite Switch objects.
      *
@@ -87,23 +95,33 @@ final case class Switches (
 
         // append asset info if any
         val switches_terminals_parameters_info: RDD[(Switch, Terminal, Terminal, Option[Element])] =
-            switches_terminals.keyBy (x => refAssetDataSheet (x._1)).leftOuterJoin (switch_info.keyBy (_.id))
+            switches_terminals
+                .keyBy (x => refAssetDataSheet (x._1))
+                .leftOuterJoin (switch_info.keyBy (_.id))
                 .values
                 .map (x => (x._1._1, x._1._2, x._1._3, x._2))
 
-        // get the subclass Element
-        val elements_terminals_parameters_info: RDD[(Element, Terminal, Terminal, Option[Element])] =
-            switches_terminals_parameters_info.keyBy (_._1.id)
-                .join (getOrElse [Element]("Elements").keyBy (_.id))
+        // append any standard info if any
+        val switches_terminals_parameters_info_std: RDD[(Switch, Terminal, Terminal, Option[Element], Option[String])] =
+            switches_terminals_parameters_info
+                .keyBy (_._1.id)
+                .leftOuterJoin (getFuseStandards)
                 .values
-                .map (x => (x._2, x._1._2, x._1._3, x._1._4))
+                .map (x => (x._1._1, x._1._2, x._1._3, x._1._4, x._2))
+
+        // get the subclass Element
+        val elements_terminals_parameters_info: RDD[(Element, Terminal, Terminal, Option[Element], Option[String])] =
+            switches_terminals_parameters_info_std.keyBy (_._1.id)
+                .join (getOrElse[Element].keyBy (_.id))
+                .values
+                .map (x => (x._2, x._1._2, x._1._3, x._1._4, x._1._5))
 
         // find parallel switches by grouping by alphabetically concatenated node id strings
         elements_terminals_parameters_info
             .keyBy (x => topological_order (x._2, x._3))
             .groupByKey
             .values
-            .map (x => SwitchData (x.map (y => SwitchDetails (y._1, y._2, y._3, y._4))))
+            .map (x => SwitchData (x.map (y => SwitchDetails (y._1, y._2, y._3, y._4, y._5))))
             .persist (storage_level)
     }
 }

@@ -65,7 +65,7 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
             // output SQLite database
             val _ = new Database (sc_options).store (results)
 
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
             val csv = string.collect
             println (s"results: ${csv.length}")
             println (ScResult.csv_header)
@@ -106,7 +106,7 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
             // output SQLite database
             val _ = new Database (sc_options).store (results)
 
-            val string = results.sortBy (_.tx).map (_.csv (sc_options.cmin))
+            val string = results.sortBy (_.tx).map (_.csv (sc_options))
             val csv = string.collect
             println (s"results: ${csv.length}")
             println (ScResult.csv_header)

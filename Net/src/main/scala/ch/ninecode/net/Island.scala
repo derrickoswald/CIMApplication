@@ -68,7 +68,7 @@ class Island (
                     .join (getOrElse [TopologicalNode].keyBy (_.id))
                     .values
                     .keyBy (_._1.ConductingEquipment)
-                    .join (getOrElse [Element]("Elements").keyBy (_.id))
+                    .join (getOrElse[Element].keyBy (_.id))
                     .values
                     .keyBy (_._1._2.TopologicalIsland)
             )
