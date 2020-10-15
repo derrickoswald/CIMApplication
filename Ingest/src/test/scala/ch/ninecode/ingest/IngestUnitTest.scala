@@ -5,7 +5,7 @@ import org.mockito.MockitoSugar
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.funsuite.AnyFunSuite
 
-class IngestCustomMock extends AnyFunSuite with BeforeAndAfterAll with MockitoSugar
+class IngestUnitTest extends AnyFunSuite with BeforeAndAfterAll with MockitoSugar
 {
     test ("check period calculation from custom ingest format")
     {
