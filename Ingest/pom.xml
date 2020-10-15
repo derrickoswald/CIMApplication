@@ -163,6 +163,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-scala-scalatest_${version.dependency.scala}</artifactId>
+            <version>1.15.0</version>
+        </dependency>
+
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${version.dependency.junit}</version>
@@ -226,6 +232,26 @@
                     <skipTests>true</skipTests>
                 </configuration>
             </plugin>
+            <!-- enable scalatest -->
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+                <version>${version.dependency.scalatest-maven-plugin}</version>
+                <configuration>
+                    <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+                    <junitxml>.</junitxml>
+                    <filereports>TestSuite.txt</filereports>
+                    <suites>ch.ninecode.ingest.IngestUnitTest</suites>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>test</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
@@ -249,7 +275,10 @@
                         <goals>
                             <goal>reserve-network-port</goal>
                         </goals>
-                        <!-- reserve the ports in the phase before process-test-resources (where the resources are filtered and copied) -->
+                        <!--
+                        reserve the ports in the phase before process-test-resources
+                        (where the resources are filtered and copied)
+                         -->
                         <phase>generate-test-resources</phase>
                         <configuration>
                             <portNames>
