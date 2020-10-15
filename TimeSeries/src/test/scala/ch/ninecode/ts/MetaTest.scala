@@ -10,6 +10,7 @@ import org.apache.spark.sql.SparkSession
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.FixMethodOrder
+import org.junit.Test
 import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.jarForObject
@@ -69,6 +70,9 @@ object MetaTest
         // create the configuration
         val s1 = jarForObject (ch.ninecode.ts.TimeSeriesOptions ())
         val s2 = jarForObject (com.datastax.spark.connector.SomeColumns ())
+        val s3 = jarForObject (com.datastax.spark.connector.TableRef ("bogus", "fake", None))
+        val s4 = jarForObject (com.datastax.oss.driver.api.core.`type`.DataTypes.ASCII)
+        val s5 = jarForObject (com.datastax.oss.driver.shaded.guava.common.collect.BoundType.OPEN)
         val configuration = new SparkConf (false)
             .setAppName ("MetaSuite")
             .setMaster ("spark://sandbox:7077")
@@ -78,7 +82,8 @@ object MetaTest
             .set ("spark.ui.showConsoleProgress", "false")
             .set ("spark.cassandra.connection.host", "beach")
             .set ("spark.cassandra.connection.port", "9042")
-            .setJars (Array (s1, s2))
+            .set ("spark.sql.catalog.casscatalog", "com.datastax.spark.connector.datasource.CassandraCatalog")
+            .setJars (Array (s1, s2, s3, s4, s5))
 
         session = SparkSession.builder.config (configuration).getOrCreate
         session.sparkContext.setLogLevel ("WARN")

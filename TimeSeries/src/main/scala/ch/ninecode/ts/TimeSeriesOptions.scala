@@ -21,6 +21,7 @@ import ch.ninecode.util.Sparkable
  * @param host          Cassandra connection host.
  * @param port          Cassandra nativeTransportPort port.
  * @param keyspace      Cassandra keyspace.
+ * @param replication   Cassandra keyspace replication factor only if the keyspace is created.
  * @param model_file    File name for model save/load.
  * @param meta_file     File name for metadata.
  * @param operation     The operation to perform: statistical analysis, model building, time series synthesis.
@@ -42,6 +43,7 @@ case class TimeSeriesOptions
     storage: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER,
     host: String = "localhost",
     port: Int = 9042,
+    replication: Int = 1,
     keyspace: String = "cimapplication",
     model_file: String = "models/myDecisionTreeRegressorModel",
     meta_file: String = "meta_utf8.csv",

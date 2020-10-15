@@ -157,6 +157,10 @@ class TimeSeriesOptionsParser (options: TimeSeriesOptions) extends SparkOptionsP
         .action ((x, c) => c.copy (keyspace = x))
         .text (s"target Cassandra keyspace [${options.keyspace}]")
 
+    opt[Int]("replication")
+        .action ((x, c) => c.copy (replication = x))
+        .text (s"keyspace replication if the Cassandra keyspace needs creation [${options.replication}]")
+
     opt[String]("model_file")
         .action ((x, c) => c.copy (model_file = x))
         .text (s"model file name [${options.model_file}]")

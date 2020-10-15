@@ -116,20 +116,12 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
 
     def averages: DataFrame =
         session
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value_stats", "keyspace" -> options.keyspace))
-            .load
-            .select ("mrid", "type", "average")
+            .sql (s"""select mrid, type, average from casscatalog.${options.keyspace}.measured_value_stats""")
             .persist (options.storage)
 
     def meta: DataFrame =
         session
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value_meta", "keyspace" -> options.keyspace))
-            .load
-            .select ("mrid", "classes")
+            .sql (s"""select mrid, classes from casscatalog.${options.keyspace}.measured_value_meta""")
             .persist (options.storage)
 
     def gen_day_columns (frame: DataFrame, day_col: String): DataFrame =
@@ -171,9 +163,12 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     {
         log.info ("reading meta data")
         val meta_frame = meta
+        meta_frame.show
+        averages.show
         val stats_and_meta =
             averages
                 .join (meta_frame, Seq ("mrid"))
+        stats_and_meta.show
         // only use measurements for which we have metadata
         val in = meta_frame.select ("mrid").rdd.collect.map (row => row.getString (0)).mkString ("mrid in ('", "','", "')")
         var data = session

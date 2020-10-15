@@ -4,11 +4,12 @@ import scala.collection.mutable
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-
 import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.writer.WriteConf
 import com.datastax.spark.connector._
+
+import ch.ninecode.util.Schema
 
 case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
 {
@@ -107,52 +108,56 @@ case class TimeSeriesMeta (session: SparkSession, options: TimeSeriesOptions)
 
     def run ()
     {
-        var matched = 0
-        var unmatched = 0
-        val source = scala.io.Source.fromFile (options.meta_file)
-        val lines = source.getLines
-        val classified = lines.flatMap (
-            line =>
-            {
-                if (!line.contains ("Messpunktbezeichnung"))
+        val schema = Schema (session, "/simulation_schema.sql", true)
+        if (schema.make (keyspace = options.keyspace, replication = options.replication))
+        {
+            var matched = 0
+            var unmatched = 0
+            val source = scala.io.Source.fromFile (options.meta_file)
+            val lines = source.getLines
+            val classified = lines.flatMap (
+                line =>
                 {
-                    val splits = line.split ("[;]")
-                    val mRID = mrid (splits)
-                    if ("" != mRID) // has a NIS number
+                    if (!line.contains ("Messpunktbezeichnung"))
                     {
-                        val cls = classify (splits (16), splits (15))
-                        cls match
+                        val splits = line.split ("[;]")
+                        val mRID = mrid (splits)
+                        if ("" != mRID) // has a NIS number
                         {
-                            case Some (classifier) =>
-                                matched = matched + 1
-                                Some ((mRID, classifier.cls))
-                            case None =>
-                                unmatched = unmatched + 1
-                                println (mRID + " " + splits (7) + " " + splits (16) + " ==== " + splits (15))
-                                Some ((mRID, unknown.cls))
+                            val cls = classify (splits (16), splits (15))
+                            cls match
+                            {
+                                case Some (classifier) =>
+                                    matched = matched + 1
+                                    Some ((mRID, classifier.cls))
+                                case None =>
+                                    unmatched = unmatched + 1
+                                    println (mRID + " " + splits (7) + " " + splits (16) + " ==== " + splits (15))
+                                    Some ((mRID, unknown.cls))
+                            }
                         }
+                        else
+                            None
                     }
                     else
                         None
                 }
-                else
-                    None
-            }
-        )
+            )
 
-        val rdd = session.sparkContext.parallelize (classified.toSeq)
-        val raw: RDD[(String, mutable.Map[String, Int])] = rdd.groupByKey.mapValues (toClasses)
-        val columns = SomeColumns ("mrid", "classes")
-        val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
-        raw.saveToCassandra (options.keyspace, "measured_value_meta", columns, writeConf)
+            val rdd = session.sparkContext.parallelize (classified.toSeq)
+            val raw: RDD[(String, mutable.Map[String, Int])] = rdd.groupByKey.mapValues (toClasses)
+            val columns = SomeColumns ("mrid", "classes")
+            val writeConf = WriteConf (consistencyLevel = ConsistencyLevel.ANY)
+            raw.saveToCassandra (options.keyspace, "measured_value_meta", columns, writeConf)
 
-        // summarize
-        val arranged = all.foldLeft (mutable.Map[String, (Int, mutable.Set[Classifier])]())(process)
+            // summarize
+            val arranged = all.foldLeft (mutable.Map[String, (Int, mutable.Set[Classifier])]())(process)
 
-        println (s"$unmatched unmatched, matched $matched of ${matched + unmatched} = ${100.0 * (matched.toDouble / (matched.toDouble + unmatched.toDouble))}%")
-        arranged.foreach (println (_))
+            println (s"$unmatched unmatched, matched $matched of ${matched + unmatched} = ${100.0 * (matched.toDouble / (matched.toDouble + unmatched.toDouble))}%")
+            arranged.foreach (println (_))
 
-        source.close ()
+            source.close ()
+        }
     }
 }
 
