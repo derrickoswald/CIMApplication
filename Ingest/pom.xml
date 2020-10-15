@@ -241,7 +241,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
-                    <suites>ch.ninecode.ingest.IngestCustomSuite,ch.ninecode.ingest.IngestCustomMock</suites>
+                    <suites>ch.ninecode.ingest.IngestCustomMock</suites>
                 </configuration>
                 <executions>
                     <execution>
