@@ -196,7 +196,7 @@ Statistical properties of measurement_value table aggregated by mrid and type.
 
 create table if not exists cimapplication.measured_value_meta (
     mrid text,
-    classes map<text,int>,
+    classes frozen<map<text,int>>,
     lon double,
     lat double,
     primary key (mrid)
@@ -209,7 +209,7 @@ Auxiliary properties of measurement_value table entries.
     lat     - the latitude of the location (°)
 ';
 
-create index if not exists measured_value_meta_cla_idx on cimapplication.measured_value_meta (ENTRIES(classes));
+create index if not exists measured_value_meta_cla_idx on cimapplication.measured_value_meta (full(classes));
 
 create table if not exists cimapplication.simulated_value (
     simulation text,

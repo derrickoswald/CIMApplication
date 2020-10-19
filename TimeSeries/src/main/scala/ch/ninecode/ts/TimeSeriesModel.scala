@@ -76,11 +76,11 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         val _ = hdfs.delete (directory, true)
     }
 
-    def tick[Type_t: TypeTag, Type_period: TypeTag]: UserDefinedFunction = udf [Int, Timestamp, Int](
+    def tick[Type_t: TypeTag, Type_period: TypeTag]: UserDefinedFunction = udf[Int, Timestamp, Int](
         (t: Timestamp, period: Int) =>
             ((t.getTime / period) % (24 * 60 * 60 * 1000 / period)).toInt)
 
-    def day[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
+    def day[Type_t: TypeTag]: UserDefinedFunction = udf[Int, Timestamp](
         (t: Timestamp) =>
         {
             val c = Calendar.getInstance ()
@@ -90,14 +90,14 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         }
     )
 
-    def one_hot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf [Int, Int, Int](
+    def one_hot[Type_day: TypeTag, Type_index: TypeTag]: UserDefinedFunction = udf[Int, Int, Int](
         (day: Int, index: Int) =>
         {
             if (day == index) 1 else 0
         }
     )
 
-    def week[Type_t: TypeTag]: UserDefinedFunction = udf [Int, Timestamp](
+    def week[Type_t: TypeTag]: UserDefinedFunction = udf[Int, Timestamp](
         (t: Timestamp) =>
         {
             val c = Calendar.getInstance ()
@@ -107,10 +107,30 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         }
     )
 
-    def demultiplex[Type_m: TypeTag, Type_c: TypeTag]: UserDefinedFunction = udf [Int, Map[String, Int], String](
+    def demultiplex[Type_m: TypeTag, Type_c: TypeTag]: UserDefinedFunction = udf[Int, Map[String, Int], String](
         (map: Map[String, Int], cls: String) =>
         {
             map.getOrElse (cls, 0)
+        }
+    )
+
+    def mapAsString[Type_m: TypeTag]: UserDefinedFunction = udf[String, Map[String, Int]](
+        (map: Map[String, Int]) =>
+        {
+            map.toArray.sortBy (_._1).map (x => { val (k, v) = x; s"$k=$v" }).mkString (",")
+        }
+    )
+
+    def toTime[Type_w: TypeTag, Type_d: TypeTag, Type_t: TypeTag]: UserDefinedFunction = udf[Timestamp, Int, Int, Int](
+        (week: Int, day: Int, tick: Int) =>
+        {
+            val c = Calendar.getInstance ()
+            c.setWeekDate (2020, week, day)
+            c.set (Calendar.HOUR, tick / 4)
+            c.set (Calendar.MINUTE, (tick % 4) * 15)
+            c.set (Calendar.SECOND, 0)
+            c.set (Calendar.MILLISECOND, 0)
+            new java.sql.Timestamp (c.getTimeInMillis)
         }
     )
 
@@ -142,20 +162,15 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     {
         log.info (s"reading sample data")
         var data = session
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
-            .load
-            .filter (s"real_a > 0.0")
-            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
-            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
-            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+            .sql (s"""select mrid, type, time, period, real_a from casscatalog.${options.keyspace}.measured_value where real_a > 0.0""")
+            .withColumn ("tick", tick[Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
+            .withColumn ("week", week[Timestamp].apply (functions.col ("time")))
+            .withColumn ("day", day[Timestamp].apply (functions.col ("time")))
         data = gen_day_columns (data, "day")
             .join (averages, Seq ("mrid", "type"))
         val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names
         data
             .selectExpr (cols: _*)
-            .drop ("type")
             .persist (options.storage)
     }
 
@@ -163,25 +178,18 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     {
         log.info ("reading meta data")
         val meta_frame = meta
-        meta_frame.show
-        averages.show
+        // only use measurements for which we have metadata
         val stats_and_meta =
             averages
                 .join (meta_frame, Seq ("mrid"))
-        stats_and_meta.show
-        // only use measurements for which we have metadata
+        // with type, this is a push down filter
         val in = meta_frame.select ("mrid").rdd.collect.map (row => row.getString (0)).mkString ("mrid in ('", "','", "')")
         var data = session
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
-            .load
-            .filter (s"type='energy' and $in") // push down filter
-            .filter (s"real_a > 0.0")
+            .sql (s"""select mrid, type, time, period, real_a from casscatalog.${options.keyspace}.measured_value where $in and type='energy' and real_a > 0.0""")
             .join (stats_and_meta, Seq ("mrid", "type"))
-            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
-            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
-            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+            .withColumn ("tick", tick[Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
+            .withColumn ("week", week[Timestamp].apply (functions.col ("time")))
+            .withColumn ("day", day[Timestamp].apply (functions.col ("time")))
         data = gen_day_columns (data, "day")
         data = gen_class_columns (data, "classes")
         val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names ++ class_names
@@ -194,23 +202,19 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
     {
         log.info ("reading meta data")
         val meta_frame = meta
+        // only use measurements for which we have metadata
         val stats_and_meta =
             averages
                 .join (meta_frame, Seq ("mrid"))
-        // only use measurements for which we have metadata
+        // with type, this is a push down filter
         val in = meta_frame.select ("mrid").rdd.collect.map (row => row.getString (0)).mkString ("mrid in ('", "','", "')")
         var data = session
-            .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value", "keyspace" -> options.keyspace))
-            .load
-            .filter (s"type='energy' and $in") // push down filter
-            .filter (s"real_a > 0.0")
+            .sql (s"""select mrid, type, time, period, real_a from casscatalog.${options.keyspace}.measured_value where $in and type='energy' and real_a > 0.0""")
             .join (stats_and_meta, Seq ("mrid", "type"))
             .filter (s"classes['$cls'] = 1")
-            .withColumn ("tick", tick [Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
-            .withColumn ("week", week [Timestamp].apply (functions.col ("time")))
-            .withColumn ("day", day [Timestamp].apply (functions.col ("time")))
+            .withColumn ("tick", tick[Timestamp, Int].apply (functions.col ("time"), functions.col ("period")))
+            .withColumn ("week", week[Timestamp].apply (functions.col ("time")))
+            .withColumn ("day", day[Timestamp].apply (functions.col ("time")))
         data = gen_day_columns (data, "day")
         val cols = Seq ("mrid", "real_a as value", "average", "tick", "week") ++ day_names
         data

@@ -46,6 +46,48 @@ class ModelSuiteIT
 
         time ("total execution: %s seconds")
         {
+//            time ("meta time: %s seconds")
+//            {
+//                main (Array (
+//                    "Meta", "--unittest",
+//                    "--master", "local[*]",
+//                    "--log", "INFO",
+//                    "--host", "localhost",
+//                    "--port", cassandra_port.toString,
+//                    "--keyspace", KEYSPACE,
+//                    "--meta_file", "/home/derrick/Documents/9code/nis/sak/newdata/Stoerung_Messstellen2_utf8.csv"))
+//            }
+//
+//            time ("modelling time: %s seconds")
+//            {
+//                main (Array (
+//                    "MetaModel", "--unittest",
+//                    "--master", "local[*]",
+//                    "--log", "INFO",
+//                    "--host", "localhost",
+//                    "--port", cassandra_port.toString,
+//                    "--keyspace", KEYSPACE,
+//                    "--tree_depth", "8", // it's just quicker this way
+//                    "--model_file", "target/models/myDecisionTreeRegressorMetaModel"))
+//            }
+//
+//            time ("synthesis time: %s seconds")
+//            {
+//                main (Array (
+//                    "Synthesize", "--unittest",
+//                    "--master", "local[*]",
+//                    "--log", "INFO",
+//                    "--host", "localhost",
+//                    "--port", cassandra_port.toString,
+//                    "--keyspace", KEYSPACE,
+//                    "--model_file", "target/models/myDecisionTreeRegressorMetaModel",
+//                    "--synthesis", "HASMETAFAKE",
+//                    "--start", "2017-07-19T00:00:00.000+0000",
+//                    "--end", "2018-03-31T23:45:00.000+0000",
+//                    "--yearly_kWh", kWh.toString,
+//                    "--classes", "House=1,PV=1"))
+//            }
+
             time ("modelling time: %s seconds")
             {
                 main (Array (
