@@ -354,6 +354,8 @@ define
             <select id='fuse_table' class='form-control custom-select' name='fuse_table' aria-describedby='fuse_tableHelp'>
                 <option value='1' selected>Customer 1</option>
                 <option value='2'>Customer 2</option>
+                <option value='3'>Customer 3</option>
+                <option value='4'>Customer 4</option>
             </select>
             <small id='fuse_tableHelp' class='form-text text-muted'>Recommended I<sub>k</sub>:fuse rating breakpoint table, e.g. Customer 1: 105&#8594;40A, 140&#8594;50A &#8230; or Customer 2: 120&#8594;40A, 160&#8594;50A &#8230;.</small>
           </div>

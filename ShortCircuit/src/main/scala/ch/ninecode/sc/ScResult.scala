@@ -22,6 +22,7 @@ import ch.ninecode.util.Complex
  * @param low_ik3pol   three phase bolted short circuit current at minimum impedance (A)
  * @param low_ip       maximum aperiodic short-circuit current according to IEC 60909-0 at minimum impedance (A)
  * @param low_sk       short-circuit power at the point of common coupling at minimum impedance (VA)
+ * @param costerm      cos(Ψ-φ) value used in calculating imax values (dimensionless)
  * @param imax_3ph_low maximum inrush current (3 phase) for repetition_rate<0.01/min (A)
  * @param imax_1ph_low maximum inrush current (1 phase, line to neutral) for repetition_rate<0.01/min (A)
  * @param imax_2ph_low maximum inrush current (1 phase, line to line) for repetition_rate<0.01/min (A)
@@ -57,7 +58,7 @@ case class ScResult
     low_ik3pol: Double = 0.0,
     low_ip: Double = 0.0,
     low_sk: Double = 0.0,
-    costerm: Double,
+    costerm: Double = 1.0,
     imax_3ph_low: Double = 0.0,
     imax_1ph_low: Double = 0.0,
     imax_2ph_low: Double = 0.0,
@@ -76,7 +77,7 @@ case class ScResult
 )
 {
     def csv (options: ShortCircuitOptions): String =
-        s"$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString (",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;${fuseMax (options)};${fuseOK (options)}"
+        s"$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString (",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm;$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;${fuseMax (options)};${fuseOK (options)}"
 
     def fuseString: String =
     {

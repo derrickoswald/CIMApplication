@@ -21,7 +21,7 @@ import ch.ninecode.util.Complex
 /**
  * Parser for command line operation.
  */
-@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
+@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements", "org.wartremover.warts.Throw"))
 class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReaderOptionsParser[ShortCircuitOptions](options)
 {
     val log: Logger = LoggerFactory.getLogger (getClass)

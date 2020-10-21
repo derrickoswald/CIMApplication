@@ -795,6 +795,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, impedance, path)
     }
 
+    def setName (rdd: RDD[_], name: String): Unit =
+    {
+        val _ = rdd.setName (name)
+    }
+
     /**
      * Perform gridlabd via Spark pipe() and collect the experimental results.
      *
@@ -827,8 +832,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 failure.errorMessages.foreach (log.error)
             })
         }
-        val output = read_output_files (one_phase, gridlabd.workdir_slash, trafos.collect)
-        output.setName("output")
+        val output = read_output_files (one_phase, gridlabd.workdir_slash, trafos.collect).setName ("output")
 
         val read = System.nanoTime ()
         log.info ("read: %s seconds".format ((read - solved) / 1e9))
@@ -840,7 +844,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val groups = simulations.flatMap (
             (simulation: SimulationTransformerServiceArea) => simulation.experiments.map (
                 (experiment: ScExperiment) => (s"${experiment.trafo}_${experiment.t1.getTimeInMillis}", (simulation, experiment))))
-        groups.setName("groups")
+            .setName ("groups")
 
         val exp = groups
             .join (values)
@@ -897,7 +901,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 x.experiments
             }
         ).persist (storage_level)
-        experiments.setName("experiments")
+        .setName("experiments")
 
         def short (exp: ScExperiment): Array[Byte] =
         {
@@ -930,8 +934,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             1
         }
 
-        val n = experiments.map (generate_player_file (gridlabd))
-        n.setName("n")
+        val n = experiments.map (generate_player_file (gridlabd)).setName("n")
         log.info ("""running %s experiments""".format (n.count))
 
         solve_and_analyse (gridlabd = gridlabd, one_phase = true, isMax, simulations)
@@ -994,15 +997,15 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
 
         val starting_trafos_with_edges = starting_nodes.keyBy (_.nsPin).join (initial.edges.flatMap (both_ends).groupByKey)
-        starting_trafos_with_edges.setName("starting_trafos_with_edges")
+            .setName("starting_trafos_with_edges")
         val initial_with_starting_nodes = initial.joinVertices (starting_trafos_with_edges)(add_starting_trafo).persist (storage_level)
-        initial_with_starting_nodes.edges.setName("initial_with_starting_nodes edges")
-        initial_with_starting_nodes.vertices.setName("initial_with_starting_nodes vertices")
+        setName (initial_with_starting_nodes.edges, "initial_with_starting_nodes edges")
+        setName (initial_with_starting_nodes.vertices, "initial_with_starting_nodes vertices")
 
         val sct = ShortCircuitTrace (session, options)
         val graph = sct.trace (initial_with_starting_nodes)
-        graph.edges.setName("graph edges")
-        graph.vertices.setName("graph vertices")
+        setName (graph.edges, "graph edges")
+        setName (graph.vertices, "graph vertices")
 
         // get the visited nodes with their data
         val result = graph.vertices.filter (null != _._2.impedance).values
@@ -1010,13 +1013,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         log.info ("computing results")
         // join results with terminals to get equipment
-        val d = result.keyBy (_.id_seq).join (getOrElse [Terminal].keyBy (_.TopologicalNode)).values
-        d.setName("d")
+        val d = result.keyBy (_.id_seq).join (getOrElse [Terminal].keyBy (_.TopologicalNode)).values.setName("d")
         // join with equipment to get containers
-        val e = d.keyBy (_._2.ConductingEquipment).join (getOrElse [ConductingEquipment].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._2))
-        e.setName("e")
-        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (getOrElse[Element].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2))
-        f.setName("f")
+        val e = d.keyBy (_._2.ConductingEquipment).join (getOrElse [ConductingEquipment].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._2)).setName("e")
+        val f = e.keyBy (_._3.Equipment.EquipmentContainer).leftOuterJoin (getOrElse[Element].keyBy (_.id)).map (x => (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2)).setName("f")
 
         // resolve to top level containers
         // the equipment container for a transformer could be a Station or a Bay or VoltageLevel ... the last two of which have a reference to their station
@@ -1050,19 +1050,18 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         // transformer area calculations
         val tsa = TransformerServiceArea (session, storage_level, calculate_public_lighting = options.calculate_public_lighting)
-        val trafos_islands: RDD[(identifier, island_id)] = tsa.getTransformerServiceAreas.map (_.swap) // (trafosetid, islandid)
+        val trafos_islands: RDD[(identifier, island_id)] = tsa.getTransformerServiceAreas.map (_.swap).setName("trafos_islands") // (trafosetid, islandid)
         def set_island (island: TransformerIsland): Iterable[(identifier, identifier)] =
         {
             for (set <- island.transformers)
                 yield (set.transformer_name, set.transformer_name)
         }
-        trafos_islands.setName("trafos_islands")
 
         val trafo_island_mapping: RDD[(identifier, island_id)] = problem_transformers
             .flatMap (set_island)
             .join (trafos_islands)
             .values
-        trafo_island_mapping.setName("trafo_island_mapping")
+            .setName("trafo_island_mapping")
 
         if (!trafo_island_mapping.filter (_._2 != "").isEmpty)
         {
@@ -1190,14 +1189,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     .groupBy (_.node1.TopologicalIsland)
                     .values
                     .map (TransformerIsland.apply)
-        transformers.setName("transformers")
+        setName (transformers, "transformers")
 
-        val starting_nodes = transformers.flatMap (trafo_mapping)
-        starting_nodes.setName("starting_nodes")
+        val starting_nodes = transformers.flatMap (trafo_mapping).setName("starting_nodes")
         log.info ("%s starting transformers".format (starting_nodes.count))
 
-        val traced_results: RDD[ScResult] = calculateTraceResults (starting_nodes)
-        traced_results.setName("traced_results")
+        val traced_results: RDD[ScResult] = calculateTraceResults (starting_nodes).setName("traced_results")
 
         // find transformers where there are non-radial networks and fix them
         def need_load_flow (error: String): Boolean =
@@ -1296,7 +1293,9 @@ object ShortCircuit extends CIMInitializer[ShortCircuitOptions] with Main
                 time ("execution: %s seconds")
                 {
                     val sc = ShortCircuit (session, options.cim_options.storage, options)
-                    val _ = sc.run ()
+                    val results = sc.run ()
+                    val db = new Database (options, "shortcircuit.db")
+                    val _ = db.store (results)
                 }
             }
             else
