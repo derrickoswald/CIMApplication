@@ -24,13 +24,13 @@ class NetworkParametersTestSuite extends AnyFunSuite with BeforeAndAfter with Un
     before
     {
         // unpack the zip files
-        if (!new File (s"$FILE_DEPOT$FILENAME.rdf").exists)
-            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME.zip", FILE_DEPOT)
+        if (!new File(s"$FILE_DEPOT$FILENAME.rdf").exists)
+            new Unzip().unzip(s"$FILE_DEPOT$FILENAME.zip", FILE_DEPOT)
     }
 
     after
     {
-        new File (s"$FILE_DEPOT$FILENAME.rdf").delete
+        new File(s"$FILE_DEPOT$FILENAME.rdf").delete
     }
 
     /**
@@ -42,18 +42,19 @@ class NetworkParametersTestSuite extends AnyFunSuite with BeforeAndAfter with Un
     {
         if (path.isDirectory)
             for (subpath <- path.list)
-                deleteRecursive (new File (path, subpath))
+                deleteRecursive(new File(path, subpath))
         val _ = path.delete
     }
 
-    test ("Help1")
+    test("Help1")
     {
-        main1 (Array ("--unittest", "--help"))
+        main1(Array("--unittest", "--help"))
     }
 
-    test ("Basic 1")
+    test("Basic 1")
     {
-        val eq1: String = """	<cim:EquivalentInjection rdf:ID="TX0001_equivalent_injection">
+        val eq1: String =
+            """	<cim:EquivalentInjection rdf:ID="TX0001_equivalent_injection">
 		<cim:IdentifiedObject.aliasName>EquivalentInjection_1</cim:IdentifiedObject.aliasName>
 		<cim:IdentifiedObject.description>equivalent generation injection at Andreasstaat from Middelbeers</cim:IdentifiedObject.description>
 		<cim:IdentifiedObject.mRID>TX0001_equivalent_injection</cim:IdentifiedObject.mRID>
@@ -80,7 +81,8 @@ class NetworkParametersTestSuite extends AnyFunSuite with BeforeAndAfter with Un
 		<cim:EquivalentInjection.x2>2.703770509395812</cim:EquivalentInjection.x2>
 	</cim:EquivalentInjection>"""
 
-        val eq2 = """	<cim:EquivalentInjection rdf:ID="TX0002_equivalent_injection">
+        val eq2 =
+            """	<cim:EquivalentInjection rdf:ID="TX0002_equivalent_injection">
 		<cim:IdentifiedObject.aliasName>EquivalentInjection_2</cim:IdentifiedObject.aliasName>
 		<cim:IdentifiedObject.description>equivalent generation injection at Driehoek from Middelbeers</cim:IdentifiedObject.description>
 		<cim:IdentifiedObject.mRID>TX0002_equivalent_injection</cim:IdentifiedObject.mRID>
@@ -108,28 +110,29 @@ class NetworkParametersTestSuite extends AnyFunSuite with BeforeAndAfter with Un
 	</cim:EquivalentInjection>"""
 
         val export_file = s"target/$FILENAME.1.rdf"
-        main1 (Array ("--unittest", "--verbose", "--master", "local[*]",
+        main1(Array("--unittest", "--verbose", "--master", "local[*]",
             "--csv", s"$FILE_DEPOT$CSV_FILE1.csv",
             "--export", export_file,
             s"$FILE_DEPOT$FILENAME.rdf"))
 
         val output_file = s"$FILE_DEPOT$CSV_FILE1.rdf"
-        val output = new File (output_file)
-        assert (output.exists, "equivalent injection output")
-        val source = Source.fromFile (output, "UTF-8")
+        val output = new File(output_file)
+        assert(output.exists, "equivalent injection output")
+        val source = Source.fromFile(output, "UTF-8")
         val contents = source.mkString
         source.close
-        assert (contents.contains (eq1))
-        assert (contents.contains (eq2))
-        deleteRecursive (output)
+        assert(contents.contains(eq1))
+        assert(contents.contains(eq2))
+        deleteRecursive(output)
 
-        val export = new File (export_file)
-        assert (export.exists, "exported composite file")
+        val export = new File(export_file)
+        assert(export.exists, "exported composite file")
     }
 
-    test ("Basic 2")
+    test("Basic 2")
     {
-        val eq1 = """	<cim:EquivalentInjection rdf:ID="TX0001_equivalent_injection">
+        val eq1 =
+            """	<cim:EquivalentInjection rdf:ID="TX0001_equivalent_injection">
 		<cim:IdentifiedObject.aliasName>EquivalentInjection_TX0001</cim:IdentifiedObject.aliasName>
 		<cim:IdentifiedObject.description>equivalent generation injection at Andreasstaat - Oirschot (North Brabant)</cim:IdentifiedObject.description>
 		<cim:IdentifiedObject.mRID>TX0001_equivalent_injection</cim:IdentifiedObject.mRID>
@@ -156,7 +159,8 @@ class NetworkParametersTestSuite extends AnyFunSuite with BeforeAndAfter with Un
 		<cim:EquivalentInjection.x2>0.7746347139431147</cim:EquivalentInjection.x2>
 	</cim:EquivalentInjection>"""
 
-        val eq2 = """	<cim:EquivalentInjection rdf:ID="TX0002_equivalent_injection">
+        val eq2 =
+            """	<cim:EquivalentInjection rdf:ID="TX0002_equivalent_injection">
 		<cim:IdentifiedObject.aliasName>EquivalentInjection_TX0002</cim:IdentifiedObject.aliasName>
 		<cim:IdentifiedObject.description>equivalent generation injection at Driehoek - Oirschot (North Brabant)</cim:IdentifiedObject.description>
 		<cim:IdentifiedObject.mRID>TX0002_equivalent_injection</cim:IdentifiedObject.mRID>
@@ -184,29 +188,30 @@ class NetworkParametersTestSuite extends AnyFunSuite with BeforeAndAfter with Un
 	</cim:EquivalentInjection>"""
 
         val export_file = s"target/$FILENAME.2.rdf"
-        main2 (Array ("--unittest", "--verbose", "--master", "local[*]",
+        main2(Array("--unittest", "--verbose", "--master", "local[*]",
             "--csv1", s"$FILE_DEPOT$CSV_FILE2_1.csv",
             "--csv2", s"$FILE_DEPOT$CSV_FILE2_2.csv",
             "--export", export_file,
             s"$FILE_DEPOT$FILENAME.rdf"))
 
         val output_file = s"$FILE_DEPOT$CSV_FILE2_1.rdf"
-        val output = new File (output_file)
-        assert (output.exists, "equivalent injection output")
-        val source = Source.fromFile (output, "UTF-8")
+        val output = new File(output_file)
+        assert(output.exists, "equivalent injection output")
+        val source = Source.fromFile(output, "UTF-8")
         val contents = source.mkString
         source.close
-        assert (contents.contains (eq1))
-        assert (contents.contains (eq2))
-        deleteRecursive (output)
+        assert(contents.contains(eq1))
+        assert(contents.contains(eq2))
+        deleteRecursive(output)
 
-        val export = new File (export_file)
-        assert (export.exists, "exported composite file")
+        val export = new File(export_file)
+        assert(export.exists, "exported composite file")
     }
 
-    test ("Basic 3")
+    test("Basic 3")
     {
-        val eq1 = """	<cim:EquivalentInjection rdf:ID="TX0001_equivalent_injection">
+        val eq1 =
+            """	<cim:EquivalentInjection rdf:ID="TX0001_equivalent_injection">
 		<cim:IdentifiedObject.aliasName>EquivalentInjection_TX0001</cim:IdentifiedObject.aliasName>
 		<cim:IdentifiedObject.description>equivalent generation injection at TX0001 primary</cim:IdentifiedObject.description>
 		<cim:IdentifiedObject.mRID>TX0001_equivalent_injection</cim:IdentifiedObject.mRID>
@@ -233,7 +238,8 @@ class NetworkParametersTestSuite extends AnyFunSuite with BeforeAndAfter with Un
 		<cim:EquivalentInjection.x2>10.454109479643698</cim:EquivalentInjection.x2>
 	</cim:EquivalentInjection>"""
 
-        val eq2 = """	<cim:EquivalentInjection rdf:ID="TX0002_equivalent_injection">
+        val eq2 =
+            """	<cim:EquivalentInjection rdf:ID="TX0002_equivalent_injection">
 		<cim:IdentifiedObject.aliasName>EquivalentInjection_TX0002</cim:IdentifiedObject.aliasName>
 		<cim:IdentifiedObject.description>equivalent generation injection at TX0002 primary</cim:IdentifiedObject.description>
 		<cim:IdentifiedObject.mRID>TX0002_equivalent_injection</cim:IdentifiedObject.mRID>
@@ -261,22 +267,22 @@ class NetworkParametersTestSuite extends AnyFunSuite with BeforeAndAfter with Un
 	</cim:EquivalentInjection>"""
 
         val export_file = s"target/$FILENAME.3.rdf"
-        main3 (Array ("--unittest", "--verbose", "--master", "local[*]",
+        main3(Array("--unittest", "--verbose", "--master", "local[*]",
             "--csv", s"$FILE_DEPOT$CSV_FILE3.csv",
             "--export", export_file,
             s"$FILE_DEPOT$FILENAME.rdf"))
 
         val output_file = s"$FILE_DEPOT$CSV_FILE3.rdf"
-        val output = new File (output_file)
-        assert (output.exists, "equivalent injection output")
-        val source = Source.fromFile (output, "UTF-8")
+        val output = new File(output_file)
+        assert(output.exists, "equivalent injection output")
+        val source = Source.fromFile(output, "UTF-8")
         val contents = source.mkString
         source.close
-        assert (contents.contains (eq1))
-        assert (contents.contains (eq2))
-        deleteRecursive (output)
+        assert(contents.contains(eq1))
+        assert(contents.contains(eq2))
+        deleteRecursive(output)
 
-        val export = new File (export_file)
-        assert (export.exists, "exported composite file")
+        val export = new File(export_file)
+        assert(export.exists, "exported composite file")
     }
 }

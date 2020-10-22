@@ -10,10 +10,10 @@ case class UNS (
 object UNS extends FieldExtractor[UNS]
 {
     lazy val uns_fields: Parser[UNS] =
-        fields (
-            alphanumeric (1) ^^
-                (id => UNS (id))
-        ).named ("UNS")
+        fields(
+            alphanumeric(1) ^^
+                (id => UNS(id))
+        ).named("UNS")
 
     override def phrase: Parser[UNS] = uns_fields
 }

@@ -27,10 +27,10 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
 
     def time[R] (template: String)(block: => R): R =
     {
-        val t0 = System.nanoTime ()
+        val t0 = System.nanoTime()
         val ret = block
-        val t1 = System.nanoTime ()
-        info (template.format ((t1 - t0) / 1e9), None)
+        val t1 = System.nanoTime()
+        info(template.format((t1 - t0) / 1e9), None)
         ret
     }
 
@@ -38,9 +38,9 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
     {
         try
         {
-            val s = new java.net.Socket ()
-            s.connect (new InetSocketAddress (host, port), 1000)
-            val socket = new scala.tools.nsc.io.Socket (s)
+            val s = new java.net.Socket()
+            s.connect(new InetSocketAddress(host, port), 1000)
+            val socket = new scala.tools.nsc.io.Socket(s)
             socket.close
             true
         }
@@ -56,19 +56,19 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
         var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
         try
         {
-            ret = URLDecoder.decode (ret, "UTF-8")
+            ret = URLDecoder.decode(ret, "UTF-8")
         }
         catch
         {
-            case e: UnsupportedEncodingException => e.printStackTrace ()
+            case e: UnsupportedEncodingException => e.printStackTrace()
         }
-        if (!ret.toLowerCase ().endsWith (".jar"))
+        if (!ret.toLowerCase().endsWith(".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
-            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
-            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
-            writer.close ()
+            val name = s"/tmp/${Random.nextInt(99999999)}.jar"
+            val writer = new Jar(new scala.reflect.io.File(new java.io.File(name))).jarWriter()
+            writer.addDirectory(new scala.reflect.io.Directory(new java.io.File(ret + "ch/")), "ch/")
+            writer.close()
             ret = name
         }
 
@@ -77,48 +77,48 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
 
     def withFixture (test: OneArgTest): Outcome =
     {
-        time ("total : %s seconds")
+        time("total : %s seconds")
         {
             // create the fixture
-            val session = time ("setup : %s seconds")
+            val session = time("setup : %s seconds")
             {
                 // create the configuration
-                val configuration = new SparkConf (false)
-                    .setAppName (this.getClass.getSimpleName)
-                    .setMaster ("local[2]")
-                    .set ("spark.driver.memory", "2g")
-                    .set ("spark.executor.memory", "2g")
-                    .set ("spark.ui.showConsoleProgress", "false")
-                    .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-                    .set ("spark.graphx.pregel.checkpointInterval", "8")
+                val configuration = new SparkConf(false)
+                    .setAppName(this.getClass.getSimpleName)
+                    .setMaster("local[2]")
+                    .set("spark.driver.memory", "2g")
+                    .set("spark.executor.memory", "2g")
+                    .set("spark.ui.showConsoleProgress", "false")
+                    .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+                    .set("spark.graphx.pregel.checkpointInterval", "8")
 
                 // register relevant classes
-                registerDependency (configuration)
+                registerDependency(configuration)
 
                 // register GraphX classes
-                GraphXUtils.registerKryoClasses (configuration)
+                GraphXUtils.registerKryoClasses(configuration)
 
                 // create the fixture
-                val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
-                session.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+                val session = SparkSession.builder().config(configuration).getOrCreate() // create the fixture
+                session.sparkContext.setLogLevel("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
                 session
             }
             try
             {
-                withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
+                withFixture(test.toNoArgTest(session)) // "loan" the fixture to the test
             }
             finally
             {
-                session.stop () // clean up the fixture
+                session.stop() // clean up the fixture
             }
         }
     }
 
     def registerDependency (configuration: SparkConf): Unit =
     {
-        val _ = configuration.registerKryoClasses (classesToRegister)
+        val _ = configuration.registerKryoClasses(classesToRegister)
             // use the custom registrator
-            .set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
+            .set("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator")
     }
 
     /**
@@ -130,13 +130,13 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
     {
         if (path.isDirectory)
             for (subpath <- path.list)
-                deleteRecursive (new File (path, subpath))
+                deleteRecursive(new File(path, subpath))
         val _ = path.delete
     }
 
     def readCIMElements (session: SparkSession, filename: String): Unit =
     {
-        val options = Map [String, String](
+        val options = Map[String, String](
             "path" -> filename,
             "StorageLevel" -> "MEMORY_AND_DISK_SER",
             "ch.ninecode.cim.do_topo_islands" -> "true",
@@ -145,27 +145,27 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
             "ch.ninecode.cim.debug" -> "true",
             "ch.ninecode.cim.do_deduplication" -> "true"
         )
-        readCIMElements (session, filename, options)
+        readCIMElements(session, filename, options)
     }
 
     def readCIMElements (session: SparkSession,
         filename: String,
         options: Map[String, String])
     {
-        time ("read: %s seconds")
+        time("read: %s seconds")
         {
-            val files = filename.split (",")
+            val files = filename.split(",")
             val thisOptions =
-                if (options.contains ("path"))
+                if (options.contains("path"))
                     options
                 else
                     options + ("path" -> filename)
-            val elements = session.sqlContext.read.format ("ch.ninecode.cim")
-                .options (thisOptions)
-                .load (files: _*)
-                .persist (StorageLevel.MEMORY_AND_DISK_SER)
+            val elements = session.sqlContext.read.format("ch.ninecode.cim")
+                .options(thisOptions)
+                .load(files: _*)
+                .persist(StorageLevel.MEMORY_AND_DISK_SER)
             val count = elements.count
-            info (s"$count elements", None)
+            info(s"$count elements", None)
         }
     }
 
@@ -177,15 +177,15 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
      * @tparam T The type of objects contained in the named RDD.
      * @return The typed RDD, e.g. <code>RDD[T]</code>.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
     def get[T: ClassTag] (name: String)(implicit spark: SparkSession): RDD[T] =
     {
-        spark.sparkContext.getPersistentRDDs.find (_._2.name == name) match
+        spark.sparkContext.getPersistentRDDs.find(_._2.name == name) match
         {
-            case Some ((_, rdd: RDD[_])) =>
-                rdd.asInstanceOf [RDD[T]]
-            case Some (_) | None =>
-                spark.sparkContext.emptyRDD [T]
+            case Some((_, rdd: RDD[_])) =>
+                rdd.asInstanceOf[RDD[T]]
+            case Some(_) | None =>
+                spark.sparkContext.emptyRDD[T]
         }
     }
 
@@ -201,9 +201,9 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
      */
     def get[T: ClassTag] (implicit spark: SparkSession): RDD[T] =
     {
-        val classname = classTag [T].runtimeClass.getName
-        val name = classname.substring (classname.lastIndexOf (".") + 1)
-        get (name)
+        val classname = classTag[T].runtimeClass.getName
+        val name = classname.substring(classname.lastIndexOf(".") + 1)
+        get(name)
     }
 
     /**
@@ -217,7 +217,7 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
     def near (number: Double, reference: Double, epsilon: Double = 1.0e-3, message: String = ""): Unit =
     {
         val diff = number - reference
-        assert (Math.abs (diff) <= epsilon,
+        assert(Math.abs(diff) <= epsilon,
             if ("" == message)
                 s"""$number vs. reference $reference differs by more than $epsilon ($diff)"""
             else

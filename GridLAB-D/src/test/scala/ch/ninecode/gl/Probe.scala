@@ -16,10 +16,10 @@ case class Probe (session: SparkSession)
 
     def stringify (line: LineData): (String, String) =
     {
-        val id = line.lines.map (_.line.id).toArray.sortWith (_ < _).mkString ("_")
-        val z = line.lines.map (_.impedance.toString).mkString ("_")
+        val id = line.lines.map(_.line.id).toArray.sortWith(_ < _).mkString("_")
+        val z = line.lines.map(_.impedance.toString).mkString("_")
         (id, z)
     }
 
-    def getLines: Array[(String, String)] = Lines (session).getLines (acceptAllLines).map (stringify).collect
+    def getLines: Array[(String, String)] = Lines(session).getLines(acceptAllLines).map(stringify).collect
 }

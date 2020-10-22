@@ -8,7 +8,7 @@ import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.main
 
-@FixMethodOrder (MethodSorters.NAME_ASCENDING)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class ModelSuiteIT
 {
     val DEFAULT_CASSANDRA_PORT = 9042
@@ -17,13 +17,13 @@ class ModelSuiteIT
     {
         val properties: Properties =
         {
-            val in = this.getClass.getResourceAsStream ("/configuration.properties")
-            val p = new Properties ()
-            p.load (in)
-            in.close ()
+            val in = this.getClass.getResourceAsStream("/configuration.properties")
+            val p = new Properties()
+            p.load(in)
+            in.close()
             p
         }
-        val port = properties.getProperty ("nativeTransportPort", "9042")
+        val port = properties.getProperty("nativeTransportPort", "9042")
         if ("" == port)
             DEFAULT_CASSANDRA_PORT
         else
@@ -32,10 +32,10 @@ class ModelSuiteIT
 
     def time[R] (template: String)(block: => R): R =
     {
-        val t0 = System.nanoTime ()
+        val t0 = System.nanoTime()
         val ret = block
-        val t1 = System.nanoTime ()
-        println (template.format ((t1 - t0) / 1e9))
+        val t1 = System.nanoTime()
+        println(template.format((t1 - t0) / 1e9))
         ret
     }
 
@@ -44,53 +44,53 @@ class ModelSuiteIT
         val KEYSPACE = "test"
         val kWh = 205.49709 * 96 * 365.25 / 1000.0
 
-        time ("total execution: %s seconds")
+        time("total execution: %s seconds")
         {
-//            time ("meta time: %s seconds")
-//            {
-//                main (Array (
-//                    "Meta", "--unittest",
-//                    "--master", "local[*]",
-//                    "--log", "INFO",
-//                    "--host", "localhost",
-//                    "--port", cassandra_port.toString,
-//                    "--keyspace", KEYSPACE,
-//                    "--meta_file", "/home/derrick/Documents/9code/nis/sak/newdata/Stoerung_Messstellen2_utf8.csv"))
-//            }
-//
-//            time ("modelling time: %s seconds")
-//            {
-//                main (Array (
-//                    "MetaModel", "--unittest",
-//                    "--master", "local[*]",
-//                    "--log", "INFO",
-//                    "--host", "localhost",
-//                    "--port", cassandra_port.toString,
-//                    "--keyspace", KEYSPACE,
-//                    "--tree_depth", "8", // it's just quicker this way
-//                    "--model_file", "target/models/myDecisionTreeRegressorMetaModel"))
-//            }
-//
-//            time ("synthesis time: %s seconds")
-//            {
-//                main (Array (
-//                    "Synthesize", "--unittest",
-//                    "--master", "local[*]",
-//                    "--log", "INFO",
-//                    "--host", "localhost",
-//                    "--port", cassandra_port.toString,
-//                    "--keyspace", KEYSPACE,
-//                    "--model_file", "target/models/myDecisionTreeRegressorMetaModel",
-//                    "--synthesis", "HASMETAFAKE",
-//                    "--start", "2017-07-19T00:00:00.000+0000",
-//                    "--end", "2018-03-31T23:45:00.000+0000",
-//                    "--yearly_kWh", kWh.toString,
-//                    "--classes", "House=1,PV=1"))
-//            }
+            //            time ("meta time: %s seconds")
+            //            {
+            //                main (Array (
+            //                    "Meta", "--unittest",
+            //                    "--master", "local[*]",
+            //                    "--log", "INFO",
+            //                    "--host", "localhost",
+            //                    "--port", cassandra_port.toString,
+            //                    "--keyspace", KEYSPACE,
+            //                    "--meta_file", "/home/derrick/Documents/9code/nis/sak/newdata/Stoerung_Messstellen2_utf8.csv"))
+            //            }
+            //
+            //            time ("modelling time: %s seconds")
+            //            {
+            //                main (Array (
+            //                    "MetaModel", "--unittest",
+            //                    "--master", "local[*]",
+            //                    "--log", "INFO",
+            //                    "--host", "localhost",
+            //                    "--port", cassandra_port.toString,
+            //                    "--keyspace", KEYSPACE,
+            //                    "--tree_depth", "8", // it's just quicker this way
+            //                    "--model_file", "target/models/myDecisionTreeRegressorMetaModel"))
+            //            }
+            //
+            //            time ("synthesis time: %s seconds")
+            //            {
+            //                main (Array (
+            //                    "Synthesize", "--unittest",
+            //                    "--master", "local[*]",
+            //                    "--log", "INFO",
+            //                    "--host", "localhost",
+            //                    "--port", cassandra_port.toString,
+            //                    "--keyspace", KEYSPACE,
+            //                    "--model_file", "target/models/myDecisionTreeRegressorMetaModel",
+            //                    "--synthesis", "HASMETAFAKE",
+            //                    "--start", "2017-07-19T00:00:00.000+0000",
+            //                    "--end", "2018-03-31T23:45:00.000+0000",
+            //                    "--yearly_kWh", kWh.toString,
+            //                    "--classes", "House=1,PV=1"))
+            //            }
 
-            time ("modelling time: %s seconds")
+            time("modelling time: %s seconds")
             {
-                main (Array (
+                main(Array(
                     "Model", "--unittest",
                     "--master", "local[*]",
                     "--log", "INFO",
@@ -101,9 +101,9 @@ class ModelSuiteIT
                     "--model_file", "target/models/myDecisionTreeRegressorModel"))
             }
 
-            time ("synthesis time: %s seconds")
+            time("synthesis time: %s seconds")
             {
-                main (Array (
+                main(Array(
                     "Synthesize", "--unittest",
                     "--master", "local[*]",
                     "--log", "INFO",

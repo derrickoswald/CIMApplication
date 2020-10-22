@@ -55,42 +55,42 @@ case class SimulationRunner (
     verbose: Boolean = false) extends Serializable
 {
     if (verbose)
-        LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger (getClass)
+        LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
+    val log: Logger = LoggerFactory.getLogger(getClass)
 
-    val calendar: Calendar = Calendar.getInstance ()
-    calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
-    calendar.setTimeInMillis (0L)
+    val calendar: Calendar = Calendar.getInstance()
+    calendar.setTimeZone(TimeZone.getTimeZone("GMT"))
+    calendar.setTimeInMillis(0L)
 
-    val glm_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-    glm_date_format.setCalendar (calendar)
+    val glm_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
+    glm_date_format.setCalendar(calendar)
 
-    val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-    iso_date_format.setCalendar (calendar)
+    val iso_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    iso_date_format.setCalendar(calendar)
 
     def using[T <: Closeable, R] (resource: T)(block: T => R): R =
     {
         try
         {
-            block (resource)
+            block(resource)
         }
         finally
         {
-            resource.close ()
+            resource.close()
         }
     }
 
     def make_record (time: Long, real: Double, imag: Double): JsonObject =
-        Json.createObjectBuilder ()
-            .add ("time", time)
-            .add ("real", real)
-            .add ("imag", imag)
-            .build ()
+        Json.createObjectBuilder()
+            .add("time", time)
+            .add("real", real)
+            .add("imag", imag)
+            .build()
 
     def write_glm (trafo: SimulationTrafoKreis, workdir: String): Unit =
     {
-        log.info ("""generating %s""".format (trafo.directory + trafo.transformer.transformer_name + ".glm"))
-        val generator = SimulationGLMGenerator (
+        log.info("""generating %s""".format(trafo.directory + trafo.transformer.transformer_name + ".glm"))
+        val generator = SimulationGLMGenerator(
             one_phase = !three_phase,
             date_format = glm_date_format,
             cim_temperature = cim_temperature,
@@ -98,41 +98,41 @@ case class SimulationRunner (
             swing_voltage_factor = swing_voltage_factor,
             kreis = trafo)
 
-        val text = generator.make_glm ()
-        val file = new File (workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
+        val text = generator.make_glm()
+        val file = new File(workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
         val _ = file.getParentFile.mkdirs
-        using (new PrintWriter (file, "UTF-8"))
+        using(new PrintWriter(file, "UTF-8"))
         {
             writer =>
-                writer.write (text)
+                writer.write(text)
         }
     }
 
     // make string like: 2017-07-18 00:00:00 UTC,0.4,0.0
     def glm_format (index: Int)(datum: SimulationPlayerData): String =
     {
-        val time = glm_date_format.format (datum.time)
-        val (r, i) = (datum.readings (index), datum.readings (index + 1))
+        val time = glm_date_format.format(datum.time)
+        val (r, i) = (datum.readings(index), datum.readings(index + 1))
         val (real, imag) = if (three_phase && fake_three_phase) (r / 3.0, i / 3.0) else (r, i)
         s"$time,$real,$imag"
     }
 
     def write_player_csv (name: String, text: String): Unit =
     {
-        val file = new File (name)
+        val file = new File(name)
         val _ = file.getParentFile.mkdirs
         if (null != text)
-            using (new PrintWriter (file, "UTF-8"))
+            using(new PrintWriter(file, "UTF-8"))
             {
                 writer =>
-                    writer.write (text)
+                    writer.write(text)
             }
     }
 
     // relies on the player file being of the form: "input_data/" + player.name + ".csv"
     def phase_file (file: String, suffix: String): String =
     {
-        val base = file.substring (0, file.length - 4)
+        val base = file.substring(0, file.length - 4)
         s"$base$suffix.csv"
     }
 
@@ -141,42 +141,42 @@ case class SimulationRunner (
         val (player, player_data) = arg
 
         // transform the data
-        val program = MeasurementTransform.compile (player.transform)
+        val program = MeasurementTransform.compile(player.transform)
         val data = if (player_data.isEmpty)
-            Array (SimulationPlayerData ())
+            Array(SimulationPlayerData())
         else
-            program.transform (player_data.toArray.sortBy (_.time))
+            program.transform(player_data.toArray.sortBy(_.time))
 
         val file = file_prefix + player.file
         if (three_phase)
         {
             if (fake_three_phase)
             {
-                val text = data.map (glm_format (0)).mkString ("\n")
-                write_player_csv (phase_file (file, "_R"), text)
-                write_player_csv (phase_file (file, "_S"), text)
-                write_player_csv (phase_file (file, "_T"), text)
+                val text = data.map(glm_format(0)).mkString("\n")
+                write_player_csv(phase_file(file, "_R"), text)
+                write_player_csv(phase_file(file, "_S"), text)
+                write_player_csv(phase_file(file, "_T"), text)
             }
             else
             {
-                write_player_csv (phase_file (file, "_R"), data.map (glm_format (0)).mkString ("\n"))
-                write_player_csv (phase_file (file, "_S"), data.map (glm_format (2)).mkString ("\n"))
-                write_player_csv (phase_file (file, "_T"), data.map (glm_format (4)).mkString ("\n"))
+                write_player_csv(phase_file(file, "_R"), data.map(glm_format(0)).mkString("\n"))
+                write_player_csv(phase_file(file, "_S"), data.map(glm_format(2)).mkString("\n"))
+                write_player_csv(phase_file(file, "_T"), data.map(glm_format(4)).mkString("\n"))
             }
         }
         else
-            write_player_csv (file, data.map (glm_format (0)).mkString ("\n"))
+            write_player_csv(file, data.map(glm_format(0)).mkString("\n"))
     }
 
     def gridlabd (trafo: SimulationTrafoKreis, workdir: String): (Boolean, List[String]) =
     {
-        log.info ("""executing GridLAB-D for %s""".format (trafo.name))
+        log.info("""executing GridLAB-D for %s""".format(trafo.name))
 
         var dir = trafo.directory
-        if (dir.takeRight (1) == """\""")
-            dir = dir.slice (0, dir.length - 1)
-        val bash = """pushd "%s%s";gridlabd --quiet "%s.glm";popd;""".format (workdir, dir, trafo.name)
-        val command = Seq ("bash", "-c", bash)
+        if (dir.takeRight(1) == """\""")
+            dir = dir.slice(0, dir.length - 1)
+        val bash = """pushd "%s%s";gridlabd --quiet "%s.glm";popd;""".format(workdir, dir, trafo.name)
+        val command = Seq("bash", "-c", bash)
         val lines = new ListBuffer[String]()
         var warningLines = 0
         var errorLines = 0
@@ -187,58 +187,58 @@ case class SimulationRunner (
             {
                 val _ = lines += line
             }
-            if (line.contains ("WARNING")) warningLines += 1
-            if (line.contains ("ERROR")) errorLines += 1
-            if (line.contains ("FATAL")) errorLines += 1
+            if (line.contains("WARNING")) warningLines += 1
+            if (line.contains("ERROR")) errorLines += 1
+            if (line.contains("FATAL")) errorLines += 1
         }
 
-        val countLogger = ProcessLogger (check, check)
-        val process = Process (command).run (countLogger)
+        val countLogger = ProcessLogger(check, check)
+        val process = Process(command).run(countLogger)
         // wait for the process to finish
         val exit_code = process.exitValue
         if (0 != errorLines)
-            log.error ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
+            log.error("GridLAB-D: %d warning%s, %d error%s: %s".format(warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString("\n\n", "\n", "\n\n")))
         else
             if (0 != warningLines)
-                log.warn ("GridLAB-D: %d warning%s, %d error%s: %s".format (warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString ("\n\n", "\n", "\n\n")))
+                log.warn("GridLAB-D: %d warning%s, %d error%s: %s".format(warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString("\n\n", "\n", "\n\n")))
 
-        val problems: List[String] = (if (0 != exit_code) List (s"gridlabd exit code $exit_code") else List [String]()) ++ lines.toList
+        val problems: List[String] = (if (0 != exit_code) List(s"gridlabd exit code $exit_code") else List[String]()) ++ lines.toList
         ((0 == exit_code) && (0 == errorLines), problems)
     }
 
     def read_recorder_csv (workdir: String, file: String, element: String, units: String, multiplier: Double): Array[ThreePhaseComplexDataElement] =
     {
-        val name = new File (workdir + file)
+        val name = new File(workdir + file)
         if (!name.exists)
         {
-            log.error ("""recorder file %s does not exist""".format (name.getCanonicalPath))
-            Array ()
+            log.error("""recorder file %s does not exist""".format(name.getCanonicalPath))
+            Array()
         }
         else
         {
-            val handle = Source.fromFile (name, "UTF-8")
-            val text = handle.getLines ().filter (line => (line != "") && !line.startsWith ("#"))
-            val date_format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+            val handle = Source.fromFile(name, "UTF-8")
+            val text = handle.getLines().filter(line => (line != "") && !line.startsWith("#"))
+            val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
 
             def toTimeStamp (string: String): Long =
             {
-                date_format.parse (string).getTime
+                date_format.parse(string).getTime
             }
 
-            val ret = text.map (
+            val ret = text.map(
                 line =>
                 {
-                    val fields = line.split (",")
+                    val fields = line.split(",")
                     if (three_phase)
                         if (fields.length == 4)
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex.fromString (fields (1)), multiplier * Complex.fromString (fields (2)), multiplier * Complex.fromString (fields (3)), units)
+                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), multiplier * Complex.fromString(fields(1)), multiplier * Complex.fromString(fields(2)), multiplier * Complex.fromString(fields(3)), units)
                         else
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex (fields (1).toDouble, fields (2).toDouble), multiplier * Complex (fields (3).toDouble, fields (4).toDouble), multiplier * Complex (fields (5).toDouble, fields (6).toDouble), units)
+                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), multiplier * Complex(fields(1).toDouble, fields(2).toDouble), multiplier * Complex(fields(3).toDouble, fields(4).toDouble), multiplier * Complex(fields(5).toDouble, fields(6).toDouble), units)
                     else
                         if (fields.length == 2)
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex.fromString (fields (1)), Complex (0.0), Complex (0.0), units)
+                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), multiplier * Complex.fromString(fields(1)), Complex(0.0), Complex(0.0), units)
                         else
-                            ThreePhaseComplexDataElement (element, toTimeStamp (fields (0)), multiplier * Complex (fields (1).toDouble, fields (2).toDouble), Complex (0.0), Complex (0.0), units)
+                            ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), multiplier * Complex(fields(1).toDouble, fields(2).toDouble), Complex(0.0), Complex(0.0), units)
                 }
             ).toArray
             handle.close
@@ -279,16 +279,16 @@ case class SimulationRunner (
 
     def read_recorders_and_accumulate (trafo: SimulationTrafoKreis): Iterable[SimulationResult] =
     {
-        trafo.recorders.flatMap (
+        trafo.recorders.flatMap(
             recorder =>
             {
-                val measures = recorder.aggregations.find (_.intervals == 1) match
+                val measures = recorder.aggregations.find(_.intervals == 1) match
                 {
-                    case Some (baseline: SimulationAggregate) =>
+                    case Some(baseline: SimulationAggregate) =>
                         // compensate for single phase simulated current using line-line voltage scaling
-                        val factor = if (!three_phase && recorder.`type` == "current") 1.0 / math.sqrt (3) else 1.0
-                        val multiplier = trafo.directions.getOrElse (recorder.mrid, 1).toDouble * factor
-                        val records = read_recorder_csv (workdir, trafo.directory + recorder.file, recorder.mrid, recorder.unit, multiplier).map (
+                        val factor = if (!three_phase && recorder.`type` == "current") 1.0 / math.sqrt(3) else 1.0
+                        val multiplier = trafo.directions.getOrElse(recorder.mrid, 1).toDouble * factor
+                        val records = read_recorder_csv(workdir, trafo.directory + recorder.file, recorder.mrid, recorder.unit, multiplier).map(
                             entry =>
                                 SimulationResult
                                 (
@@ -309,20 +309,20 @@ case class SimulationRunner (
                         )
 
                         // these should already be in order, but sort them anyway
-                        val sorted = records.sortBy (_.time)
+                        val sorted = records.sortBy(_.time)
 
                         // get an accumulator for every interval to be aggregated
-                        val accumulators = recorder.aggregations.map (x => Accumulator (x.intervals, recorder.`type` != "energy", x.time_to_live))
+                        val accumulators = recorder.aggregations.map(x => Accumulator(x.intervals, recorder.`type` != "energy", x.time_to_live))
 
                         // aggregate over the accumulators
-                        val accumulated = sorted.flatMap (
+                        val accumulated = sorted.flatMap(
                             entry =>
                             {
-                                accumulators.flatMap (
+                                accumulators.flatMap(
                                     accumulator =>
                                     {
                                         if (accumulator.intervals == 1)
-                                            Some (entry)
+                                            Some(entry)
                                         else
                                         {
                                             accumulator.count = accumulator.count + 1
@@ -346,7 +346,7 @@ case class SimulationRunner (
 
                                                 val timepoint = entry.time - (entry.period * (accumulator.intervals - 1))
                                                 val period = entry.period * accumulator.intervals
-                                                val new_entry = SimulationResult (
+                                                val new_entry = SimulationResult(
                                                     entry.simulation,
                                                     entry.mrid,
                                                     entry.`type`,
@@ -361,8 +361,8 @@ case class SimulationRunner (
                                                     entry.units,
                                                     accumulator.ttl
                                                 )
-                                                accumulator.reset ()
-                                                Some (new_entry)
+                                                accumulator.reset()
+                                                Some(new_entry)
                                             }
                                             else
                                                 None
@@ -373,8 +373,8 @@ case class SimulationRunner (
                         )
                         accumulated
                     case None =>
-                        log.error ("""no baseline interval ("intervals" = 1) in recorder (%s)""".format (recorder.toString))
-                        Array [SimulationResult]()
+                        log.error("""no baseline interval ("intervals" = 1) in recorder (%s)""".format(recorder.toString))
+                        Array[SimulationResult]()
                 }
                 measures
             }
@@ -383,36 +383,36 @@ case class SimulationRunner (
 
     def execute (trafo: SimulationTrafoKreis, data: Map[String, Iterable[SimulationPlayerData]]): (List[String], Iterable[SimulationResult]) =
     {
-        log.info (trafo.island + " from " + iso_date_format.format (trafo.start_time.getTime) + " to " + iso_date_format.format (trafo.finish_time.getTime))
+        log.info(trafo.island + " from " + iso_date_format.format(trafo.start_time.getTime) + " to " + iso_date_format.format(trafo.finish_time.getTime))
 
-        write_glm (trafo, workdir)
+        write_glm(trafo, workdir)
 
         // match the players to the data
         val players: Iterable[(SimulationPlayer, Iterable[SimulationPlayerData])] =
-            trafo.players.map (
+            trafo.players.map(
                 player =>
                 {
-                    data.find (x => x._1 == player.mrid) match
+                    data.find(x => x._1 == player.mrid) match
                     {
-                        case Some (records) =>
+                        case Some(records) =>
                             (player, records._2)
                         case None =>
-                            (player, List ())
+                            (player, List())
                     }
                 }
             )
 
         // create the player files
-        players.foreach (create_player_csv (workdir + trafo.directory))
+        players.foreach(create_player_csv(workdir + trafo.directory))
         // execute gridlabd
-        val _ = new File (workdir + trafo.directory + "output_data/").mkdirs
-        val ret = gridlabd (trafo, workdir)
+        val _ = new File(workdir + trafo.directory + "output_data/").mkdirs
+        val ret = gridlabd(trafo, workdir)
         // read the recorder files
         if (ret._1)
-            (List (), read_recorders_and_accumulate (trafo))
+            (List(), read_recorders_and_accumulate(trafo))
         else
         {
-            (s"GridLAB-D failed for ${trafo.name}" :: ret._2, List ())
+            (s"GridLAB-D failed for ${trafo.name}" :: ret._2, List())
         }
     }
 }

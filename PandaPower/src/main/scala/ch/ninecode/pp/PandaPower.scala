@@ -23,24 +23,24 @@ import org.slf4j.LoggerFactory
 case class PandaPower
 (
     session: SparkSession,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
+    storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"),
     workdir: String = s"hdfs://${java.net.InetAddress.getLocalHost.getHostName}/simulation/"
 )
     extends Serializable
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger(getClass)
 
     /**
      * Get the working directory ensuring a slash terminator.
      */
-    lazy val workdir_slash: String = if (workdir.endsWith ("/")) workdir else s"$workdir/"
+    lazy val workdir_slash: String = if (workdir.endsWith("/")) workdir else s"$workdir/"
 
     /**
      * Get the scheme for the working directory.
      */
     lazy val workdir_scheme: String =
     {
-        val uri = new URI (workdir_slash)
+        val uri = new URI(workdir_slash)
         if (null == uri.getScheme)
             ""
         else
@@ -54,7 +54,7 @@ case class PandaPower
      */
     lazy val workdir_path: String =
     {
-        val uri = new URI (workdir_slash)
+        val uri = new URI(workdir_slash)
         if (null == uri.getPath)
             "/"
         else
@@ -66,27 +66,27 @@ case class PandaPower
      */
     lazy val workdir_uri: String =
     {
-        val uri = new URI (workdir_slash)
+        val uri = new URI(workdir_slash)
         if (null == uri.getScheme)
             ""
         else
             s"${uri.getScheme}://${if (null == uri.getAuthority) "" else uri.getAuthority}/"
     }
 
-    lazy val wideOpen = new FsPermission (FsAction.ALL, FsAction.ALL, FsAction.ALL)
+    lazy val wideOpen = new FsPermission(FsAction.ALL, FsAction.ALL, FsAction.ALL)
 
     def hdfs_filesystem (workdir: String): FileSystem =
     {
-        val hdfs_configuration = new Configuration ()
-        hdfs_configuration.set ("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
-        hdfs_configuration.set ("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
-        FileSystem.get (URI.create (workdir_uri), hdfs_configuration)
+        val hdfs_configuration = new Configuration()
+        hdfs_configuration.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+        hdfs_configuration.set("fs.file.impl", "org.apache.hadoop.fs.LocalFileSystem")
+        FileSystem.get(URI.create(workdir_uri), hdfs_configuration)
     }
 
     def parsePermissions (s: String): Set[PosixFilePermission] =
     {
         // ToDo: parse file permissions val pattern = Pattern.compile ("\\G\\s*([ugoa]*)([+=-]+)([rwx]*)([,\\s]*)\\s*")
-        Set [PosixFilePermission](
+        Set[PosixFilePermission](
             PosixFilePermission.OWNER_READ,
             PosixFilePermission.OWNER_WRITE,
             PosixFilePermission.OWNER_EXECUTE,
@@ -108,11 +108,11 @@ case class PandaPower
     def mkdirs (hdfs: FileSystem, file: Path): Unit =
     {
         val parent = file.getParent
-        if (!parent.isRoot && !hdfs.exists (parent))
+        if (!parent.isRoot && !hdfs.exists(parent))
         {
-            mkdirs (hdfs, parent)
-            val _ = hdfs.mkdirs (parent, wideOpen) // 0777, but permissions are determined by umask maybe
-            hdfs.setPermission (parent, wideOpen)
+            mkdirs(hdfs, parent)
+            val _ = hdfs.mkdirs(parent, wideOpen) // 0777, but permissions are determined by umask maybe
+            hdfs.setPermission(parent, wideOpen)
         }
     }
 
@@ -121,28 +121,28 @@ case class PandaPower
         if (isLocal)
         {
             // ToDo: check for IOException
-            val file = Paths.get (s"$workdir_path$directory$path")
-            val _ = Files.createDirectories (file.getParent)
-            bytes.foreach (
+            val file = Paths.get(s"$workdir_path$directory$path")
+            val _ = Files.createDirectories(file.getParent)
+            bytes.foreach(
                 b =>
                 {
-                    val f = Files.write (file, b)
-                    permissions.foreach (p => Files.setPosixFilePermissions (f, parsePermissions (p).asJava))
+                    val f = Files.write(file, b)
+                    permissions.foreach(p => Files.setPosixFilePermissions(f, parsePermissions(p).asJava))
                 }
             )
         }
         else
         {
-            val hdfs = hdfs_filesystem (workdir_uri)
-            val file = new Path (s"$workdir_slash$directory/$path")
-            mkdirs (hdfs, file)
-            bytes.foreach (
+            val hdfs = hdfs_filesystem(workdir_uri)
+            val file = new Path(s"$workdir_slash$directory/$path")
+            mkdirs(hdfs, file)
+            bytes.foreach(
                 b =>
                 {
-                    val out = hdfs.create (file)
-                    out.write (b)
-                    out.close ()
-                    permissions.foreach (p => hdfs.setPermission (file, new FsPermission (p)))
+                    val out = hdfs.create(file)
+                    out.write(b)
+                    out.close()
+                    permissions.foreach(p => hdfs.setPermission(file, new FsPermission(p)))
                 }
             )
         }
@@ -152,45 +152,45 @@ case class PandaPower
     {
         if (isLocal)
         {
-            val _ = FileUtils.deleteQuietly (new File (s"$workdir_path$equipment"))
+            val _ = FileUtils.deleteQuietly(new File(s"$workdir_path$equipment"))
         }
         else
         {
-            val hdfs = hdfs_filesystem (workdir_uri)
-            val directory = new Path (s"$workdir_slash$equipment")
-            val _ = hdfs.delete (directory, true)
+            val hdfs = hdfs_filesystem(workdir_uri)
+            val directory = new Path(s"$workdir_slash$equipment")
+            val _ = hdfs.delete(directory, true)
         }
     }
 
     def cleanup (equipment: String, includes_glm: Boolean, includes_input: Boolean, includes_output: Boolean)
     {
         if (includes_glm)
-            eraseInputFile (equipment)
+            eraseInputFile(equipment)
         else
         {
             if (includes_input)
-                eraseInputFile (s"$equipment/input_data/")
+                eraseInputFile(s"$equipment/input_data/")
             if (includes_output)
             {
-                eraseInputFile (s"$equipment/output_data/")
-                writeInputFile (s"$equipment/output_data/", "dummy", None, None) // mkdir
+                eraseInputFile(s"$equipment/output_data/")
+                writeInputFile(s"$equipment/output_data/", "dummy", None, None) // mkdir
             }
         }
     }
 
     def check (input: String): PandaPowerResult =
     {
-        if (input.contains ("FAILED")
-            || input.contains ("Errno")
-            || input.contains ("command not found")
-            || input.contains ("Cannot fork")
-            || input.contains ("pthread_create"))
+        if (input.contains("FAILED")
+            || input.contains("Errno")
+            || input.contains("command not found")
+            || input.contains("Cannot fork")
+            || input.contains("pthread_create"))
         {
-            log.error (s"pandapower failed, message is: $input")
-            PandaPowerResult (false, input.split ("\n").toList)
+            log.error(s"pandapower failed, message is: $input")
+            PandaPowerResult(false, input.split("\n").toList)
         }
         else
-            PandaPowerResult ()
+            PandaPowerResult()
     }
 
     def solve (files: RDD[String]): PandaPowerResult =
@@ -199,7 +199,7 @@ case class PandaPower
         val pandapower =
             if (isLocal) // local[*]
             {
-                Array [String](
+                Array[String](
                     "bash",
                     "-c",
                     "while read line; do " +
@@ -213,7 +213,7 @@ case class PandaPower
             }
             else // cluster, either hdfs://XX or wasb://YY
             {
-                Array [String](
+                Array[String](
                     "bash",
                     "-c",
                     "while read line; do " +
@@ -232,8 +232,8 @@ case class PandaPower
                         "done < /dev/stdin")
             }
 
-        val out: RDD[String] = files.pipe (pandapower)
-        out.map (check).fold (PandaPowerResult ())((x, y) => x.combine (y))
+        val out: RDD[String] = files.pipe(pandapower)
+        out.map(check).fold(PandaPowerResult())((x, y) => x.combine(y))
     }
 }
 
@@ -244,8 +244,8 @@ object PandaPower
      */
     lazy val classes: Array[Class[_]] =
     {
-        Array (
-            classOf [ch.ninecode.pp.PandaPowerResult]
+        Array(
+            classOf[ch.ninecode.pp.PandaPowerResult]
         )
     }
 }

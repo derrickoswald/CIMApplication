@@ -40,14 +40,14 @@ final case class SwitchDetails (
 
     import SwitchDetails._
 
-    lazy val log: Logger = LoggerFactory.getLogger (getClass)
+    lazy val log: Logger = LoggerFactory.getLogger(getClass)
 
     /**
      * Get the generic Switch object.
      *
      * @return the fuse, breaker etc. subclass as the Switch superclass
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def asSwitch: Switch =
     {
         element match
@@ -66,7 +66,7 @@ final case class SwitchDetails (
             case s: Sectionaliser => s.Switch
             case _ =>
                 // Todo: should be a "require", but that's impossible for case class creation
-                log.error (s"non-switch (${element.getClass}:${element.id}) in SwitchEdge")
+                log.error(s"non-switch (${element.getClass}:${element.id}) in SwitchEdge")
                 null
         }
     }
@@ -79,9 +79,9 @@ final case class SwitchDetails (
      */
     def v (implicit mapping: Array[(String, Double)]): Double =
     {
-        mapping.find (_._1 == asSwitch.ConductingEquipment.BaseVoltage) match
+        mapping.find(_._1 == asSwitch.ConductingEquipment.BaseVoltage) match
         {
-            case Some ((_, v)) => v
+            case Some((_, v)) => v
             case _ => 0.0
         }
     }
@@ -92,7 +92,7 @@ final case class SwitchDetails (
      * @param mask single bit mask to check.
      * @return <code>true</code> if the bit is set, <code>false</code> otherwise.
      */
-    def isSet (mask: Int): Boolean = 0 != (asSwitch.bitfields (mask / 32) & (1 << (mask % 32)))
+    def isSet (mask: Int): Boolean = 0 != (asSwitch.bitfields(mask / 32) & (1 << (mask % 32)))
 
     /**
      * Get the normalOpen state from the switch.
@@ -101,7 +101,7 @@ final case class SwitchDetails (
      */
     def normalOpen: Boolean =
     {
-        if (isSet (normalOpenMask))
+        if (isSet(normalOpenMask))
             asSwitch.normalOpen // normalOpen valid
         else
             false
@@ -114,7 +114,7 @@ final case class SwitchDetails (
      */
     def open: Boolean =
     {
-        if (isSet (openMask))
+        if (isSet(openMask))
             asSwitch.open // open valid
         else
             false
@@ -128,10 +128,10 @@ final case class SwitchDetails (
      */
     def closed: Boolean =
     {
-        val openP = if (isSet (openMask))
+        val openP = if (isSet(openMask))
             asSwitch.open // open valid trumps normalOpen
         else
-            if (isSet (normalOpenMask))
+            if (isSet(normalOpenMask))
                 asSwitch.normalOpen // normalOpen valid
             else
                 false
@@ -145,12 +145,12 @@ final case class SwitchDetails (
      */
     def ratedCurrent: Double =
     {
-        if (isSet (ratedCurrentMask))
+        if (isSet(ratedCurrentMask))
             asSwitch.ratedCurrent // ratedCurrent valid
         else
             switch_info match
             {
-                case Some (info: SwitchInfo) =>
+                case Some(info: SwitchInfo) =>
                     info.ratedCurrent
                 case _ =>
                     0.0
@@ -175,15 +175,15 @@ object SwitchDetails
     /**
      * Index of normalOpen field in Switch bitmask.
      */
-    lazy val normalOpenMask: Int = Switch.fields.indexOf ("normalOpen")
+    lazy val normalOpenMask: Int = Switch.fields.indexOf("normalOpen")
 
     /**
      * Index of open field in Switch bitmask.
      */
-    lazy val openMask: Int = Switch.fields.indexOf ("open")
+    lazy val openMask: Int = Switch.fields.indexOf("open")
 
     /**
      * Index of ratedCurrent field in Switch bitmask.
      */
-    lazy val ratedCurrentMask: Int = Switch.fields.indexOf ("ratedCurrent")
+    lazy val ratedCurrentMask: Int = Switch.fields.indexOf("ratedCurrent")
 }

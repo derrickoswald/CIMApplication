@@ -7,14 +7,14 @@ import javax.resource.spi.TransactionSupport.TransactionSupportLevel
 import javax.ws.rs.ApplicationPath
 import javax.ws.rs.core.Application
 
-@ConnectionFactoryDefinition (
+@ConnectionFactoryDefinition(
     description = "Connection factory for Spark connection using CIMConnector",
     name = "java:comp/env/eis/SparkConnectionFactory",
     resourceAdapter = "#CIMConnector", // reference CIMConnector.rar in application.xml
     interfaceName = "ch.ninecode.cim.connector.CIMConnectionFactory",
     transactionSupport = TransactionSupportLevel.NoTransaction
 )
-@ApplicationPath ("cim/")
+@ApplicationPath("cim/")
 class ApplicationConfig extends Application
 {
     /**
@@ -25,16 +25,16 @@ class ApplicationConfig extends Application
      */
     override def getClasses: util.Set[Class[_]] =
     {
-        new util.HashSet[Class[_]](util.Arrays.asList (
-            classOf [Estimation],
-            classOf [FileOperations],
-            classOf [Ingest],
-            classOf [LoadFile],
-            classOf [Ping],
-            classOf [Pong],
-            classOf [Query],
-            classOf [ShortCircuitCalculation],
-            classOf [Spatial],
-            classOf [View]))
+        new util.HashSet[Class[_]](util.Arrays.asList(
+            classOf[Estimation],
+            classOf[FileOperations],
+            classOf[Ingest],
+            classOf[LoadFile],
+            classOf[Ping],
+            classOf[Pong],
+            classOf[Query],
+            classOf[ShortCircuitCalculation],
+            classOf[Spatial],
+            classOf[View]))
     }
 }

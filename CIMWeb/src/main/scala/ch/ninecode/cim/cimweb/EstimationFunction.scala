@@ -21,14 +21,14 @@ import ch.ninecode.util.Complex
  */
 case class EstimationFunction (options: SimulationOptions) extends CIMWebFunction
 {
-    jars = Array (
-        jarForObject (this),
-        jarForObject (options), // Simulate.jar
-        jarForObject (new GLMGenerator ()), // GridLabD.jar
-        jarForObject (new LoadFlowNode ("", 0.0)), // Net.jar
-        jarForObject (Complex (0.0, 0.0)), // Util.jar
-        jarForObject (com.datastax.oss.driver.api.core.ConsistencyLevel.ANY), // spark-cassandra-connector.jar
-        jarForObject (Json.createObjectBuilder)) // javaee-api <JSON implementation>.jar
+    jars = Array(
+        jarForObject(this),
+        jarForObject(options), // Simulate.jar
+        jarForObject(new GLMGenerator()), // GridLabD.jar
+        jarForObject(new LoadFlowNode("", 0.0)), // Net.jar
+        jarForObject(Complex(0.0, 0.0)), // Util.jar
+        jarForObject(com.datastax.oss.driver.api.core.ConsistencyLevel.ANY), // spark-cassandra-connector.jar
+        jarForObject(Json.createObjectBuilder)) // javaee-api <JSON implementation>.jar
 
     override def getReturnType: Return = Return.JSON
 
@@ -42,23 +42,23 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
      */
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
-        val cassandra = spark.sparkContext.getConf.get ("spark.cassandra.connection.host", options.host)
-        val sim = Simulation (spark, options.copy (host = cassandra))
-        val runs = sim.run ()
+        val cassandra = spark.sparkContext.getConf.get("spark.cassandra.connection.host", options.host)
+        val sim = Simulation(spark, options.copy(host = cassandra))
+        val runs = sim.run()
 
         def plural: String = if (runs.size > 1) "s" else ""
 
-        LoggerFactory.getLogger (getClass).info (s"""simulation$plural ${runs.mkString (",")}""")
+        LoggerFactory.getLogger(getClass).info(s"""simulation$plural ${runs.mkString(",")}""")
         val result = Json.createObjectBuilder
         val simulations = Json.createArrayBuilder
         for (run <- runs)
-            simulations.add (run)
-        val _ = result.add ("simulations", simulations)
-        RESTfulJSONResult (OK, s"""GridLAB-D simulation$plural successful""", result.build).getJSON
+            simulations.add(run)
+        val _ = result.add("simulations", simulations)
+        RESTfulJSONResult(OK, s"""GridLAB-D simulation$plural successful""", result.build).getJSON
     }
 
     override def toString: String =
     {
-        s"${super.toString} is EstimationFunction (simulation = ${options.simulation.mkString ("\n\n")})"
+        s"${super.toString} is EstimationFunction (simulation = ${options.simulation.mkString("\n\n")})"
     }
 }

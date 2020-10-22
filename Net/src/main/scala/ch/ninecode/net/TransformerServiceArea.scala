@@ -48,7 +48,7 @@ import ch.ninecode.util.Graphable
  */
 case class TransformerServiceArea (
     session: SparkSession,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
+    storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"),
     debug: Boolean = false,
     calculate_public_lighting: Boolean = false)
     extends CIMRDD with Graphable
@@ -57,16 +57,16 @@ case class TransformerServiceArea (
     import TransformerServiceArea._
 
     implicit val spark: SparkSession = session
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
-    val voltage_rdd: RDD[BaseVoltage] = getOrElse [BaseVoltage]
-    val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse [ConductingEquipment]
+    val voltage_rdd: RDD[BaseVoltage] = getOrElse[BaseVoltage]
+    val conducting_equipment_rdd: RDD[ConductingEquipment] = getOrElse[ConductingEquipment]
     val element_rdd: RDD[Element] = getOrElse[Element]
-    val power_transformer_rdd: RDD[PowerTransformer] = getOrElse [PowerTransformer]
-    val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse [PowerTransformerEnd]
-    val terminal_rdd: RDD[Terminal] = getOrElse [Terminal]
-    val topological_island_rdd: RDD[TopologicalIsland] = getOrElse [TopologicalIsland]
-    val topological_node_rdd: RDD[TopologicalNode] = getOrElse [TopologicalNode]
+    val power_transformer_rdd: RDD[PowerTransformer] = getOrElse[PowerTransformer]
+    val power_transformer_end_rdd: RDD[PowerTransformerEnd] = getOrElse[PowerTransformerEnd]
+    val terminal_rdd: RDD[Terminal] = getOrElse[Terminal]
+    val topological_island_rdd: RDD[TopologicalIsland] = getOrElse[TopologicalIsland]
+    val topological_node_rdd: RDD[TopologicalNode] = getOrElse[TopologicalNode]
 
     /**
      * Determine if the bitfield is set for the given mask.
@@ -75,7 +75,7 @@ case class TransformerServiceArea (
      * @param switch element with bitfields to check
      * @return <code>true</code> if the bit is set, <code>false</code> otherwise.
      */
-    def isSet (mask: Int, switch: Switch): Boolean = 0 != (switch.bitfields (mask / 32) & (1 << (mask % 32)))
+    def isSet (mask: Int, switch: Switch): Boolean = 0 != (switch.bitfields(mask / 32) & (1 << (mask % 32)))
 
     /**
      * Method to determine if a switch is closed (both terminals are the same topological node).
@@ -89,10 +89,10 @@ case class TransformerServiceArea (
      */
     def switchClosed (switch: Switch): Boolean =
     {
-        if (isSet (openMask, switch))
+        if (isSet(openMask, switch))
             !switch.open // open valid
         else
-            if (isSet (normalOpenMask, switch))
+            if (isSet(normalOpenMask, switch))
                 !switch.normalOpen // normalOpen valid
             else
                 true
@@ -108,20 +108,20 @@ case class TransformerServiceArea (
     {
         element match
         {
-            case s: Switch => switchClosed (s)
-            case c: Cut => switchClosed (c.Switch)
-            case d: Disconnector => switchClosed (d.Switch)
-            case f: Fuse => switchClosed (f.Switch)
-            case g: GroundDisconnector => switchClosed (g.Switch)
-            case j: Jumper => switchClosed (j.Switch)
-            case p: ProtectedSwitch => switchClosed (p.Switch)
-            case s: Sectionaliser => switchClosed (s.Switch)
-            case b: Breaker => switchClosed (b.ProtectedSwitch.Switch)
-            case l: LoadBreakSwitch => switchClosed (l.ProtectedSwitch.Switch)
-            case r: Recloser => switchClosed (r.ProtectedSwitch.Switch)
+            case s: Switch => switchClosed(s)
+            case c: Cut => switchClosed(c.Switch)
+            case d: Disconnector => switchClosed(d.Switch)
+            case f: Fuse => switchClosed(f.Switch)
+            case g: GroundDisconnector => switchClosed(g.Switch)
+            case j: Jumper => switchClosed(j.Switch)
+            case p: ProtectedSwitch => switchClosed(p.Switch)
+            case s: Sectionaliser => switchClosed(s.Switch)
+            case b: Breaker => switchClosed(b.ProtectedSwitch.Switch)
+            case l: LoadBreakSwitch => switchClosed(l.ProtectedSwitch.Switch)
+            case r: Recloser => switchClosed(r.ProtectedSwitch.Switch)
             case _: PowerTransformer => v1 <= 1000.0 && (v2 <= 1000.0 && (v2 > 230.0 || (calculate_public_lighting && v2 == 230.0))) // ToDo: don't hard code these voltage values
             case _ =>
-                log.warn (s"transformer service area processor encountered edge with unhandled class '${element.getClass.getName}', assumed same transformer service area")
+                log.warn(s"transformer service area processor encountered edge with unhandled class '${element.getClass.getName}', assumed same transformer service area")
                 true
         }
     }
@@ -129,12 +129,12 @@ case class TransformerServiceArea (
     def heavy (voltages: collection.Map[String, Double])(arg: (String, (PowerTransformer, Option[Iterable[PowerTransformerEnd]]))): Boolean =
     {
         val (_, (_, e)) = arg
-        val ends = e.getOrElse (Iterable ()).toArray.sortWith (_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
-        val v = ends.map (t => voltages.getOrElse (t.TransformerEnd.BaseVoltage, 0.0))
+        val ends = e.getOrElse(Iterable()).toArray.sortWith(_.TransformerEnd.endNumber < _.TransformerEnd.endNumber)
+        val v = ends.map(t => voltages.getOrElse(t.TransformerEnd.BaseVoltage, 0.0))
         if (v.length < 2)
             false
         else
-            v.head > 1000.0 && v.tail.forall (v => v <= 1000.0 && v > 230.0) // ToDo: don't hard code these voltage values
+            v.head > 1000.0 && v.tail.forall(v => v <= 1000.0 && v > 230.0) // ToDo: don't hard code these voltage values
     }
 
     /**
@@ -157,49 +157,49 @@ case class TransformerServiceArea (
     {
         // get a map of voltages
         // ToDo: fix this 1kV multiplier on the voltages
-        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
+        val voltages = getOrElse[BaseVoltage].map(v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap()
 
         // get all power transformers for transformer service areas
         val power_transformers = power_transformer_rdd
-            .keyBy (_.id)
-            .leftOuterJoin (
+            .keyBy(_.id)
+            .leftOuterJoin(
                 power_transformer_end_rdd
-                    .keyBy (_.PowerTransformer)
+                    .keyBy(_.PowerTransformer)
                     .groupByKey)
-            .filter (heavy (voltages))
-            .map (_._2._1)
+            .filter(heavy(voltages))
+            .map(_._2._1)
 
         // get all transformer set secondary TopologicalIsland names
         val islands_trafos: RDD[(String, String)] = power_transformers
-            .keyBy (_.id)
-            .join (
+            .keyBy(_.id)
+            .join(
                 terminal_rdd
-                    .filter (_.ACDCTerminal.sequenceNumber > 1)
-                    .keyBy (_.ConductingEquipment))
-            .map (x => (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
-            .join (
+                    .filter(_.ACDCTerminal.sequenceNumber > 1)
+                    .keyBy(_.ConductingEquipment))
+            .map(x => (x._2._2.TopologicalNode, x._1)) // (nodeid, trafoid)
+            .join(
                 topological_node_rdd
-                    .keyBy (_.id))
-            .map (x => (x._1, (x._2._2.TopologicalIsland, x._2._1))) // (nodeid, (islandid, trafoid))
+                    .keyBy(_.id))
+            .map(x => (x._1, (x._2._2.TopologicalIsland, x._2._1))) // (nodeid, (islandid, trafoid))
             .groupByKey.values // (islandid, trafoid)
-            .flatMap (
+            .flatMap(
                 it =>
                 {
-                    val trafo_set_name = it.map (_._2).toArray.sortWith (_ < _).mkString ("_")
-                    it.map (x => (x._1, trafo_set_name))
+                    val trafo_set_name = it.map(_._2).toArray.sortWith(_ < _).mkString("_")
+                    it.map(x => (x._1, trafo_set_name))
                 }
             ) // (islandid, trafosetname)
-        islands_trafos.persist (storage_level)
+        islands_trafos.persist(storage_level)
     }
 
     def toNode (item: (TopologicalIsland, Option[String])): (VertexId, VertexData) =
     {
         item match
         {
-            case (island, Some (trafoset)) =>
-                (vertex_id (island.id), VertexData (trafoset, island.id))
+            case (island, Some(trafoset)) =>
+                (vertex_id(island.id), VertexData(trafoset, island.id))
             case (island, _) =>
-                (vertex_id (island.id), VertexData ("", island.id))
+                (vertex_id(island.id), VertexData("", island.id))
         }
     }
 
@@ -211,10 +211,10 @@ case class TransformerServiceArea (
     def nodes: RDD[(VertexId, VertexData)] =
     {
         topological_island_rdd
-            .keyBy (_.id)
-            .leftOuterJoin (island_trafoset_rdd)
+            .keyBy(_.id)
+            .leftOuterJoin(island_trafoset_rdd)
             .values // (island, trafosetname)
-            .map (toNode)
+            .map(toNode)
     }
 
     def spansIslands (item: Iterable[(Element, (String, Double))]): Boolean =
@@ -223,7 +223,7 @@ case class TransformerServiceArea (
         {
             case _ :: Nil => false // only one terminal
             case (_, (island1, _)) :: rest =>
-                !rest.forall (
+                !rest.forall(
                     x =>
                     {
                         val (_, (island2, _)) = x
@@ -239,8 +239,8 @@ case class TransformerServiceArea (
         item.toList match
         {
             case (e1, (i1, v1)) :: (_, (i2, v2)) :: _ =>
-                val connected = if (v1 < v2) isSameArea (e1, v2, v1) else isSameArea (e1, v1, v2) // ToDo: not really correct just to sort by magnitude
-                Some (Edge (vertex_id (i1), vertex_id (i2), EdgeData (e1.id, connected))) // ToDo: edge case of three terminal transformer spanning islands
+                val connected = if (v1 < v2) isSameArea(e1, v2, v1) else isSameArea(e1, v1, v2) // ToDo: not really correct just to sort by magnitude
+                Some(Edge(vertex_id(i1), vertex_id(i2), EdgeData(e1.id, connected))) // ToDo: edge case of three terminal transformer spanning islands
             case _ =>
                 None
         }
@@ -254,21 +254,21 @@ case class TransformerServiceArea (
     def edges: RDD[Edge[EdgeData]] =
     {
         // get voltages
-        val voltages = voltage_rdd.map (v => (v.id, v.nominalVoltage * 1000.0)).collect.toMap // ToDo: fix this 1000V multiplier
+        val voltages = voltage_rdd.map(v => (v.id, v.nominalVoltage * 1000.0)).collect.toMap // ToDo: fix this 1000V multiplier
         // get nodes by TopologicalIsland
-        val members = topological_node_rdd.map (node => (node.id, (node.TopologicalIsland, voltages (node.BaseVoltage)))) // (nodeid, (islandid, volts))
+        val members = topological_node_rdd.map(node => (node.id, (node.TopologicalIsland, voltages(node.BaseVoltage)))) // (nodeid, (islandid, volts))
         // get terminals by TopologicalIsland
-        val terminals = terminal_rdd.keyBy (_.TopologicalNode).join (members).map (x => (x._2._1.ConductingEquipment, x._2._2)) // (equipment, (islandid, volts))
+        val terminals = terminal_rdd.keyBy(_.TopologicalNode).join(members).map(x => (x._2._1.ConductingEquipment, x._2._2)) // (equipment, (islandid, volts))
         // get equipment with terminals in different islands as GraphX Edge objects
         conducting_equipment_rdd
-            .keyBy (_.id)
-            .join (element_rdd.keyBy (_.id))
-            .map (x => (x._1, x._2._2)) // (equipmentid, element)
-            .join (terminals)
+            .keyBy(_.id)
+            .join(element_rdd.keyBy(_.id))
+            .map(x => (x._1, x._2._2)) // (equipmentid, element)
+            .join(terminals)
             .groupByKey
             .values
-            .filter (spansIslands)
-            .flatMap (toEdge)
+            .filter(spansIslands)
+            .flatMap(toEdge)
     }
 
     def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
@@ -278,7 +278,7 @@ case class TransformerServiceArea (
         else
         {
             if (debug && log.isDebugEnabled)
-                log.debug (s"$id <-- ${msg.toString}")
+                log.debug(s"$id <-- ${msg.toString}")
             msg
         }
     }
@@ -291,20 +291,20 @@ case class TransformerServiceArea (
             if (("" != triplet.srcAttr.area_label) && ("" == triplet.dstAttr.area_label))
             {
                 if (debug && log.isDebugEnabled)
-                    log.debug (s"${triplet.attr.id} ${triplet.srcAttr.toString} ---> ${triplet.dstAttr.toString}")
-                Iterator ((triplet.dstId, VertexData (triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
+                    log.debug(s"${triplet.attr.id} ${triplet.srcAttr.toString} ---> ${triplet.dstAttr.toString}")
+                Iterator((triplet.dstId, VertexData(triplet.srcAttr.area_label, triplet.dstAttr.island_label)))
             }
             else
                 if (("" == triplet.srcAttr.area_label) && ("" != triplet.dstAttr.area_label))
                 {
                     if (debug && log.isDebugEnabled)
-                        log.debug (s"${triplet.attr.id} ${triplet.dstAttr.toString} ---> ${triplet.srcAttr.toString}")
-                    Iterator ((triplet.srcId, VertexData (triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
+                        log.debug(s"${triplet.attr.id} ${triplet.dstAttr.toString} ---> ${triplet.srcAttr.toString}")
+                    Iterator((triplet.srcId, VertexData(triplet.dstAttr.area_label, triplet.srcAttr.island_label)))
                 }
                 else
                     if (("" != triplet.srcAttr.area_label) && ("" != triplet.dstAttr.area_label) && (triplet.srcAttr.area_label != triplet.dstAttr.area_label))
                     {
-                        log.error (s"""transformer service areas "${triplet.srcAttr.area_label}" and "${triplet.dstAttr.area_label}" are connected""")
+                        log.error(s"""transformer service areas "${triplet.srcAttr.area_label}" and "${triplet.dstAttr.area_label}" are connected""")
                         Iterator.empty
                     }
                     else
@@ -314,9 +314,9 @@ case class TransformerServiceArea (
     def merge_message (a: VertexData, b: VertexData): VertexData =
     {
         if (debug && log.isDebugEnabled)
-            log.debug (s"${a.toString} >-< ${b.toString}")
+            log.debug(s"${a.toString} >-< ${b.toString}")
         if (a.area_label != b.area_label)
-            log.error (s"""island "${a.island_label}" is serviced by two transformers (${a.area_label}, ${b.area_label}""")
+            log.error(s"""island "${a.island_label}" is serviced by two transformers (${a.area_label}, ${b.area_label}""")
         a
     }
 
@@ -338,28 +338,28 @@ case class TransformerServiceArea (
         // save nodes and edges to HDFS and use the newly read RDD to make the graph
         val graph = session.sparkContext.getCheckpointDir match
         {
-            case Some (directory) =>
-                edges.checkpoint ()
-                nodes.checkpoint ()
-                val root = if (!directory.endsWith ("/")) s"$directory/" else directory
-                val magic = Random.nextInt (99999999)
+            case Some(directory) =>
+                edges.checkpoint()
+                nodes.checkpoint()
+                val root = if (!directory.endsWith("/")) s"$directory/" else directory
+                val magic = Random.nextInt(99999999)
                 val e = s"${root}edges_$magic"
                 val n = s"${root}nodes_$magic"
-                edges.saveAsObjectFile (e)
-                nodes.saveAsObjectFile (n)
-                val _edges: RDD[Edge[EdgeData]] = session.sparkContext.objectFile (e)
-                val _nodes: RDD[(VertexId, VertexData)] = session.sparkContext.objectFile (n)
-                Graph (_nodes, _edges, VertexData (), storage_level, storage_level)
+                edges.saveAsObjectFile(e)
+                nodes.saveAsObjectFile(n)
+                val _edges: RDD[Edge[EdgeData]] = session.sparkContext.objectFile(e)
+                val _nodes: RDD[(VertexId, VertexData)] = session.sparkContext.objectFile(n)
+                Graph(_nodes, _edges, VertexData(), storage_level, storage_level)
             case None =>
-                Graph (nodes, edges, VertexData (), storage_level, storage_level)
+                Graph(nodes, edges, VertexData(), storage_level, storage_level)
         }
 
         // traverse the graph with the Pregel algorithm
         // assigns the area_label (the source transformer set name) to all "connected" islands (joined by closed switches)
         // Note: on the first pass through the Pregel algorithm all nodes get a null message
         graph
-            .pregel[VertexData](VertexData (), 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message)
-            .persist (storage_level)
+            .pregel[VertexData](VertexData(), 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message)
+            .persist(storage_level)
     }
 
     def hasIslands: Boolean = !topological_island_rdd.isEmpty
@@ -371,13 +371,13 @@ case class TransformerServiceArea (
      */
     def getTransformerServiceAreas: RDD[(String, String)] =
     {
-        log.info ("tracing transformer service areas")
+        log.info("tracing transformer service areas")
         val graph = identifyTransformerServiceAreas
-        log.info ("mapping islands to transformer service areas")
-        val candidates = graph.vertices.filter ("" != _._2.area_label)
-        val pairs = candidates.map (v => (v._2.island_label, v._2.area_label)).distinct // (islandid, areaid)
-        val areas = island_trafoset_rdd.join (pairs).values.map (_.swap) // (areaid, trafosetname)
-        pairs.map (_.swap).join (areas).values.distinct.persist (storage_level) // (islandid, trafosetname)
+        log.info("mapping islands to transformer service areas")
+        val candidates = graph.vertices.filter("" != _._2.area_label)
+        val pairs = candidates.map(v => (v._2.island_label, v._2.area_label)).distinct // (islandid, areaid)
+        val areas = island_trafoset_rdd.join(pairs).values.map(_.swap) // (areaid, trafosetname)
+        pairs.map(_.swap).join(areas).values.distinct.persist(storage_level) // (islandid, trafosetname)
     }
 }
 
@@ -386,12 +386,12 @@ object TransformerServiceArea
     /**
      * Index of normalOpen field in Switch bitmask.
      */
-    val normalOpenMask: Int = Switch.fields.indexOf ("normalOpen")
+    val normalOpenMask: Int = Switch.fields.indexOf("normalOpen")
 
     /**
      * Index of open field in Switch bitmask.
      */
-    val openMask: Int = Switch.fields.indexOf ("open")
+    val openMask: Int = Switch.fields.indexOf("open")
 
     /**
      * Edge data for transformer service area processing.

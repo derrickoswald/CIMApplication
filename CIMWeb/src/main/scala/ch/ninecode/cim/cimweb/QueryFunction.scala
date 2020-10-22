@@ -47,31 +47,31 @@ import com.datastax.spark.connector._
 
 case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = "", cassandra_table_name: String = "") extends CIMWebFunction
 {
-    jars = Array (
-        jarForObject (this),
-        jarForObject (com.datastax.oss.driver.api.core.ConsistencyLevel.ANY)) // spark-cassandra-connector.jar
+    jars = Array(
+        jarForObject(this),
+        jarForObject(com.datastax.oss.driver.api.core.ConsistencyLevel.ANY)) // spark-cassandra-connector.jar
 
     def packRow (row: Row): JsonObjectBuilder =
     {
         val ret = Json.createObjectBuilder
         for (column <- row.schema.fields.indices)
         {
-            val name = row.schema (column).name
-            row.schema (column).dataType.typeName match
+            val name = row.schema(column).name
+            row.schema(column).dataType.typeName match
             {
-                case "boolean" => if (!row.isNullAt (column)) ret.add (name, row.getBoolean (column))
-                case "byte" => if (!row.isNullAt (column)) ret.add (name, row.getByte (column))
-                case "calendarinterval" => if (!row.isNullAt (column)) ret.add (name, row.get (column).toString)
-                case "decimal" => if (!row.isNullAt (column)) ret.add (name, row.getDouble (column))
-                case "double" => if (!row.isNullAt (column)) ret.add (name, row.getDouble (column))
-                case "float" => if (!row.isNullAt (column)) ret.add (name, row.getFloat (column))
-                case "integer" => if (!row.isNullAt (column)) ret.add (name, row.getInt (column))
-                case "long" => if (!row.isNullAt (column)) ret.add (name, row.getLong (column))
-                case "short" => if (!row.isNullAt (column)) ret.add (name, row.getShort (column))
-                case "string" => if (!row.isNullAt (column)) ret.add (name, row.getString (column))
-                case "struct" => if (!row.isNullAt (column)) ret.add (name, packRow (row.getAs[Row](column)))
-                case "timestamp" => if (!row.isNullAt (column)) ret.add (name, row.getTimestamp (column).getTime)
-                case _ => if (!row.isNullAt (column)) ret.add (name, row.get (column).toString)
+                case "boolean" => if (!row.isNullAt(column)) ret.add(name, row.getBoolean(column))
+                case "byte" => if (!row.isNullAt(column)) ret.add(name, row.getByte(column))
+                case "calendarinterval" => if (!row.isNullAt(column)) ret.add(name, row.get(column).toString)
+                case "decimal" => if (!row.isNullAt(column)) ret.add(name, row.getDouble(column))
+                case "double" => if (!row.isNullAt(column)) ret.add(name, row.getDouble(column))
+                case "float" => if (!row.isNullAt(column)) ret.add(name, row.getFloat(column))
+                case "integer" => if (!row.isNullAt(column)) ret.add(name, row.getInt(column))
+                case "long" => if (!row.isNullAt(column)) ret.add(name, row.getLong(column))
+                case "short" => if (!row.isNullAt(column)) ret.add(name, row.getShort(column))
+                case "string" => if (!row.isNullAt(column)) ret.add(name, row.getString(column))
+                case "struct" => if (!row.isNullAt(column)) ret.add(name, packRow(row.getAs[Row](column)))
+                case "timestamp" => if (!row.isNullAt(column)) ret.add(name, row.getTimestamp(column).getTime)
+                case _ => if (!row.isNullAt(column)) ret.add(name, row.get(column).toString)
             }
         }
 
@@ -82,20 +82,20 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
     {
         datatype match
         {
-            case ASCII => classOf [String]
-            case BIGINT => classOf [Long]
+            case ASCII => classOf[String]
+            case BIGINT => classOf[Long]
             //            case BLOB =>
-            case BOOLEAN => classOf [Boolean]
-            case COUNTER => classOf [Long]
-            case DECIMAL => classOf [Double]
-            case DOUBLE => classOf [Double]
-            case FLOAT => classOf [Double]
+            case BOOLEAN => classOf[Boolean]
+            case COUNTER => classOf[Long]
+            case DECIMAL => classOf[Double]
+            case DOUBLE => classOf[Double]
+            case FLOAT => classOf[Double]
             //            case INET =>
-            case INT => classOf [Integer]
-            case TEXT => classOf [String]
-            case TIMESTAMP => classOf [Date]
+            case INT => classOf[Integer]
+            case TEXT => classOf[String]
+            case TIMESTAMP => classOf[Date]
             //            case UUID => if (!row.isNull (index)) ret.add (name, row.getString (index))
-            case VARINT => classOf [Integer]
+            case VARINT => classOf[Integer]
             //            case TIMEUUID =>
             //            case LIST =>
             //            case SET =>
@@ -103,11 +103,11 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
             //            case CUSTOM =>
             //            case UDT =>
             //            case TUPLE =>
-            case SMALLINT => classOf [Integer]
-            case TINYINT => classOf [Integer]
-            case DATE => classOf [Date]
-            case TIME => classOf [Time]
-            case _ => classOf [String] // BLOB, CUSTOM, INET, LIST, MAP, SET, TIMEUUID, TUPLE, UDT, UUID
+            case SMALLINT => classOf[Integer]
+            case TINYINT => classOf[Integer]
+            case DATE => classOf[Date]
+            case TIME => classOf[Time]
+            case _ => classOf[String] // BLOB, CUSTOM, INET, LIST, MAP, SET, TIMEUUID, TUPLE, UDT, UUID
         }
     }
 
@@ -118,57 +118,57 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
         for (index <- 0 until definitions.size)
         {
             //column: ColumnDefinitions.Definition
-            val definition = definitions.get (index)
+            val definition = definitions.get(index)
             val name: String = definition.getName.toString // column.getName
             val typ: DataType = definition.getType // column.getType
             typ match
             {
-                case ASCII => if (!row.isNull (index)) ret.add (name, row.getString (index))
-                case BIGINT => if (!row.isNull (index)) ret.add (name, row.getLong (index))
+                case ASCII => if (!row.isNull(index)) ret.add(name, row.getString(index))
+                case BIGINT => if (!row.isNull(index)) ret.add(name, row.getLong(index))
                 case BLOB =>
-                    if (!row.isNull (index))
+                    if (!row.isNull(index))
                     {
-                        val bytes = row.getByteBuffer (index)
-                        val encoded = Base64.getEncoder.encode (bytes)
-                        val string = new String (encoded.array, StandardCharsets.US_ASCII)
-                        ret.add (name, string)
+                        val bytes = row.getByteBuffer(index)
+                        val encoded = Base64.getEncoder.encode(bytes)
+                        val string = new String(encoded.array, StandardCharsets.US_ASCII)
+                        ret.add(name, string)
                     }
-                case BOOLEAN => if (!row.isNull (index)) ret.add (name, row.getBoolean (index))
-                case COUNTER => if (!row.isNull (index)) ret.add (name, row.getLong (index)) // ToDo: counter?
-                case DECIMAL => if (!row.isNull (index)) ret.add (name, row.getDouble (index))
-                case DOUBLE => if (!row.isNull (index)) ret.add (name, row.getDouble (index))
-                case FLOAT => if (!row.isNull (index)) ret.add (name, row.getDouble (index))
-                case INET => if (!row.isNull (index)) ret.add (name, row.getInetAddress (index).toString) // ToDo: internet address?
-                case INT => if (!row.isNull (index)) ret.add (name, row.getInt (index))
-                case TEXT => if (!row.isNull (index)) ret.add (name, row.getString (index))
-                case TIMESTAMP => if (!row.isNull (index)) ret.add (name, row.getInstant (index).toEpochMilli)
-                case UUID => if (!row.isNull (index)) ret.add (name, row.getString (index))
-                case VARINT => if (!row.isNull (index)) ret.add (name, row.getInt (index)) // ToDo: varying int?
-                case TIMEUUID => if (!row.isNull (index)) ret.add (name, row.getString (index))
-                case lt: ListType => if (!row.isNull (index))
+                case BOOLEAN => if (!row.isNull(index)) ret.add(name, row.getBoolean(index))
+                case COUNTER => if (!row.isNull(index)) ret.add(name, row.getLong(index)) // ToDo: counter?
+                case DECIMAL => if (!row.isNull(index)) ret.add(name, row.getDouble(index))
+                case DOUBLE => if (!row.isNull(index)) ret.add(name, row.getDouble(index))
+                case FLOAT => if (!row.isNull(index)) ret.add(name, row.getDouble(index))
+                case INET => if (!row.isNull(index)) ret.add(name, row.getInetAddress(index).toString) // ToDo: internet address?
+                case INT => if (!row.isNull(index)) ret.add(name, row.getInt(index))
+                case TEXT => if (!row.isNull(index)) ret.add(name, row.getString(index))
+                case TIMESTAMP => if (!row.isNull(index)) ret.add(name, row.getInstant(index).toEpochMilli)
+                case UUID => if (!row.isNull(index)) ret.add(name, row.getString(index))
+                case VARINT => if (!row.isNull(index)) ret.add(name, row.getInt(index)) // ToDo: varying int?
+                case TIMEUUID => if (!row.isNull(index)) ret.add(name, row.getString(index))
+                case lt: ListType => if (!row.isNull(index))
                 {
                     val c1 = lt.getElementType
-                    val list = row.getList (name, getDataTypeClass (c1))
+                    val list = row.getList(name, getDataTypeClass(c1))
                     val array = Json.createArrayBuilder
-                    list.asScala.foreach (x => array.add (x.toString))
-                    ret.add (name, array)
+                    list.asScala.foreach(x => array.add(x.toString))
+                    ret.add(name, array)
                 }
-                case _: SetType => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: set?
-                case mt: MapType => if (!row.isNull (index))
+                case _: SetType => if (!row.isNull(index)) ret.add(name, row.getString(index)) // ToDo: set?
+                case mt: MapType => if (!row.isNull(index))
                 {
                     val c1 = mt.getKeyType
                     val c2 = mt.getValueType
-                    val map = row.getMap (index, getDataTypeClass (c1), getDataTypeClass (c2))
-                    val obj = map.entrySet.asScala.foldLeft (Json.createObjectBuilder)((b, x) => b.add (x.getKey.toString, x.getValue.toString))
-                    ret.add (name, obj)
+                    val map = row.getMap(index, getDataTypeClass(c1), getDataTypeClass(c2))
+                    val obj = map.entrySet.asScala.foldLeft(Json.createObjectBuilder)((b, x) => b.add(x.getKey.toString, x.getValue.toString))
+                    ret.add(name, obj)
                 }
-                case _: CustomType => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: custom?
-                case _: UserDefinedType => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: udt?
-                case _: TupleType => if (!row.isNull (index)) ret.add (name, row.getString (index)) // ToDo: tuple?
-                case SMALLINT => if (!row.isNull (index)) ret.add (name, row.getInt (index))
-                case TINYINT => if (!row.isNull (index)) ret.add (name, row.getInt (index))
-                case DATE => if (!row.isNull (index)) ret.add (name, new Date (row.getInstant (index).toEpochMilli).toString)
-                case TIME => if (!row.isNull (index)) ret.add (name, new Time (row.getInstant (index).toEpochMilli).toString)
+                case _: CustomType => if (!row.isNull(index)) ret.add(name, row.getString(index)) // ToDo: custom?
+                case _: UserDefinedType => if (!row.isNull(index)) ret.add(name, row.getString(index)) // ToDo: udt?
+                case _: TupleType => if (!row.isNull(index)) ret.add(name, row.getString(index)) // ToDo: tuple?
+                case SMALLINT => if (!row.isNull(index)) ret.add(name, row.getInt(index))
+                case TINYINT => if (!row.isNull(index)) ret.add(name, row.getInt(index))
+                case DATE => if (!row.isNull(index)) ret.add(name, new Date(row.getInstant(index).toEpochMilli).toString)
+                case TIME => if (!row.isNull(index)) ret.add(name, new Time(row.getInstant(index).toEpochMilli).toString)
             }
         }
         ret
@@ -178,21 +178,21 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
     {
         val response = Json.createArrayBuilder
         if (cassandra)
-            CassandraConnector (spark.sparkContext.getConf).withSessionDo
+            CassandraConnector(spark.sparkContext.getConf).withSessionDo
             {
                 session =>
-                    val resultset: ResultSet = session.execute (sql)
+                    val resultset: ResultSet = session.execute(sql)
                     for (row: com.datastax.oss.driver.api.core.cql.Row <- resultset.iterator.asScala)
-                        response.add (packRow2 (row))
+                        response.add(packRow2(row))
             }
         else
         {
-            val df: DataFrame = spark.sql (sql)
+            val df: DataFrame = spark.sql(sql)
             if ("" != table_name)
             {
                 val _ = df
-                    .cache ()
-                    .createOrReplaceTempView (table_name)
+                    .cache()
+                    .createOrReplaceTempView(table_name)
             }
             if ("" != cassandra_table_name)
             {
@@ -201,18 +201,18 @@ case class QueryFunction (sql: String, cassandra: Boolean, table_name: String = 
                 if ((len == 7) || (len == 11))
                 {
                     if (len == 7)
-                        rows.map (row => (row.getString (row.fieldIndex ("mrid")), row.getString (row.fieldIndex ("type")), row.getString (row.fieldIndex ("time")), row.getInt (row.fieldIndex ("interval")), row.getDouble (row.fieldIndex ("real_a")), row.getDouble (row.fieldIndex ("imag_a")), row.getString (row.fieldIndex ("units")))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "units"))
+                        rows.map(row => (row.getString(row.fieldIndex("mrid")), row.getString(row.fieldIndex("type")), row.getString(row.fieldIndex("time")), row.getInt(row.fieldIndex("interval")), row.getDouble(row.fieldIndex("real_a")), row.getDouble(row.fieldIndex("imag_a")), row.getString(row.fieldIndex("units")))).saveToCassandra("cimapplication", cassandra_table_name, SomeColumns("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "units"))
                     else
                         if (len == 11)
-                            rows.map (row => (row.getString (row.fieldIndex ("mrid")), row.getString (row.fieldIndex ("type")), row.getString (row.fieldIndex ("time")), row.getInt (row.fieldIndex ("interval")), row.getDouble (row.fieldIndex ("real_a")), row.getDouble (row.fieldIndex ("imag_a")), row.getDouble (row.fieldIndex ("real_b")), row.getDouble (row.fieldIndex ("imag_b")), row.getDouble (row.fieldIndex ("real_c")), row.getDouble (row.fieldIndex ("imag_c")), row.getString (row.fieldIndex ("units")))).saveToCassandra ("cimapplication", cassandra_table_name, SomeColumns ("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "units"))
+                            rows.map(row => (row.getString(row.fieldIndex("mrid")), row.getString(row.fieldIndex("type")), row.getString(row.fieldIndex("time")), row.getInt(row.fieldIndex("interval")), row.getDouble(row.fieldIndex("real_a")), row.getDouble(row.fieldIndex("imag_a")), row.getDouble(row.fieldIndex("real_b")), row.getDouble(row.fieldIndex("imag_b")), row.getDouble(row.fieldIndex("real_c")), row.getDouble(row.fieldIndex("imag_c")), row.getString(row.fieldIndex("units")))).saveToCassandra("cimapplication", cassandra_table_name, SomeColumns("mrid", "type", "date", "time", "interval", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c", "units"))
                 }
                 else
                 // ToDo: need an error mechanism
-                    println ("""Cassandra format error: RDD has rows of %d columns, not 7, or 11 ("mrid", "type", "time", "period", "real_a", "imag_a", ..., "units")""".format (rows.first.length))
+                    println("""Cassandra format error: RDD has rows of %d columns, not 7, or 11 ("mrid", "type", "time", "period", "real_a", "imag_a", ..., "units")""".format(rows.first.length))
             }
             val results = df.collectAsList
             for (row <- results.asScala)
-                response.add (packRow (row))
+                response.add(packRow(row))
         }
         response.build
     }

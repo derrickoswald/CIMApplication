@@ -62,32 +62,32 @@ abstract class Branch (val from: String, val to: String, val current: Double)
 
     def reverse: Branch
 
-    @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     def add_in_series (that: Branch): Branch =
     {
-        val i = Math.max (current, that.current)
+        val i = Math.max(current, that.current)
         if (to == that.from)
-            Branch (from, that.to, i, this.seq ++ that.seq)
+            Branch(from, that.to, i, this.seq ++ that.seq)
         else
             if (from == that.to)
-                Branch (that.from, to, i, that.seq ++ this.seq)
+                Branch(that.from, to, i, that.seq ++ this.seq)
             else
                 if (to == that.to)
-                    Branch (from, that.from, i, this.seq ++ that.seq.reverse)
+                    Branch(from, that.from, i, this.seq ++ that.seq.reverse)
                 else
                     if (from == that.from)
-                        Branch (that.to, to, i, that.seq.reverse ++ this.seq)
+                        Branch(that.to, to, i, that.seq.reverse ++ this.seq)
                     else
-                        throw new IllegalArgumentException (s"branches are not in series (${this}, ${that})")
+                        throw new IllegalArgumentException(s"branches are not in series (${this}, ${that})")
     }
 
-    @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     def add_in_parallel (those: Iterable[Branch]): Branch =
     {
-        if (those.forall (x => to == x.to && from == x.from))
-            Branch (from, to, current + those.map (_.current).sum, this.iter ++ those.flatMap (x => x.iter))
+        if (those.forall(x => to == x.to && from == x.from))
+            Branch(from, to, current + those.map(_.current).sum, this.iter ++ those.flatMap(x => x.iter))
         else
-            throw new IllegalArgumentException (s"branches are not in parallel (${this}, ${those.map (_.toString).mkString (", ")})")
+            throw new IllegalArgumentException(s"branches are not in parallel (${this}, ${those.map(_.toString).mkString(", ")})")
     }
 
     // ratios of currents with the branch that the portion applies to
@@ -103,7 +103,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
     /**
      * Check if a fuse would blow given the short circuit power and the network of cables and fuses.
      *
-     * @param ik short-circuit current to check against
+     * @param ik      short-circuit current to check against
      * @param options the options containing cmin and the fuse table
      * @return tuple with a boolean <code>true</code> if the network would change because of the short circuit, or <code>false</code> if it would not,
      *         and either the remaining network with the change, or the original network if there would be no change
@@ -124,7 +124,7 @@ abstract class Branch (val from: String, val to: String, val current: Double)
  */
 case class SimpleBranch (override val from: String, override val to: String, override val current: Double, mRID: String,
     name: String, rating: Option[Double] = None, standard: String,
-    z: Impedanzen = Impedanzen (0.0, 0.0, 0.0, 0.0)) extends Branch (from, to, current)
+    z: Impedanzen = Impedanzen(0.0, 0.0, 0.0, 0.0)) extends Branch(from, to, current)
 {
     override def toString: String =
     {
@@ -140,52 +140,52 @@ case class SimpleBranch (override val from: String, override val to: String, ove
     {
         rating match
         {
-            case Some (amps) => s"@$amps"
+            case Some(amps) => s"@$amps"
             case _ => ""
         }
     }
 
     def asString: String = s"$mRID$ratingString"
 
-    def asFuse: String = rating.getOrElse (0.0).toInt.toString
+    def asFuse: String = rating.getOrElse(0.0).toInt.toString
 
     def asId: String = if (rating.isDefined) mRID else ""
 
-    def seq: Seq[SimpleBranch] = Seq (this)
+    def seq: Seq[SimpleBranch] = Seq(this)
 
-    def iter: Iterable[SimpleBranch] = Iterable (this)
+    def iter: Iterable[SimpleBranch] = Iterable(this)
 
     def isFuse: Boolean = rating.isDefined
 
-    def lastFuses: Iterable[Branch] = Seq (this)
+    def lastFuses: Iterable[Branch] = Seq(this)
 
-    def justFuses: Option[Branch] = if (isFuse) Some (this) else None
+    def justFuses: Option[Branch] = if (isFuse) Some(this) else None
 
-    def reverse: Branch = SimpleBranch (to, from, current, mRID, name, rating, standard, z)
+    def reverse: Branch = SimpleBranch(to, from, current, mRID, name, rating, standard, z)
 
-    def ratios: Iterable[(Double, Branch)] = List ((1.0, this))
+    def ratios: Iterable[(Double, Branch)] = List((1.0, this))
 
     def voltageRatio: Double = 1.0
 
     def z (in: Impedanzen): Impedanzen = in + z
 
-    def contents: Iterable[SimpleBranch] = Iterable (this)
+    def contents: Iterable[SimpleBranch] = Iterable(this)
 
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
         if (isFuse)
         {
-            val _rating = rating.getOrElse (Double.MaxValue)
+            val _rating = rating.getOrElse(Double.MaxValue)
             if (0.0 == _rating)
                 (false, None)
             else
-                if (options.fuse_table.fuse (ik, standard) >= _rating)
+                if (options.fuse_table.fuse(ik, standard) >= _rating)
                     (true, None)
                 else
-                    (false, Some (this))
+                    (false, Some(this))
         }
         else
-            (false, Some (this))
+            (false, Some(this))
     }
 }
 
@@ -200,7 +200,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
  * @param pu      the per unit impedance
  */
 case class TransformerBranch (override val from: String, override val to: String, override val current: Double, mRID: String, name: String,
-    s: Double, vfrom: Double, vto: Double, pu: Complex) extends Branch (from, to, current)
+    s: Double, vfrom: Double, vto: Double, pu: Complex) extends Branch(from, to, current)
 {
     override def toString: String =
     {
@@ -218,27 +218,27 @@ case class TransformerBranch (override val from: String, override val to: String
 
     def asId: String = ""
 
-    def seq: Seq[TransformerBranch] = Seq (this)
+    def seq: Seq[TransformerBranch] = Seq(this)
 
-    def iter: Iterable[TransformerBranch] = Iterable (this)
+    def iter: Iterable[TransformerBranch] = Iterable(this)
 
     def isFuse: Boolean = false
 
-    def lastFuses: Iterable[Branch] = Seq ()
+    def lastFuses: Iterable[Branch] = Seq()
 
     def justFuses: Option[Branch] = None
 
-    def reverse: Branch = TransformerBranch (to, from, current, mRID, name, s, vto, vfrom, pu)
+    def reverse: Branch = TransformerBranch(to, from, current, mRID, name, s, vto, vfrom, pu)
 
-    def ratios: Iterable[(Double, Branch)] = List ((1.0, this))
+    def ratios: Iterable[(Double, Branch)] = List((1.0, this))
 
     def voltageRatio: Double = vto / vfrom
 
-    def contents: Iterable[TransformerBranch] = Iterable (this)
+    def contents: Iterable[TransformerBranch] = Iterable(this)
 
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
-        (false, Some (this))
+        (false, Some(this))
     }
 
     def z (in: Impedanzen): Impedanzen =
@@ -248,7 +248,7 @@ case class TransformerBranch (override val from: String, override val to: String
         val ratio = vto / vfrom
         val ratio2 = ratio * ratio
         // use r0=r1 & x0=x1 for trafos, assume the temperature effects are negligible
-        in * ratio2 + Impedanzen (secondary_z, secondary_z, secondary_z, secondary_z)
+        in * ratio2 + Impedanzen(secondary_z, secondary_z, secondary_z, secondary_z)
     }
 }
 
@@ -260,32 +260,32 @@ case class TransformerBranch (override val from: String, override val to: String
  * @param current the current through this branch in the GridLAB-D experiment
  * @param series  the branches in series, in order
  */
-case class SeriesBranch (override val from: String, override val to: String, override val current: Double, series: Seq[Branch]) extends Branch (from, to, current)
+case class SeriesBranch (override val from: String, override val to: String, override val current: Double, series: Seq[Branch]) extends Branch(from, to, current)
 {
-    override def toString: String = s"""SeriesBranch ("$from" ⇒ "$to" ${current}A ${series.map (_.toString).mkString ("+")})"""
+    override def toString: String = s"""SeriesBranch ("$from" ⇒ "$to" ${current}A ${series.map(_.toString).mkString("+")})"""
 
-    def asString: String = series.map (_.asString).mkString ("(", ",", ")")
+    def asString: String = series.map(_.asString).mkString("(", ",", ")")
 
-    def asFuse: String = series.map (_.asFuse).mkString ("(", ",", ")")
+    def asFuse: String = series.map(_.asFuse).mkString("(", ",", ")")
 
-    def asId: String = series.map (_.asId).mkString ("(", ",", ")")
+    def asId: String = series.map(_.asId).mkString("(", ",", ")")
 
     def seq: Seq[Branch] = series
 
-    def iter: Iterable[Branch] = Iterable (this)
+    def iter: Iterable[Branch] = Iterable(this)
 
     def lastFuses: Iterable[Branch] =
     {
         series.lastOption match
         {
-            case Some (last) => last.lastFuses
-            case _ => Seq ()
+            case Some(last) => last.lastFuses
+            case _ => Seq()
         }
     }
 
     def justFuses: Option[Branch] =
     {
-        val fuses = series.flatMap (_.justFuses)
+        val fuses = series.flatMap(_.justFuses)
         fuses.toList match
         {
             case Nil =>
@@ -294,33 +294,33 @@ case class SeriesBranch (override val from: String, override val to: String, ove
                 single match
                 {
                     case b: SimpleBranch =>
-                        Some (SimpleBranch (from, to, current, b.mRID, b.name, b.rating, b.standard, b.z))
+                        Some(SimpleBranch(from, to, current, b.mRID, b.name, b.rating, b.standard, b.z))
                     case p: ParallelBranch =>
-                        Some (ParallelBranch (from, to, current, p.parallel))
+                        Some(ParallelBranch(from, to, current, p.parallel))
                     case s: SeriesBranch =>
-                        Some (SeriesBranch (from, to, current, s.series))
+                        Some(SeriesBranch(from, to, current, s.series))
                     case c: ComplexBranch =>
-                        Some (ComplexBranch (from, to, current, c.basket))
+                        Some(ComplexBranch(from, to, current, c.basket))
                 }
             case _ =>
-                Some (SeriesBranch (from, to, current, fuses))
+                Some(SeriesBranch(from, to, current, fuses))
         }
     }
 
-    def reverse: Branch = SeriesBranch (to, from, current, series.reverse.map (_.reverse))
+    def reverse: Branch = SeriesBranch(to, from, current, series.reverse.map(_.reverse))
 
     def ratios: Iterable[(Double, Branch)] =
     {
         series.lastOption match
         {
-            case Some (last) => last.ratios
-            case _ => Seq ()
+            case Some(last) => last.ratios
+            case _ => Seq()
         }
     }
 
-    def voltageRatio: Double = seq.foldLeft (1.0)((v, branch) => v * branch.voltageRatio)
+    def voltageRatio: Double = seq.foldLeft(1.0)((v, branch) => v * branch.voltageRatio)
 
-    def z (in: Impedanzen): Impedanzen = seq.foldLeft (in)((z, branch) => branch.z (z))
+    def z (in: Impedanzen): Impedanzen = seq.foldLeft(in)((z, branch) => branch.z(z))
 
     def contents: Iterable[Branch] = series
 
@@ -331,31 +331,31 @@ case class SeriesBranch (override val from: String, override val to: String, ove
         {
             val (blown, br) = arg
             if (blown)
-                Some (arg)
+                Some(arg)
             else
                 br match
                 {
-                    case Some (branch) =>
+                    case Some(branch) =>
                         branch.justFuses match
                         {
-                            case Some (b) => Some ((blown, Some (b)))
+                            case Some(b) => Some((blown, Some(b)))
                             case None => None
                         }
-                    case None => Some (arg)
+                    case None => Some(arg)
                 }
         }
 
-        val new_series: List[(Boolean, Option[Branch])] = series.map (_.checkFuses (ik, options)).flatMap (fuses).toList
+        val new_series: List[(Boolean, Option[Branch])] = series.map(_.checkFuses(ik, options)).flatMap(fuses).toList
         new_series match
         {
             case Nil =>
-                (false, Some (this))
+                (false, Some(this))
             case _ :+ last =>
                 val blows = last._1
                 if (blows)
                     (blows, None)
                 else
-                    (false, Some (this))
+                    (false, Some(this))
         }
     }
 }
@@ -368,25 +368,25 @@ case class SeriesBranch (override val from: String, override val to: String, ove
  * @param current  the current through this branch in the GridLAB-D experiment
  * @param parallel the branches in parallel, in no particular order
  */
-case class ParallelBranch (override val from: String, override val to: String, override val current: Double, parallel: Iterable[Branch]) extends Branch (from, to, current)
+case class ParallelBranch (override val from: String, override val to: String, override val current: Double, parallel: Iterable[Branch]) extends Branch(from, to, current)
 {
-    override def toString: String = s"""ParallelBranch ("$from" ⇒ "$to" ${current}A ${parallel.map (_.toString).mkString ("[", ",", "]")})"""
+    override def toString: String = s"""ParallelBranch ("$from" ⇒ "$to" ${current}A ${parallel.map(_.toString).mkString("[", ",", "]")})"""
 
-    def asString: String = parallel.map (_.asString).mkString ("[", ",", "]")
+    def asString: String = parallel.map(_.asString).mkString("[", ",", "]")
 
-    def asFuse: String = parallel.map (_.asFuse).mkString ("[", ",", "]")
+    def asFuse: String = parallel.map(_.asFuse).mkString("[", ",", "]")
 
-    def asId: String = parallel.map (_.asId).mkString ("[", ",", "]")
+    def asId: String = parallel.map(_.asId).mkString("[", ",", "]")
 
-    def seq: Seq[ParallelBranch] = Seq (this)
+    def seq: Seq[ParallelBranch] = Seq(this)
 
     def iter: Iterable[Branch] = parallel
 
-    def lastFuses: Iterable[Branch] = parallel.flatMap (_.lastFuses)
+    def lastFuses: Iterable[Branch] = parallel.flatMap(_.lastFuses)
 
     def justFuses: Option[Branch] =
     {
-        val fuses = parallel.flatMap (_.justFuses)
+        val fuses = parallel.flatMap(_.justFuses)
         fuses.toList match
         {
             case Nil =>
@@ -395,48 +395,48 @@ case class ParallelBranch (override val from: String, override val to: String, o
                 single match
                 {
                     case b: SimpleBranch =>
-                        Some (SimpleBranch (from, to, current, b.mRID, b.name, b.rating, b.standard, b.z))
+                        Some(SimpleBranch(from, to, current, b.mRID, b.name, b.rating, b.standard, b.z))
                     case p: ParallelBranch =>
-                        Some (ParallelBranch (from, to, current, p.parallel))
+                        Some(ParallelBranch(from, to, current, p.parallel))
                     case s: SeriesBranch =>
-                        Some (SeriesBranch (from, to, current, s.series))
+                        Some(SeriesBranch(from, to, current, s.series))
                     case c: ComplexBranch =>
-                        Some (ComplexBranch (from, to, current, c.basket))
+                        Some(ComplexBranch(from, to, current, c.basket))
                 }
             case _ =>
-                Some (ParallelBranch (from, to, current, fuses))
+                Some(ParallelBranch(from, to, current, fuses))
         }
     }
 
-    def reverse: Branch = ParallelBranch (to, from, current, parallel.map (_.reverse))
+    def reverse: Branch = ParallelBranch(to, from, current, parallel.map(_.reverse))
 
     def ratios: Iterable[(Double, Branch)] =
     {
-        val currents = parallel.map (_.current)
+        val currents = parallel.map(_.current)
         val sum = currents.sum
         if (0.0 == sum)
         {
             // use impedances
-            val impedance = z (Impedanzen ()).impedanz_low.modulus
+            val impedance = z(Impedanzen()).impedanz_low.modulus
             if (0.0 != impedance)
-                parallel.map (branch => (impedance / branch.z (Impedanzen ()).impedanz_low.modulus, branch)) // ToDo: use vector math
+                parallel.map(branch => (impedance / branch.z(Impedanzen()).impedanz_low.modulus, branch)) // ToDo: use vector math
             else
-                parallel.map (x => (1.0 / parallel.size, x)) // split equally
+                parallel.map(x => (1.0 / parallel.size, x)) // split equally
         }
         else
-            parallel.map (x => (x.current / sum, x))
+            parallel.map(x => (x.current / sum, x))
     }
 
     // assume each branch has unity voltage ratio or the same voltage ratio
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
-    def voltageRatio: Double = parallel.head.iter.foldLeft (1.0)((v, branch) => v * branch.voltageRatio)
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
+    def voltageRatio: Double = parallel.head.iter.foldLeft(1.0)((v, branch) => v * branch.voltageRatio)
 
     def z (in: Impedanzen): Impedanzen =
     {
-        val pz = parallel.map (_.z (Impedanzen ()))
-        pz.reduceOption ((z1, z2) => z1.parallel (z2)) match
+        val pz = parallel.map(_.z(Impedanzen()))
+        pz.reduceOption((z1, z2) => z1.parallel(z2)) match
         {
-            case Some (z) => in + z
+            case Some(z) => in + z
             case None => in
         }
     }
@@ -445,28 +445,28 @@ case class ParallelBranch (override val from: String, override val to: String, o
 
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
-        val new_parallel = ratios.map (
+        val new_parallel = ratios.map(
             pair =>
             {
                 val (fraction, branch) = pair
-                val current = fraction * Math.abs (ik)
+                val current = fraction * Math.abs(ik)
                 if (current.isNaN)
                     (false, None)
                 else
-                    branch.checkFuses (current, options)
+                    branch.checkFuses(current, options)
             }
         )
-        val blows = new_parallel.exists (_._1)
+        val blows = new_parallel.exists(_._1)
         if (blows)
         {
-            val remaining = new_parallel.flatMap (_._2)
+            val remaining = new_parallel.flatMap(_._2)
             if (remaining.nonEmpty)
-                (blows, Some (ParallelBranch (from, to, current, remaining)))
+                (blows, Some(ParallelBranch(from, to, current, remaining)))
             else
                 (blows, None)
         }
         else
-            (false, Some (this))
+            (false, Some(this))
     }
 }
 
@@ -478,17 +478,17 @@ case class ParallelBranch (override val from: String, override val to: String, o
  * @param current the current through this branch in the GridLAB-D experiment
  * @param basket  the branches in no particular order
  */
-case class ComplexBranch (override val from: String, override val to: String, override val current: Double, basket: Array[Branch]) extends Branch (from, to, current)
+case class ComplexBranch (override val from: String, override val to: String, override val current: Double, basket: Array[Branch]) extends Branch(from, to, current)
 {
-    override def toString: String = s"""ComplexBranch ("$from" ⇒ "$to" ${current}A ${basket.map (_.toString).mkString ("[", ",", "]")})"""
+    override def toString: String = s"""ComplexBranch ("$from" ⇒ "$to" ${current}A ${basket.map(_.toString).mkString("[", ",", "]")})"""
 
-    def asString: String = basket.map (_.asString).mkString ("{", ",", "}")
+    def asString: String = basket.map(_.asString).mkString("{", ",", "}")
 
-    def asFuse: String = basket.map (_.asFuse).mkString ("{", ",", "}")
+    def asFuse: String = basket.map(_.asFuse).mkString("{", ",", "}")
 
-    def asId: String = basket.map (_.asId).mkString ("{", ",", "}")
+    def asId: String = basket.map(_.asId).mkString("{", ",", "}")
 
-    def seq: Seq[ComplexBranch] = Seq (this)
+    def seq: Seq[ComplexBranch] = Seq(this)
 
     def iter: Iterable[Branch] = basket
 
@@ -496,38 +496,38 @@ case class ComplexBranch (override val from: String, override val to: String, ov
     {
         justFuses match
         {
-            case Some (fuses) => Seq (fuses)
-            case None => Seq ()
+            case Some(fuses) => Seq(fuses)
+            case None => Seq()
         }
     }
 
     def justFuses: Option[Branch] =
     {
-        val fuses = basket.flatMap (_.justFuses)
+        val fuses = basket.flatMap(_.justFuses)
         if (1 == fuses.length)
             fuses.head match
             {
                 case b: SimpleBranch =>
-                    Some (SimpleBranch (from, to, current, b.mRID, b.name, b.rating, b.standard, b.z))
+                    Some(SimpleBranch(from, to, current, b.mRID, b.name, b.rating, b.standard, b.z))
                 case p: ParallelBranch =>
-                    Some (ParallelBranch (from, to, current, p.parallel))
+                    Some(ParallelBranch(from, to, current, p.parallel))
                 case s: SeriesBranch =>
-                    Some (SeriesBranch (from, to, current, s.series))
+                    Some(SeriesBranch(from, to, current, s.series))
                 case c: ComplexBranch =>
-                    Some (ComplexBranch (from, to, current, c.basket))
+                    Some(ComplexBranch(from, to, current, c.basket))
             }
         else
             if (fuses.nonEmpty)
-                Some (ComplexBranch (from, to, current, fuses))
+                Some(ComplexBranch(from, to, current, fuses))
             else
                 None
     }
 
-    def reverse: Branch = ComplexBranch (to, from, current, basket.map (_.reverse))
+    def reverse: Branch = ComplexBranch(to, from, current, basket.map(_.reverse))
 
-    def ratios: Iterable[(Double, Branch)] = basket.map (x => (x.current / current, x))
+    def ratios: Iterable[(Double, Branch)] = basket.map(x => (x.current / current, x))
 
-    def voltageRatio: Double = basket.foldLeft (1.0)((v, branch) => v * branch.voltageRatio)
+    def voltageRatio: Double = basket.foldLeft(1.0)((v, branch) => v * branch.voltageRatio)
 
     /**
      * NOTE: this is totally wrong. It just puts a upper and lower bound on the actual impedance.
@@ -537,51 +537,51 @@ case class ComplexBranch (override val from: String, override val to: String, ov
     def z (in: Impedanzen): Impedanzen =
     {
         // compute the lowest impedance as three parallel branch circuits (this will be used for the low temperature values)
-        var low_impedance = Impedanzen (0.0, 0.0, 0.0, 0.0)
-        val start_branches = basket.filter (_.from == from)
-        if (0 != start_branches.length) low_impedance = low_impedance + (if (1 < start_branches.length) ParallelBranch (from, to, 0.0, start_branches) else SeriesBranch (from, to, 0.0, start_branches)).z (in)
-        val middle_branches = basket.filter (x => x.from != from && x.to != to)
-        if (0 != middle_branches.length) low_impedance = low_impedance + (if (1 < middle_branches.length) ParallelBranch (from, to, 0.0, middle_branches) else SeriesBranch (from, to, 0.0, middle_branches)).z (in)
-        val end_branches = basket.filter (_.to == to)
-        if (0 != end_branches.length) low_impedance = low_impedance + (if (1 < end_branches.length) ParallelBranch (from, to, 0.0, end_branches) else SeriesBranch (from, to, 0.0, end_branches)).z (in)
+        var low_impedance = Impedanzen(0.0, 0.0, 0.0, 0.0)
+        val start_branches = basket.filter(_.from == from)
+        if (0 != start_branches.length) low_impedance = low_impedance + (if (1 < start_branches.length) ParallelBranch(from, to, 0.0, start_branches) else SeriesBranch(from, to, 0.0, start_branches)).z(in)
+        val middle_branches = basket.filter(x => x.from != from && x.to != to)
+        if (0 != middle_branches.length) low_impedance = low_impedance + (if (1 < middle_branches.length) ParallelBranch(from, to, 0.0, middle_branches) else SeriesBranch(from, to, 0.0, middle_branches)).z(in)
+        val end_branches = basket.filter(_.to == to)
+        if (0 != end_branches.length) low_impedance = low_impedance + (if (1 < end_branches.length) ParallelBranch(from, to, 0.0, end_branches) else SeriesBranch(from, to, 0.0, end_branches)).z(in)
         // compute the highest impedance as series branches (this will be used for the high temperature values)
-        val high_impedance = SeriesBranch (from, to, 0.0, basket).z (in)
+        val high_impedance = SeriesBranch(from, to, 0.0, basket).z(in)
         // take the worst case from both
-        Impedanzen (low_impedance.impedanz_low, low_impedance.null_impedanz_low, high_impedance.impedanz_high, high_impedance.null_impedanz_high)
+        Impedanzen(low_impedance.impedanz_low, low_impedance.null_impedanz_low, high_impedance.impedanz_high, high_impedance.null_impedanz_high)
     }
 
     def contents: Iterable[Branch] = basket
 
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
-        val new_complex = ratios.map (
+        val new_complex = ratios.map(
             pair =>
             {
                 val (fraction, branch) = pair
-                val current = fraction * Math.abs (ik)
+                val current = fraction * Math.abs(ik)
                 if (current.isNaN)
                     (false, None)
                 else
-                    branch.checkFuses (current, options)
+                    branch.checkFuses(current, options)
             }
         )
-        val blows = new_complex.exists (_._1)
+        val blows = new_complex.exists(_._1)
         if (blows)
-            (blows, Some (ComplexBranch (from, to, current, new_complex.flatMap (_._2).toArray)))
+            (blows, Some(ComplexBranch(from, to, current, new_complex.flatMap(_._2).toArray)))
         else
-            (false, Some (this))
+            (false, Some(this))
     }
 }
 
 object Branch
 {
-    def apply (from: String, to: String, current: Double, mRID: String, name: String, standard: String, rating: Option[Double]): SimpleBranch = SimpleBranch (from, to, current, mRID, name, rating, standard)
+    def apply (from: String, to: String, current: Double, mRID: String, name: String, standard: String, rating: Option[Double]): SimpleBranch = SimpleBranch(from, to, current, mRID, name, rating, standard)
 
-    def apply (from: String, to: String, current: Double, mRID: String, name: String, s: Double, vfrom: Double, vto: Double, pu: Complex): TransformerBranch = TransformerBranch (from, to, current, mRID, name, s, vfrom, vto, pu)
+    def apply (from: String, to: String, current: Double, mRID: String, name: String, s: Double, vfrom: Double, vto: Double, pu: Complex): TransformerBranch = TransformerBranch(from, to, current, mRID, name, s, vfrom, vto, pu)
 
-    def apply (from: String, to: String, current: Double, series: Seq[Branch]): SeriesBranch = SeriesBranch (from, to, current, series)
+    def apply (from: String, to: String, current: Double, series: Seq[Branch]): SeriesBranch = SeriesBranch(from, to, current, series)
 
-    def apply (from: String, to: String, current: Double, parallel: Iterable[Branch]): ParallelBranch = ParallelBranch (from, to, current, parallel)
+    def apply (from: String, to: String, current: Double, parallel: Iterable[Branch]): ParallelBranch = ParallelBranch(from, to, current, parallel)
 
-    def apply (from: String, to: String, current: Double, basket: Array[Branch]): ComplexBranch = ComplexBranch (from, to, current, basket)
+    def apply (from: String, to: String, current: Double, basket: Array[Branch]): ComplexBranch = ComplexBranch(from, to, current, basket)
 }

@@ -22,11 +22,11 @@ import ch.ninecode.util.Sparkable
  * @param station_transformer_csv mapping between station and transformer file
  */
 case class NetworkParametersOptions (
-    var main_options: MainOptions = MainOptions (),
-    var spark_options: SparkOptions = SparkOptions (),
-    var cim_options: CIMReaderOptions = CIMReaderOptions (
+    var main_options: MainOptions = MainOptions(),
+    var spark_options: SparkOptions = SparkOptions(),
+    var cim_options: CIMReaderOptions = CIMReaderOptions(
         topology = true,
-        topology_options = CIMTopologyOptions (
+        topology_options = CIMTopologyOptions(
             identify_islands = true,
             force_retain_switches = Unforced,
             force_retain_fuses = ForceTrue,
@@ -36,4 +36,4 @@ case class NetworkParametersOptions (
     export: String = "",
     available_power_csv: String = "",
     station_transformer_csv: String = ""
-)  extends Mainable with Sparkable with CIMAble
+) extends Mainable with Sparkable with CIMAble

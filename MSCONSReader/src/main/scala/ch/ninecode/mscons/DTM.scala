@@ -104,49 +104,49 @@ case class DTM (
             //        Calendar date including time with minutes: C=Century;
             //        Y=Year; M=Month; D=Day; H=Hour; M=Minutes.
 
-            case Some ("203") =>
+            case Some("203") =>
                 // Calendar date including time with minutes: C=Century;
                 // Y=Year; M=Month; D=Day; H=Hour; M=Minutes.
                 // 201912140000
                 text match
                 {
-                    case Some (string) =>
+                    case Some(string) =>
                         val code = "CCYYMMDDHHMM"
                         val value: String = if (string.length > code.length)
                         {
                             //                            log.warning (s"DTM text '$string' exceeds code length of '$code'")
-                            println (s"DTM text '$string' exceeds code length of '$code'")
-                            string.substring (0, code.length)
+                            println(s"DTM text '$string' exceeds code length of '$code'")
+                            string.substring(0, code.length)
                         }
                         else
                             if (string.length < code.length)
                             {
                                 //                            log.warning (s"DTM text '$string' subceeds code length of '$code'")
-                                println (s"DTM text '$string' subceeds code length of '$code'")
-                                (text :: List.fill (string.length - code.length)("0")).mkString ("")
+                                println(s"DTM text '$string' subceeds code length of '$code'")
+                                (text :: List.fill(string.length - code.length)("0")).mkString("")
                             }
                             else
                                 string
 
                         val pattern = "yyyyMMddHHmm"
-                        val format = new SimpleDateFormat (pattern)
+                        val format = new SimpleDateFormat(pattern)
                         val date = try
                         {
-                            format.parse (value)
+                            format.parse(value)
                         }
                         catch
                         {
                             case pe: ParseException =>
                                 //                                log.warning (s"DTM text '$value' cannot be parsed (${pe.getLocalizedMessage}) as format code ${formatCode.get} = '$code'")
-                                println (s"DTM text '$value' cannot be parsed (${pe.getLocalizedMessage}) as format code 203 = '$code'")
+                                println(s"DTM text '$value' cannot be parsed (${pe.getLocalizedMessage}) as format code 203 = '$code'")
                                 Calendar.getInstance.getTime
                         }
-                        val calendar = Calendar.getInstance ()
-                        calendar.setTimeInMillis (date.getTime)
+                        val calendar = Calendar.getInstance()
+                        calendar.setTimeInMillis(date.getTime)
                         calendar
                     case None =>
-                        println (s"DTM has no text")
-                        Calendar.getInstance ()
+                        println(s"DTM has no text")
+                        Calendar.getInstance()
                 }
 
             //        204   CCYYMMDDHHMMSS
@@ -169,31 +169,31 @@ case class DTM (
             //        303   CCYYMMDDHHMMZZZ
             //        See 203 plus Z=Time zone.
 
-            case Some ("303") =>
+            case Some("303") =>
                 // See 203 plus Z=Time zone.
                 text match
                 {
-                    case Some (string) =>
+                    case Some(string) =>
                         val code = "CCYYMMDDHHMMZZ"
                         val pattern = "yyyyMMddHHmmX"
-                        val format = new SimpleDateFormat (pattern)
+                        val format = new SimpleDateFormat(pattern)
                         val date = try
                         {
-                            format.parse (string)
+                            format.parse(string)
                         }
                         catch
                         {
                             case pe: ParseException =>
                                 //                                log.warning (s"DTM text '$string' cannot be parsed (${pe.getLocalizedMessage}) as format code {formatCode.get} = '$code'")
-                                println (s"DTM text '$string' cannot be parsed (${pe.getLocalizedMessage}) as format code 303 = '$code'")
+                                println(s"DTM text '$string' cannot be parsed (${pe.getLocalizedMessage}) as format code 303 = '$code'")
                                 Calendar.getInstance.getTime
                         }
-                        val calendar = Calendar.getInstance ()
-                        calendar.setTimeInMillis (date.getTime)
+                        val calendar = Calendar.getInstance()
+                        calendar.setTimeInMillis(date.getTime)
                         calendar
                     case None =>
-                        println (s"DTM has no text")
-                        Calendar.getInstance ()
+                        println(s"DTM has no text")
+                        Calendar.getInstance()
                 }
             //        304   CCYYMMDDHHMMSSZZZ
             //        See 204 plus Z=Time zone.
@@ -418,26 +418,26 @@ case class DTM (
 
             case _ =>
                 //              log.warning (s"DTM unsupported formatCode '$formatCode'")
-                println (s"DTM unsupported formatCode '$formatCode'")
-                Calendar.getInstance ()
+                println(s"DTM unsupported formatCode '$formatCode'")
+                Calendar.getInstance()
         }
     }
 }
 
 object DTM extends FieldExtractor[DTM]
 {
-    private lazy val c507_2005 = alphanumeric (3)
-    private lazy val c507_2380 = alphanumeric_? (35)
-    private lazy val c507_2379 = alphanumeric_? (3)
+    private lazy val c507_2005 = alphanumeric(3)
+    private lazy val c507_2380 = alphanumeric_?(35)
+    private lazy val c507_2379 = alphanumeric_?(3)
 
     // Note, we construct the DTM here directly rather than encapsulating the subfields in a Date_Time_Period case class
     private lazy val c507 =
-        subfields (
+        subfields(
             c507_2005 ~ c507_2380 ~ c507_2379 ^^
-                { case c507_2005 ~ c507_2380 ~ c507_2379 => DTM (c507_2005, c507_2380, c507_2379) }
+                { case c507_2005 ~ c507_2380 ~ c507_2379 => DTM(c507_2005, c507_2380, c507_2379) }
         )
 
-    lazy val dtm_fields: Parser[DTM] = fields (c507).named ("DTM")
+    lazy val dtm_fields: Parser[DTM] = fields(c507).named("DTM")
 
     override def phrase: Parser[DTM] = dtm_fields
 }

@@ -21,10 +21,10 @@ object LogLevels extends Enumeration
  */
 case class MSCONSOptions
 (
-    var main_options: MainOptions = MainOptions (),
+    var main_options: MainOptions = MainOptions(),
     verbose: Boolean = false,
     log_level: LogLevels.Value = LogLevels.OFF,
     output_file: String = "",
     delimiter: String = " ",
-    mscons: Seq[String] = Seq ()
+    mscons: Seq[String] = Seq()
 ) extends Mainable

@@ -48,14 +48,14 @@ case class ViewFunction (
     resolution: Double = 1.0e-4
 ) extends CIMWebFunction with CIMRDD
 {
-    jars = Array (jarForObject (this))
+    jars = Array(jarForObject(this))
 
     override def getReturnType: Return = Return.String
 
     override def executeString (spark: SparkSession): String =
     {
         implicit val session: SparkSession = spark
-        implicit val log: Logger = LoggerFactory.getLogger (getClass)
+        implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
         val epsilon = 5 * dougPeukFactor * resolution
 
@@ -68,16 +68,16 @@ case class ViewFunction (
 
         def preparePositionPoints: RDD[(String, List[PositionPointPlus])] =
         {
-            val pp: RDD[PositionPointPlus] = get [PositionPoint].map (p => PositionPointPlus (p, p.xPosition.toDouble, p.yPosition.toDouble))
-            pp.filter (inside).groupBy (_.pp.Location).mapValues (_.toList.sortBy (_.pp.sequenceNumber))
+            val pp: RDD[PositionPointPlus] = get[PositionPoint].map(p => PositionPointPlus(p, p.xPosition.toDouble, p.yPosition.toDouble))
+            pp.filter(inside).groupBy(_.pp.Location).mapValues(_.toList.sortBy(_.pp.sequenceNumber))
         }
 
         def calcLotrecht (firstPoint: PositionPointPlus, lastPoint: PositionPointPlus, curPoint: PositionPointPlus): Double =
         {
             val deltaX = lastPoint.x - firstPoint.x
             val deltaY = lastPoint.y - firstPoint.y
-            val zah = Math.abs (deltaY * curPoint.x - deltaX * curPoint.y + lastPoint.x * firstPoint.y - lastPoint.y * firstPoint.x)
-            val nen = Math.sqrt (deltaY * deltaY + deltaX * deltaX)
+            val zah = Math.abs(deltaY * curPoint.x - deltaX * curPoint.y + lastPoint.x * firstPoint.y - lastPoint.y * firstPoint.x)
+            val nen = Math.sqrt(deltaY * deltaY + deltaX * deltaX)
             zah / nen
         }
 
@@ -87,12 +87,12 @@ case class ViewFunction (
             list match
             {
                 case head +: middle :+ last =>
-                    val (dmax, index) = middle.zipWithIndex.foldLeft ((Double.MinPositiveValue, 0))(
+                    val (dmax, index) = middle.zipWithIndex.foldLeft((Double.MinPositiveValue, 0))(
                         (current: (Double, Int), next: (PositionPointPlus, Int)) =>
                         {
                             val (dmax, _) = current
                             val (p, i) = next
-                            val d = calcLotrecht (head, last, p)
+                            val d = calcLotrecht(head, last, p)
                             if (d > dmax)
                                 (d, i + 1) // the head is removed, so +1
                             else
@@ -101,9 +101,9 @@ case class ViewFunction (
                     )
                     // if max distance is greater than epsilon, recursively simplify
                     if (dmax >= epsilon)
-                        douglasPeuker (list.take (index + 1)) ++ douglasPeuker (list.drop (index))
+                        douglasPeuker(list.take(index + 1)) ++ douglasPeuker(list.drop(index))
                     else
-                        List (head, last)
+                        List(head, last)
                 case _ =>
                     list // lists of less than three points
             }
@@ -111,7 +111,7 @@ case class ViewFunction (
 
         def to_elements (arg: ((ACLineSegment, List[PositionPointPlus]), Location)): List[Element] =
         {
-            arg._1._1.asInstanceOf [Element] :: arg._2.asInstanceOf [Element] :: arg._1._2.map (_.pp.asInstanceOf [Element])
+            arg._1._1.asInstanceOf[Element] :: arg._2.asInstanceOf[Element] :: arg._1._2.map(_.pp.asInstanceOf[Element])
         }
 
         val elements = if (all)
@@ -121,43 +121,43 @@ case class ViewFunction (
             // get the spatially filtered points
             val filteredOrderedPositions: RDD[(String, List[PositionPointPlus])] =
                 if (dougPeuk)
-                    preparePositionPoints.mapValues (douglasPeuker)
+                    preparePositionPoints.mapValues(douglasPeuker)
                 else
                     preparePositionPoints
-            log.debug ("points count %d".format (filteredOrderedPositions.count))
+            log.debug("points count %d".format(filteredOrderedPositions.count))
 
             // get the reduced lines
-            val lines: RDD[(String, ((ACLineSegment, List[PositionPointPlus]), Location))] = get [ACLineSegment].keyBy (_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.Location).join (filteredOrderedPositions).join (get [Location].keyBy (_.id))
+            val lines: RDD[(String, ((ACLineSegment, List[PositionPointPlus]), Location))] = get[ACLineSegment].keyBy(_.Conductor.ConductingEquipment.Equipment.PowerSystemResource.Location).join(filteredOrderedPositions).join(get[Location].keyBy(_.id))
             val numbLines = lines.count
-            log.debug ("lines count %d".format (numbLines))
+            log.debug("lines count %d".format(numbLines))
             val result: RDD[((ACLineSegment, List[PositionPointPlus]), Location)] =
                 if (reduceLines && (numbLines > maxLines))
-                    lines.values.sample (true, maxLines.toDouble / numbLines.toDouble)
+                    lines.values.sample(true, maxLines.toDouble / numbLines.toDouble)
                 else
                     lines.values
 
             // get the reduced element list - just lines, locations and positions
-            result.flatMap (to_elements)
+            result.flatMap(to_elements)
         }
 
         // write the reduced RDF
-        val file: Path = new Path ("/tmp/view.rdf")
-        val f: Path = new Path (hdfs.getUri.toString, file)
-        val _ = hdfs.delete (f, false)
-        log.info ("exporting %s".format (f.toString))
-        val export = new CIMExport (spark)
-        export.export (elements, f.toString)
+        val file: Path = new Path("/tmp/view.rdf")
+        val f: Path = new Path(hdfs.getUri.toString, file)
+        val _ = hdfs.delete(f, false)
+        log.info("exporting %s".format(f.toString))
+        val export = new CIMExport(spark)
+        export.export(elements, f.toString)
 
         // read the file
-        log.info ("reading %s".format (f.toString))
+        log.info("reading %s".format(f.toString))
         try
         {
-            val data = hdfs.open (f)
+            val data = hdfs.open(f)
             // ToDo: handle files bigger than 2GB
-            val size = hdfs.getFileStatus (f).getLen.toInt
+            val size = hdfs.getFileStatus(f).getLen.toInt
             val bytes = new Array[Byte](size)
-            data.readFully (0, bytes)
-            Text.decode (bytes, 0, size)
+            data.readFully(0, bytes)
+            Text.decode(bytes, 0, size)
         }
         catch
         {

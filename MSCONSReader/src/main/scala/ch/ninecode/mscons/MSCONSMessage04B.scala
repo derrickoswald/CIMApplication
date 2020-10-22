@@ -112,16 +112,16 @@ case class Group10 (
         val value = qty.quantity.toDouble
         dtm match
         {
-            case Some (list) =>
-                list.find (x => x.functionCodeQualifier == "163") match
+            case Some(list) =>
+                list.find(x => x.functionCodeQualifier == "163") match
                 {
-                    case Some (start) =>
-                        list.find (x => x.functionCodeQualifier == "164") match
+                    case Some(start) =>
+                        list.find(x => x.functionCodeQualifier == "164") match
                         {
-                            case Some (end) =>
+                            case Some(end) =>
                                 val s = start.getTime
                                 val e = end.getTime
-                                Some ((e, (e.getTimeInMillis - s.getTimeInMillis).toInt, value))
+                                Some((e, (e.getTimeInMillis - s.getTimeInMillis).toInt, value))
                             case _ =>
                                 None
                         }
@@ -224,7 +224,7 @@ case class MSCONSMessage04B (
      * Part 6-9: Mapping between the Common Information Model message profiles
      * (IEC 61968-9) and DLMS/COSEM (IEC 62056) data models and protocols
      */
-    lazy val obis: Pattern = java.util.regex.Pattern.compile ("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
+    lazy val obis: Pattern = java.util.regex.Pattern.compile("""^((\d+)-)*((\d+):)*(\d+)\.(\d+)(\.(\d+))*(\*(\d+))*$""")
 
     type ID = String
     type Quantity = String
@@ -255,7 +255,7 @@ case class MSCONSMessage04B (
      */
     def decode_obis (code: String): MeasurementFunctor =
     {
-        val matcher = obis.matcher (code)
+        val matcher = obis.matcher(code)
         val dMulti = 1000.0 // measurement type
         val defaultPowerName = "power"
         val defaultEnergyName = "energy"
@@ -263,10 +263,10 @@ case class MSCONSMessage04B (
         val defaultEnergyUnit = "Wh"
         if (matcher.find)
         {
-            if (1 == matcher.group (2).toInt) // Electricity related objects
+            if (1 == matcher.group(2).toInt) // Electricity related objects
             {
-                val quantity = matcher.group (5).toInt
-                val what = matcher.group (6).toInt
+                val quantity = matcher.group(5).toInt
+                val what = matcher.group(6).toInt
                 quantity match
                 {
                     // active power + = ΣL i Active power+
@@ -275,12 +275,12 @@ case class MSCONSMessage04B (
                         {
                             // last average
                             case 5 =>
-                                value: Double => (defaultPowerName, mul (value, dMulti), 0.0, defaultPowerUnit)
+                                value: Double => (defaultPowerName, mul(value, dMulti), 0.0, defaultPowerUnit)
                             // time integral 1 or Time integral 5
                             case 8 | 29 =>
-                                value: Double => (defaultEnergyName, mul (value, dMulti), 0.0, defaultEnergyUnit)
+                                value: Double => (defaultEnergyName, mul(value, dMulti), 0.0, defaultEnergyUnit)
                             case _ =>
-                                error (s"unrecognized Value group D $what in $code")
+                                error(s"unrecognized Value group D $what in $code")
                         }
                     // active power - = ΣL i Active power–
                     case 2 =>
@@ -288,12 +288,12 @@ case class MSCONSMessage04B (
                         {
                             // last average
                             case 5 =>
-                                value: Double => (defaultPowerName, mul (value, -dMulti), 0.0, defaultPowerUnit)
+                                value: Double => (defaultPowerName, mul(value, -dMulti), 0.0, defaultPowerUnit)
                             // Time integral 1 or Time integral 5
                             case 8 | 29 =>
-                                value: Double => (defaultEnergyName, mul (value, -dMulti), 0.0, defaultEnergyUnit)
+                                value: Double => (defaultEnergyName, mul(value, -dMulti), 0.0, defaultEnergyUnit)
                             case _ =>
-                                error (s"unrecognized Value group D $what in $code")
+                                error(s"unrecognized Value group D $what in $code")
                         }
                     // reactive power Q I = ΣL i Reactive power QI
                     case 5 =>
@@ -301,12 +301,12 @@ case class MSCONSMessage04B (
                         {
                             // last average
                             case 5 =>
-                                value: Double => (defaultPowerName, 0.0, mul (value, dMulti), defaultPowerUnit)
+                                value: Double => (defaultPowerName, 0.0, mul(value, dMulti), defaultPowerUnit)
                             // Time integral 1 or Time integral 5
                             case 8 | 29 =>
-                                value: Double => (defaultEnergyName, 0.0, mul (value, dMulti), defaultEnergyUnit)
+                                value: Double => (defaultEnergyName, 0.0, mul(value, dMulti), defaultEnergyUnit)
                             case _ =>
-                                error (s"unrecognized Value group D $what in $code")
+                                error(s"unrecognized Value group D $what in $code")
                         }
                     // reactive power Q II = ΣL i Reactive power QII
                     case 6 =>
@@ -314,12 +314,12 @@ case class MSCONSMessage04B (
                         {
                             // last average
                             case 5 =>
-                                value: Double => (defaultPowerName, 0.0, mul (value, dMulti), defaultPowerUnit)
+                                value: Double => (defaultPowerName, 0.0, mul(value, dMulti), defaultPowerUnit)
                             // Time integral 1 or Time integral 5
                             case 8 | 29 =>
-                                value: Double => (defaultEnergyName, 0.0, mul (value, dMulti), defaultEnergyUnit)
+                                value: Double => (defaultEnergyName, 0.0, mul(value, dMulti), defaultEnergyUnit)
                             case _ =>
-                                error (s"unrecognized Value group D $what in $code")
+                                error(s"unrecognized Value group D $what in $code")
                         }
                     // reactive power Q III = ΣL i Reactive power QIII
                     case 7 =>
@@ -327,12 +327,12 @@ case class MSCONSMessage04B (
                         {
                             // last average
                             case 5 =>
-                                value: Double => (defaultPowerName, 0.0, mul (value, -dMulti), defaultPowerUnit)
+                                value: Double => (defaultPowerName, 0.0, mul(value, -dMulti), defaultPowerUnit)
                             // Time integral 1 or Time integral 5
                             case 8 | 29 =>
-                                value: Double => (defaultEnergyName, 0.0, mul (value, -dMulti), defaultEnergyUnit)
+                                value: Double => (defaultEnergyName, 0.0, mul(value, -dMulti), defaultEnergyUnit)
                             case _ =>
-                                error (s"unrecognized Value group D $what in $code")
+                                error(s"unrecognized Value group D $what in $code")
                         }
                     // reactive power Q IV = ΣL i Reactive power QIV
                     case 8 =>
@@ -340,71 +340,71 @@ case class MSCONSMessage04B (
                         {
                             // last average
                             case 5 =>
-                                value: Double => (defaultPowerName, 0.0, mul (value, -dMulti), defaultPowerUnit)
+                                value: Double => (defaultPowerName, 0.0, mul(value, -dMulti), defaultPowerUnit)
                             // Time integral 1 or Time integral 5
                             case 8 | 29 =>
-                                value: Double => (defaultEnergyName, 0.0, mul (value, -dMulti), defaultEnergyUnit)
+                                value: Double => (defaultEnergyName, 0.0, mul(value, -dMulti), defaultEnergyUnit)
                             case _ =>
-                                error (s"unrecognized Value group D $what in $code")
+                                error(s"unrecognized Value group D $what in $code")
                         }
                     // error
                     case _ =>
-                        error (s"unrecognized Value group C $quantity in $code")
+                        error(s"unrecognized Value group C $quantity in $code")
                 }
             }
             else
-                error (s"'$code' is not an electric OBIS code")
+                error(s"'$code' is not an electric OBIS code")
         }
         else
-            error (s"'$code' has an OBIS code format error")
+            error(s"'$code' has an OBIS code format error")
     }
 
     def getReadings: List[(ID, Quantity, Time, Period, Real, Imaginary, Units)] =
     {
-        group5.flatMap (
-            _.group6.flatMap (
+        group5.flatMap(
+            _.group6.flatMap(
                 x =>
                 {
                     val id: ID = x.loc.locationIdentification match
                     {
-                        case Some (loc) => loc.locationIdentifier match
+                        case Some(loc) => loc.locationIdentifier match
                         {
-                            case Some (id) => id
+                            case Some(id) => id
                             case _ => ""
                         }
                         case _ => ""
                     }
                     val readings: Seq[(Quantity, Time, Period, Real, Imaginary, Units)] = x.group9 match
                     {
-                        case Some (groups) =>
-                            groups.flatMap (
+                        case Some(groups) =>
+                            groups.flatMap(
                                 y =>
                                 {
                                     val pia = y.pia match
                                     {
-                                        case Some (head :: _) => // ToDo: only look at the first?
+                                        case Some(head :: _) => // ToDo: only look at the first?
                                             head.itemNumberIdentification1.itemIdentifier match
                                             {
-                                                case Some (value) => value
+                                                case Some(value) => value
                                                 case None => ""
                                             }
                                         case _ => ""
                                     }
-                                    val fn = decode_obis (pia)
-                                    val quantities = y.group10.flatMap (_.getValue)
-                                    quantities.map (
+                                    val fn = decode_obis(pia)
+                                    val quantities = y.group10.flatMap(_.getValue)
+                                    quantities.map(
                                         z =>
                                         {
-                                            val (typ, real, imaginary, units) = fn (z._3)
+                                            val (typ, real, imaginary, units) = fn(z._3)
                                             (typ, z._1, z._2, real, imaginary, units)
                                         }
                                     )
                                 }
                             )
                         case _ =>
-                            Seq ()
+                            Seq()
                     }
-                    readings.map (y => (id, y._1, y._2, y._3, y._4, y._5, y._6))
+                    readings.map(y => (id, y._1, y._2, y._3, y._4, y._5, y._6))
                 }
             )
         )
@@ -417,72 +417,72 @@ object MSCONSMessage04B extends MSCONSMessage
     {
         list match
         {
-            case Some (_ :: _) => list
-            case Some (Nil) => None
+            case Some(_ :: _) => list
+            case Some(Nil) => None
             case None => None
         }
     }
 
-    lazy val bgm: Parser[BGM] = expect ("BGM", x => BGM (x))
-    lazy val dtm: Parser[DTM] = expect ("DTM", x => DTM (x))
-    lazy val dtms: Parser[Option[List[DTM]]] = repAtMostN (9, false, dtm).? ^^ (x => listNonEmpty (x))
-    lazy val cux: Parser[Option[CUX]] = expect ("CUX", x => CUX (x)).?
-    lazy val rff: Parser[RFF] = expect ("RFF", x => RFF (x))
-    lazy val group1: Parser[Option[List[Group1]]] = repAtMostN (9, false, rff ~ dtms).? ^^
-        (x => listNonEmpty (x).map (y => y.map ({ case rff ~ dtms => Group1 (rff, dtms) })))
+    lazy val bgm: Parser[BGM] = expect("BGM", x => BGM(x))
+    lazy val dtm: Parser[DTM] = expect("DTM", x => DTM(x))
+    lazy val dtms: Parser[Option[List[DTM]]] = repAtMostN(9, false, dtm).? ^^ (x => listNonEmpty(x))
+    lazy val cux: Parser[Option[CUX]] = expect("CUX", x => CUX(x)).?
+    lazy val rff: Parser[RFF] = expect("RFF", x => RFF(x))
+    lazy val group1: Parser[Option[List[Group1]]] = repAtMostN(9, false, rff ~ dtms).? ^^
+        (x => listNonEmpty(x).map(y => y.map({ case rff ~ dtms => Group1(rff, dtms) })))
 
-    lazy val nad: Parser[NAD] = expect ("NAD", x => NAD (x))
-    lazy val group3: Parser[Option[List[Group3]]] = repAtMostN (9, false, rff ~ dtms).? ^^
-        (x => listNonEmpty (x).map (y => y.map ({ case rff ~ dtms => Group3 (rff, dtms) })))
+    lazy val nad: Parser[NAD] = expect("NAD", x => NAD(x))
+    lazy val group3: Parser[Option[List[Group3]]] = repAtMostN(9, false, rff ~ dtms).? ^^
+        (x => listNonEmpty(x).map(y => y.map({ case rff ~ dtms => Group3(rff, dtms) })))
 
-    lazy val cta: Parser[CTA] = expect ("CTA", x => CTA (x))
-    lazy val com: Parser[COM] = expect ("COM", x => COM (x))
-    lazy val coms: Parser[Option[List[COM]]] = repAtMostN (9, false, com).? ^^ (x => listNonEmpty (x))
-    lazy val group4: Parser[Option[List[Group4]]] = repAtMostN (9, false, cta ~ coms).? ^^
-        (x => listNonEmpty (x).map (y => y.map ({ case cta ~ coms => Group4 (cta, coms) })))
+    lazy val cta: Parser[CTA] = expect("CTA", x => CTA(x))
+    lazy val com: Parser[COM] = expect("COM", x => COM(x))
+    lazy val coms: Parser[Option[List[COM]]] = repAtMostN(9, false, com).? ^^ (x => listNonEmpty(x))
+    lazy val group4: Parser[Option[List[Group4]]] = repAtMostN(9, false, cta ~ coms).? ^^
+        (x => listNonEmpty(x).map(y => y.map({ case cta ~ coms => Group4(cta, coms) })))
 
-    lazy val group2: Parser[Option[List[Group2]]] = repAtMostN (99, false, nad ~ group3 ~ group4).? ^^
-        (x => listNonEmpty (x).map (y => y.map ({ case nad ~ g3 ~ g4 => Group2 (nad, g3, g4) })))
+    lazy val group2: Parser[Option[List[Group2]]] = repAtMostN(99, false, nad ~ group3 ~ group4).? ^^
+        (x => listNonEmpty(x).map(y => y.map({ case nad ~ g3 ~ g4 => Group2(nad, g3, g4) })))
 
-    lazy val uns: Parser[UNS] = expect ("UNS", x => UNS (x))
+    lazy val uns: Parser[UNS] = expect("UNS", x => UNS(x))
 
-    lazy val group7: Parser[Option[List[Group7]]] = repAtMostN (99, false, rff ~ dtms).? ^^
-        (x => listNonEmpty (x).map (y => y.map ({ case rff ~ dtms => Group7 (rff, dtms) })))
+    lazy val group7: Parser[Option[List[Group7]]] = repAtMostN(99, false, rff ~ dtms).? ^^
+        (x => listNonEmpty(x).map(y => y.map({ case rff ~ dtms => Group7(rff, dtms) })))
 
-    lazy val group8: Parser[Option[List[Group8]]] = repAtMostN (99, false, cci ~ dtms).? ^^
-        (x => listNonEmpty (x).map (y => y.map ({ case cci ~ dtms => Group8 (cci, dtms) })))
+    lazy val group8: Parser[Option[List[Group8]]] = repAtMostN(99, false, cci ~ dtms).? ^^
+        (x => listNonEmpty(x).map(y => y.map({ case cci ~ dtms => Group8(cci, dtms) })))
 
-    lazy val qty: Parser[QTY] = expect ("QTY", x => QTY (x))
-    lazy val sts: Parser[STS] = expect ("STS", x => STS (x))
-    lazy val stss: Parser[Option[List[STS]]] = repAtMostN (9, false, sts).? ^^ (x => listNonEmpty (x))
-    lazy val group10: Parser[List[Group10]] = repAtMostN (9999, true, qty ~ dtms ~ stss) ^^
-        (g => g.map ({ case qty ~ dtms ~ stss => Group10 (qty, dtms, stss) }))
+    lazy val qty: Parser[QTY] = expect("QTY", x => QTY(x))
+    lazy val sts: Parser[STS] = expect("STS", x => STS(x))
+    lazy val stss: Parser[Option[List[STS]]] = repAtMostN(9, false, sts).? ^^ (x => listNonEmpty(x))
+    lazy val group10: Parser[List[Group10]] = repAtMostN(9999, true, qty ~ dtms ~ stss) ^^
+        (g => g.map({ case qty ~ dtms ~ stss => Group10(qty, dtms, stss) }))
 
-    lazy val cci: Parser[CCI] = expect ("CCI", x => CCI (x))
-    lazy val mea: Parser[MEA] = expect ("MEA", x => MEA (x))
-    lazy val meas: Parser[Option[List[MEA]]] = repAtMostN (99, false, mea).? ^^ (x => listNonEmpty (x))
-    lazy val group11: Parser[Option[List[Group11]]] = repAtMostN (99, false, cci ~ meas ~ dtms).? ^^
-        (x => listNonEmpty (x).map (y => y.map ({ case cci ~ meas ~ dtms => Group11 (cci, meas, dtms) })))
+    lazy val cci: Parser[CCI] = expect("CCI", x => CCI(x))
+    lazy val mea: Parser[MEA] = expect("MEA", x => MEA(x))
+    lazy val meas: Parser[Option[List[MEA]]] = repAtMostN(99, false, mea).? ^^ (x => listNonEmpty(x))
+    lazy val group11: Parser[Option[List[Group11]]] = repAtMostN(99, false, cci ~ meas ~ dtms).? ^^
+        (x => listNonEmpty(x).map(y => y.map({ case cci ~ meas ~ dtms => Group11(cci, meas, dtms) })))
 
-    lazy val lin: Parser[LIN] = expect ("LIN", x => LIN (x))
-    lazy val pia: Parser[PIA] = expect ("PIA", x => PIA (x))
-    lazy val pias: Parser[Option[List[PIA]]] = repAtMostN (9, false, pia).? ^^ (x => listNonEmpty (x))
-    lazy val group9: Parser[Option[List[Group9]]] = repAtMostN (99999, false, lin ~ pias ~ /* ... */ group10 ~ group11).? ^^
-        (x => listNonEmpty (x).map (y => y.map ({ case lin ~ pias ~ group10 ~ group11 => Group9 (lin, pias, group10, group11) })))
+    lazy val lin: Parser[LIN] = expect("LIN", x => LIN(x))
+    lazy val pia: Parser[PIA] = expect("PIA", x => PIA(x))
+    lazy val pias: Parser[Option[List[PIA]]] = repAtMostN(9, false, pia).? ^^ (x => listNonEmpty(x))
+    lazy val group9: Parser[Option[List[Group9]]] = repAtMostN(99999, false, lin ~ pias ~ /* ... */ group10 ~ group11).? ^^
+        (x => listNonEmpty(x).map(y => y.map({ case lin ~ pias ~ group10 ~ group11 => Group9(lin, pias, group10, group11) })))
 
-    lazy val loc: Parser[LOC] = expect ("LOC", x => LOC (x))
-    lazy val group6: Parser[List[Group6]] = repAtMostN (99999, true, loc ~ dtms ~ group7 ~ group8 ~ group9) ^^
-        (g => g.map ({ case loc ~ dtms ~ group7 ~ group8 ~ group9 => Group6 (loc, dtms, group7, group8, group9) }))
+    lazy val loc: Parser[LOC] = expect("LOC", x => LOC(x))
+    lazy val group6: Parser[List[Group6]] = repAtMostN(99999, true, loc ~ dtms ~ group7 ~ group8 ~ group9) ^^
+        (g => g.map({ case loc ~ dtms ~ group7 ~ group8 ~ group9 => Group6(loc, dtms, group7, group8, group9) }))
 
-    lazy val group5: Parser[List[Group5]] = repAtMostN (99999, true, nad ~ group6) ^^
-        (g => g.map ({ case nad ~ group6 => Group5 (nad, group6) }))
+    lazy val group5: Parser[List[Group5]] = repAtMostN(99999, true, nad ~ group6) ^^
+        (g => g.map({ case nad ~ group6 => Group5(nad, group6) }))
 
-    lazy val cnt: Parser[CNT] = expect ("CNT", x => CNT (x))
+    lazy val cnt: Parser[CNT] = expect("CNT", x => CNT(x))
 
-    lazy val unt: Parser[UNT] = expect ("UNT", x => UNT (x))
+    lazy val unt: Parser[UNT] = expect("UNT", x => UNT(x))
 
-    lazy val unz: Parser[UNZ] = expect ("UNZ", x => UNZ (x))
+    lazy val unz: Parser[UNZ] = expect("UNZ", x => UNZ(x))
 
     val phrase: Parser[MSCONSMessage04B] = bgm ~ dtm ~ cux ~ group1 ~ group2 ~ uns ~ group5 ~ cnt.? ~ unt ~ unz ^^
-        { case bgm ~ dtm ~ cux ~ group1 ~ group2 ~ uns ~ group5 ~ cnt ~ unt ~ unz => MSCONSMessage04B (bgm, dtm, cux, group1, group2, uns, group5, cnt, unt, unz) }
+        { case bgm ~ dtm ~ cux ~ group1 ~ group2 ~ uns ~ group5 ~ cnt ~ unt ~ unz => MSCONSMessage04B(bgm, dtm, cux, group1, group2, uns, group5, cnt, unt, unz) }
 }

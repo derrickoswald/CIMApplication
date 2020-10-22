@@ -15,7 +15,7 @@ import ch.ninecode.util.Graphable
  * @param branches         the network encountered on the path from the source to this node
  * @param errors           the list of errors and warnings encountered
  */
-@SuppressWarnings (Array ("org.wartremover.warts.Null"))
+@SuppressWarnings(Array("org.wartremover.warts.Null"))
 case class ScNode (
     id_seq: String = "",
     voltage: Double = 0.0,
@@ -27,7 +27,7 @@ case class ScNode (
     errors: List[ScError] = null)
     extends Graphable
 {
-    def fatalErrors: Boolean = (null != errors) && errors.exists (_.fatal)
+    def fatalErrors: Boolean = (null != errors) && errors.exists(_.fatal)
 
-    def invalidErrors: Boolean = (null != errors) && errors.exists (_.invalid)
+    def invalidErrors: Boolean = (null != errors) && errors.exists(_.invalid)
 }

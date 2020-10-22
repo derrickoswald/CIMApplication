@@ -11,15 +11,15 @@ trait CIMInitializer[T <: Mainable with Sparkable with CIMAble] extends SparkIni
 {
     def readCIM (session: SparkSession, options: T): Unit =
     {
-        time (s"read: %s seconds")
+        time(s"read: %s seconds")
         {
             val elements = session
                 .read
-                .format ("ch.ninecode.cim")
-                .options (options.cim_options.toMap)
-                .load (options.cim_options.files: _*)
+                .format("ch.ninecode.cim")
+                .options(options.cim_options.toMap)
+                .load(options.cim_options.files: _*)
                 .count
-            log.info (s"$elements elements")
+            log.info(s"$elements elements")
         }
     }
 }

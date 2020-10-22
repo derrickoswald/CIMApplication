@@ -65,7 +65,7 @@ case class IngestJob
     format: Formats.Value = Formats.Belvis,
     mode: Modes.Value = Modes.Overwrite,
     nocopy: Boolean = false,
-    datafiles: Seq[String] = Seq (),
+    datafiles: Seq[String] = Seq(),
     keyspace: String = "cimapplication",
     replication: Int = 1,
     aws_s3a_access_key: String = "",
@@ -78,55 +78,55 @@ case class IngestJob
 
         FACTORY_INSTANCE match
         {
-            case Some (writer) => writer
+            case Some(writer) => writer
             case None =>
-                val writer = Json.createWriterFactory (Map [String, AnyRef](JsonGenerator.PRETTY_PRINTING -> "true").asJava)
-                FACTORY_INSTANCE = Some (writer)
+                val writer = Json.createWriterFactory(Map[String, AnyRef](JsonGenerator.PRETTY_PRINTING -> "true").asJava)
+                FACTORY_INSTANCE = Some(writer)
                 writer
         }
     }
 
     def asTimeStamp (t: Long): String =
     {
-        val calendar: Calendar = Calendar.getInstance ()
-        calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
-        val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        iso_date_format.setCalendar (calendar)
+        val calendar: Calendar = Calendar.getInstance()
+        calendar.setTimeZone(TimeZone.getTimeZone("GMT"))
+        val iso_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        iso_date_format.setCalendar(calendar)
 
-        calendar.setTimeInMillis (t)
-        iso_date_format.format (calendar)
+        calendar.setTimeInMillis(t)
+        iso_date_format.format(calendar)
     }
 
     def asJson: String =
     {
         val files = Json.createArrayBuilder
-        datafiles.foreach (files.add)
+        datafiles.foreach(files.add)
         val json = Json.createObjectBuilder
-            .add ("mapping", mapping)
-            .add ("metercol", metercol)
-            .add ("mridcol", mridcol)
-            .add ("timezone", timezone)
-            .add ("timespan", Json.createObjectBuilder.add ("mintime", mintime).add ("maxtime", maxtime))
-            .add ("format", format.toString)
-            .add ("mode", mode.toString)
-            .add ("nocopy", nocopy)
-            .add ("datafiles", files)
-            .add ("keyspace", keyspace)
-            .add ("replication", replication)
-            .add ("aws_s3a_access_key", aws_s3a_access_key)
-            .add ("aws_s3a_secret_key", aws_s3a_secret_key)
+            .add("mapping", mapping)
+            .add("metercol", metercol)
+            .add("mridcol", mridcol)
+            .add("timezone", timezone)
+            .add("timespan", Json.createObjectBuilder.add("mintime", mintime).add("maxtime", maxtime))
+            .add("format", format.toString)
+            .add("mode", mode.toString)
+            .add("nocopy", nocopy)
+            .add("datafiles", files)
+            .add("keyspace", keyspace)
+            .add("replication", replication)
+            .add("aws_s3a_access_key", aws_s3a_access_key)
+            .add("aws_s3a_secret_key", aws_s3a_secret_key)
             .build
         val string = new StringWriter
-        val writer = getPrettyJsonWriterFactory.createWriter (string)
-        writer.write (json)
-        writer.close ()
+        val writer = getPrettyJsonWriterFactory.createWriter(string)
+        writer.write(json)
+        writer.close()
         string.toString
     }
 }
 
 object IngestJob
 {
-    lazy val log: Logger = LoggerFactory.getLogger (getClass)
+    lazy val log: Logger = LoggerFactory.getLogger(getClass)
 
     type objectParser[T] = (String, JsonObject) => Option[T]
 
@@ -137,24 +137,24 @@ object IngestJob
         try
         {
             try
-            Json.createReader (new StringReader (json)).readObject match
+            Json.createReader(new StringReader(json)).readObject match
             {
-                case obj: JsonObject => Some (obj)
+                case obj: JsonObject => Some(obj)
                 case _ =>
-                    log.error ("not a JsonObject")
+                    log.error("not a JsonObject")
                     None
             }
             catch
             {
                 case je: JsonException =>
-                    log.error (s"""unparseable as JSON (${je.getMessage})""")
+                    log.error(s"""unparseable as JSON (${je.getMessage})""")
                     None
             }
         }
         catch
         {
             case e: Exception =>
-                log.error (e.getMessage)
+                log.error(e.getMessage)
                 None
         }
     }
@@ -164,47 +164,47 @@ object IngestJob
     def parseTimespan (json: JsonObject): (Calendar, Calendar) =
     {
         val MEMBERNAME = "timespan"
-        val calendar0: Calendar = Calendar.getInstance ()
-        calendar0.setTimeZone (TimeZone.getTimeZone ("GMT"))
-        calendar0.setTimeInMillis (0L)
+        val calendar0: Calendar = Calendar.getInstance()
+        calendar0.setTimeZone(TimeZone.getTimeZone("GMT"))
+        calendar0.setTimeInMillis(0L)
         var mintime: Calendar = calendar0
-        val calendar1: Calendar = Calendar.getInstance ()
-        calendar1.setTimeZone (TimeZone.getTimeZone ("GMT"))
-        calendar1.setTimeInMillis (Long.MaxValue)
+        val calendar1: Calendar = Calendar.getInstance()
+        calendar1.setTimeZone(TimeZone.getTimeZone("GMT"))
+        calendar1.setTimeInMillis(Long.MaxValue)
         var maxtime: Calendar = calendar1
 
-        val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        iso_date_format.setCalendar (calendar0)
+        val iso_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        iso_date_format.setCalendar(calendar0)
 
         def iso_parse (s: String): Calendar =
         {
-            val ret = Calendar.getInstance ()
-            ret.setTime (iso_date_format.parse (s))
+            val ret = Calendar.getInstance()
+            ret.setTime(iso_date_format.parse(s))
             ret
         }
 
-        if (json.containsKey (MEMBERNAME))
+        if (json.containsKey(MEMBERNAME))
         {
-            val value = json.get (MEMBERNAME)
+            val value = json.get(MEMBERNAME)
             value match
             {
                 case obj: JsonObject =>
                     val interval = obj.asScala
                     interval.foreach
                     {
-                        case ("mintime", v: JsonString) => mintime = iso_parse (v.getString)
-                        case ("mintime", v: JsonNumber) => mintime.setTimeInMillis (v.longValue)
-                        case ("maxtime", v: JsonString) => maxtime = iso_parse (v.getString)
-                        case ("maxtime", v: JsonNumber) => maxtime.setTimeInMillis (v.longValue)
+                        case ("mintime", v: JsonString) => mintime = iso_parse(v.getString)
+                        case ("mintime", v: JsonNumber) => mintime.setTimeInMillis(v.longValue)
+                        case ("maxtime", v: JsonString) => maxtime = iso_parse(v.getString)
+                        case ("maxtime", v: JsonNumber) => maxtime.setTimeInMillis(v.longValue)
                         case (k: String, v: JsonValue) =>
-                            log.warn (s"""unexpected JSON member or type: $MEMBERNAME["$k"] of type "${typeString (v)}"""")
+                            log.warn(s"""unexpected JSON member or type: $MEMBERNAME["$k"] of type "${typeString(v)}"""")
                     }
                 case _ =>
-                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString (value)}")""")
+                    log.warn(s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString(value)}")""")
             }
         }
         else
-            log.warn (s"""JSON member "$MEMBERNAME" not found, using defaults""")
+            log.warn(s"""JSON member "$MEMBERNAME" not found, using defaults""")
 
         (mintime, maxtime)
     }
@@ -213,15 +213,15 @@ object IngestJob
     {
         val MEMBERNAME = "format"
 
-        if (json.containsKey (MEMBERNAME))
+        if (json.containsKey(MEMBERNAME))
         {
-            val value = json.get (MEMBERNAME)
+            val value = json.get(MEMBERNAME)
             value match
             {
                 case string: JsonString =>
-                    Formats.withName (string.getString)
+                    Formats.withName(string.getString)
                 case _ =>
-                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON string (type "${typeString (value)}")""")
+                    log.warn(s"""JSON member "$MEMBERNAME" is not a JSON string (type "${typeString(value)}")""")
                     Formats.Belvis
             }
         }
@@ -233,15 +233,15 @@ object IngestJob
     {
         val MEMBERNAME = "mode"
 
-        if (json.containsKey (MEMBERNAME))
+        if (json.containsKey(MEMBERNAME))
         {
-            val value = json.get (MEMBERNAME)
+            val value = json.get(MEMBERNAME)
             value match
             {
                 case string: JsonString =>
-                    Modes.withName (string.getString)
+                    Modes.withName(string.getString)
                 case _ =>
-                    log.warn (s"""JSON member "$MEMBERNAME" is not a JSON string (type "${typeString (value)}")""")
+                    log.warn(s"""JSON member "$MEMBERNAME" is not a JSON string (type "${typeString(value)}")""")
                     Modes.Overwrite
             }
         }
@@ -251,59 +251,59 @@ object IngestJob
 
     def parseArrayOfString (member: String, json: JsonObject): Seq[String] =
     {
-        if (json.containsKey (member))
+        if (json.containsKey(member))
         {
-            val value = json.get (member)
+            val value = json.get(member)
             if (value.getValueType == JsonValue.ValueType.ARRAY)
             {
                 value
                     .asJsonArray
                     .asScala
-                    .flatMap (
+                    .flatMap(
                         item =>
                             item match
                             {
-                                case string: JsonString => Some (string.getString)
+                                case string: JsonString => Some(string.getString)
                                 case _ =>
-                                    log.error (s"""unexpected JSON type for $member element ("${typeString (item)}")""")
+                                    log.error(s"""unexpected JSON type for $member element ("${typeString(item)}")""")
                                     None
                             }
                     )
             }
             else
             {
-                log.error (s"""unexpected JSON type for $member ("${typeString (value)}")""")
-                Seq ()
+                log.error(s"""unexpected JSON type for $member ("${typeString(value)}")""")
+                Seq()
             }
         }
         else
-            Seq ()
+            Seq()
     }
 
     def parseJob (options: IngestOptions)(json: JsonObject): Option[IngestJob] =
     {
-        val mapping = json.getString ("mapping", "")
+        val mapping = json.getString("mapping", "")
         if ("" == mapping)
         {
-            log.error (s"""mapping file not specified in ${options.ingestions.mkString (",")}""")
+            log.error(s"""mapping file not specified in ${options.ingestions.mkString(",")}""")
             None
         }
         else
         {
-            val metercol = json.getString ("metercol", "Messpunktbezeichnung")
-            val mridcol = json.getString ("mridcol", "NISNr")
-            val timezone = json.getString ("timezone", "Europe/Berlin")
-            val (mintime, maxtime) = parseTimespan (json)
-            val format = parseFormat (json)
-            val mode = parseMode (json)
-            val nocopy = json.getBoolean ("nocopy", false)
-            val datafiles = parseArrayOfString ("datafiles", json)
-            val keyspace = json.getString ("keyspace", "cimapplication")
-            val replication = json.getInt ("replication", 1)
-            val aws_s3a_access_key = json.getString ("aws_s3a_access_key", "")
-            val aws_s3a_secret_key = json.getString ("aws_s3a_secret_key", "")
+            val metercol = json.getString("metercol", "Messpunktbezeichnung")
+            val mridcol = json.getString("mridcol", "NISNr")
+            val timezone = json.getString("timezone", "Europe/Berlin")
+            val (mintime, maxtime) = parseTimespan(json)
+            val format = parseFormat(json)
+            val mode = parseMode(json)
+            val nocopy = json.getBoolean("nocopy", false)
+            val datafiles = parseArrayOfString("datafiles", json)
+            val keyspace = json.getString("keyspace", "cimapplication")
+            val replication = json.getInt("replication", 1)
+            val aws_s3a_access_key = json.getString("aws_s3a_access_key", "")
+            val aws_s3a_secret_key = json.getString("aws_s3a_secret_key", "")
 
-            Some (IngestJob (
+            Some(IngestJob(
                 mapping = mapping,
                 metercol = metercol,
                 mridcol = mridcol,
@@ -326,15 +326,15 @@ object IngestJob
     def getAll (options: IngestOptions): Seq[IngestJob] =
     {
         if (options.verbose)
-            LogManager.getLogger (getClass).setLevel (Level.INFO)
-        lazy val log = LoggerFactory.getLogger (getClass)
-        val jsons = options.ingestions.map (readJSON)
+            LogManager.getLogger(getClass).setLevel(Level.INFO)
+        lazy val log = LoggerFactory.getLogger(getClass)
+        val jsons = options.ingestions.map(readJSON)
         val ingestions = jsons.flatten
         if (jsons.length != ingestions.length)
-            log.warn ("not all ingestions will be processed")
-        val jobs = ingestions.flatMap (parseJob (options))
+            log.warn("not all ingestions will be processed")
+        val jobs = ingestions.flatMap(parseJob(options))
         if (ingestions.length != jobs.length)
-            log.warn ("some ingestion JSON files have errors")
+            log.warn("some ingestion JSON files have errors")
         jobs
     }
 }

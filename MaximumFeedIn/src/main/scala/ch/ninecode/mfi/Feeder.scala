@@ -18,5 +18,5 @@ case class Feeder (
 )
     extends Graphable
 {
-    lazy val vertex: VertexId = vertex_id (node)
+    lazy val vertex: VertexId = vertex_id(node)
 }

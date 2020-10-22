@@ -9,12 +9,12 @@ class BasicTest extends TestUtil
 {
     override val classesToRegister: Array[Class[_]] = new Array[Class[_]](0)
 
-    test ("try it")
+    test("try it")
     {
         session =>
             val workdir = "simulation/"
             val trafo = "BASIC"
-            val _ = new File (s"$workdir$trafo/output_data").mkdirs
+            val _ = new File(s"$workdir$trafo/output_data").mkdirs
             val contents =
                 s"""
 import os
@@ -115,25 +115,25 @@ if not os.path.exists(output_dir):
 timeseries_example(output_dir)
         """
 
-            val pw = new PrintWriter (new File (s"$workdir${trafo}/${trafo}.py"))
-            pw.write (contents)
-            pw.close ()
+            val pw = new PrintWriter(new File(s"$workdir${trafo}/${trafo}.py"))
+            pw.write(contents)
+            pw.close()
 
 
-            val files = session.sparkContext.parallelize (Seq (trafo))
-            val pp = PandaPower (session = session, workdir = workdir)
-            val result = pp.solve (files)
-            info (result.toString, None)
-            assert (result.success, "PandaPower failed")
-            assert (result.errors.isEmpty, "no errors")
+            val files = session.sparkContext.parallelize(Seq(trafo))
+            val pp = PandaPower(session = session, workdir = workdir)
+            val result = pp.solve(files)
+            info(result.toString, None)
+            assert(result.success, "PandaPower failed")
+            assert(result.errors.isEmpty, "no errors")
     }
 
-    test ("broken")
+    test("broken")
     {
         session =>
             val workdir = "simulation/"
             val trafo = "BROKEN"
-            val _ = new File (s"$workdir$trafo/output_data").mkdirs
+            val _ = new File(s"$workdir$trafo/output_data").mkdirs
             val contents =
                 s"""
 import os
@@ -234,16 +234,16 @@ if not os.path.exists(output_dir):
 timeseries_example(output_dir)
         """
 
-            val pw = new PrintWriter (new File (s"$workdir${trafo}/${trafo}.py"))
-            pw.write (contents)
-            pw.close ()
+            val pw = new PrintWriter(new File(s"$workdir${trafo}/${trafo}.py"))
+            pw.write(contents)
+            pw.close()
 
 
-            val files = session.sparkContext.parallelize (Seq (trafo))
-            val pp = PandaPower (session = session, workdir = workdir)
-            val result = pp.solve (files)
-            info (result.toString, None)
-            assert (!result.success, "PandaPower succeeded?")
-            assert (result.errors.nonEmpty, "no errors?")
+            val files = session.sparkContext.parallelize(Seq(trafo))
+            val pp = PandaPower(session = session, workdir = workdir)
+            val result = pp.solve(files)
+            info(result.toString, None)
+            assert(!result.success, "PandaPower succeeded?")
+            assert(result.errors.nonEmpty, "no errors?")
     }
 }

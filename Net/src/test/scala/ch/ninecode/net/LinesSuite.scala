@@ -21,63 +21,63 @@ class LinesSuite extends TestUtil
     {
         val SERVER = "sandbox"
         val PORT = 7077
-        if (serverListening (SERVER, PORT))
+        if (serverListening(SERVER, PORT))
         {
-            time ("total : %s seconds")
+            time("total : %s seconds")
             {
                 // create the fixture
-                val session = time ("setup : %s seconds")
+                val session = time("setup : %s seconds")
                 {
                     // create the configuration
-                    val s1 = jarForObject (new DefaultSource ())
-                    val s2 = jarForObject (ThreePhaseComplexDataElement ("", 0L, Complex.j, Complex.j, Complex.j, ""))
-                    val s3 = jarForObject (Lines)
-                    val configuration = new SparkConf (false)
-                        .setAppName (this.getClass.getSimpleName)
-                        .setMaster (s"spark://$SERVER:$PORT")
-                        .set ("spark.driver.memory", "2g")
-                        .set ("spark.executor.memory", "2g")
-                        .set ("spark.ui.showConsoleProgress", "false")
-                        .set ("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-                        .setJars (Set (s1, s2, s3).toArray)
+                    val s1 = jarForObject(new DefaultSource())
+                    val s2 = jarForObject(ThreePhaseComplexDataElement("", 0L, Complex.j, Complex.j, Complex.j, ""))
+                    val s3 = jarForObject(Lines)
+                    val configuration = new SparkConf(false)
+                        .setAppName(this.getClass.getSimpleName)
+                        .setMaster(s"spark://$SERVER:$PORT")
+                        .set("spark.driver.memory", "2g")
+                        .set("spark.executor.memory", "2g")
+                        .set("spark.ui.showConsoleProgress", "false")
+                        .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+                        .setJars(Set(s1, s2, s3).toArray)
 
                     // register relevant classes
-                    registerDependency (configuration)
+                    registerDependency(configuration)
 
                     // register GraphX classes
-                    GraphXUtils.registerKryoClasses (configuration)
+                    GraphXUtils.registerKryoClasses(configuration)
 
                     // create the fixture
-                    val session = SparkSession.builder ().config (configuration).getOrCreate () // create the fixture
-                    session.sparkContext.setLogLevel ("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
+                    val session = SparkSession.builder().config(configuration).getOrCreate() // create the fixture
+                    session.sparkContext.setLogLevel("WARN") // Valid log levels include: ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN
                     session
                 }
                 try
                 {
-                    withFixture (test.toNoArgTest (session)) // "loan" the fixture to the test
+                    withFixture(test.toNoArgTest(session)) // "loan" the fixture to the test
                 }
                 finally
                 {
-                    session.stop () // clean up the fixture
+                    session.stop() // clean up the fixture
                 }
             }
         }
         else
-            Canceled (new TestCanceledException ((_: StackDepthException) => Some ("sandbox not reachable"), None, Position ("LineSuite.scala", "", 123), None))
+            Canceled(new TestCanceledException((_: StackDepthException) => Some("sandbox not reachable"), None, Position("LineSuite.scala", "", 123), None))
     }
 
-    test ("basic")
+    test("basic")
     {
         session: SparkSession =>
             val FILENAME = "hdfs://sandbox:8020/DemoData.rdf"
-            readCIMElements (session, FILENAME)
-            val lines = Lines (session)
-            time ("execution time: %s seconds")
+            readCIMElements(session, FILENAME)
+            val lines = Lines(session)
+            time("execution time: %s seconds")
             {
-                val doit = lines.getLines ()
+                val doit = lines.getLines()
                 // grep "ACLineSegment rdf:" DemoData.rdf | wc
                 // 47
-                assert (doit.count == 47, "expected number of ACLineSegments")
+                assert(doit.count == 47, "expected number of ACLineSegments")
             }
     }
 }

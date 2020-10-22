@@ -25,38 +25,38 @@ case class OneOfNGLMGenerator
     date_format: SimpleDateFormat,
     feeder: FeederArea,
     voltages: collection.Map[String, Double])
-    extends GLMGenerator (one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = false)
+    extends GLMGenerator(one_phase, temperature, date_format, emit_voltage_dump = true, emit_fault_check = false)
 {
     override def name: String = s"${feeder.metadata.station}_${feeder.metadata.connector}"
 
     override def header: String = feeder.metadata.description
 
-    override def edges: Iterable[GLMEdge] = feeder.edges.filter (!_.isInstanceOf [GLMTransformerEdge])
+    override def edges: Iterable[GLMEdge] = feeder.edges.filter(!_.isInstanceOf[GLMTransformerEdge])
 
-    override def nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder.isEmpty)
+    override def nodes: Iterable[GLMNode] = feeder.nodes.filter(_.feeder.isEmpty)
 
-    override def transformers: Iterable[GLMTransformerEdge] = feeder.edges.filter (_.isInstanceOf [GLMTransformerEdge]).map (_.asInstanceOf [GLMTransformerEdge])
+    override def transformers: Iterable[GLMTransformerEdge] = feeder.edges.filter(_.isInstanceOf[GLMTransformerEdge]).map(_.asInstanceOf[GLMTransformerEdge])
 
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
-    override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter (_.feeder.isDefined)
-        .groupBy (_._id).values.map (_.head) // take only one feeder per node
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
+    override def swing_nodes: Iterable[GLMNode] = feeder.nodes.filter(_.feeder.isDefined)
+        .groupBy(_._id).values.map(_.head) // take only one feeder per node
 
-    def nodelist: Map[String, GLMNode] = feeder.nodes.map (x => (x._id, x)).toMap
+    def nodelist: Map[String, GLMNode] = feeder.nodes.map(x => (x._id, x)).toMap
 
     def ends_voltages (edge: GLMEdge): Iterable[(String, Double)] =
     {
         edge match
         {
             case line: GLMLineEdge =>
-                val v = voltages.getOrElse (line.data.aLine.line.Conductor.ConductingEquipment.BaseVoltage, 0.0)
-                List ((line.cn1, v), (line.cn2, v))
+                val v = voltages.getOrElse(line.data.aLine.line.Conductor.ConductingEquipment.BaseVoltage, 0.0)
+                List((line.cn1, v), (line.cn2, v))
             case switch: PlayerSwitchEdge =>
-                val v = voltages.getOrElse (switch.switch.ConductingEquipment.BaseVoltage, 0.0)
-                List ((switch.cn1, v), (switch.cn2, v))
+                val v = voltages.getOrElse(switch.switch.ConductingEquipment.BaseVoltage, 0.0)
+                List((switch.cn1, v), (switch.cn2, v))
             case transformer: GLMTransformerEdge =>
-                List ((transformer.cn1, transformer.transformer.v0), (transformer.cn2, transformer.transformer.v1))
+                List((transformer.cn1, transformer.transformer.v0), (transformer.cn2, transformer.transformer.v1))
             case edge: GLMEdge =>
-                List ((edge.cn1, 0.0), (edge.cn2, 0.0)) // unspecified transformers
+                List((edge.cn1, 0.0), (edge.cn2, 0.0)) // unspecified transformers
         }
     }
 
@@ -69,13 +69,13 @@ case class OneOfNGLMGenerator
      *
      * @return Node elements to add to the .glm file.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def extra: Iterable[String] =
     {
-        val missing: Iterable[(String, Double)] = feeder.edges.flatMap (ends_voltages) // get the nodes from each edge
-            .filter (x => !nodelist.isDefinedAt (x._1)) // eliminate those that are emitted normally
-            .groupBy (_._1).values.map (_.head) // eliminate duplicates from multiple edges
-        missing.map (x => FeederNode (x._1, x._2, None).emit (this))
+        val missing: Iterable[(String, Double)] = feeder.edges.flatMap(ends_voltages) // get the nodes from each edge
+            .filter(x => !nodelist.isDefinedAt(x._1)) // eliminate those that are emitted normally
+            .groupBy(_._1).values.map(_.head) // eliminate duplicates from multiple edges
+        missing.map(x => FeederNode(x._1, x._2, None).emit(this))
     }
 
     def three_or_one (property: String): String =
@@ -85,7 +85,7 @@ case class OneOfNGLMGenerator
             s"${property}_A,${property}_B,${property}_C"
 
     def three_or_one (value: Complex): String =
-        (for (_ <- 1 to (if (one_phase) 1 else 3)) yield value.toString).mkString (",")
+        (for (_ <- 1 to (if (one_phase) 1 else 3)) yield value.toString).mkString(",")
 
     /**
      * Add switch player to toggle the SWING bus.
@@ -106,7 +106,7 @@ case class OneOfNGLMGenerator
                    |            phases $phases;
                    |            bustype SWING;
                    |            nominal_voltage ${swing.nominal_voltage}V;
-                   |            ${three_or_one ("voltage")} ${three_or_one (Complex (swing.nominal_voltage, 0.0))};
+                   |            ${three_or_one("voltage")} ${three_or_one(Complex(swing.nominal_voltage, 0.0))};
                    |        };
                    |
                    |        object switch
@@ -145,13 +145,13 @@ case class OneOfNGLMGenerator
     {
         val name = transformer.transformer.transformer_name
         val phases = if (one_phase) "AN" else "ABCN"
-        s"""${super.emit_transformer (transformer)}
+        s"""${super.emit_transformer(transformer)}
            |        object load
            |        {
            |            name "${name}_load";
            |            parent "${transformer.cn2}";
            |            phases $phases;
-           |            ${three_or_one ("constant_power")} ${three_or_one (Complex (10000, 0))};
+           |            ${three_or_one("constant_power")} ${three_or_one(Complex(10000, 0))};
            |            nominal_voltage ${transformer.transformer.v1}V;
            |            load_class R;
            |        };

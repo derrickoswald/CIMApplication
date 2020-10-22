@@ -7,15 +7,15 @@ class LineEdge
 (
     _data: LineData
 )
-    extends LoadFlowEdge (
-        LineEdge.lineName (_data),
+    extends LoadFlowEdge(
+        LineEdge.lineName(_data),
         _data.node0,
         _data.node1
     )
 {
     val data: LineData = _data
 
-    lazy val lines: Iterable[ACLineSegment] = data.lines.map (_.line)
+    lazy val lines: Iterable[ACLineSegment] = data.lines.map(_.line)
 
     /**
      * Get the cable/wire type.
@@ -42,10 +42,10 @@ class LineEdge
      */
     def configurationName: String =
     {
-        val n = lines.map (config_name).map (valid_config_name).toArray.sortWith (_ < _).mkString ("||") + "_configuration"
+        val n = lines.map(config_name).map(valid_config_name).toArray.sortWith(_ < _).mkString("||") + "_configuration"
         // limit to 64 bytes (GridLAB-D OBJECTTREE.name is an array of 64 bytes) with null:
         if (n.getBytes.length > 63)
-            s"_${Math.abs (n.hashCode ()).toString}"
+            s"_${Math.abs(n.hashCode()).toString}"
         else
             n
     }
@@ -53,13 +53,13 @@ class LineEdge
     /**
      * The length (of the longest) line.
      */
-    lazy val length: Double = lines.map (_.Conductor.len)
-        .fold (0.0)((l1, l2) => if (l1 > l2) l1 else l2) // instead of .max
+    lazy val length: Double = lines.map(_.Conductor.len)
+        .fold(0.0)((l1, l2) => if (l1 > l2) l1 else l2) // instead of .max
 
     /**
      * Zero ohms.
      */
-    lazy val zero: Complex = Complex (0.0, 0.0)
+    lazy val zero: Complex = Complex(0.0, 0.0)
 
     /**
      * Convert zero and positive sequence impedance values into the Z matrix diagonal and off diagonal elements.
@@ -73,9 +73,9 @@ class LineEdge
         val Z0 = z0
         val Z1, Z2 = z1
         val diag = (Z0 + Z1 + Z2) / 3
-        val root3 = Math.sqrt (3.0)
-        val x1 = Z1 * Complex (-0.5, root3 / 2.0)
-        val x2 = Z2 * Complex (-0.5, root3 / -2.0)
+        val root3 = Math.sqrt(3.0)
+        val x1 = Z1 * Complex(-0.5, root3 / 2.0)
+        val x2 = Z2 * Complex(-0.5, root3 / -2.0)
         val off = (Z0 + x1 + x2) / 3.0
         (diag, off)
     }
@@ -90,11 +90,11 @@ object LineEdge
      */
     def lineName (data: LineData): String =
     {
-        val id = data.lines.map (_.line).map (_.id).toArray.sortWith (_ < _).mkString ("_")
+        val id = data.lines.map(_.line).map(_.id).toArray.sortWith(_ < _).mkString("_")
         // limit to 64 bytes (GridLAB-D OBJECTTREE.name is an array of 64 bytes) with null:
         // leave 20 characters spare to add suffixes
         if (id.getBytes.length > 43)
-            s"_${Math.abs (id.hashCode ()).toString}"
+            s"_${Math.abs(id.hashCode()).toString}"
         else
             id
     }

@@ -17,25 +17,25 @@ case class TransformerIsland (transformers: Array[TransformerSet])
         val s = if ((null == string) || ("" == string))
             "unknown"
         else
-            if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
+            if (string.charAt(0).isLetter || ('_' == string.charAt(0)))
                 string
             else
                 s"_$string"
-        s.replace (".", "d").replace (":", "$")
+        s.replace(".", "d").replace(":", "$")
     }
 
     // get the island name (of the combination of transformers)
     lazy val island_name: String =
     {
-        val n = transformers.map (_.transformer_name).map (valid_config_name).sortWith (_ < _).mkString ("_")
+        val n = transformers.map(_.transformer_name).map(valid_config_name).sortWith(_ < _).mkString("_")
         if (n.getBytes.length > 63)
-            s"_${Math.abs (n.hashCode ()).toString}_${n.substring (0, n.indexOf ("_", 32))}_etc"
+            s"_${Math.abs(n.hashCode()).toString}_${n.substring(0, n.indexOf("_", 32))}_etc"
         else
             n
     }
 
     // ToDo, do we need to break this out? or is a sum good enough?
-    lazy val power_rating: Double = transformers.map (_.power_rating).sum
+    lazy val power_rating: Double = transformers.map(_.power_rating).sum
 
     override def toString: String =
     {
@@ -48,18 +48,18 @@ object TransformerIsland
     def apply (transformers: Iterable[TransformerData]): TransformerIsland =
     {
         val sets = transformers
-            .groupBy (t => s"${t.node1}")
-            .map (set => TransformerSet (set._2.toArray))
+            .groupBy(t => s"${t.node1}")
+            .map(set => TransformerSet(set._2.toArray))
             .toArray
-        TransformerIsland (sets)
+        TransformerIsland(sets)
     }
 
-    def apply (transformers: Iterable[TransformerData], default_power_rating: Double = 630000, default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875)): TransformerIsland =
+    def apply (transformers: Iterable[TransformerData], default_power_rating: Double = 630000, default_impedance: Complex = Complex(0.005899999998374999, 0.039562482211875)): TransformerIsland =
     {
         val sets = transformers
-            .groupBy (t => s"${t.node1}")
-            .map (set => TransformerSet (set._2.toArray, default_power_rating, default_impedance))
+            .groupBy(t => s"${t.node1}")
+            .map(set => TransformerSet(set._2.toArray, default_power_rating, default_impedance))
             .toArray
-        TransformerIsland (sets)
+        TransformerIsland(sets)
     }
 }

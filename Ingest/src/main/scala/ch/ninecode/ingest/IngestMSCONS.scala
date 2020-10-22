@@ -18,8 +18,8 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
 {
     if (options.verbose)
     {
-        LogManager.getLogger (getClass).setLevel (Level.INFO)
-        LogManager.getLogger ("ch.ninecode.mscons.MSCONSParser").setLevel (Level.INFO)
+        LogManager.getLogger(getClass).setLevel(Level.INFO)
+        LogManager.getLogger("ch.ninecode.mscons.MSCONSParser").setLevel(Level.INFO)
     }
     implicit val spark: SparkSession = session
 
@@ -32,10 +32,10 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
     def to_data_element (join_table: Map[String, String])
         (record: (String, String, Calendar, Int, Double, Double, String)): Option[ThreePhaseComplexDataElement] =
     {
-        join_table.get (record._1) match
+        join_table.get(record._1) match
         {
-            case Some (mrid) =>
-                Some (ThreePhaseComplexDataElement (mrid, record._3.getTimeInMillis, Complex (record._5, record._6), record._7))
+            case Some(mrid) =>
+                Some(ThreePhaseComplexDataElement(mrid, record._3.getTimeInMillis, Complex(record._5, record._6), record._7))
             case None =>
                 None
         }
@@ -49,10 +49,10 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
      */
     def processOneFile (join_table: Map[String, String], job: IngestJob)(filename: String): Seq[ThreePhaseComplexDataElement] =
     {
-        val parser = MSCONSParser (MSCONSOptions ())
-        parser.parse (filename)
-            .flatMap (to_data_element (join_table))
-            .filter (x => (x.millis >= job.mintime) && (x.millis <= job.maxtime))
+        val parser = MSCONSParser(MSCONSOptions())
+        parser.parse(filename)
+            .flatMap(to_data_element(join_table))
+            .filter(x => (x.millis >= job.mintime) && (x.millis <= job.maxtime))
     }
 
     /**
@@ -65,9 +65,9 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
     {
         m.headOption match
         {
-            case Some (value) =>
-                val sum = Complex (m.map (_.value_a.re).sum, m.map (_.value_a.im).sum)
-                Some (ThreePhaseComplexDataElement (value.element, value.millis, sum, value.units))
+            case Some(value) =>
+                val sum = Complex(m.map(_.value_a.re).sum, m.map(_.value_a.im).sum)
+                Some(ThreePhaseComplexDataElement(value.element, value.millis, sum, value.units))
             case _ =>
                 None
         }
@@ -87,48 +87,48 @@ case class IngestMSCONS (session: SparkSession, options: IngestOptions) extends 
 
     def process (filename: String, job: IngestJob): Unit =
     {
-        val join_table = loadCsvMapping (session, filename, job)
-        val all_files = job.datafiles.flatMap (getFiles (job, options.workdir))
-        val some_files = all_files.take (6).mkString (",")
+        val join_table = loadCsvMapping(session, filename, job)
+        val all_files = job.datafiles.flatMap(getFiles(job, options.workdir))
+        val some_files = all_files.take(6).mkString(",")
         val more_files = all_files.length > 6
-        time (s"processed files [${some_files}${if (more_files) "..." else ""}]: %s seconds")
+        time(s"processed files [${some_files}${if (more_files) "..." else ""}]: %s seconds")
         {
-            val mscons_files = session.sparkContext.parallelize (all_files)
+            val mscons_files = session.sparkContext.parallelize(all_files)
 
             // read all files into one RDD
-            val raw = mscons_files.flatMap (processOneFile (join_table, job))
+            val raw = mscons_files.flatMap(processOneFile(join_table, job))
             // combine real and imaginary parts
             if (job.mode == Modes.Append)
             {
                 val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
                 implicit val configuration: ReadConf =
                     ReadConf
-                        .fromSparkConf (session.sparkContext.getConf)
-                        .copy (splitCount = Some (executors))
+                        .fromSparkConf(session.sparkContext.getConf)
+                        .copy(splitCount = Some(executors))
                 val df = session
                     .sparkContext
-                    .cassandraTable (job.keyspace, "measured_value")
-                    .select ("mrid", "time", "period", "real_a", "imag_a", "units")
-                    .map (
+                    .cassandraTable(job.keyspace, "measured_value")
+                    .select("mrid", "time", "period", "real_a", "imag_a", "units")
+                    .map(
                         row =>
                         {
-                            ThreePhaseComplexDataElement (
-                                row.getString ("mrid"),
-                                row.getLong ("time"),
-                                Complex (row.getDouble ("real_a"), row.getDouble ("imag_a")),
-                                row.getString ("units"))
+                            ThreePhaseComplexDataElement(
+                                row.getString("mrid"),
+                                row.getLong("time"),
+                                Complex(row.getDouble("real_a"), row.getDouble("imag_a")),
+                                row.getString("units"))
                         }
                     )
-                val unioned = raw.union (df)
-                val grouped = unioned.groupBy (x => (x.element, x.millis)).values.flatMap (complex2).map (split)
-                grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+                val unioned = raw.union(df)
+                val grouped = unioned.groupBy(x => (x.element, x.millis)).values.flatMap(complex2).map(split)
+                grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
             } else
             {
-                val grouped = raw.groupBy (x => (x.element, x.millis)).values.flatMap (complex2).map (split)
-                grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+                val grouped = raw.groupBy(x => (x.element, x.millis)).values.flatMap(complex2).map(split)
+                grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
             }
             if (!job.nocopy)
-                all_files.foreach (x => hdfs.delete (new Path (x), false))
+                all_files.foreach(x => hdfs.delete(new Path(x), false))
 
         }
     }

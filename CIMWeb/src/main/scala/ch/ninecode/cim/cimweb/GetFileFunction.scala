@@ -12,16 +12,16 @@ case class GetFileFunction (path: String) extends CIMWebFunction
 
     override def executeString (spark: SparkSession): String =
     {
-        val file: Path = new Path (hdfs.getUri.toString, path)
+        val file: Path = new Path(hdfs.getUri.toString, path)
         // read the file
         try
         {
-            val data = hdfs.open (file)
+            val data = hdfs.open(file)
             // ToDo: handle files bigger than 2GB
-            val size = hdfs.getFileStatus (file).getLen.toInt
+            val size = hdfs.getFileStatus(file).getLen.toInt
             val bytes = new Array[Byte](size)
-            data.readFully (0, bytes)
-            Text.decode (bytes, 0, size)
+            data.readFully(0, bytes)
+            Text.decode(bytes, 0, size)
         }
         catch
         {

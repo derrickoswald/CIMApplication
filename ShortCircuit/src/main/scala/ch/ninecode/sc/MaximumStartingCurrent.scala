@@ -35,8 +35,8 @@ object MaximumStartingCurrent
         else
         {
             val phin = network_impedance.angle
-            val phim = acos (options.cosphi)
-            cos (phin - phim)
+            val phim = acos(options.cosphi)
+            cos(phin - phim)
         }
     }
 
@@ -57,8 +57,8 @@ object MaximumStartingCurrent
         options: ShortCircuitOptions
     ): (Double, Double) =
     {
-        val root3 = sqrt (3.0)
-        val pmax = Math.abs (network_short_circuit_power / (root3 * costerm (network_impedance, options)))
+        val root3 = sqrt(3.0)
+        val pmax = Math.abs(network_short_circuit_power / (root3 * costerm(network_impedance, options)))
         (dmax_low_rep * pmax / voltage, dmax_medium_rep * pmax / voltage)
     }
 
@@ -80,8 +80,8 @@ object MaximumStartingCurrent
         options: ShortCircuitOptions
     ): (Double, Double) =
     {
-        val root3 = sqrt (3.0)
-        val pmax = Math.abs (network_short_circuit_power * root3 / (6.0 * costerm (network_impedance, options)))
+        val root3 = sqrt(3.0)
+        val pmax = Math.abs(network_short_circuit_power * root3 / (6.0 * costerm(network_impedance, options)))
         (dmax_low_rep * pmax / voltage, dmax_medium_rep * pmax / voltage)
     }
 
@@ -103,23 +103,23 @@ object MaximumStartingCurrent
         options: ShortCircuitOptions
     ): (Double, Double) =
     {
-        val root3 = sqrt (3.0)
+        val root3 = sqrt(3.0)
         val thirty = Pi / 6.0
         val sixty = Pi / 3.0
         val phin = network_impedance.angle
-        val phim = if (options.worstcasepf) phin else acos (options.cosphi)
+        val phim = if (options.worstcasepf) phin else acos(options.cosphi)
 
         val temp = 1.0 / root3 * network_short_circuit_power
-        val pmax_line_neutral = min (
-            abs (temp / cos (phin - (phim - thirty))), // dL1−N
-            abs (temp / cos (phin - (phim + thirty)))) // dL2−N
-        val pmax_line_line = min (
-            abs (1.0 / 2.0 * network_short_circuit_power / cos (phin - phim)), // dL1−L2
-            min (
-                abs (network_short_circuit_power / cos (phin - (phim + sixty))), // dL2−L3
-                abs (network_short_circuit_power / cos (phin - (phim - sixty)))) // dL3−L1
+        val pmax_line_neutral = min(
+            abs(temp / cos(phin - (phim - thirty))), // dL1−N
+            abs(temp / cos(phin - (phim + thirty)))) // dL2−N
+        val pmax_line_line = min(
+            abs(1.0 / 2.0 * network_short_circuit_power / cos(phin - phim)), // dL1−L2
+            min(
+                abs(network_short_circuit_power / cos(phin - (phim + sixty))), // dL2−L3
+                abs(network_short_circuit_power / cos(phin - (phim - sixty)))) // dL3−L1
         )
-        val pmax = min (pmax_line_neutral, pmax_line_line)
+        val pmax = min(pmax_line_neutral, pmax_line_line)
 
         (dmax_low_rep * pmax / voltage, dmax_medium_rep * pmax / voltage)
     }

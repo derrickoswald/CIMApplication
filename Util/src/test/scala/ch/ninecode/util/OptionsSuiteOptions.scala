@@ -9,8 +9,8 @@ package ch.ninecode.util
  * @param verbose       if <code>true</code> output informational messages
  */
 case class OptionsSuiteOptions (
-    var main_options: MainOptions = MainOptions (),
-    var spark_options: SparkOptions = SparkOptions (),
-    var cim_options: CIMReaderOptions = CIMReaderOptions (),
+    var main_options: MainOptions = MainOptions(),
+    var spark_options: SparkOptions = SparkOptions(),
+    var cim_options: CIMReaderOptions = CIMReaderOptions(),
     verbose: Boolean = false
 ) extends Mainable with Sparkable with CIMAble

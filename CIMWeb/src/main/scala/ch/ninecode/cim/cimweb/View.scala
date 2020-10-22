@@ -21,11 +21,11 @@ import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMMappedRecord
 
 @Stateless
-@Path ("view/")
+@Path("view/")
 class View extends RESTful
 {
     lazy val LOGGER_NAME: String = getClass.getName
-    lazy val _Logger: Logger = Logger.getLogger (LOGGER_NAME)
+    lazy val _Logger: Logger = Logger.getLogger(LOGGER_NAME)
 
     /**
      * Read CIM features from Spark.
@@ -45,88 +45,88 @@ class View extends RESTful
      * @return the result set as a CIM RDF XML file
      */
     @GET
-    @Path ("{about:[^;]*}")
-    @Produces (Array (MediaType.APPLICATION_XML, "application/zip"))
+    @Path("{about:[^;]*}")
+    @Produces(Array(MediaType.APPLICATION_XML, "application/zip"))
     def Read (
-        @PathParam ("about") about: String, // the about string if any
-        @DefaultValue ("false") @MatrixParam ("zip") zip: String,
-        @DefaultValue ("true") @MatrixParam ("all") all: String,
-        @DefaultValue ("7.71") @MatrixParam ("xmin") xmin: String,
-        @DefaultValue ("46.57") @MatrixParam ("ymin") ymin: String,
-        @DefaultValue ("7.73") @MatrixParam ("xmax") xmax: String,
-        @DefaultValue ("46.60") @MatrixParam ("ymax") ymax: String,
-        @DefaultValue ("true") @MatrixParam ("reduceLines") reduceLines: String,
-        @DefaultValue ("2000") @MatrixParam ("maxLines") maxLines: String,
-        @DefaultValue ("true") @MatrixParam ("dougPeuk") dougPeuk: String,
-        @DefaultValue ("2.0") @MatrixParam ("dougPeukFactor") dougPeukFactor: String,
-        @DefaultValue ("1.0e-4") @MatrixParam ("resolution") resolution: String): Response =
+        @PathParam("about") about: String, // the about string if any
+        @DefaultValue("false") @MatrixParam("zip") zip: String,
+        @DefaultValue("true") @MatrixParam("all") all: String,
+        @DefaultValue("7.71") @MatrixParam("xmin") xmin: String,
+        @DefaultValue("46.57") @MatrixParam("ymin") ymin: String,
+        @DefaultValue("7.73") @MatrixParam("xmax") xmax: String,
+        @DefaultValue("46.60") @MatrixParam("ymax") ymax: String,
+        @DefaultValue("true") @MatrixParam("reduceLines") reduceLines: String,
+        @DefaultValue("2000") @MatrixParam("maxLines") maxLines: String,
+        @DefaultValue("true") @MatrixParam("dougPeuk") dougPeuk: String,
+        @DefaultValue("2.0") @MatrixParam("dougPeukFactor") dougPeukFactor: String,
+        @DefaultValue("1.0e-4") @MatrixParam("resolution") resolution: String): Response =
     {
         val ret = new RESTfulJSONResult
-        val response: Response = getConnection (ret) match
+        val response: Response = getConnection(ret) match
         {
-            case Some (connection) =>
+            case Some(connection) =>
                 try
                 {
-                    val everything = asBoolean (all)
-                    val reduce = asBoolean (reduceLines)
-                    val doug = asBoolean (dougPeuk)
-                    _Logger.info ("View (\"%s\",all=%s [%g,%g],[%g,%g],reduce=%s,maxLines=%d,dougPeuk=%s,dougPeukFactor=%g,resolution=%g)".format (about, all, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble))
-                    val function = ViewFunction (about, everything, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble)
-                    val (spec, input) = getFunctionInput (function)
+                    val everything = asBoolean(all)
+                    val reduce = asBoolean(reduceLines)
+                    val doug = asBoolean(dougPeuk)
+                    _Logger.info("View (\"%s\",all=%s [%g,%g],[%g,%g],reduce=%s,maxLines=%d,dougPeuk=%s,dougPeukFactor=%g,resolution=%g)".format(about, all, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble))
+                    val function = ViewFunction(about, everything, xmin.toDouble, ymin.toDouble, xmax.toDouble, ymax.toDouble, reduce, maxLines.toInt, doug, dougPeukFactor.toDouble, resolution.toDouble)
+                    val (spec, input) = getFunctionInput(function)
                     val interaction = connection.createInteraction
-                    val output = interaction.execute (spec, input)
+                    val output = interaction.execute(spec, input)
                     val response = output match
                     {
                         case record: CIMMappedRecord =>
-                            record.get (CIMFunction.RESULT) match
+                            record.get(CIMFunction.RESULT) match
                             {
                                 case rdf: String =>
-                                    if (asBoolean (zip))
+                                    if (asBoolean(zip))
                                     {
-                                        val bos = new ByteArrayOutputStream ()
-                                        val zos = new ZipOutputStream (bos)
-                                        zos.setLevel (9)
+                                        val bos = new ByteArrayOutputStream()
+                                        val zos = new ZipOutputStream(bos)
+                                        zos.setLevel(9)
                                         val name = "view.rdf"
-                                        zos.putNextEntry (new ZipEntry (name))
-                                        val data = rdf.getBytes (StandardCharsets.UTF_8)
-                                        zos.write (data, 0, data.length)
-                                        zos.finish ()
-                                        zos.close ()
+                                        zos.putNextEntry(new ZipEntry(name))
+                                        val data = rdf.getBytes(StandardCharsets.UTF_8)
+                                        zos.write(data, 0, data.length)
+                                        zos.finish()
+                                        zos.close()
                                         val zip = "view.zip"
-                                        interaction.close ()
-                                        Response.ok (bos.toByteArray, "application/zip")
-                                            .header ("content-disposition", "attachment; filename=%s".format (zip))
+                                        interaction.close()
+                                        Response.ok(bos.toByteArray, "application/zip")
+                                            .header("content-disposition", "attachment; filename=%s".format(zip))
                                             .build
                                     }
                                     else
                                     {
-                                        interaction.close ()
-                                        Response.ok (rdf, MediaType.APPLICATION_XML).build
+                                        interaction.close()
+                                        Response.ok(rdf, MediaType.APPLICATION_XML).build
                                     }
                                 case _ =>
-                                    Response.serverError ().entity ("ViewFunction result is not a String").build
+                                    Response.serverError().entity("ViewFunction result is not a String").build
                             }
                         case _ =>
-                            Response.serverError ().entity ("ViewFunction interaction result is not a MappedRecord").build
+                            Response.serverError().entity("ViewFunction interaction result is not a MappedRecord").build
                     }
-                    interaction.close ()
+                    interaction.close()
                     response
                 }
                 catch
                 {
                     case resourceexception: ResourceException =>
-                        Response.serverError ().entity (s"ResourceException on interaction\n${resourceexception.getMessage}").build
+                        Response.serverError().entity(s"ResourceException on interaction\n${resourceexception.getMessage}").build
                 }
                 finally
                     try
-                    connection.close ()
+                    connection.close()
                     catch
                     {
                         case resourceexception: ResourceException =>
-                            val _ = Response.serverError ().entity (s"ResourceException on close\n${resourceexception.getMessage}").build
+                            val _ = Response.serverError().entity(s"ResourceException on close\n${resourceexception.getMessage}").build
                     }
             case None =>
-                Response.status (Response.Status.SERVICE_UNAVAILABLE).entity (s"could not get connection: ${ret.message}").build
+                Response.status(Response.Status.SERVICE_UNAVAILABLE).entity(s"could not get connection: ${ret.message}").build
         }
 
         response

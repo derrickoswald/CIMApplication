@@ -11,10 +11,10 @@ object UNB
             case syntax :: _ =>
                 syntax.submembers match
                 {
-                    case id :: version :: _ => UNB (id.text, version.text)
-                    case _ => UNB ("error", "in subfields")
+                    case id :: version :: _ => UNB(id.text, version.text)
+                    case _ => UNB("error", "in subfields")
                 }
-            case _ => UNB ("error", "in fields")
+            case _ => UNB("error", "in fields")
         }
     }
 }

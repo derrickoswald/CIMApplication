@@ -8,7 +8,7 @@ final case class GLMLineEdge
 (
     override val data: LineData
 )
-    extends LineEdge (data)
+    extends LineEdge(data)
         with GLMEdge
 {
     /**
@@ -56,10 +56,10 @@ final case class GLMLineEdge
             if (generator.isSinglePhase)
                 (pli.z1, zero)
             else
-                sequence2z (pli.z0, pli.z1)
-        val dia = diag.asString (8) + " Ohm/m"
-        val off = offd.asString (8) + " Ohm/m"
-        val comment = lines.map (line => s"            // ${line.id}").mkString ("\n", "\n", "")
+                sequence2z(pli.z0, pli.z1)
+        val dia = diag.asString(8) + " Ohm/m"
+        val off = offd.asString(8) + " Ohm/m"
+        val comment = lines.map(line => s"            // ${line.id}").mkString("\n", "\n", "")
         s"""
            |$warning        object line_configuration
            |        {$comment
@@ -85,7 +85,7 @@ final case class GLMLineEdge
      */
     def configuration (generator: GLMGenerator): String =
     {
-        val pli = data.perLengthImpedanceAt (generator.targetTemperature, data.aLine.CIMBaseTemperature)
-        make_line_configuration (configurationName, pli, data.perLengthImpedanceIsDefault, generator)
+        val pli = data.perLengthImpedanceAt(generator.targetTemperature, data.aLine.CIMBaseTemperature)
+        make_line_configuration(configurationName, pli, data.perLengthImpedanceIsDefault, generator)
     }
 }

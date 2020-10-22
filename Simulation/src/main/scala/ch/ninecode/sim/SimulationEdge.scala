@@ -16,19 +16,19 @@ import ch.ninecode.net.LoadFlowEdge
 case class SimulationEdge
 (
     rawedge: GLMEdge,
-    world_position: Iterable[(Double, Double)] = Seq (),
-    schematic_position: Iterable[(Double, Double)] = Seq (),
-    players: Iterable[SimulationPlayer] = Iterable (),
-    recorders: Iterable[SimulationRecorder] = Iterable ()
+    world_position: Iterable[(Double, Double)] = Seq(),
+    schematic_position: Iterable[(Double, Double)] = Seq(),
+    players: Iterable[SimulationPlayer] = Iterable(),
+    recorders: Iterable[SimulationRecorder] = Iterable()
 )
-    extends LoadFlowEdge (
+    extends LoadFlowEdge(
         rawedge.id,
         rawedge.cn1,
         rawedge.cn2
     )
         with GLMEdge
 {
-    override def emit (generator: GLMGenerator): String = rawedge.emit (generator)
+    override def emit (generator: GLMGenerator): String = rawedge.emit(generator)
 
     override def toString: String = s"$id $cn1⇒$cn2"
 }

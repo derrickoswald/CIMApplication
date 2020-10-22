@@ -21,21 +21,21 @@ case class CTA (
 
 object CTA extends FieldExtractor[CTA]
 {
-    private lazy val _3139 = alphanumeric_? (3)
+    private lazy val _3139 = alphanumeric_?(3)
 
-    private lazy val c056_3413 = alphanumeric_? (17)
-    private lazy val c056_3412 = alphanumeric_? (256)
+    private lazy val c056_3413 = alphanumeric_?(17)
+    private lazy val c056_3412 = alphanumeric_?(256)
     private lazy val c056 =
-        subfields (
+        subfields(
             c056_3413 ~ c056_3412 ^^
-                { case c056_3413 ~ c056_3412 => Contact_Details (c056_3413, c056_3412) }
+                { case c056_3413 ~ c056_3412 => Contact_Details(c056_3413, c056_3412) }
         )
 
     lazy val cta_fields: Parser[CTA] =
-        fields (
+        fields(
             _3139 ~ c056.? ^^
-                { case _3139 ~ c056 => CTA (_3139, c056) }
-        ).named ("CTA")
+                { case _3139 ~ c056 => CTA(_3139, c056) }
+        ).named("CTA")
 
     override def phrase: Parser[CTA] = cta_fields
 }

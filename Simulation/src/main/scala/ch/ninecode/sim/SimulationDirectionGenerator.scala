@@ -13,7 +13,7 @@ case class SimulationDirectionGenerator
 (
     one_phase: Boolean,
     date_format: SimpleDateFormat,
-    kreis: SimulationTrafoKreis) extends GLMGenerator (one_phase, 20.0, date_format, true) // ToDo: get simulation temperature from json file
+    kreis: SimulationTrafoKreis) extends GLMGenerator(one_phase, 20.0, date_format, true) // ToDo: get simulation temperature from json file
 {
 
     override def name: String = kreis.name
@@ -26,25 +26,25 @@ case class SimulationDirectionGenerator
 
     override def edges: Iterable[SimulationEdge] = kreis.edges
 
-    override def transformers: Iterable[GLMTransformerEdge] = List (GLMTransformerEdge (kreis.transformer))
+    override def transformers: Iterable[GLMTransformerEdge] = List(GLMTransformerEdge(kreis.transformer))
 
     override def swing_nodes: Iterable[GLMNode] = kreis.swing_nodes
 
     override def nodes: Iterable[SimulationNode] = kreis.nodes
 
-    override def extra: Iterable[String] = List ("")
+    override def extra: Iterable[String] = List("")
 
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match
+        val subtransmission_trafos = edges.flatMap(edge => edge.rawedge match
         {
-            case e: GLMTransformerEdge => Some (e)
+            case e: GLMTransformerEdge => Some(e)
             case _ => None
         })
         val trafos = transformers ++ subtransmission_trafos
-        val configurations = trafos.groupBy (_.configurationName).values
-        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
+        val configurations = trafos.groupBy(_.configurationName).values
+        configurations.map(config => config.head.configuration(this, config.map(_.transformer.transformer_name).mkString(", ")))
     }
 
     def emit_load (node: SimulationNode): String =
@@ -74,8 +74,8 @@ case class SimulationDirectionGenerator
     {
         edge match
         {
-            case e: SimulationEdge => super.emit_edge (e.rawedge)
-            case _ => super.emit_edge (edge) // should never happen
+            case e: SimulationEdge => super.emit_edge(e.rawedge)
+            case _ => super.emit_edge(edge) // should never happen
         }
     }
 
@@ -83,8 +83,8 @@ case class SimulationDirectionGenerator
     {
         node match
         {
-            case n: SimulationNode => emit_load (n)
-            case _ => super.emit_node (node) // should never happen
+            case n: SimulationNode => emit_load(n)
+            case _ => super.emit_node(node) // should never happen
         }
     }
 
@@ -95,13 +95,13 @@ case class SimulationDirectionGenerator
      * @return line edges
      */
     def rawLineEdges (edges: Iterable[GLMEdge]): Iterable[GLMLineEdge] =
-        edges.flatMap (
+        edges.flatMap(
             _ match
             {
                 case e: SimulationEdge =>
                     e.rawedge match
                     {
-                        case l: GLMLineEdge => Some (l)
+                        case l: GLMLineEdge => Some(l)
                         case _ => None
                     }
                 case _ => None
@@ -116,9 +116,9 @@ case class SimulationDirectionGenerator
      * @param edges The edges in the model.
      * @return The configuration elements as a single string.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        rawLineEdges (edges).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        rawLineEdges(edges).groupBy(_.configurationName).values.map(_.head.configuration(this))
     }
 }

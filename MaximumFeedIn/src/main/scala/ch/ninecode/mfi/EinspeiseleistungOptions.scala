@@ -41,11 +41,11 @@ import ch.ninecode.util.Sparkable
  */
 case class EinspeiseleistungOptions
 (
-    var main_options: MainOptions = MainOptions (),
-    var spark_options: SparkOptions = SparkOptions (),
-    var cim_options: CIMReaderOptions = CIMReaderOptions (
+    var main_options: MainOptions = MainOptions(),
+    var spark_options: SparkOptions = SparkOptions(),
+    var cim_options: CIMReaderOptions = CIMReaderOptions(
         topology = true,
-        topology_options = CIMTopologyOptions (
+        topology_options = CIMTopologyOptions(
             identify_islands = true,
             force_retain_switches = ForceTrue,
             force_retain_fuses = ForceTrue
@@ -79,8 +79,8 @@ case class EinspeiseleistungOptions
         files.toList match
         {
             case paths :: _ =>
-                val file = paths.split (",")(0).replace (" ", "%20")
-                val uri = new URI (file)
+                val file = paths.split(",")(0).replace(" ", "%20")
+                val uri = new URI(file)
                 val scheme = uri.getScheme
                 val auth = if (null == uri.getAuthority) "" else uri.getAuthority
                 if (null == scheme)
@@ -95,5 +95,5 @@ case class EinspeiseleistungOptions
     /**
      * Get user specified directory or generate a working directory matching the files.
      */
-    def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir (cim_options.files)
+    def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir(cim_options.files)
 }

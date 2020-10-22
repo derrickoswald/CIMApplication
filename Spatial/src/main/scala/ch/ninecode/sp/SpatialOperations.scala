@@ -18,8 +18,8 @@ import ch.ninecode.model.PowerSystemResource
 class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
-    val psr: String = PowerSystemResource.getClass.getName.replace ("$", "")
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
+    val psr: String = PowerSystemResource.getClass.getName.replace("$", "")
 
     /**
      * Get the location reference from a PowerSystemResource.
@@ -41,31 +41,31 @@ class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
         }
     }
 
-    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-    def asElement (e: Any): Element = e.asInstanceOf [Element]
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    def asElement (e: Any): Element = e.asInstanceOf[Element]
 
     def nearest (args: SpatialOperationParameters): DataFrame =
     {
         // get the subsetter
-        val chim = new CHIM ("")
-        val cls = chim.classes.find (_.subsetter.cls == args.clazz)
+        val chim = new CHIM("")
+        val cls = chim.classes.find(_.subsetter.cls == args.clazz)
 
         cls match
         {
-            case Some (clz) =>
+            case Some(clz) =>
                 // do the fucking Scala type voodoo
                 val subsetter = clz.subsetter
                 type T = subsetter.basetype
-                implicit val tag: TypeTag[T] = subsetter.tag.asInstanceOf [TypeTag[T]]
+                implicit val tag: TypeTag[T] = subsetter.tag.asInstanceOf[TypeTag[T]]
 
                 // get the RDD of desired objects
-                val rdd: RDD[T] = getOrElse [T]
+                val rdd: RDD[T] = getOrElse[T]
 
                 // get the points
-                val points = getOrElse [PositionPoint]
+                val points = getOrElse[PositionPoint]
 
                 // join
-                val targets: RDD[(T, PositionPoint)] = rdd.keyBy (x => location (asElement (x))).join (points.keyBy (_.Location)).values
+                val targets: RDD[(T, PositionPoint)] = rdd.keyBy(x => location(asElement(x))).join(points.keyBy(_.Location)).values
 
                 object nearestOrdering extends Ordering[(T, PositionPoint)]
                 {
@@ -86,17 +86,17 @@ class SpatialOperations (session: SparkSession) extends CIMRDD with Serializable
                      */
                     def compare (x: (T, PositionPoint), y: (T, PositionPoint)): Int =
                     {
-                        Math.signum (dist2 (x._2) - dist2 (y._2)).toInt
+                        Math.signum(dist2(x._2) - dist2(y._2)).toInt
                     }
                 }
 
                 // sort by distance using implicit ordering
-                val result = targets.takeOrdered (args.n)(nearestOrdering).map (_._1)
+                val result = targets.takeOrdered(args.n)(nearestOrdering).map(_._1)
 
                 // make a DataFrame
-                session.sqlContext.sparkSession.createDataFrame (result)
+                session.sqlContext.sparkSession.createDataFrame(result)
             case None =>
-                log.error (s"class ${args.clazz} not found")
+                log.error(s"class ${args.clazz} not found")
                 spark.emptyDataFrame
         }
     }

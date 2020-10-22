@@ -12,11 +12,11 @@ case class MemberScanner (field: Field, una: UNA, begin: Int = 0) extends Reader
         var skip = false
         var stop = false
         var c = 0
-        var intervals = List [(Int, Int)]() // start and size of each piece of the segment
+        var intervals = List[(Int, Int)]() // start and size of each piece of the segment
 
         while (end < field.text.length && !stop)
         {
-            c = field.text.charAt (end)
+            c = field.text.charAt(end)
             end += 1
             if (skip)
             {
@@ -37,13 +37,13 @@ case class MemberScanner (field: Field, una: UNA, begin: Int = 0) extends Reader
 
         intervals = intervals :+ ((start, if (stop) end - 1 else end))
 
-        val string = intervals.map (
-            item => field.text.substring (item._1, item._2)
-        ).mkString ("")
-        Field (string)
+        val string = intervals.map(
+            item => field.text.substring(item._1, item._2)
+        ).mkString("")
+        Field(string)
     }
 
-    override def rest: Reader[Field] = MemberScanner (field, una: UNA, end)
+    override def rest: Reader[Field] = MemberScanner(field, una: UNA, end)
 
     override def pos: Position = new Position
     {

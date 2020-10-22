@@ -41,19 +41,19 @@ abstract class CIMWebFunction extends CIMFunction
         var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
         try
         {
-            ret = URLDecoder.decode (ret, "UTF-8")
+            ret = URLDecoder.decode(ret, "UTF-8")
         }
         catch
         {
-            case e: UnsupportedEncodingException => e.printStackTrace ()
+            case e: UnsupportedEncodingException => e.printStackTrace()
         }
-        if (!ret.toLowerCase ().endsWith (".jar"))
+        if (!ret.toLowerCase().endsWith(".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
-            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
-            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (s"${ret}ch/")), "ch/")
-            writer.close ()
+            val name = s"/tmp/${Random.nextInt(99999999)}.jar"
+            val writer = new Jar(new scala.reflect.io.File(new java.io.File(name))).jarWriter()
+            writer.addDirectory(new scala.reflect.io.Directory(new java.io.File(s"${ret}ch/")), "ch/")
+            writer.close()
             ret = name
         }
 
@@ -63,39 +63,39 @@ abstract class CIMWebFunction extends CIMFunction
     // build a file system configuration, including core-site.xml
     def hdfs_configuration: Configuration =
     {
-        val configuration = new Configuration ()
-        if (null == configuration.getResource ("core-site.xml"))
+        val configuration = new Configuration()
+        if (null == configuration.getResource("core-site.xml"))
         {
-            val hadoop_conf: String = System.getenv ("HADOOP_CONF_DIR")
+            val hadoop_conf: String = System.getenv("HADOOP_CONF_DIR")
             if (null != hadoop_conf)
             {
-                val site: Path = new Path (hadoop_conf, "core-site.xml")
-                val f: File = new File (site.toString)
+                val site: Path = new Path(hadoop_conf, "core-site.xml")
+                val f: File = new File(site.toString)
                 if (f.exists && !f.isDirectory)
-                    configuration.addResource (site)
+                    configuration.addResource(site)
             }
         }
         configuration
     }
 
     // get the file system
-    def uri: URI = FileSystem.getDefaultUri (hdfs_configuration)
+    def uri: URI = FileSystem.getDefaultUri(hdfs_configuration)
 
     // or: val uri: URI = URI.create (hdfs_configuration.get (FileSystem.FS_DEFAULT_NAME_KEY))
 
-    def hdfs: FileSystem = FileSystem.get (uri, hdfs_configuration)
+    def hdfs: FileSystem = FileSystem.get(uri, hdfs_configuration)
 
     override def executeResultSet (spark: SparkSession): Dataset[Row] =
     {
-        val schema = StructType (Seq (StructField (name = "error", dataType = StringType, nullable = false)))
-        spark.sqlContext.createDataFrame (Seq (Row ("execute called on wrong method signature")).asJava, schema)
+        val schema = StructType(Seq(StructField(name = "error", dataType = StringType, nullable = false)))
+        spark.sqlContext.createDataFrame(Seq(Row("execute called on wrong method signature")).asJava, schema)
     }
 
     override def executeString (spark: SparkSession): String =
         "error: execute called on wrong method signature"
 
     override def executeJSON (spark: SparkSession): JsonStructure =
-        Json.createObjectBuilder.add ("error", "execute called on wrong method signature").build
+        Json.createObjectBuilder.add("error", "execute called on wrong method signature").build
 
     override def toString: String =
     {
@@ -105,6 +105,6 @@ abstract class CIMWebFunction extends CIMFunction
             case Return.String => "executeString"
             case Return.JSON => "executeJSON"
         }
-        s"${getReturnType.toString} $ret  (session) [${jars.mkString (",")}]"
+        s"${getReturnType.toString} $ret  (session) [${jars.mkString(",")}]"
     }
 }

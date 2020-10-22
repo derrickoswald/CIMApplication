@@ -31,12 +31,12 @@ case class SimulationTransformerServiceArea
     def keep (node: SimulationNode): Boolean = node.consumer || node.busbar
 
     // generate experiments as 5 seconds short circuit (100Ω) at each node
-    lazy val experiments: Array[ScExperiment] = nodes.filter (keep).zipWithIndex // (node, index)
-        .map (
+    lazy val experiments: Array[ScExperiment] = nodes.filter(keep).zipWithIndex // (node, index)
+        .map(
             x =>
             {
                 val (node, index) = x
-                ScExperiment (name, node.id, node.equipment, start_time, index, 5, node.nominal_voltage, Complex (100.0))
+                ScExperiment(name, node.id, node.equipment, start_time, index, 5, node.nominal_voltage, Complex(100.0))
             }
         ).toArray
 
@@ -45,13 +45,13 @@ case class SimulationTransformerServiceArea
      *
      * @param c The Calendar value to be cloned.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
 
     val finish_time: Calendar =
     {
-        val t = dup (start_time)
-        t.add (Calendar.SECOND, 5 * (experiments.length + 1))
+        val t = dup(start_time)
+        t.add(Calendar.SECOND, 5 * (experiments.length + 1))
         t
     }
 }

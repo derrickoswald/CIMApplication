@@ -14,7 +14,7 @@ import ch.ninecode.util.Util
 
 class OneOfNMainSuite extends TestUtil with BeforeAndAfter
 {
-    override val classesToRegister: Array[Class[_]] = Array.concat (
+    override val classesToRegister: Array[Class[_]] = Array.concat(
         CIMClasses.list,
         GridLABD.classes,
         Net.classes,
@@ -25,31 +25,31 @@ class OneOfNMainSuite extends TestUtil with BeforeAndAfter
     before
     {
         // unpack the zip files
-        if (!new File (s"$FILE_DEPOT$FILENAME.rdf").exists)
-            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME.zip", FILE_DEPOT)
+        if (!new File(s"$FILE_DEPOT$FILENAME.rdf").exists)
+            new Unzip().unzip(s"$FILE_DEPOT$FILENAME.zip", FILE_DEPOT)
     }
 
     after
     {
-        new File (s"$FILE_DEPOT$FILENAME.rdf").delete
+        new File(s"$FILE_DEPOT$FILENAME.rdf").delete
     }
 
-    test ("Help")
+    test("Help")
     {
         _: SparkSession =>
-            main (Array ("--unittest", "--help"))
+            main(Array("--unittest", "--help"))
     }
 
-    test ("Version")
+    test("Version")
     {
         _: SparkSession =>
-            main (Array ("--unittest", "--version"))
+            main(Array("--unittest", "--version"))
     }
 
-    test ("Basic")
+    test("Basic")
     {
         session: SparkSession =>
-            main (Array (
+            main(Array(
                 "--unittest",
                 "--verbose",
                 "--log", "INFO",

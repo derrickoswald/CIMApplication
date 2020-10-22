@@ -44,8 +44,8 @@ import ch.ninecode.util.Util
  * Generate the RDD of available short circuit power and angle at each station.
  * Reads a CSV (in a particular format) to extract the ShortCircuitData information.
  *
- * @param session       the Spark session
- * @param options       options for processing
+ * @param session the Spark session
+ * @param options options for processing
  */
 case class ShortCircuitInfo1 (
     session: SparkSession,
@@ -58,81 +58,81 @@ case class ShortCircuitInfo1 (
 
     implicit val spark: SparkSession = session
     implicit val storage: StorageLevel = options.cim_options.storage
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
     // get a map of voltages
     val voltage_map: Map[Double, String] =
     {
         // ToDo: fix this 1000V multiplier
-        val voltages = session.sql ("select IdentifiedObject.mRID, nominalVoltage * 1000.0 voltage from BaseVoltage")
-        voltages.rdd.map (v => (v.getDouble (1), v.getString (0))).collectAsMap ()
+        val voltages = session.sql("select IdentifiedObject.mRID, nominalVoltage * 1000.0 voltage from BaseVoltage")
+        voltages.rdd.map(v => (v.getDouble(1), v.getString(0))).collectAsMap()
     }
 
     def read_csv (csv: String): RDD[EquivalentInjection] =
     {
-        val customSchema = StructType (
+        val customSchema = StructType(
             Array
             (
-                StructField ("id", StringType),
-                StructField ("Fehlerort", StringType),
-                StructField ("Un", DoubleType),
-                StructField ("Ikw...RST.", DoubleType),
-                StructField ("Sk..RST.", DoubleType),
-                StructField ("Beschreibung..SAP.Nr..", StringType),
-                StructField ("Abgang", StringType),
-                StructField ("NIS.ID", StringType),
-                StructField ("NIS.Name", StringType)
+                StructField("id", StringType),
+                StructField("Fehlerort", StringType),
+                StructField("Un", DoubleType),
+                StructField("Ikw...RST.", DoubleType),
+                StructField("Sk..RST.", DoubleType),
+                StructField("Beschreibung..SAP.Nr..", StringType),
+                StructField("Abgang", StringType),
+                StructField("NIS.ID", StringType),
+                StructField("NIS.Name", StringType)
             )
         )
 
         val df = session.sqlContext.read
-            .format ("csv")
-            .option ("header", "true")
-            .schema (customSchema)
-            .csv (csv)
+            .format("csv")
+            .option("header", "true")
+            .schema(customSchema)
+            .csv(csv)
 
         def toEquivalentInjection (voltages: Map[Double, String])(row: Row): EquivalentInjection =
         {
-            val id = row.getString (0)
-            val ort = row.getString (1)
-            val v1 = row.getDouble (2) * 1e3
-            val wik = -row.getDouble (3) * Math.PI / 180.0
-            val sk = row.getDouble (4) * 1e6
-            val sap = row.getString (5)
-            val feeder = row.getString (6)
-            val station = row.getString (7)
-            val name = row.getString (8)
+            val id = row.getString(0)
+            val ort = row.getString(1)
+            val v1 = row.getDouble(2) * 1e3
+            val wik = -row.getDouble(3) * Math.PI / 180.0
+            val sk = row.getDouble(4) * 1e6
+            val sap = row.getString(5)
+            val feeder = row.getString(6)
+            val station = row.getString(7)
+            val name = row.getString(8)
 
             val c = 1.0
             //val ratioZ0Z1 = 4
             //val ratioX0R0 = 10
             val zqt = (c * v1 * v1) / sk
             //val zqt0 = zqt * ratioZ0Z1
-            val netz_r1 = zqt * Math.cos (wik)
-            val netz_x1 = zqt * Math.sin (wik)
+            val netz_r1 = zqt * Math.cos(wik)
+            val netz_x1 = zqt * Math.sin(wik)
             val netz_r0 = 0.0 // zqt0 * Math.cos (Math.abs (Math.atan (ratioX0R0)))
             val netz_x0 = 0.0 // zqt0 * Math.sin (Math.abs (Math.atan (ratioX0R0)))
 
-            val voltage = voltages.getOrElse (v1, "BaseVoltage_Unknown_%s".format (v1))
+            val voltage = voltages.getOrElse(v1, "BaseVoltage_Unknown_%s".format(v1))
             val mRID = "EquivalentInjection_" + id
-            val description = "equivalent generation injection at %s from %s".format (ort, feeder)
-            val element = BasicElement (mRID = mRID)
-            val obj = IdentifiedObject (element, aliasName = sap, description = description, mRID = mRID, name = s"$name equivalent injection")
-            obj.bitfields = IdentifiedObject.fieldsToBitfields ("aliasName", "description", "mRID", "name")
-            val psr = PowerSystemResource (obj)
-            psr.bitfields = PowerSystemResource.fieldsToBitfields ()
-            val equipment = Equipment (psr, inService = true, normallyInService = true, EquipmentContainer = station)
-            equipment.bitfields = Equipment.fieldsToBitfields ("inService", "normallyInService", "EquipmentContainer")
-            val conducting = ConductingEquipment (equipment, BaseVoltage = voltage)
-            conducting.bitfields = ConductingEquipment.fieldsToBitfields ("BaseVoltage")
-            val equivalent = EquivalentEquipment (conducting)
-            equivalent.bitfields = EquivalentEquipment.fieldsToBitfields ()
+            val description = "equivalent generation injection at %s from %s".format(ort, feeder)
+            val element = BasicElement(mRID = mRID)
+            val obj = IdentifiedObject(element, aliasName = sap, description = description, mRID = mRID, name = s"$name equivalent injection")
+            obj.bitfields = IdentifiedObject.fieldsToBitfields("aliasName", "description", "mRID", "name")
+            val psr = PowerSystemResource(obj)
+            psr.bitfields = PowerSystemResource.fieldsToBitfields()
+            val equipment = Equipment(psr, inService = true, normallyInService = true, EquipmentContainer = station)
+            equipment.bitfields = Equipment.fieldsToBitfields("inService", "normallyInService", "EquipmentContainer")
+            val conducting = ConductingEquipment(equipment, BaseVoltage = voltage)
+            conducting.bitfields = ConductingEquipment.fieldsToBitfields("BaseVoltage")
+            val equivalent = EquivalentEquipment(conducting)
+            equivalent.bitfields = EquivalentEquipment.fieldsToBitfields()
             // decompose sk values into P & Q, use maxP and maxQ also as minP and minQ respectively
-            val maxP = sk * Math.cos (wik)
-            val maxQ = sk * Math.sin (wik)
+            val maxP = sk * Math.cos(wik)
+            val maxQ = sk * Math.sin(wik)
             // note: exclude r2, x2 since we don't really know them and they aren't used
             // note: use RegulationStatus to indicate this is a real value and not a default
-            val injection = EquivalentInjection (
+            val injection = EquivalentInjection(
                 equivalent,
                 maxP = maxP,
                 maxQ = maxQ,
@@ -151,7 +151,7 @@ case class ShortCircuitInfo1 (
                 x2 = netz_x1)
             // note: exclude r2, x2 since we don't really know them and they aren't used
             // note: use RegulationStatus to indicate this is a real value and not a default
-            injection.bitfields = EquivalentInjection.fieldsToBitfields (
+            injection.bitfields = EquivalentInjection.fieldsToBitfields(
                 "maxP",
                 "maxQ",
                 "minP",
@@ -170,12 +170,12 @@ case class ShortCircuitInfo1 (
             injection
         }
 
-        val sc = df.map (toEquivalentInjection (voltage_map)).rdd
+        val sc = df.map(toEquivalentInjection(voltage_map)).rdd
 
         sc
     }
 
-    def table_exists (name: String): Boolean = session.catalog.tableExists (name)
+    def table_exists (name: String): Boolean = session.catalog.tableExists(name)
 
     def toTerminalsAndLocations (pair: (EquivalentInjection, TransformerDetails)): List[Element] =
     {
@@ -187,45 +187,45 @@ case class ShortCircuitInfo1 (
             val mRID = details.transformer + "_equivalent_injection"
 
             // create the location object
-            val loc_element = BasicElement (mRID = s"${mRID}_location")
-            val loc_id_obj = IdentifiedObject (loc_element, mRID = s"${mRID}_location")
-            loc_id_obj.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
-            val location = Location (loc_id_obj, `type` = "geographic", CoordinateSystem = "wgs84")
-            location.bitfields = Location.fieldsToBitfields ("type", "CoordinateSystem")
+            val loc_element = BasicElement(mRID = s"${mRID}_location")
+            val loc_id_obj = IdentifiedObject(loc_element, mRID = s"${mRID}_location")
+            loc_id_obj.bitfields = IdentifiedObject.fieldsToBitfields("mRID")
+            val location = Location(loc_id_obj, `type` = "geographic", CoordinateSystem = "wgs84")
+            location.bitfields = Location.fieldsToBitfields("type", "CoordinateSystem")
 
             // change the mRID and insert the location into the EquivalentInjection
             val old_obj = eq_inj.EquivalentEquipment.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject
-            val obj = IdentifiedObject (BasicElement (mRID = mRID), aliasName = eq_inj.id, description = old_obj.description, mRID = mRID, name = old_obj.name, DiagramObjects = old_obj.DiagramObjects, Names = old_obj.Names)
-            obj.bitfields = IdentifiedObject.fieldsToBitfields ("aliasName", "description", "mRID", "name", "DiagramObjects", "Names")
-            val psr = PowerSystemResource (obj, Location = location.id)
-            psr.bitfields = PowerSystemResource.fieldsToBitfields ("Location")
-            val equipment = Equipment (psr, inService = true, normallyInService = true, EquipmentContainer = details.station)
-            equipment.bitfields = Equipment.fieldsToBitfields ("inService", "normallyInService", "EquipmentContainer")
-            val conducting = ConductingEquipment (equipment, BaseVoltage = eq_inj.EquivalentEquipment.ConductingEquipment.BaseVoltage)
-            conducting.bitfields = ConductingEquipment.fieldsToBitfields ("BaseVoltage")
-            val equivalent = EquivalentEquipment (conducting)
-            equivalent.bitfields = EquivalentEquipment.fieldsToBitfields ()
-            val injection = EquivalentInjection (equivalent, eq_inj.maxP, eq_inj.maxQ, eq_inj.minP, eq_inj.minQ, eq_inj.p, eq_inj.q, eq_inj.r, eq_inj.r0, eq_inj.r2, eq_inj.regulationCapability, eq_inj.regulationStatus, eq_inj.regulationTarget, eq_inj.x, eq_inj.x0, eq_inj.x2, eq_inj.ReactiveCapabilityCurve)
+            val obj = IdentifiedObject(BasicElement(mRID = mRID), aliasName = eq_inj.id, description = old_obj.description, mRID = mRID, name = old_obj.name, DiagramObjects = old_obj.DiagramObjects, Names = old_obj.Names)
+            obj.bitfields = IdentifiedObject.fieldsToBitfields("aliasName", "description", "mRID", "name", "DiagramObjects", "Names")
+            val psr = PowerSystemResource(obj, Location = location.id)
+            psr.bitfields = PowerSystemResource.fieldsToBitfields("Location")
+            val equipment = Equipment(psr, inService = true, normallyInService = true, EquipmentContainer = details.station)
+            equipment.bitfields = Equipment.fieldsToBitfields("inService", "normallyInService", "EquipmentContainer")
+            val conducting = ConductingEquipment(equipment, BaseVoltage = eq_inj.EquivalentEquipment.ConductingEquipment.BaseVoltage)
+            conducting.bitfields = ConductingEquipment.fieldsToBitfields("BaseVoltage")
+            val equivalent = EquivalentEquipment(conducting)
+            equivalent.bitfields = EquivalentEquipment.fieldsToBitfields()
+            val injection = EquivalentInjection(equivalent, eq_inj.maxP, eq_inj.maxQ, eq_inj.minP, eq_inj.minQ, eq_inj.p, eq_inj.q, eq_inj.r, eq_inj.r0, eq_inj.r2, eq_inj.regulationCapability, eq_inj.regulationStatus, eq_inj.regulationTarget, eq_inj.x, eq_inj.x0, eq_inj.x2, eq_inj.ReactiveCapabilityCurve)
             injection.bitfields = eq_inj.bitfields.clone
 
             // create the PositionPoint (offset slightly from the transformer)
-            val pp_element = BasicElement (mRID = s"${mRID}_location_p")
-            val position = PositionPoint (pp_element, sequenceNumber = 1, xPosition = (details.x - 0.00002).toString, yPosition = (details.y + 0.00002).toString, Location = location.id)
-            position.bitfields = PositionPoint.fieldsToBitfields ("sequenceNumber", "xPosition", "yPosition", "Location")
+            val pp_element = BasicElement(mRID = s"${mRID}_location_p")
+            val position = PositionPoint(pp_element, sequenceNumber = 1, xPosition = (details.x - 0.00002).toString, yPosition = (details.y + 0.00002).toString, Location = location.id)
+            position.bitfields = PositionPoint.fieldsToBitfields("sequenceNumber", "xPosition", "yPosition", "Location")
 
             // create the terminal to join the transformer primary nodes to EquivalentInjection
-            val term_element = BasicElement (mRID = s"${mRID}_terminal_1")
-            val term_id_obj = IdentifiedObject (term_element, mRID = s"${mRID}_terminal_1")
-            term_id_obj.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
-            val acdc = ACDCTerminal (term_id_obj, connected = true, sequenceNumber = 1)
-            acdc.bitfields = ACDCTerminal.fieldsToBitfields ("connected", "sequenceNumber")
-            val terminal = Terminal (acdc, phases = details.phases, ConductingEquipment = mRID, ConnectivityNode = details.connectivity_node, TopologicalNode = details.topological_node)
-            terminal.bitfields = Terminal.fieldsToBitfields ("phases", "ConductingEquipment", "ConnectivityNode", "TopologicalNode")
+            val term_element = BasicElement(mRID = s"${mRID}_terminal_1")
+            val term_id_obj = IdentifiedObject(term_element, mRID = s"${mRID}_terminal_1")
+            term_id_obj.bitfields = IdentifiedObject.fieldsToBitfields("mRID")
+            val acdc = ACDCTerminal(term_id_obj, connected = true, sequenceNumber = 1)
+            acdc.bitfields = ACDCTerminal.fieldsToBitfields("connected", "sequenceNumber")
+            val terminal = Terminal(acdc, phases = details.phases, ConductingEquipment = mRID, ConnectivityNode = details.connectivity_node, TopologicalNode = details.topological_node)
+            terminal.bitfields = Terminal.fieldsToBitfields("phases", "ConductingEquipment", "ConnectivityNode", "TopologicalNode")
 
-            List (injection, terminal, location, position)
+            List(injection, terminal, location, position)
         }
         else
-            List ()
+            List()
     }
 
     def getShortCircuitInfo (csv: String): RDD[Element] =
@@ -243,8 +243,8 @@ case class ShortCircuitInfo1 (
                 t.ConductingEquipment.Equipment.EquipmentContainer = s.EquipmentContainer.ConnectivityNodeContainer.PowerSystemResource.IdentifiedObject.mRID
             %s
             %s
-            """.format (
-                if (table_exists ("Bay"))
+            """.format(
+                if (table_exists("Bay"))
                     """
                     union
                     select
@@ -258,7 +258,7 @@ case class ShortCircuitInfo1 (
                     """
                 else
                     "",
-                if (table_exists ("VoltageLevel"))
+                if (table_exists("VoltageLevel"))
                     """
                     union
                     select
@@ -297,7 +297,7 @@ case class ShortCircuitInfo1 (
                 PowerTransformerEnd end
             where
                 t.ACDCTerminal.sequenceNumber = seq.n and t.ConductingEquipment = seq.transformer and t.ACDCTerminal.IdentifiedObject.mRID = end.TransformerEnd.Terminal
-            """.format (tsl)
+            """.format(tsl)
 
         val query =
             """
@@ -313,35 +313,35 @@ case class ShortCircuitInfo1 (
             from PositionPoint p, (%s) tslc
             where
                 p.Location = tslc.location
-            """.format (tslc)
+            """.format(tslc)
         val nexec = session.sparkContext.getExecutorMemoryStatus.size
-        val transformerdetails = session.sql (query).rdd.map (
+        val transformerdetails = session.sql(query).rdd.map(
             row =>
-                TransformerDetails (
-                    row.getString (0),
-                    row.getString (1),
-                    row.getString (2),
-                    row.getString (3),
-                    row.getString (4),
-                    row.getString (5),
-                    row.getDouble (6),
-                    row.getDouble (7))).coalesce (nexec, shuffle = true).cache
+                TransformerDetails(
+                    row.getString(0),
+                    row.getString(1),
+                    row.getString(2),
+                    row.getString(3),
+                    row.getString(4),
+                    row.getString(5),
+                    row.getDouble(6),
+                    row.getDouble(7))).coalesce(nexec, shuffle = true).cache
 
         // read the csv
-        val equivalents = read_csv (csv)
+        val equivalents = read_csv(csv)
 
         // join transformers by station and add Terminal, Location and PositionPoint
-        val injections: RDD[(String, EquivalentInjection)] = equivalents.keyBy (_.EquivalentEquipment.ConductingEquipment.Equipment.EquipmentContainer)
-        val transformers: RDD[(String, TransformerDetails)] = transformerdetails.keyBy (_.station)
-        val all = injections.join (transformers).values.flatMap (toTerminalsAndLocations)
-        val _ = all.persist (storage)
+        val injections: RDD[(String, EquivalentInjection)] = equivalents.keyBy(_.EquivalentEquipment.ConductingEquipment.Equipment.EquipmentContainer)
+        val transformers: RDD[(String, TransformerDetails)] = transformerdetails.keyBy(_.station)
+        val all = injections.join(transformers).values.flatMap(toTerminalsAndLocations)
+        val _ = all.persist(storage)
         all
     }
 
     def merge (elements: RDD[Element]): Unit =
     {
-        val chim = new CHIM ("")
-        val subsetters: List[String] = chim.classes.map (info => info.name)
+        val chim = new CHIM("")
+        val subsetters: List[String] = chim.classes.map(info => info.name)
         val old_elements = getOrElse[Element]
 
         // get the list of classes that need to be merged
@@ -351,48 +351,48 @@ case class ShortCircuitInfo1 (
             {
                 val cls = element.getClass
                 val classname = cls.getName
-                val name = classname.substring (classname.lastIndexOf (".") + 1)
-                subsetters.find (_ == name) match
+                val name = classname.substring(classname.lastIndexOf(".") + 1)
+                subsetters.find(_ == name) match
                 {
-                    case Some (subsetter) => List (subsetter) ::: supers (element.sup)
-                    case None => List ()
+                    case Some(subsetter) => List(subsetter) ::: supers(element.sup)
+                    case None => List()
                 }
             }
             else
-                List ()
+                List()
         }
 
-        val uniq_to_be_merged: RDD[String] = elements.flatMap (supers).distinct.cache
+        val uniq_to_be_merged: RDD[String] = elements.flatMap(supers).distinct.cache
         val array_to_be_merged: Array[String] = uniq_to_be_merged.collect
-        val list = chim.classes.filter (x => array_to_be_merged.contains (x.name)).toArray
+        val list = chim.classes.filter(x => array_to_be_merged.contains(x.name)).toArray
 
         // merge each class
         def add[T <: Product] (subsetter: CIMSubsetter[T]): Unit =
         {
             implicit val classtag: scala.reflect.ClassTag[T] = scala.reflect.ClassTag[T](subsetter.runtime_class)
             implicit val tag: universe.TypeTag[T] = subsetter.tag
-            val subrdd: RDD[T] = elements.flatMap (subsetter.asThisClass)
-            val existing: RDD[T] = getOrElse [subsetter.basetype]
-            val _ = put [T](subrdd.union (existing))
+            val subrdd: RDD[T] = elements.flatMap(subsetter.asThisClass)
+            val existing: RDD[T] = getOrElse[subsetter.basetype]
+            val _ = put[T](subrdd.union(existing))
         }
 
         for (info <- list)
-            add (info.subsetter)
+            add(info.subsetter)
 
         // replace elements in Elements
-        val new_elements: RDD[Element] = old_elements.union (elements)
-        val _ = put (new_elements, true)
+        val new_elements: RDD[Element] = old_elements.union(elements)
+        val _ = put(new_elements, true)
     }
 
     def run (): Unit =
     {
-        val equivalents = getShortCircuitInfo (options.available_power_csv)
-        val export = new CIMExport (session)
-        export.export (equivalents, options.available_power_csv.replace (".csv", ".rdf"))
+        val equivalents = getShortCircuitInfo(options.available_power_csv)
+        val export = new CIMExport(session)
+        export.export(equivalents, options.available_power_csv.replace(".csv", ".rdf"))
         if ("" != options.export)
         {
-            merge (equivalents)
-            export.exportAll (options.export)
+            merge(equivalents)
+            export.exportAll(options.export)
         }
     }
 }
@@ -403,8 +403,8 @@ object ShortCircuitInfo1 extends CIMInitializer[NetworkParametersOptions] with M
     {
         if (options.verbose)
         {
-            LogManager.getLogger (getClass).setLevel (Level.INFO)
-            LogManager.getLogger (classOf[ShortCircuitInfo1]).setLevel (org.apache.log4j.Level.INFO)
+            LogManager.getLogger(getClass).setLevel(Level.INFO)
+            LogManager.getLogger(classOf[ShortCircuitInfo1]).setLevel(org.apache.log4j.Level.INFO)
         }
         if (options.main_options.valid)
         {
@@ -412,18 +412,18 @@ object ShortCircuitInfo1 extends CIMInitializer[NetworkParametersOptions] with M
             {
                 if ("" != options.available_power_csv)
                 {
-                    val session: SparkSession = createSession (options)
-                    readCIM (session, options)
-                    time ("execution: %s seconds")
+                    val session: SparkSession = createSession(options)
+                    readCIM(session, options)
+                    time("execution: %s seconds")
                     {
-                        ShortCircuitInfo1 (session, options).run ()
+                        ShortCircuitInfo1(session, options).run()
                     }
                 }
                 else
-                    log.error ("no CSV file specified")
+                    log.error("no CSV file specified")
             }
             else
-                log.error ("no CIM files specified")
+                log.error("no CIM files specified")
         }
     }
 
@@ -433,43 +433,43 @@ object ShortCircuitInfo1 extends CIMInitializer[NetworkParametersOptions] with M
         val need = scala_library_version
         if (have != need)
         {
-            log.error (s"Scala version ($have) does not match the version ($need) used to build $application_name")
-            sys.exit (1)
+            log.error(s"Scala version ($have) does not match the version ($need) used to build $application_name")
+            sys.exit(1)
         }
         else
         {
             // get the necessary jar files to send to the cluster
-            val jars = Set (
-                jarForObject (new DefaultSource ()),
-                jarForObject (NetworkParametersOptions ())
+            val jars = Set(
+                jarForObject(new DefaultSource()),
+                jarForObject(NetworkParametersOptions())
             ).toArray
 
             // compose the classes to be registered with Kryo
-            val kryo = Array.concat (
+            val kryo = Array.concat(
                 // register CIMReader classes
                 CIMClasses.list,
                 // register Util classes
                 Util.classes)
 
             // initialize the default options
-            val temp = NetworkParametersOptions ()
-            val default = NetworkParametersOptions (
-                main_options = MainOptions (s"Customer1_NetworkParameters", application_version),
-                spark_options = SparkOptions (jars = jars, kryo = kryo),
-                cim_options = temp.cim_options.copy (options = temp.cim_options.toMap),
+            val temp = NetworkParametersOptions()
+            val default = NetworkParametersOptions(
+                main_options = MainOptions(s"Customer1_NetworkParameters", application_version),
+                spark_options = SparkOptions(jars = jars, kryo = kryo),
+                cim_options = temp.cim_options.copy(options = temp.cim_options.toMap),
                 available_power_csv = "KS_Leistungen.csv"
             )
 
             // parse the command line arguments
-            new Customer1OptionsParser (default).parse (args, default) match
+            new Customer1OptionsParser(default).parse(args, default) match
             {
-                case Some (options) =>
+                case Some(options) =>
                     // execute the main program if everything checks out
-                    run (options)
+                    run(options)
                     if (!options.main_options.unittest)
-                        sys.exit (0)
+                        sys.exit(0)
                 case None =>
-                    sys.exit (1)
+                    sys.exit(1)
             }
         }
     }

@@ -7,11 +7,11 @@ package ch.ninecode.edifact
  * @param contents the raw contents of the segment, exclusive of the name and segment terminator
  * @param fields   the parsed field list
  */
-case class Segment (name: String, contents: String, fields: List[Field] = List ())
+case class Segment (name: String, contents: String, fields: List[Field] = List())
 {
     override def toString: String =
         if (fields.isEmpty)
             s"($name,$contents)"
         else
-            s"($name ${fields.mkString (",")})"
+            s"($name ${fields.mkString(",")})"
 }

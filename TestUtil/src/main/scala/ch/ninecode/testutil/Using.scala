@@ -6,11 +6,11 @@ trait Using
     {
         try
         {
-            block (resource)
+            block(resource)
         }
         finally
         {
-            resource.close ()
+            resource.close()
         }
     }
 }

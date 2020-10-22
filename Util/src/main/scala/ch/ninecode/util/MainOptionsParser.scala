@@ -5,7 +5,7 @@ import scopt.OptionParser
 /**
  * Parser for command line operation of standard programs.
  */
-@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
+@SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
 class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](default.main_options.application)
 {
     var unittest = false
@@ -15,50 +15,50 @@ class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](defa
     override def terminate (state: Either[String, Unit]): Unit =
     {
         if ((helpout || versionout) && !unittest)
-            sys.exit (if (state.isRight) 0 else 1)
+            sys.exit(if (state.isRight) 0 else 1)
     }
 
-    head (default.main_options.application, default.main_options.version)
+    head(default.main_options.application, default.main_options.version)
 
-    opt [Unit]("unittest")
+    opt[Unit]("unittest")
         .hidden
-        .action (
+        .action(
             (_, c) =>
             {
                 unittest = true;
-                c.main_options = c.main_options.copy (unittest = true);
+                c.main_options = c.main_options.copy(unittest = true);
                 c
             }
         )
-        .text (s"unit testing - don't call sys.exit() [${default.main_options.unittest}]")
+        .text(s"unit testing - don't call sys.exit() [${default.main_options.unittest}]")
 
-    help ("help")
+    help("help")
         .hidden
-        .validate (Unit =>
+        .validate(Unit =>
         {
             helpout = true;
-            Right (Unit)
+            Right(Unit)
         })
 
-    version ("version")
-        .validate (Unit =>
+    version("version")
+        .validate(Unit =>
         {
             versionout = true;
-            Right (Unit)
+            Right(Unit)
         })
-        .text (
+        .text(
             {
-                val version = default.main_options.version.split ("-")
+                val version = default.main_options.version.split("-")
                 if (3 == version.length)
-                    s"Scala: ${version (0)}, Spark: ${version (1)}, ${default.main_options.application}: ${version (2)}"
+                    s"Scala: ${version(0)}, Spark: ${version(1)}, ${default.main_options.application}: ${version(2)}"
                 else
                     default.main_options.version
             }
         )
 
-    checkConfig (o =>
+    checkConfig(o =>
     {
-        o.main_options = o.main_options.copy (valid = !(helpout || versionout));
-        Right (Unit)
+        o.main_options = o.main_options.copy(valid = !(helpout || versionout));
+        Right(Unit)
     })
 }

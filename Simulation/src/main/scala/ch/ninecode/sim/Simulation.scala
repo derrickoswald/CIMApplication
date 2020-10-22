@@ -88,7 +88,7 @@ import ch.ninecode.util.Util
  *    - query Cassandra for each player file
  *    - perform the gridlabd load-flow analysis
  *    - insert the contents of each recorder file into Cassandra
- **/
+ * */
 final case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
 {
     type Trafo = String
@@ -97,90 +97,90 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     if (options.verbose)
     {
-        LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
-        LogManager.getLogger ("ch.ninecode.gl.TransformerServiceArea").setLevel (org.apache.log4j.Level.INFO)
-        LogManager.getLogger ("ch.ninecode.sim.SimulationSparkQuery").setLevel (org.apache.log4j.Level.INFO)
-        LogManager.getLogger ("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel (org.apache.log4j.Level.INFO)
+        LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
+        LogManager.getLogger("ch.ninecode.gl.TransformerServiceArea").setLevel(org.apache.log4j.Level.INFO)
+        LogManager.getLogger("ch.ninecode.sim.SimulationSparkQuery").setLevel(org.apache.log4j.Level.INFO)
+        LogManager.getLogger("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel(org.apache.log4j.Level.INFO)
     }
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
     implicit val spark: SparkSession = session
 
-    val calendar: Calendar = Calendar.getInstance ()
-    calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
-    calendar.setTimeInMillis (0L)
+    val calendar: Calendar = Calendar.getInstance()
+    calendar.setTimeZone(TimeZone.getTimeZone("GMT"))
+    calendar.setTimeInMillis(0L)
 
-    val glm_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-    glm_date_format.setCalendar (calendar)
+    val glm_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
+    glm_date_format.setCalendar(calendar)
 
-    val iso_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-    iso_date_format.setCalendar (calendar)
+    val iso_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    iso_date_format.setCalendar(calendar)
 
-    val cassandra_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSSZ")
-    cassandra_date_format.setCalendar (calendar)
+    val cassandra_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ")
+    cassandra_date_format.setCalendar(calendar)
 
-    def read (rdf: String, reader_options: Map[String, String] = Map (), storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+    def read (rdf: String, reader_options: Map[String, String] = Map(), storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"))
     {
-        log.info (s"""reading "$rdf"""")
-        val start = System.nanoTime ()
-        val elements = session.read.format ("ch.ninecode.cim").options (reader_options).load (rdf)
-        log.info (s"${elements.count ()} elements")
-        val read = System.nanoTime ()
-        log.info (s"read: ${(read - start) / 1e9} seconds")
-        session.sparkContext.getPersistentRDDs.find (_._2.name == "TopologicalIsland") match
+        log.info(s"""reading "$rdf"""")
+        val start = System.nanoTime()
+        val elements = session.read.format("ch.ninecode.cim").options(reader_options).load(rdf)
+        log.info(s"${elements.count()} elements")
+        val read = System.nanoTime()
+        log.info(s"read: ${(read - start) / 1e9} seconds")
+        session.sparkContext.getPersistentRDDs.find(_._2.name == "TopologicalIsland") match
         {
-            case Some (_) =>
-                log.info ("topology exists")
+            case Some(_) =>
+                log.info("topology exists")
             case None =>
-                log.info ("generating topology")
-                val ntp = CIMNetworkTopologyProcessor (
+                log.info("generating topology")
+                val ntp = CIMNetworkTopologyProcessor(
                     session,
-                    CIMTopologyOptions (
+                    CIMTopologyOptions(
                         identify_islands = true,
                         storage = storage_level))
                 val ele = ntp.process
-                log.info (s"${ele.count ()} elements after topology creation")
-                val topology = System.nanoTime ()
-                log.info (s"topology: ${(topology - read) / 1e9} seconds")
+                log.info(s"${ele.count()} elements after topology creation")
+                val topology = System.nanoTime()
+                log.info(s"topology: ${(topology - read) / 1e9} seconds")
         }
     }
 
     def dump (obj: JsonObject): Unit =
     {
         val o = obj.asScala
-        val strings = o.map (x => s"${x._1}=${x._2.toString}")
-        log.info (strings.mkString (" "))
+        val strings = o.map(x => s"${x._1}=${x._2.toString}")
+        log.info(strings.mkString(" "))
     }
 
     def stringify (resultset: Seq[JsonObject]): String =
     {
         val array = Json.createArrayBuilder
         for (i <- resultset.indices)
-            array.add (resultset (i))
+            array.add(resultset(i))
         val string = new StringWriter
-        val properties = Map [String, AnyRef](
+        val properties = Map[String, AnyRef](
             JsonGenerator.PRETTY_PRINTING -> "true")
-        val writer = Json.createWriterFactory (properties.asJava).createWriter (string)
-        writer.write (array.build)
-        writer.close ()
+        val writer = Json.createWriterFactory(properties.asJava).createWriter(string)
+        writer.write(array.build)
+        writer.close()
         string.toString
     }
 
     def destringify (string: String): Seq[JsonObject] =
     {
         try
-        Json.createReader (new StringReader (string)).readArray match
+        Json.createReader(new StringReader(string)).readArray match
         {
             case obj: JsonArray =>
-                obj.getValuesAs (classOf[JsonObject]).asScala
+                obj.getValuesAs(classOf[JsonObject]).asScala
             case _ =>
-                log.error ("""not a JsonArray""")
-                Seq ()
+                log.error("""not a JsonArray""")
+                Seq()
         }
         catch
         {
             case je: JsonException =>
-                log.error (s" string could not be parsed as JSON (${je.getMessage})")
-                Seq ()
+                log.error(s" string could not be parsed as JSON (${je.getMessage})")
+                Seq()
         }
     }
 
@@ -188,11 +188,11 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     {
         try
         {
-            block (resource)
+            block(resource)
         }
         finally
         {
-            resource.close ()
+            resource.close()
         }
     }
 
@@ -200,15 +200,15 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     {
         val start = if (begin > end)
         {
-            val from = iso_date_format.format (new Date (begin))
-            val to = iso_date_format.format (new Date (end))
-            log.error (s"""player "${player.title}" has a start time ($from) after the end time ($to)""")
+            val from = iso_date_format.format(new Date(begin))
+            val to = iso_date_format.format(new Date(end))
+            log.error(s"""player "${player.title}" has a start time ($from) after the end time ($to)""")
             end
         }
         else
             begin
         val file = s"input_data/${player.name}.csv"
-        SimulationPlayer (
+        SimulationPlayer(
             player.name,
             player.parent,
             player.`type`,
@@ -224,7 +224,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     def generate_recorder_csv (recorder: SimulationRecorderResult): SimulationRecorder =
     {
         val file = s"output_data/${recorder.name}.csv"
-        SimulationRecorder (
+        SimulationRecorder(
             recorder.name,
             recorder.mrid,
             recorder.parent,
@@ -238,71 +238,71 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def pack (string: String): String =
     {
-        string.replace ("\n", " ").replaceAll ("[ ]+", " ")
+        string.replace("\n", " ").replaceAll("[ ]+", " ")
     }
 
-    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
     def dupTime (calendar: Calendar): Calendar =
     {
-        calendar.clone.asInstanceOf [Calendar]
+        calendar.clone.asInstanceOf[Calendar]
     }
 
     def plural (number: Int): String = if (1 == number) "" else "s"
 
     def make_tasks (job: SimulationJob): RDD[SimulationTask] =
     {
-        log.info (s"""preparing simulation job "${job.name}"""")
+        log.info(s"""preparing simulation job "${job.name}"""")
 
         // transformer area calculations
-        val tsa = TransformerServiceArea (session, options.cim_options.storage)
+        val tsa = TransformerServiceArea(session, options.cim_options.storage)
         // only proceed if topological processing was done (there are TopologicalIslands)
         if (tsa.hasIslands)
         {
             val islands_trafos: RDD[(island_id, identifier)] = tsa.getTransformerServiceAreas
-            val numareas = islands_trafos.map (_._2).distinct.count.toInt
-            log.info (s"""$numareas transformer service area${plural (numareas)} found""")
+            val numareas = islands_trafos.map(_._2).distinct.count.toInt
+            log.info(s"""$numareas transformer service area${plural(numareas)} found""")
 
-            val q = SimulationSparkQuery (session, options.cim_options.storage, options.verbose)
+            val q = SimulationSparkQuery(session, options.cim_options.storage, options.verbose)
 
             // query the players
-            log.info ("""querying players""")
-            val playersets: RDD[(island_id, Iterable[SimulationPlayerResult])] = session.sparkContext.union (job.players.map (query => q.executePlayerQuery (query))).groupByKey
+            log.info("""querying players""")
+            val playersets: RDD[(island_id, Iterable[SimulationPlayerResult])] = session.sparkContext.union(job.players.map(query => q.executePlayerQuery(query))).groupByKey
 
             // query the recorders
-            log.info ("""querying recorders""")
-            val recordersets: RDD[(island_id, Iterable[SimulationRecorderResult])] = session.sparkContext.union (job.recorders.map (query => q.executeRecorderQuery (query))).groupByKey
+            log.info("""querying recorders""")
+            val recordersets: RDD[(island_id, Iterable[SimulationRecorderResult])] = session.sparkContext.union(job.recorders.map(query => q.executeRecorderQuery(query))).groupByKey
 
             // join players and recorders
-            val players_recorders: RDD[(island_id, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult]))] = playersets.join (recordersets)
+            val players_recorders: RDD[(island_id, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult]))] = playersets.join(recordersets)
 
             // get the starting and ending times
             val start = job.start_time
             val end = job.end_time
 
-            log.info ("""generating simulation tasks""")
+            log.info("""generating simulation tasks""")
 
             // maybe reduce the set of islands
             val islands_to_do: RDD[(island_id, identifier)] =
                 if (0 != job.transformers.size)
-                    islands_trafos.filter (pair => job.transformers.contains (pair._2))
+                    islands_trafos.filter(pair => job.transformers.contains(pair._2))
                 else
                     islands_trafos
 
-            val island_helper = new SimulationIsland (session, options.cim_options.storage)
+            val island_helper = new SimulationIsland(session, options.cim_options.storage)
             Lines.DEFAULT_CABLE_RESISTANCE_LIMIT = options.cable_impedance_limit
-            val graph_stuff = island_helper.queryNetwork (islands_to_do.map (_.swap))
+            val graph_stuff = island_helper.queryNetwork(islands_to_do.map(_.swap))
             val areas: RDD[(identifier, (Iterable[SimulationNode], Iterable[SimulationEdge]))] =
                 graph_stuff
                     ._1.asInstanceOf[RDD[(identifier, SimulationNode)]]
                     .groupByKey
-                    .join (
+                    .join(
                         graph_stuff._2.asInstanceOf[RDD[(identifier, SimulationEdge)]]
                             .groupByKey)
 
             val players_and_recorders_by_area =
                 islands_trafos
-                    .join (players_recorders)
-                    .map (
+                    .join(players_recorders)
+                    .map(
                         (x: (island_id, (identifier, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])))) =>
                         {
                             val (_, (area, (players, recorders))) = x
@@ -310,40 +310,40 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         }
                     )
                     .groupByKey
-                    .map (
+                    .map(
                         (x: (identifier, Iterable[(Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])])) =>
                         {
                             val (area, pla_rec) = x
-                            (area, (pla_rec.flatMap (_._1), pla_rec.flatMap (_._2)))
+                            (area, (pla_rec.flatMap(_._1), pla_rec.flatMap(_._2)))
                         }
                     )
             val ret =
                 areas
-                    .join (players_and_recorders_by_area)
-                    .map (
+                    .join(players_and_recorders_by_area)
+                    .map(
                         (x: (identifier, ((Iterable[SimulationNode], Iterable[SimulationEdge]), (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])))) =>
                         {
                             val (area, ((nodes, edges), (pla, rec))) = x
-                            val players: Iterable[SimulationPlayer] = pla.map (generate_player_csv (start.getTimeInMillis, end.getTimeInMillis))
-                            val recorders: Iterable[SimulationRecorder] = rec.map (generate_recorder_csv)
-                            SimulationTask (
+                            val players: Iterable[SimulationPlayer] = pla.map(generate_player_csv(start.getTimeInMillis, end.getTimeInMillis))
+                            val recorders: Iterable[SimulationRecorder] = rec.map(generate_recorder_csv)
+                            SimulationTask(
                                 area, // trafo
                                 area, // island
-                                dupTime (start),
-                                dupTime (end),
+                                dupTime(start),
+                                dupTime(end),
                                 nodes, // nodes
                                 edges, // edges
                                 players,
                                 recorders)
                         }
                     )
-                    .persist (options.cim_options.storage)
-                    .setName (s"${job.id}_tasks")
+                    .persist(options.cim_options.storage)
+                    .setName(s"${job.id}_tasks")
             ret
         }
         else
         {
-            log.error ("""topology without islands""")
+            log.error("""topology without islands""")
             session.sparkContext.emptyRDD
         }
     }
@@ -351,37 +351,37 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     def columns (primaryKey: String)(phases: Int): Seq[String] =
     {
         if (phases == 3)
-            Seq (primaryKey, "type", "time", "period", "units", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
+            Seq(primaryKey, "type", "time", "period", "units", "real_a", "imag_a", "real_b", "imag_b", "real_c", "imag_c")
         else
-            Seq (primaryKey, "type", "time", "period", "units", "real_a", "imag_a")
+            Seq(primaryKey, "type", "time", "period", "units", "real_a", "imag_a")
     }
 
     def toThreePhase (transformer: String)(row: Row): SimulationPlayerData =
     {
-        val id = row.getString (0)
-        val typ = row.getString (1)
-        val t = row.getTimestamp (2).getTime
-        val period = row.getInt (3)
-        val units = row.getString (4)
-        val rea = row.getDouble (5)
-        val ima = row.getDouble (6)
-        val reb = row.getDouble (7)
-        val imb = row.getDouble (8)
-        val rec = row.getDouble (9)
-        val imc = row.getDouble (10)
-        SimulationPlayerData (transformer, id, typ, t, period, units, Array (rea, ima, reb, imb, rec, imc))
+        val id = row.getString(0)
+        val typ = row.getString(1)
+        val t = row.getTimestamp(2).getTime
+        val period = row.getInt(3)
+        val units = row.getString(4)
+        val rea = row.getDouble(5)
+        val ima = row.getDouble(6)
+        val reb = row.getDouble(7)
+        val imb = row.getDouble(8)
+        val rec = row.getDouble(9)
+        val imc = row.getDouble(10)
+        SimulationPlayerData(transformer, id, typ, t, period, units, Array(rea, ima, reb, imb, rec, imc))
     }
 
     def toOnePhase (transformer: String)(row: Row): SimulationPlayerData =
     {
-        val id = row.getString (0)
-        val typ = row.getString (1)
-        val t = row.getTimestamp (2).getTime
-        val period = row.getInt (3)
-        val units = row.getString (4)
-        val re = row.getDouble (5)
-        val im = row.getDouble (6)
-        SimulationPlayerData (transformer, id, typ, t, period, units, Array (re, im))
+        val id = row.getString(0)
+        val typ = row.getString(1)
+        val t = row.getTimestamp(2).getTime
+        val period = row.getInt(3)
+        val units = row.getString(4)
+        val re = row.getDouble(5)
+        val im = row.getDouble(6)
+        SimulationPlayerData(transformer, id, typ, t, period, units, Array(re, im))
     }
 
     /**
@@ -389,8 +389,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
      *
      * @param c The Calendar value to be cloned.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
 
     /**
      * Get the transformer from a set of mRID player data.
@@ -399,216 +399,216 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
      *            assumes they all have the same transformer
      * @return the transformer name from the player data
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def theTransformer (arg: (String, Iterable[SimulationPlayerData])): String = arg._2.head.transformer
 
     def queryValues (job: SimulationJob, simulations: RDD[SimulationTrafoKreis]): RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] =
     {
         val phases = if (options.three_phase && !options.fake_three_phase) 3 else 1
-        val start = dup (job.start_time)
-        start.add (Calendar.MILLISECOND, -job.buffer)
-        val end = dup (job.end_time)
-        end.add (Calendar.MILLISECOND, job.buffer)
-        val low = cassandra_date_format.format (start.getTime)
-        val high = cassandra_date_format.format (end.getTime)
+        val start = dup(job.start_time)
+        start.add(Calendar.MILLISECOND, -job.buffer)
+        val end = dup(job.end_time)
+        end.add(Calendar.MILLISECOND, job.buffer)
+        val low = cassandra_date_format.format(start.getTime)
+        val high = cassandra_date_format.format(end.getTime)
         val time_filter = s"time >= '$low' and time <= '$high'"
         val measured_df = spark
             .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "measured_value", "keyspace" -> job.input_keyspace))
+            .format("org.apache.spark.sql.cassandra")
+            .options(Map("table" -> "measured_value", "keyspace" -> job.input_keyspace))
             .load
-            .filter (time_filter)
-            .selectExpr (columns ("mrid")(phases): _*)
+            .filter(time_filter)
+            .selectExpr(columns("mrid")(phases): _*)
         val synthesised_df = spark
             .read
-            .format ("org.apache.spark.sql.cassandra")
-            .options (Map ("table" -> "synthesized_value", "keyspace" -> job.input_keyspace))
+            .format("org.apache.spark.sql.cassandra")
+            .options(Map("table" -> "synthesized_value", "keyspace" -> job.input_keyspace))
             .load
-            .filter (time_filter)
-            .selectExpr (columns ("synthesis")(phases): _*)
-            .withColumnRenamed ("synthesis", "mrid")
+            .filter(time_filter)
+            .selectExpr(columns("synthesis")(phases): _*)
+            .withColumnRenamed("synthesis", "mrid")
         val function = if (phases == 3) toThreePhase _ else toOnePhase _
         val raw_measured: RDD[SimulationPlayerData] =
             measured_df
                 .rdd
-                .map (function ("")) // convert to case class early
-                .persist (options.cim_options.storage)
+                .map(function("")) // convert to case class early
+                .persist(options.cim_options.storage)
         val raw_synthesised: RDD[SimulationPlayerData] =
             synthesised_df
                 .rdd
-                .map (function ("")) // convert to case class early
-                .persist (options.cim_options.storage)
-        val queries_measured: RDD[(House, Trafo)] = simulations.flatMap (
+                .map(function("")) // convert to case class early
+                .persist(options.cim_options.storage)
+        val queries_measured: RDD[(House, Trafo)] = simulations.flatMap(
             x =>
             {
-                x.players.filter ("" == _.synthesis).map (y => (y.mrid, x.name))
+                x.players.filter("" == _.synthesis).map(y => (y.mrid, x.name))
             }
         )
-        val queries_synthesised: RDD[(House, Trafo)] = simulations.flatMap (
+        val queries_synthesised: RDD[(House, Trafo)] = simulations.flatMap(
             x =>
             {
-                x.players.filter ("" != _.synthesis).map (y => (y.synthesis, x.name))
+                x.players.filter("" != _.synthesis).map(y => (y.synthesis, x.name))
             }
         )
         val ret = raw_measured
-            .keyBy (_.mrid)
-            .join (queries_measured)
-            .union (
+            .keyBy(_.mrid)
+            .join(queries_measured)
+            .union(
                 raw_synthesised
-                    .keyBy (_.mrid)
-                    .join (queries_synthesised))
-            .mapValues (x => x._1.copy (transformer = x._2)) // use real trafo
+                    .keyBy(_.mrid)
+                    .join(queries_synthesised))
+            .mapValues(x => x._1.copy(transformer = x._2)) // use real trafo
             .groupByKey
-            .groupBy (theTransformer)
-            .persist (options.cim_options.storage)
-            .setName (s"${job.id}_player_data")
-        log.info (s"""${ret.count} player data results""")
-        vanishRDD (raw_measured)
-        vanishRDD (raw_synthesised)
+            .groupBy(theTransformer)
+            .persist(options.cim_options.storage)
+            .setName(s"${job.id}_player_data")
+        log.info(s"""${ret.count} player data results""")
+        vanishRDD(raw_measured)
+        vanishRDD(raw_synthesised)
         ret
     }
 
-    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def vanishRDD (rdd: RDD[_]): Unit =
     {
         val _ = rdd
-            .unpersist (false)
-            .setName (null)
+            .unpersist(false)
+            .setName(null)
     }
 
     def cleanRDDs (): Unit =
     {
-        session.sparkContext.getPersistentRDDs.foreach (x => vanishRDD (x._2))
+        session.sparkContext.getPersistentRDDs.foreach(x => vanishRDD(x._2))
     }
 
     def performExtraQueries (job: SimulationJob): Unit =
     {
-        log.info (s"executing ${job.extras.length} extra queries")
-        job.extras.foreach (
+        log.info(s"executing ${job.extras.length} extra queries")
+        job.extras.foreach(
             extra =>
             {
-                log.info (s"""executing "${extra.title}" as ${extra.query}""")
-                val df: DataFrame = session.sql (extra.query).persist ()
+                log.info(s"""executing "${extra.title}" as ${extra.query}""")
+                val df: DataFrame = session.sql(extra.query).persist()
                 if (df.count > 0)
                 {
                     val fields = df.schema.fieldNames
-                    if (!fields.contains ("key") || !fields.contains ("value"))
-                        log.error (s"""extra query "${extra.title}" schema either does not contain a "key" or a "value" field: ${fields.mkString}""")
+                    if (!fields.contains("key") || !fields.contains("value"))
+                        log.error(s"""extra query "${extra.title}" schema either does not contain a "key" or a "value" field: ${fields.mkString}""")
                     else
                     {
-                        val keyindex = df.schema.fieldIndex ("key")
-                        val valueindex = df.schema.fieldIndex ("value")
-                        val keytype = df.schema.fields (keyindex).dataType.simpleString
-                        val valuetype = df.schema.fields (valueindex).dataType.simpleString
+                        val keyindex = df.schema.fieldIndex("key")
+                        val valueindex = df.schema.fieldIndex("value")
+                        val keytype = df.schema.fields(keyindex).dataType.simpleString
+                        val valuetype = df.schema.fields(valueindex).dataType.simpleString
                         if ((keytype != "string") || (valuetype != "string"))
-                            log.error (s"""extra query "${extra.title}" schema fields key and value are not both strings (key=$keytype, value=$valuetype)""")
+                            log.error(s"""extra query "${extra.title}" schema fields key and value are not both strings (key=$keytype, value=$valuetype)""")
                         else
-                            df.rdd.map (row => (job.id, extra.title, row.getString (keyindex), row.getString (valueindex))).saveToCassandra (job.output_keyspace, "key_value", SomeColumns ("simulation", "query", "key", "value"))
+                            df.rdd.map(row => (job.id, extra.title, row.getString(keyindex), row.getString(valueindex))).saveToCassandra(job.output_keyspace, "key_value", SomeColumns("simulation", "query", "key", "value"))
                     }
                 }
                 else
-                    log.warn (s"""extra query "${extra.title}" returned no rows""")
-                df.unpersist (false)
+                    log.warn(s"""extra query "${extra.title}" returned no rows""")
+                df.unpersist(false)
             }
         )
     }
 
     def getTransformers: (Map[String, TransformerSet], Array[TransformerData]) =
     {
-        val transformer_data = Transformers (session, options.cim_options.storage).getTransformers ()
-        val tx = transformer_data.keyBy (_.node1.id) // (low_voltage_node_name, TransformerData)
-            .join (get [TopologicalNode].keyBy (_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
-            .map (x => (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
+        val transformer_data = Transformers(session, options.cim_options.storage).getTransformers()
+        val tx = transformer_data.keyBy(_.node1.id) // (low_voltage_node_name, TransformerData)
+            .join(get[TopologicalNode].keyBy(_.id)) // (low_voltage_node_name, (TransformerData, TopologicalNode))
+            .map(x => (x._1, (x._2._1, x._2._2.TopologicalIsland))) // (low_voltage_node_name, (TransformerData, island))
             .groupByKey.values
 
         def toTransformerSet (transformers: Iterable[(TransformerData, String)]): (String, TransformerSet) =
         {
-            val islands = transformers.map (_._2).toSet
+            val islands = transformers.map(_._2).toSet
             if (islands.size > 1)
-                log.error (s"not all transformers are members of the same island (${islands.mkString (",")})")
-            val set = TransformerSet (transformers.map (_._1).toArray)
+                log.error(s"not all transformers are members of the same island (${islands.mkString(",")})")
+            val set = TransformerSet(transformers.map(_._1).toArray)
             (set.transformer_name, set)
         }
 
-        val transformers: Map[String, TransformerSet] = tx.map (toTransformerSet).collect.toMap
+        val transformers: Map[String, TransformerSet] = tx.map(toTransformerSet).collect.toMap
 
         // pick out the subtransmission transformers
         def subtransmission (trafo: TransformerData): Boolean =
         {
             trafo.ends.length == 2 &&
-                trafo.voltages.exists (v => (v._2 <= 1000.0) && (v._2 > 400.0)) // ToDo: don't hard code these voltage values
+                trafo.voltages.exists(v => (v._2 <= 1000.0) && (v._2 > 400.0)) // ToDo: don't hard code these voltage values
         }
 
-        val subtransmission_trafos = transformer_data.filter (subtransmission).collect
+        val subtransmission_trafos = transformer_data.filter(subtransmission).collect
         (transformers, subtransmission_trafos)
     }
 
     def performGridlabSimulations (job: SimulationJob, simulations: RDD[SimulationTrafoKreis], player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])]): RDD[SimulationResult] =
     {
-        val numSimulations = simulations.count ().toInt
-        log.info (s"""performing $numSimulations GridLAB-D simulation${plural (numSimulations)}""")
-        val runner = SimulationRunner (
+        val numSimulations = simulations.count().toInt
+        log.info(s"""performing $numSimulations GridLAB-D simulation${plural(numSimulations)}""")
+        val runner = SimulationRunner(
             options.host, job.output_keyspace, options.workdir,
             options.three_phase, options.fake_three_phase,
             job.cim_temperature, job.simulation_temperature, job.swing_voltage_factor,
             options.keep, options.verbose)
         val raw_results =
             simulations
-                .keyBy (_.name)
-                .join (player_rdd)
+                .keyBy(_.name)
+                .join(player_rdd)
                 .values
-                .map (x => runner.execute (x._1, x._2.toMap))
-                .persist (options.cim_options.storage)
-        raw_results.flatMap (_._1).collect.foreach (log.error)
-        val results = raw_results.flatMap (_._2).persist (options.cim_options.storage).setName (s"${job.id}_results")
+                .map(x => runner.execute(x._1, x._2.toMap))
+                .persist(options.cim_options.storage)
+        raw_results.flatMap(_._1).collect.foreach(log.error)
+        val results = raw_results.flatMap(_._2).persist(options.cim_options.storage).setName(s"${job.id}_results")
         results
     }
 
     def createSimulationTasks (job: SimulationJob, batchno: Int): RDD[SimulationTrafoKreis] =
     {
         val (transformers, _) = getTransformers
-        val tasks = make_tasks (job)
-        job.save (session, job.output_keyspace, job.id, tasks)
+        val tasks = make_tasks(job)
+        job.save(session, job.output_keyspace, job.id, tasks)
 
-        log.info ("""matching tasks to topological islands""")
+        log.info("""matching tasks to topological islands""")
         val _simulations =
-            tasks.flatMap (
+            tasks.flatMap(
                 task =>
                 {
-                    transformers.get (task.island) match
+                    transformers.get(task.island) match
                     {
-                        case Some (transformerset) =>
-                            List (
-                                SimulationTrafoKreis (
+                        case Some(transformerset) =>
+                            List(
+                                SimulationTrafoKreis(
                                     job.id,
                                     task.island,
                                     transformerset,
                                     job.swing,
                                     task.nodes,
-                                    task.edges.filter (edge => edge.id != transformerset.transformer_name),
+                                    task.edges.filter(edge => edge.id != transformerset.transformer_name),
                                     task.start,
                                     task.end,
                                     task.players,
                                     task.recorders,
-                                    s"${transformerset.transformer_name}${System.getProperty ("file.separator")}"
+                                    s"${transformerset.transformer_name}${System.getProperty("file.separator")}"
                                 )
                             )
                         case None =>
-                            log.error (s"no transformer sets for island ${task.island}")
-                            List ()
+                            log.error(s"no transformer sets for island ${task.island}")
+                            List()
                     }
                 }
-            ).persist (options.cim_options.storage).setName (s"${job.id}_simulations")
+            ).persist(options.cim_options.storage).setName(s"${job.id}_simulations")
         val numsimulations = _simulations.count.toInt
-        log.info (s"$numsimulations GridLAB-D simulation${plural (numsimulations)} to do for simulation ${job.id} batch $batchno")
+        log.info(s"$numsimulations GridLAB-D simulation${plural(numsimulations)} to do for simulation ${job.id} batch $batchno")
 
         var simulations: RDD[SimulationTrafoKreis] = spark.sparkContext.emptyRDD
         if (0 != numsimulations)
         {
-            val direction = SimulationDirection (options.workdir, options.verbose)
-            simulations = _simulations.map (x => x.copy (directions = direction.execute (x)))
-                .persist (options.cim_options.storage).setName (s"${job.id}_simulations")
-            val _ = _simulations.unpersist (false)
+            val direction = SimulationDirection(options.workdir, options.verbose)
+            simulations = _simulations.map(x => x.copy(directions = direction.execute(x)))
+                .persist(options.cim_options.storage).setName(s"${job.id}_simulations")
+            val _ = _simulations.unpersist(false)
         }
         simulations
     }
@@ -620,52 +620,52 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
      *              assumes that all jobs in a batch should have the same cluster state
      * @return the first job in the batch
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def aJob (batch: Seq[SimulationJob]): SimulationJob = batch.head
 
     def simulate (batch: Seq[SimulationJob]): Seq[String] =
     {
-        log.info ("""starting simulations""")
-        val ajob = aJob (batch)
+        log.info("""starting simulations""")
+        val ajob = aJob(batch)
 
         // clean up in case there was a file already loaded
-        cleanRDDs ()
-        read (ajob.cim, ajob.cimreaderoptions, options.cim_options.storage)
+        cleanRDDs()
+        read(ajob.cim, ajob.cimreaderoptions, options.cim_options.storage)
 
         var batchno = 1
-        val ids = batch.map (
+        val ids = batch.map(
             job =>
             {
-                log.info (s"starting simulation ${job.id}")
+                log.info(s"starting simulation ${job.id}")
 
-                val schema = Schema (session, "/simulation_schema.sql", options.verbose)
-                if (schema.make (keyspace = job.output_keyspace, replication = job.replication))
+                val schema = Schema(session, "/simulation_schema.sql", options.verbose)
+                if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
                 {
                     // perform the extra queries and insert into the key_value table
-                    performExtraQueries (job)
+                    performExtraQueries(job)
 
-                    val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks (job, batchno)
+                    val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job, batchno)
 
-                    if (!simulations.isEmpty ())
+                    if (!simulations.isEmpty())
                     {
-                        log.info ("""storing GeoJSON data""")
-                        val geo = SimulationGeometry (session, job.output_keyspace)
-                        geo.storeGeometry (job.id, simulations)
+                        log.info("""storing GeoJSON data""")
+                        val geo = SimulationGeometry(session, job.output_keyspace)
+                        geo.storeGeometry(job.id, simulations)
 
-                        log.info ("""querying player data""")
-                        val player_rdd = queryValues (job, simulations)
+                        log.info("""querying player data""")
+                        val player_rdd = queryValues(job, simulations)
 
-                        val simulationResults: RDD[SimulationResult] = performGridlabSimulations (job, simulations, player_rdd)
+                        val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd)
 
                         // save the results
-                        log.info ("""saving GridLAB-D simulation results""")
-                        val conf = WriteConf.fromSparkConf (spark.sparkContext.getConf).copy (ttl = TTLOption.perRow ("ttl"), consistencyLevel = ConsistencyLevel.ANY)
-                        simulationResults.saveToCassandra (job.output_keyspace, "simulated_value", writeConf = conf)
-                        log.info ("""saved GridLAB-D simulation results""")
-                        vanishRDD (player_rdd)
+                        log.info("""saving GridLAB-D simulation results""")
+                        val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
+                        simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
+                        log.info("""saved GridLAB-D simulation results""")
+                        vanishRDD(player_rdd)
                     }
 
-                    cleanRDDs ()
+                    cleanRDDs()
                     batchno = batchno + 1
                 }
                 job.id
@@ -676,42 +676,42 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def postprocess (ids: Seq[String], jobs: Seq[SimulationJob])
     {
-        val keyspaces = jobs.map (_.output_keyspace).distinct
-        val lookup = keyspaces.flatMap (
+        val keyspaces = jobs.map(_.output_keyspace).distinct
+        val lookup = keyspaces.flatMap(
             keyspace =>
             {
                 spark
                     .read
-                    .format ("org.apache.spark.sql.cassandra")
-                    .options (Map ("table" -> "simulation", "keyspace" -> keyspace))
+                    .format("org.apache.spark.sql.cassandra")
+                    .options(Map("table" -> "simulation", "keyspace" -> keyspace))
                     .load
-                    .select ("id", "input_keyspace", "output_keyspace")
-                    .where (s"id in ${ids.mkString ("('", "','", "')")}")
+                    .select("id", "input_keyspace", "output_keyspace")
+                    .where(s"id in ${ids.mkString("('", "','", "')")}")
                     .rdd
-                    .map (row => (row.getString (0), row.getString (1), row.getString (2)))
+                    .map(row => (row.getString(0), row.getString(1), row.getString(2)))
                     .collect
             }
         )
 
         for (simulation <- ids)
         {
-            lookup.find (_._1 == simulation) match
+            lookup.find(_._1 == simulation) match
             {
-                case Some ((id, input, output)) =>
+                case Some((id, input, output)) =>
                     implicit val access: SimulationCassandraAccess =
-                        SimulationCassandraAccess (spark, options.cim_options.storage, id, input, output, options.verbose)
+                        SimulationCassandraAccess(spark, options.cim_options.storage, id, input, output, options.verbose)
                     // ToDo: this isn't quite right, take the first job matching the output keyspace
-                    val batches = jobs.groupBy (_.output_keyspace)
-                    val job = aJob (batches (output))
-                    job.postprocessors.foreach (
+                    val batches = jobs.groupBy(_.output_keyspace)
+                    val job = aJob(batches(output))
+                    job.postprocessors.foreach(
                         processor =>
                         {
-                            val runner = processor (session, options)
-                            runner.run (access)
+                            val runner = processor(session, options)
+                            runner.run(access)
                         }
                     )
                 case None =>
-                    log.error (s"simulation $simulation not found in keyspaces (${lookup.map (_._2).mkString (",")})")
+                    log.error(s"simulation $simulation not found in keyspaces (${lookup.map(_._2).mkString(",")})")
             }
         }
 
@@ -719,39 +719,39 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def run (): Seq[String] =
     {
-        val jobs = SimulationJob.getAll (options)
+        val jobs = SimulationJob.getAll(options)
 
         // simulate
         val ids = if (!options.postprocessonly)
         {
             // organize by same RDF, options and output keyspace
-            val batches = jobs.groupBy (job => s"${job.cim}${job.optionString}${job.output_keyspace}").values
-            batches.flatMap (simulate).toSeq
+            val batches = jobs.groupBy(job => s"${job.cim}${job.optionString}${job.output_keyspace}").values
+            batches.flatMap(simulate).toSeq
         }
         else
         {
             // get all simulations from the output keyspace(s)
-            val keyspaces = jobs.map (_.output_keyspace).distinct
-            log.info (s"""using keyspace${plural (keyspaces.length)} ${keyspaces.mkString (",")}""")
-            keyspaces.flatMap (
+            val keyspaces = jobs.map(_.output_keyspace).distinct
+            log.info(s"""using keyspace${plural(keyspaces.length)} ${keyspaces.mkString(",")}""")
+            keyspaces.flatMap(
                 keyspace =>
                 {
                     spark
                         .read
-                        .format ("org.apache.spark.sql.cassandra")
-                        .options (Map ("table" -> "simulation", "keyspace" -> keyspace))
+                        .format("org.apache.spark.sql.cassandra")
+                        .options(Map("table" -> "simulation", "keyspace" -> keyspace))
                         .load
-                        .select ("id")
+                        .select("id")
                         .collect
-                        .map (_.getString (0))
+                        .map(_.getString(0))
                 }
             )
         }
-        log.info (s"""simulation${plural (ids.size)} ${ids.mkString (",")}""")
+        log.info(s"""simulation${plural(ids.size)} ${ids.mkString(",")}""")
 
         // postprocess
         if (!options.simulationonly)
-            postprocess (ids, jobs)
+            postprocess(ids, jobs)
 
         ids
     }
@@ -764,7 +764,7 @@ object Simulation extends CIMInitializer[SimulationOptions] with Main
      */
     lazy val classes: Array[Class[_]] =
     {
-        Array (
+        Array(
             classOf[ch.ninecode.sim.Simulation],
             classOf[ch.ninecode.sim.SimulationAggregate],
             classOf[ch.ninecode.sim.SimulationDirectionGenerator],
@@ -794,19 +794,19 @@ object Simulation extends CIMInitializer[SimulationOptions] with Main
         var ret = cls.getProtectionDomain.getCodeSource.getLocation.getPath
         try
         {
-            ret = URLDecoder.decode (ret, "UTF-8")
+            ret = URLDecoder.decode(ret, "UTF-8")
         }
         catch
         {
-            case e: UnsupportedEncodingException => e.printStackTrace ()
+            case e: UnsupportedEncodingException => e.printStackTrace()
         }
-        if (!ret.toLowerCase ().endsWith (".jar"))
+        if (!ret.toLowerCase().endsWith(".jar"))
         {
             // as an aid to debugging, make jar in tmp and pass that name
-            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
-            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
-            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (ret + "ch/")), "ch/")
-            writer.close ()
+            val name = s"/tmp/${Random.nextInt(99999999)}.jar"
+            val writer = new Jar(new scala.reflect.io.File(new java.io.File(name))).jarWriter()
+            writer.addDirectory(new scala.reflect.io.Directory(new java.io.File(ret + "ch/")), "ch/")
+            writer.close()
             ret = name
         }
 
@@ -816,20 +816,20 @@ object Simulation extends CIMInitializer[SimulationOptions] with Main
     def run (options: SimulationOptions): Unit =
     {
         if (options.verbose)
-            LogManager.getLogger (getClass).setLevel (Level.INFO)
+            LogManager.getLogger(getClass).setLevel(Level.INFO)
         if (options.main_options.valid)
         {
             if (options.simulation.nonEmpty)
             {
-                val session: SparkSession = createSession (options)
-                time ("execution: %s seconds")
+                val session: SparkSession = createSession(options)
+                time("execution: %s seconds")
                 {
-                    val ids = Simulation (session, options).run ()
-                    log.info (s"simulated ${ids.mkString (",")}")
+                    val ids = Simulation(session, options).run()
+                    log.info(s"simulated ${ids.mkString(",")}")
                 }
             }
             else
-                log.error ("no simulation JSON files specified")
+                log.error("no simulation JSON files specified")
         }
     }
 
@@ -839,24 +839,24 @@ object Simulation extends CIMInitializer[SimulationOptions] with Main
         val need = scala_library_version
         if (have != need)
         {
-            log.error (s"Scala version ($have) does not match the version ($need) used to build $application_name")
-            sys.exit (1)
+            log.error(s"Scala version ($have) does not match the version ($need) used to build $application_name")
+            sys.exit(1)
         }
         else
         {
             // get the necessary jar files to send to the cluster
-            val jars = Set (
-                jarForClass (SimulationOptions ().getClass), // sim
-                jarForClass (Class.forName ("ch.ninecode.gl.GLMEdge")), // glm
-                jarForClass (Class.forName ("ch.ninecode.cim.DefaultSource")), // CIMReader
-                jarForClass (Class.forName ("ch.ninecode.util.Complex")), // util
-                jarForClass (Class.forName ("javax.json.JsonStructure")), // json
-                jarForClass (Class.forName ("org.glassfish.json.JsonProviderImpl")), // json_impl
-                jarForClass (Class.forName ("com.datastax.oss.driver.api.core.CqlSession")) // Cassandra
+            val jars = Set(
+                jarForClass(SimulationOptions().getClass), // sim
+                jarForClass(Class.forName("ch.ninecode.gl.GLMEdge")), // glm
+                jarForClass(Class.forName("ch.ninecode.cim.DefaultSource")), // CIMReader
+                jarForClass(Class.forName("ch.ninecode.util.Complex")), // util
+                jarForClass(Class.forName("javax.json.JsonStructure")), // json
+                jarForClass(Class.forName("org.glassfish.json.JsonProviderImpl")), // json_impl
+                jarForClass(Class.forName("com.datastax.oss.driver.api.core.CqlSession")) // Cassandra
             ).toArray
 
             // compose the classes to be registered with Kryo
-            val kryo = Array.concat (
+            val kryo = Array.concat(
                 // register CIMReader classes
                 CIMClasses.list,
                 // register GridLAB-D classes
@@ -871,23 +871,23 @@ object Simulation extends CIMInitializer[SimulationOptions] with Main
                 Util.classes)
 
             // initialize the default options
-            val temp = SimulationOptions ()
-            val default = SimulationOptions (
-                main_options = MainOptions (application_name, application_version),
-                spark_options = SparkOptions (jars = jars, kryo = kryo),
-                cim_options = temp.cim_options.copy (options = temp.cim_options.toMap)
+            val temp = SimulationOptions()
+            val default = SimulationOptions(
+                main_options = MainOptions(application_name, application_version),
+                spark_options = SparkOptions(jars = jars, kryo = kryo),
+                cim_options = temp.cim_options.copy(options = temp.cim_options.toMap)
             )
 
             // parse the command line arguments
-            new SimulationOptionsParser (default).parse (args, default) match
+            new SimulationOptionsParser(default).parse(args, default) match
             {
-                case Some (options) =>
+                case Some(options) =>
                     // execute the main program if everything checks out
-                    run (options)
+                    run(options)
                     if (!options.main_options.unittest)
-                        sys.exit (0)
+                        sys.exit(0)
                 case None =>
-                    sys.exit (1)
+                    sys.exit(1)
             }
         }
     }

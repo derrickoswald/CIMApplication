@@ -29,14 +29,14 @@ class Feeders (
 {
     implicit val spark: SparkSession = session
     implicit val storage: StorageLevel = storage_level
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
     // get the list of N7 voltages
     // ToDo: fix this 1000V multiplier
-    val low_voltages: Array[String] = getOrElse [BaseVoltage].filter (x => x.nominalVoltage <= 1.0).map (_.id).collect
+    val low_voltages: Array[String] = getOrElse[BaseVoltage].filter(x => x.nominalVoltage <= 1.0).map(_.id).collect
 
     // get the list of allowed power system resource types
-    val allowed_PSRTypes: Array[String] = Array ("PSRType_Substation", "PSRType_TransformerStation")
+    val allowed_PSRTypes: Array[String] = Array("PSRType_Substation", "PSRType_TransformerStation")
 
     /**
      * Predicate to test if the given Element is a feeder.
@@ -53,8 +53,8 @@ class Feeders (
         {
             case c: Connector =>
                 val equipment = c.ConductingEquipment
-                low_voltages.contains (equipment.BaseVoltage) &&
-                    allowed_PSRTypes.contains (equipment.Equipment.PowerSystemResource.PSRType)
+                low_voltages.contains(equipment.BaseVoltage) &&
+                    allowed_PSRTypes.contains(equipment.Equipment.PowerSystemResource.PSRType)
             case _ => false
         }
     }
@@ -68,26 +68,26 @@ class Feeders (
     def getFeeders (test: Element => Boolean = isFeeder): RDD[Feeder] =
     {
         // get terminals keyed by their conducting equipment
-        val terminals = getOrElse [Terminal].keyBy (_.ConductingEquipment)
+        val terminals = getOrElse[Terminal].keyBy(_.ConductingEquipment)
         // get switches keyed by their unique topological node (i.e. no busbars)
-        val switches = getOrElse [Switch]
-            .keyBy (_.id)
-            .join (terminals)
-            .map (x => (x._2._2.TopologicalNode, x._2._1.id))
+        val switches = getOrElse[Switch]
+            .keyBy(_.id)
+            .join(terminals)
+            .map(x => (x._2._2.TopologicalNode, x._2._1.id))
             .groupByKey
-            .filter (x => x._2.size < 2)
-            .map (x => (x._1, x._2.headOption.orNull))
+            .filter(x => x._2.size < 2)
+            .map(x => (x._1, x._2.headOption.orNull))
         // join filtered feeders with swtches and create Feeder objects
         val feeders = getOrElse[Element]
-            .keyBy (_.id)
-            .join (terminals)
+            .keyBy(_.id)
+            .join(terminals)
             .values
-            .filter (x => test (x._1))
-            .keyBy (_._2.TopologicalNode)
-            .leftOuterJoin (switches)
+            .filter(x => test(x._1))
+            .keyBy(_._2.TopologicalNode)
+            .leftOuterJoin(switches)
             .values
-            .map (x => Feeder (x._1._1.id, x._1._2.TopologicalNode, x._2.orNull))
-        put (feeders, "Feeders", true)
+            .map(x => Feeder(x._1._1.id, x._1._2.TopologicalNode, x._2.orNull))
+        put(feeders, "Feeders", true)
         feeders
     }
 }

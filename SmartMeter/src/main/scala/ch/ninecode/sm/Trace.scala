@@ -88,10 +88,10 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
      */
     def switchClosed (switch: Switch): Boolean =
     {
-        if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
+        if (0 != (switch.bitfields(openMask / 32) & (1 << (openMask % 32))))
             !switch.open // open valid
         else
-            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+            if (0 != (switch.bitfields(normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
                 !switch.normalOpen
             else
                 true
@@ -102,17 +102,17 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
     {
         element match
         {
-            case switch: Switch => switchClosed (switch)
-            case cut: Cut => switchClosed (cut.Switch)
-            case disconnector: Disconnector => switchClosed (disconnector.Switch)
-            case fuse: Fuse => switchClosed (fuse.Switch)
-            case gd: GroundDisconnector => switchClosed (gd.Switch)
-            case jumper: Jumper => switchClosed (jumper.Switch)
-            case ps: ProtectedSwitch => switchClosed (ps.Switch)
-            case sectionaliser: Sectionaliser => switchClosed (sectionaliser.Switch)
-            case breaker: Breaker => switchClosed (breaker.ProtectedSwitch.Switch)
-            case lbs: LoadBreakSwitch => switchClosed (lbs.ProtectedSwitch.Switch)
-            case recloser: Recloser => switchClosed (recloser.ProtectedSwitch.Switch)
+            case switch: Switch => switchClosed(switch)
+            case cut: Cut => switchClosed(cut.Switch)
+            case disconnector: Disconnector => switchClosed(disconnector.Switch)
+            case fuse: Fuse => switchClosed(fuse.Switch)
+            case gd: GroundDisconnector => switchClosed(gd.Switch)
+            case jumper: Jumper => switchClosed(jumper.Switch)
+            case ps: ProtectedSwitch => switchClosed(ps.Switch)
+            case sectionaliser: Sectionaliser => switchClosed(sectionaliser.Switch)
+            case breaker: Breaker => switchClosed(breaker.ProtectedSwitch.Switch)
+            case lbs: LoadBreakSwitch => switchClosed(lbs.ProtectedSwitch.Switch)
+            case recloser: Recloser => switchClosed(recloser.ProtectedSwitch.Switch)
             case _: PowerTransformer =>
                 false
             case _ =>
@@ -124,14 +124,14 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
     {
         var ret: Iterator[(VertexId, NodeData)] = Iterator.empty
 
-        if (triplet.dstAttr != null && triplet.dstAttr.id_seq != "" && starting_id.contains (triplet.dstId) && triplet.dstAttr.total_distance != 0.0)
+        if (triplet.dstAttr != null && triplet.dstAttr.id_seq != "" && starting_id.contains(triplet.dstId) && triplet.dstAttr.total_distance != 0.0)
         {
-            ret = Iterator ((triplet.dstId, NodeData (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, "", "", 0.0, 0.0)))
+            ret = Iterator((triplet.dstId, NodeData(triplet.dstAttr.id_seq, triplet.dstAttr.voltage, "", "", 0.0, 0.0)))
         }
         else
         {
 
-            if (shouldContinue (triplet.attr.element))
+            if (shouldContinue(triplet.attr.element))
             {
                 val length = triplet.attr.length
 
@@ -147,7 +147,7 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
                             neighbor = triplet.srcAttr.id_seq
                             nearest_distance = length
                         }
-                        ret = Iterator ((triplet.dstId, NodeData (triplet.dstAttr.id_seq, triplet.dstAttr.voltage, neighbor, triplet.srcAttr.id_seq, new_total_distance, nearest_distance)))
+                        ret = Iterator((triplet.dstId, NodeData(triplet.dstAttr.id_seq, triplet.dstAttr.voltage, neighbor, triplet.srcAttr.id_seq, new_total_distance, nearest_distance)))
                     }
                 } else
                     if (triplet.dstAttr.total_distance < triplet.srcAttr.total_distance)
@@ -162,7 +162,7 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
                                 neighbor = triplet.dstAttr.id_seq
                                 nearest_distance = length
                             }
-                            ret = Iterator ((triplet.srcId, NodeData (triplet.srcAttr.id_seq, triplet.srcAttr.voltage, neighbor, triplet.dstAttr.id_seq, new_total_distance, nearest_distance)))
+                            ret = Iterator((triplet.srcId, NodeData(triplet.srcAttr.id_seq, triplet.srcAttr.voltage, neighbor, triplet.dstAttr.id_seq, new_total_distance, nearest_distance)))
                         }
                     }
             }
@@ -183,13 +183,13 @@ class Trace (initial: Graph[PreNode, PreEdge]) extends Serializable
     def run (starting_id: Array[VertexId]): Graph[NodeData, PreEdge] =
     {
         // make a similar graph with distance values as vertex data
-        val tree = initial.mapVertices ((_, vertex: PreNode) => NodeData (vertex.id_seq, vertex.voltage, "", "", Double.PositiveInfinity, Double.PositiveInfinity))
+        val tree = initial.mapVertices((_, vertex: PreNode) => NodeData(vertex.id_seq, vertex.voltage, "", "", Double.PositiveInfinity, Double.PositiveInfinity))
 
         // perform the trace, marking all traced nodes with the distance from the starting nodes
-        val default_message = NodeData ("", 0, "", "", Double.PositiveInfinity, Double.PositiveInfinity)
+        val default_message = NodeData("", 0, "", "", Double.PositiveInfinity, Double.PositiveInfinity)
         val tracedGraph = tree.pregel[NodeData](default_message, 10000, EdgeDirection.Either)(
             vertexProgram,
-            sendMessage (starting_id),
+            sendMessage(starting_id),
             mergeMessage
         )
 
@@ -203,10 +203,10 @@ object Trace
     /**
      * Index of normalOpen field in Switch bitmask.
      */
-    val normalOpenMask: Int = Switch.fields.indexOf ("normalOpen")
+    val normalOpenMask: Int = Switch.fields.indexOf("normalOpen")
 
     /**
      * Index of open field in Switch bitmask.
      */
-    val openMask: Int = Switch.fields.indexOf ("open")
+    val openMask: Int = Switch.fields.indexOf("open")
 }

@@ -20,7 +20,7 @@ case class SimulationNode
     consumer: Boolean,
     busbar: Boolean
 )
-    extends LoadFlowNode (id, nominal_voltage)
+    extends LoadFlowNode(id, nominal_voltage)
         with GLMNode
 {
 }

@@ -19,7 +19,7 @@ case class ScError
 
 object ScError
 {
-    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def combine_errors (list1: List[ScError], list2: List[ScError], max: Int): List[ScError] =
     {
         if (null == list1)
@@ -30,15 +30,15 @@ object ScError
             else // both not null
             {
                 // eliminate duplicates
-                val l0 = list2.filter (!list1.contains (_))
+                val l0 = list2.filter(!list1.contains(_))
                 // prefer the fatal ones
-                val l1 = (list1.filter (_.fatal) ++ l0.filter (_.fatal)).take (max)
+                val l1 = (list1.filter(_.fatal) ++ l0.filter(_.fatal)).take(max)
                 // also prefer invalid ones
-                val l2 = (l1 ++ list1.filter (x => !x.fatal && x.invalid) ++ l0.filter (x => !x.fatal && x.invalid)).take (max)
+                val l2 = (l1 ++ list1.filter(x => !x.fatal && x.invalid) ++ l0.filter(x => !x.fatal && x.invalid)).take(max)
                 // add existing non-fatal & non-invalid messages
-                val l3 = (l2 ++ list1.filter (x => !x.fatal && !x.invalid)).take (max)
+                val l3 = (l2 ++ list1.filter(x => !x.fatal && !x.invalid)).take(max)
                 // add any new non-fatal & non-invalid messages that fit
-                val l4 = (l3 ++ l0.filter (x => !x.fatal && !x.invalid)).take (max)
+                val l4 = (l3 ++ l0.filter(x => !x.fatal && !x.invalid)).take(max)
                 if (0 == l4.length) null else l4
             }
     }

@@ -15,7 +15,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
     // Power factors are usually stated as "leading" or "lagging" to show the sign of the phase angle.
     // Capacitive loads are leading (current leads voltage), and inductive loads are lagging (current lags voltage).
     // So, without it being stated we assume PF is leading and that a negative power factor is actually an indicator of a lagging power factor.
-    val phi: Double = -Math.acos (cosphi) * Math.signum (cosphi)
+    val phi: Double = -Math.acos(cosphi) * Math.signum(cosphi)
     val k: Double = 1.0 + threshold
 
     def bruteForceSolve (vn: Double, z: Complex): Complex =
@@ -26,9 +26,9 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
 
         def S (theta: Double): Complex =
         {
-            val c = math.cos (theta)
-            val s = math.sin (theta)
-            val vc = v * Complex (c, s)
+            val c = math.cos(theta)
+            val s = math.sin(theta)
+            val vc = v * Complex(c, s)
             val i = (vc - vn) / z
             vc * ~i
         }
@@ -37,13 +37,13 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
         var diff: Double = Double.MaxValue
         for (index <- -90000 to 90000) // thousandths of a degree in the range where cos() is positive
         {
-            val rad = toRadians (index)
-            val vc = Complex (v * Math.cos (rad), v * Math.sin (rad))
+            val rad = toRadians(index)
+            val vc = Complex(v * Math.cos(rad), v * Math.sin(rad))
             if (vc.re > 0.0)
             {
                 val i = (vc - vn) / z
                 val power = vc * ~i
-                val d = Math.abs (Complex.toPolar (power, degrees = false)._2 - phi)
+                val d = Math.abs(Complex.toPolar(power, degrees = false)._2 - phi)
                 if (d < diff)
                 {
                     diff = d
@@ -51,7 +51,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
                 }
             }
         }
-        val power = S (toRadians (angle))
+        val power = S(toRadians(angle))
         power
     }
 
@@ -65,22 +65,22 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
 
         def S (theta: Double): Complex =
         {
-            val c = math.cos (theta)
-            val s = math.sin (theta)
-            val vc = v * Complex (c, s)
+            val c = math.cos(theta)
+            val s = math.sin(theta)
+            val vc = v * Complex(c, s)
             val i = (vc - vn) / z
             vc * ~i
         }
 
         def fn (theta: Double): Double =
         {
-            val s = S (theta)
-            Math.abs (s.angle - phi)
+            val s = S(theta)
+            Math.abs(s.angle - phi)
         }
 
         def derivative (theta: Double): Double =
         {
-            (fn (theta + 0.0001) - fn (theta - 0.0001)) / 0.0002
+            (fn(theta + 0.0001) - fn(theta - 0.0001)) / 0.0002
         }
 
         var theta = 0.0
@@ -89,10 +89,10 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
         do
         {
             iterations = iterations + 1
-            val f = fn (theta)
-            val d = derivative (theta)
+            val f = fn(theta)
+            val d = derivative(theta)
             val dx = -GAMMA * f * d
-            if (Math.abs (f) > EPSILON)
+            if (Math.abs(f) > EPSILON)
                 theta = theta + dx
             else
                 done = true
@@ -100,7 +100,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
                 done = true
         }
         while (!done)
-        val power = S (theta)
+        val power = S(theta)
         power
     }
 
@@ -124,9 +124,9 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
 
         def S (theta: Double): Complex =
         {
-            val c = math.cos (theta)
-            val s = math.sin (theta)
-            val vc = v * Complex (c, s)
+            val c = math.cos(theta)
+            val s = math.sin(theta)
+            val vc = v * Complex(c, s)
             val i = (vc - vn) / z
             vc * ~i
         }
@@ -140,7 +140,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
         //        }
         def derivative (theta: Double): Double =
         {
-            val power = S (theta)
+            val power = S(theta)
             val angle = power.angle
             val diff = angle - phi
 
@@ -151,8 +151,8 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
                 val re = power.re
                 val im = power.im
                 val ratio = im / re
-                val c = math.cos (theta)
-                val s = math.sin (theta)
+                val c = math.cos(theta)
+                val s = math.sin(theta)
                 val admittance = 1.0 / z
                 val g = admittance.re
                 val b = admittance.im
@@ -170,7 +170,7 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
         do
         {
             iterations = iterations + 1
-            val d = derivative (theta)
+            val d = derivative(theta)
 
             //            // check derivative
             //            def difference (theta: Double): Double =
@@ -180,12 +180,12 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
             //            val d1 = difference (theta)
 
             // cheat here and approximate the double derivative
-            val dd = (derivative (theta + 0.000001) - derivative (theta - 0.000001)) / 0.000002
+            val dd = (derivative(theta + 0.000001) - derivative(theta - 0.000001)) / 0.000002
 
             val dx = -GAMMA * d / dd
             // clip the step size to less than a ~6°
-            val step = Math.min (Math.abs (dx), 0.1) * Math.signum (dx)
-            if (Math.abs (step) > EPSILON)
+            val step = Math.min(Math.abs(dx), 0.1) * Math.signum(dx)
+            if (Math.abs(step) > EPSILON)
                 theta = theta + step
             else
                 done = true
@@ -195,10 +195,10 @@ case class SmaxSolver (threshold: Double, cosphi: Double)
         while (!done)
 
         if (iterations > MAXITERATIONS)
-            println (s"Smax minimization iterations exceeds $MAXITERATIONS")
+            println(s"Smax minimization iterations exceeds $MAXITERATIONS")
         //        else
         //            println (s"iterations $iterations ${theta * 180.0 / Math.PI}°")
-        val power = S (theta)
+        val power = S(theta)
         power
     }
 

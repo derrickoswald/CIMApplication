@@ -20,15 +20,15 @@ import org.slf4j.LoggerFactory
 trait SparkInitializer[T <: Mainable with Sparkable]
 {
     // logger for main class
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
     // utility timing block
     def time[R] (template: String)(block: => R): R =
     {
-        val t0 = System.nanoTime ()
+        val t0 = System.nanoTime()
         val ret = block
-        val t1 = System.nanoTime ()
-        log.info (template.format ((t1 - t0) / 1e9), None)
+        val t1 = System.nanoTime()
+        log.info(template.format((t1 - t0) / 1e9), None)
         ret
     }
 
@@ -38,19 +38,19 @@ trait SparkInitializer[T <: Mainable with Sparkable]
         var ret = obj.getClass.getProtectionDomain.getCodeSource.getLocation.getPath
         try
         {
-            ret = URLDecoder.decode (ret, "UTF-8")
+            ret = URLDecoder.decode(ret, "UTF-8")
         }
         catch
         {
-            case e: UnsupportedEncodingException => e.printStackTrace ()
+            case e: UnsupportedEncodingException => e.printStackTrace()
         }
-        if (!ret.toLowerCase.endsWith (".jar"))
+        if (!ret.toLowerCase.endsWith(".jar"))
         {
             // as an aid to debugging, make a jar in /tmp and return that name
-            val name = s"/tmp/${Random.nextInt (99999999)}.jar"
-            val writer = new Jar (new scala.reflect.io.File (new java.io.File (name))).jarWriter ()
-            writer.addDirectory (new scala.reflect.io.Directory (new java.io.File (s"${ret}ch/")), "ch/")
-            writer.close ()
+            val name = s"/tmp/${Random.nextInt(99999999)}.jar"
+            val writer = new Jar(new scala.reflect.io.File(new java.io.File(name))).jarWriter()
+            writer.addDirectory(new scala.reflect.io.Directory(new java.io.File(s"${ret}ch/")), "ch/")
+            writer.close()
             ret = name
         }
 
@@ -60,9 +60,9 @@ trait SparkInitializer[T <: Mainable with Sparkable]
     // get the Spark version from a three part semantic version string
     def sparkVersion (options: T): String =
     {
-        val version = options.main_options.version.split ("-")
+        val version = options.main_options.version.split("-")
         if (3 == version.length)
-            version (1)
+            version(1)
         else
             "unknown"
     }
@@ -75,37 +75,37 @@ trait SparkInitializer[T <: Mainable with Sparkable]
      */
     def createSession (options: T): SparkSession =
     {
-        time ("setup: %s seconds")
+        time("setup: %s seconds")
         {
             // create the configuration
             val configuration =
-                new SparkConf (false)
-                    .setAppName (options.main_options.application)
-                    .setMaster (options.spark_options.master)
-                    .setJars (options.spark_options.jars)
-                    .registerKryoClasses (options.spark_options.kryo)
+                new SparkConf(false)
+                    .setAppName(options.main_options.application)
+                    .setMaster(options.spark_options.master)
+                    .setJars(options.spark_options.jars)
+                    .registerKryoClasses(options.spark_options.kryo)
             // register GraphX classes if the package is available
             try
             {
-                val _ = Class.forName ("org.apache.spark.graphx.GraphXUtils$", java.lang.Boolean.FALSE, getClass.getClassLoader)
-                GraphXUtils.registerKryoClasses (configuration)
+                val _ = Class.forName("org.apache.spark.graphx.GraphXUtils$", java.lang.Boolean.FALSE, getClass.getClassLoader)
+                GraphXUtils.registerKryoClasses(configuration)
             }
             catch
             {
                 case _: ClassNotFoundException =>
             }
-            options.spark_options.options.foreach ((pair: (String, String)) => configuration.set (pair._1, pair._2))
+            options.spark_options.options.foreach((pair: (String, String)) => configuration.set(pair._1, pair._2))
 
             // make a Spark session
-            val session = SparkSession.builder ().config (configuration).getOrCreate ()
-            session.sparkContext.setLogLevel (options.spark_options.logAsString)
+            val session = SparkSession.builder().config(configuration).getOrCreate()
+            session.sparkContext.setLogLevel(options.spark_options.logAsString)
             if ("" != options.spark_options.checkpoint)
-                session.sparkContext.setCheckpointDir (options.spark_options.checkpoint)
+                session.sparkContext.setCheckpointDir(options.spark_options.checkpoint)
             val version = session.version
-            log.info (s"Spark $version session established")
-            val spark = sparkVersion (options)
-            if (version.take (spark.length) != spark.take (version.length))
-                log.warn (s"Spark version ($version) does not match the version ($spark) used to build ${options.main_options.application}")
+            log.info(s"Spark $version session established")
+            val spark = sparkVersion(options)
+            if (version.take(spark.length) != spark.take(version.length))
+                log.warn(s"Spark version ($version) does not match the version ($spark) used to build ${options.main_options.application}")
             session
         }
     }

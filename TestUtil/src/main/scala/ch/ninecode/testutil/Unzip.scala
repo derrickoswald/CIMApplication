@@ -27,7 +27,7 @@ trait Unzip extends Using
          */
         def mkdir (directory: String): Unit =
         {
-            val dir = new File (directory)
+            val dir = new File(directory)
             if (!dir.exists)
             {
                 val _ = dir.mkdir
@@ -45,7 +45,7 @@ trait Unzip extends Using
          */
         case class ZipEntries (zip: ZipInputStream) extends Iterator[ZipEntry]
         {
-            @SuppressWarnings (Array ("org.wartremover.warts.Var", "org.wartremover.warts.Null"))
+            @SuppressWarnings(Array("org.wartremover.warts.Var", "org.wartremover.warts.Null"))
             var entry: ZipEntry = _
 
             override def hasNext: Boolean =
@@ -55,7 +55,7 @@ trait Unzip extends Using
                 null != entry
             }
 
-            @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+            @SuppressWarnings(Array("org.wartremover.warts.Null"))
             override def next (): ZipEntry =
             {
                 val ret = entry
@@ -76,18 +76,18 @@ trait Unzip extends Using
         @throws[IOException]
         def unzip (file: String, directory: String): Unit =
         {
-            mkdir (directory)
-            using (new ZipInputStream (new FileInputStream (file)))
+            mkdir(directory)
+            using(new ZipInputStream(new FileInputStream(file)))
             {
                 zip =>
-                    for (entry <- ZipEntries (zip))
+                    for (entry <- ZipEntries(zip))
                     {
                         val path = s"$directory${entry.getName}"
                         if (entry.isDirectory)
-                            mkdir (path) // if the entry is a directory, make the directory
+                            mkdir(path) // if the entry is a directory, make the directory
                         else
-                            extractFile (zip, path) // if the entry is a file, extract it
-                        zip.closeEntry ()
+                            extractFile(zip, path) // if the entry is a file, extract it
+                        zip.closeEntry()
                     }
             }
         }
@@ -106,11 +106,11 @@ trait Unzip extends Using
          */
         case class Bytes (zip: ZipInputStream, bytes: Array[Byte]) extends Iterator[Int]
         {
-            override def hasNext: Boolean = 0 != zip.available ()
+            override def hasNext: Boolean = 0 != zip.available()
 
             override def next (): Int =
             {
-                val n = zip.read (bytes)
+                val n = zip.read(bytes)
                 if (-1 == n) 0 else n
             }
         }
@@ -126,11 +126,11 @@ trait Unzip extends Using
         private def extractFile (zip: ZipInputStream, path: String): Unit =
         {
             val bytes = new Array[Byte](BUFFER_SIZE)
-            using (new BufferedOutputStream (new FileOutputStream (path)))
+            using(new BufferedOutputStream(new FileOutputStream(path)))
             {
                 bos =>
-                    for (read <- Bytes (zip, bytes))
-                        bos.write (bytes, 0, read)
+                    for (read <- Bytes(zip, bytes))
+                        bos.write(bytes, 0, read)
             }
         }
     }

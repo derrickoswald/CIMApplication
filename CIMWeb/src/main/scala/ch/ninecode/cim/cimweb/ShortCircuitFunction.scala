@@ -14,21 +14,21 @@ import ch.ninecode.util.Complex
 
 case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFunction
 {
-    jars = Array (
-        jarForObject (this),
-        jarForObject (options), // ShortCircuit.jar
-        jarForObject (new GLMGenerator ()), // GridLAB-D.jar
-        jarForObject (new LoadFlowNode ("", 0.0)), // Net.jar
-        jarForObject (Complex (0.0, 0.0))) // Util.jar
+    jars = Array(
+        jarForObject(this),
+        jarForObject(options), // ShortCircuit.jar
+        jarForObject(new GLMGenerator()), // GridLAB-D.jar
+        jarForObject(new LoadFlowNode("", 0.0)), // Net.jar
+        jarForObject(Complex(0.0, 0.0))) // Util.jar
 
     override def getReturnType: Return = Return.Dataset
 
     override def executeResultSet (spark: SparkSession): Dataset[Row] =
     {
-        val sc = ShortCircuit (spark, StorageLevel.MEMORY_AND_DISK_SER, options)
-        val results = sc.run ()
-        val pseudoresults = results.map (_.toPseudo)
-        spark.sqlContext.createDataFrame (pseudoresults)
+        val sc = ShortCircuit(spark, StorageLevel.MEMORY_AND_DISK_SER, options)
+        val results = sc.run()
+        val pseudoresults = results.map(_.toPseudo)
+        spark.sqlContext.createDataFrame(pseudoresults)
     }
 
     override def toString: String = s"${super.toString} (${options.toString})"

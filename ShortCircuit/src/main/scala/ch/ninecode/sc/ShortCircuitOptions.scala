@@ -45,23 +45,23 @@ import ch.ninecode.util.Sparkable
  */
 case class ShortCircuitOptions
 (
-    var main_options: MainOptions = MainOptions (),
-    var spark_options: SparkOptions = SparkOptions (),
-    var cim_options: CIMReaderOptions = CIMReaderOptions (
+    var main_options: MainOptions = MainOptions(),
+    var spark_options: SparkOptions = SparkOptions(),
+    var cim_options: CIMReaderOptions = CIMReaderOptions(
         topology = true,
-        topology_options = CIMTopologyOptions (
+        topology_options = CIMTopologyOptions(
             identify_islands = true,
             force_retain_fuses = ForceTrue)),
     verbose: Boolean = true,
     description: String = "",
     default_short_circuit_power_max: Double = 200.0e6,
-    default_short_circuit_impedance_max: Complex = Complex (0.437785783, -1.202806555),
+    default_short_circuit_impedance_max: Complex = Complex(0.437785783, -1.202806555),
     default_short_circuit_angle_max: Double = Double.NaN,
     default_short_circuit_power_min: Double = 100.0e6,
-    default_short_circuit_impedance_min: Complex = Complex (0.875571570, -2.405613110),
+    default_short_circuit_impedance_min: Complex = Complex(0.875571570, -2.405613110),
     default_short_circuit_angle_min: Double = Double.NaN,
     default_transformer_power_rating: Double = 630000,
-    default_transformer_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875),
+    default_transformer_impedance: Complex = Complex(0.005899999998374999, 0.039562482211875),
     base_temperature: Double = 20.0,
     low_temperature: Double = 60.0,
     high_temperature: Double = 90.0,
@@ -69,7 +69,7 @@ case class ShortCircuitOptions
     cmin: Double = 0.90,
     worstcasepf: Boolean = true,
     cosphi: Double = 0.5,
-    fuse_table: FuseData = FuseData (Array (FuseTable.default)),
+    fuse_table: FuseData = FuseData(Array(FuseTable.default)),
     messagemax: Int = 5,
     batchsize: Long = 10000,
     trafos: String = "",
@@ -83,8 +83,8 @@ case class ShortCircuitOptions
         files.toList match
         {
             case paths :: _ =>
-                val file = paths.split (",")(0).replace (" ", "%20")
-                val uri = new URI (file)
+                val file = paths.split(",")(0).replace(" ", "%20")
+                val uri = new URI(file)
                 val scheme = uri.getScheme
                 val auth = if (null == uri.getAuthority) "" else uri.getAuthority
                 if (null == scheme)
@@ -99,5 +99,5 @@ case class ShortCircuitOptions
     /**
      * Get user specified directory or generate a working directory matching the files.
      */
-    def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir (cim_options.files)
+    def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir(cim_options.files)
 }

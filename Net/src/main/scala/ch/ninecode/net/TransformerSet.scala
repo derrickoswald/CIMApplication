@@ -34,26 +34,26 @@ import ch.ninecode.util.Complex
 case class TransformerSet (
     transformers: Array[TransformerData],
     default_power_rating: Double = 630000,
-    default_impedance: Complex = Complex (0.005899999998374999, 0.039562482211875))
+    default_impedance: Complex = Complex(0.005899999998374999, 0.039562482211875))
 {
     // there should be at least one transformer
-    require (transformers != null, "no TransformerData array")
-    require (transformers.length > 0, "no transformers in TransformerData array")
+    require(transformers != null, "no TransformerData array")
+    require(transformers.length > 0, "no transformers in TransformerData array")
 
-    def strings (fn: TransformerData => String, sep: String = " "): String = transformers.map (fn).mkString (sep)
+    def strings (fn: TransformerData => String, sep: String = " "): String = transformers.map(fn).mkString(sep)
 
-    def dstrings (fn: TransformerData => Double, sep: String = " "): String = strings (x => fn (x).toString, sep)
+    def dstrings (fn: TransformerData => Double, sep: String = " "): String = strings(x => fn(x).toString, sep)
 
-    def cstrings (fn: TransformerData => Complex, sep: String = " "): String = strings (x => fn (x).toString, sep)
+    def cstrings (fn: TransformerData => Complex, sep: String = " "): String = strings(x => fn(x).toString, sep)
 
-    def raw_name (sep: String): String = transformers.map (_.transformer.id).map (valid_config_name).sortWith (_ < _).mkString (sep)
+    def raw_name (sep: String): String = transformers.map(_.transformer.id).map(valid_config_name).sortWith(_ < _).mkString(sep)
 
     // get the transformer name (of the parallel transformers)
     lazy val transformer_name: String =
     {
-        val n = raw_name ("_")
+        val n = raw_name("_")
         if (n.getBytes.length > 63)
-            s"_${Math.abs (n.hashCode ())}_${n.substring (0, n.indexOf ("_", 32))}_etc"
+            s"_${Math.abs(n.hashCode())}_${n.substring(0, n.indexOf("_", 32))}_etc"
         else
             n
     }
@@ -62,16 +62,16 @@ case class TransformerSet (
     lazy val v0: Double =
     {
         val v = transformers.head.v0
-        if (!transformers.tail.forall (_.v0 == v))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has different voltages on terminal 0 ${dstrings (_.v0)}")
+        if (!transformers.tail.forall(_.v0 == v))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has different voltages on terminal 0 ${dstrings(_.v0)}")
         v
     }
 
     lazy val v1: Double =
     {
         val v = transformers.head.v1
-        if (!transformers.tail.forall (_.v1 == v))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has different voltages on terminal 1 ${dstrings (_.v1)}")
+        if (!transformers.tail.forall(_.v1 == v))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has different voltages on terminal 1 ${dstrings(_.v1)}")
         v
     }
 
@@ -79,16 +79,16 @@ case class TransformerSet (
     lazy val node0: String =
     {
         val n = transformers.head.node0.id
-        if (!transformers.tail.forall (_.node0.id == n))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has different nodes on terminal 0 ${strings (_.node0.id)}")
+        if (!transformers.tail.forall(_.node0.id == n))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has different nodes on terminal 0 ${strings(_.node0.id)}")
         n
     }
 
     lazy val node1: String =
     {
         val n = transformers.head.node1.id
-        if (!transformers.tail.forall (_.node1.id == n))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has different nodes on terminal 1 ${strings (_.node1.id)}")
+        if (!transformers.tail.forall(_.node1.id == n))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has different nodes on terminal 1 ${strings(_.node1.id)}")
         n
     }
 
@@ -98,17 +98,17 @@ case class TransformerSet (
         val s = if ((null == string) || ("" == string))
             "unknown"
         else
-            if (string.charAt (0).isLetter || ('_' == string.charAt (0)))
+            if (string.charAt(0).isLetter || ('_' == string.charAt(0)))
                 string
             else
                 s"_$string"
-        s.replace (".", "d").replace (":", "$")
+        s.replace(".", "d").replace(":", "$")
     }
 
     // get the configuration name (of the parallel transformers)
     lazy val configurationName: String =
     {
-        val n = s"${raw_name ("||")}_configuration"
+        val n = s"${raw_name("||")}_configuration"
         // limit to 64 bytes with null:
         // typedef struct s_objecttree {
         //     char name[64];
@@ -117,21 +117,21 @@ case class TransformerSet (
         //     int balance; /* unused */
         // } OBJECTTREE;
         if (n.getBytes.length > 63)
-            s"_${Math.abs (n.hashCode ())}_${n.substring (0, n.indexOf ("||", 32))}_etc"
+            s"_${Math.abs(n.hashCode())}_${n.substring(0, n.indexOf("||", 32))}_etc"
         else
             n
     }
 
     // rated power is the sum of the powers - use low voltage side, but high voltage side is the same for simple transformer
-    lazy val power_rating: Double = transformers.map (edge => if (0.0 == edge.end1.ratedS) default_power_rating else edge.end1.ratedS).sum
+    lazy val power_rating: Double = transformers.map(edge => if (0.0 == edge.end1.ratedS) default_power_rating else edge.end1.ratedS).sum
 
-    lazy val base_amps: Double = power_rating / v0 / Math.sqrt (3)
+    lazy val base_amps: Double = power_rating / v0 / Math.sqrt(3)
 
-    lazy val base_ohms: Double = v0 / base_amps / Math.sqrt (3)
+    lazy val base_ohms: Double = v0 / base_amps / Math.sqrt(3)
 
     // the characteristic transformer impedances at the secondary
     // with a flag indicating if it is the default value (the impedance was zero)
-    lazy val impedances: Array[(Complex, Boolean)] = transformers.map (
+    lazy val impedances: Array[(Complex, Boolean)] = transformers.map(
         edge =>
         {
             if ((0.0 == edge.end1.r) && (0.0 == edge.end1.x))
@@ -139,9 +139,9 @@ case class TransformerSet (
                 // base power (for per unit calculations)
                 val base_va: Double =
                 {
-                    val va = transformers.map (_.end1.ratedS).max
-                    if (!transformers.forall (_.end1.ratedS == va))
-                        LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has units with different base VA ${dstrings (_.end1.ratedS)}")
+                    val va = transformers.map(_.end1.ratedS).max
+                    if (!transformers.forall(_.end1.ratedS == va))
+                        LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has units with different base VA ${dstrings(_.end1.ratedS)}")
                     if (0.0 == va)
                         default_power_rating
                     else
@@ -151,7 +151,7 @@ case class TransformerSet (
                 (default_impedance * base_ohms, true)
             }
             else
-                (Complex (edge.end1.r, edge.end1.x), false)
+                (Complex(edge.end1.r, edge.end1.x), false)
         }
     )
 
@@ -163,7 +163,7 @@ case class TransformerSet (
      */
     lazy val total_impedance: (Complex, Boolean) =
     {
-        val zinv = impedances.foldLeft ((Complex (0.0), false))((c1, c2) => (c1._1 + c2._1.reciprocal, c1._2 || c2._2))
+        val zinv = impedances.foldLeft((Complex(0.0), false))((c1, c2) => (c1._1 + c2._1.reciprocal, c1._2 || c2._2))
         (zinv._1.reciprocal, zinv._2)
     }
 
@@ -171,8 +171,8 @@ case class TransformerSet (
     {
         equiv match
         {
-            case Some (injection) =>
-                math.sqrt (injection.maxP * injection.maxP + injection.maxQ * injection.maxQ)
+            case Some(injection) =>
+                math.sqrt(injection.maxP * injection.maxP + injection.maxQ * injection.maxQ)
             case _ => 0.0
         }
     }
@@ -181,8 +181,8 @@ case class TransformerSet (
     {
         equiv match
         {
-            case Some (injection) =>
-                math.sqrt (injection.minP * injection.minP + injection.minQ * injection.minQ)
+            case Some(injection) =>
+                math.sqrt(injection.minP * injection.minP + injection.minQ * injection.minQ)
             case _ => 0.0
         }
     }
@@ -191,8 +191,8 @@ case class TransformerSet (
     {
         equiv match
         {
-            case Some (injection) =>
-                Complex (injection.r, injection.x)
+            case Some(injection) =>
+                Complex(injection.r, injection.x)
             case _ => 0.0
         }
     }
@@ -201,8 +201,8 @@ case class TransformerSet (
     {
         equiv match
         {
-            case Some (injection) =>
-                Complex (injection.r0, injection.x0)
+            case Some(injection) =>
+                Complex(injection.r0, injection.x0)
             case _ => 0.0
         }
     }
@@ -211,8 +211,8 @@ case class TransformerSet (
     {
         equiv match
         {
-            case Some (injection) =>
-                math.atan2 (injection.maxQ, injection.maxP)
+            case Some(injection) =>
+                math.atan2(injection.maxQ, injection.maxP)
             case _ => 0.0
         }
     }
@@ -221,21 +221,21 @@ case class TransformerSet (
     {
         equiv match
         {
-            case Some (injection) =>
-                math.atan2 (injection.minQ, injection.minP)
+            case Some(injection) =>
+                math.atan2(injection.minQ, injection.minP)
             case _ => 0.0
         }
     }
 
     def Z2 (equiv: Option[EquivalentInjection]): Complex =
     {
-        val power = SkMax (equiv)
-        val angle = WikMax (equiv)
+        val power = SkMax(equiv)
+        val angle = WikMax(equiv)
         val c = 1.0
         val z = (c * v0 * v0) / power
-        val r = z * Math.cos (angle)
-        val x = z * Math.sin (angle)
-        Complex (r, x)
+        val r = z * Math.cos(angle)
+        val x = z * Math.sin(angle)
+        Complex(r, x)
     }
 
     /**
@@ -245,9 +245,9 @@ case class TransformerSet (
      */
     lazy val network_short_circuit_power_max: Double =
     {
-        val power = SkMax (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x => SkMax (x.shortcircuit) == power))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing maximum network short circuit powers ${dstrings (x => SkMax (x.shortcircuit))}")
+        val power = SkMax(transformers.head.shortcircuit)
+        if (!transformers.tail.forall(x => SkMax(x.shortcircuit) == power))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has differing maximum network short circuit powers ${dstrings(x => SkMax(x.shortcircuit))}")
         power
     }
 
@@ -258,9 +258,9 @@ case class TransformerSet (
      */
     lazy val network_short_circuit_power_min: Double =
     {
-        val power = SkMin (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x => SkMin (x.shortcircuit) == power))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing minimum network short circuit powers ${dstrings (x => SkMin (x.shortcircuit))}")
+        val power = SkMin(transformers.head.shortcircuit)
+        if (!transformers.tail.forall(x => SkMin(x.shortcircuit) == power))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has differing minimum network short circuit powers ${dstrings(x => SkMin(x.shortcircuit))}")
         power
     }
 
@@ -271,16 +271,16 @@ case class TransformerSet (
      */
     lazy val network_short_circuit_impedance_max: Complex =
     {
-        val z = Z (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x => Z (x.shortcircuit) == z))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings (x => Z (x.shortcircuit))} using the r and x")
+        val z = Z(transformers.head.shortcircuit)
+        if (!transformers.tail.forall(x => Z(x.shortcircuit) == z))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings(x => Z(x.shortcircuit))} using the r and x")
 
         // check against Sk
-        val z2 = Z2 (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x => Z2 (x.shortcircuit) == z2))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings (x => Z2 (x.shortcircuit))} using the maxP and maxQ")
+        val z2 = Z2(transformers.head.shortcircuit)
+        if (!transformers.tail.forall(x => Z2(x.shortcircuit) == z2))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has differing maximum network short circuit impedance ${cstrings(x => Z2(x.shortcircuit))} using the maxP and maxQ")
 
-        if (Complex (0.0) != z) z else z2
+        if (Complex(0.0) != z) z else z2
     }
 
     /**
@@ -293,25 +293,25 @@ case class TransformerSet (
         def Z (equiv: Option[EquivalentInjection]): Complex =
         {
             val power =
-                if (0.0 != SkMin (equiv))
-                    SkMin (equiv)
+                if (0.0 != SkMin(equiv))
+                    SkMin(equiv)
                 else
-                    SkMax (equiv)
+                    SkMax(equiv)
             val angle =
-                if (0.0 != WikMin (equiv))
-                    WikMin (equiv)
+                if (0.0 != WikMin(equiv))
+                    WikMin(equiv)
                 else
-                    WikMax (equiv)
+                    WikMax(equiv)
             val c = 1.0
             val z = (c * v0 * v0) / power
-            val r = z * Math.cos (angle)
-            val x = z * Math.sin (angle)
-            Complex (r, x)
+            val r = z * Math.cos(angle)
+            val x = z * Math.sin(angle)
+            Complex(r, x)
         }
 
-        val z = Z (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x => Z (x.shortcircuit) == z))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing minimum network short circuit impedance ${cstrings (x => Z (x.shortcircuit))} using the minP and minQ")
+        val z = Z(transformers.head.shortcircuit)
+        if (!transformers.tail.forall(x => Z(x.shortcircuit) == z))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has differing minimum network short circuit impedance ${cstrings(x => Z(x.shortcircuit))} using the minP and minQ")
 
         z
     }
@@ -323,9 +323,9 @@ case class TransformerSet (
      */
     lazy val network_short_circuit_zero_sequence_impedance_max: Complex =
     {
-        val impedance = Z0 (transformers.head.shortcircuit)
-        if (!transformers.tail.forall (x => Z0 (x.shortcircuit) == impedance))
-            LoggerFactory.getLogger (getClass).error (s"transformer set $transformer_name has differing maximum network zero sequence short circuit impedance ${cstrings (x => Z0 (x.shortcircuit))} using the r0 and x0")
+        val impedance = Z0(transformers.head.shortcircuit)
+        if (!transformers.tail.forall(x => Z0(x.shortcircuit) == impedance))
+            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has differing maximum network zero sequence short circuit impedance ${cstrings(x => Z0(x.shortcircuit))} using the r0 and x0")
         impedance
     }
 
@@ -337,7 +337,7 @@ case class TransformerSet (
     lazy val total_impedance_per_unit: (Complex, Boolean) =
     {
         // get a list of primary impedances or default
-        val impedances: Array[(Complex, Boolean)] = transformers.map (
+        val impedances: Array[(Complex, Boolean)] = transformers.map(
             edge =>
             {
                 // this end's impedance
@@ -351,17 +351,17 @@ case class TransformerSet (
                     x = z.im // 16.07618325
                     default = true
                 }
-                (Complex (r, x), default)
+                (Complex(r, x), default)
             }
         )
 
-        val zero = Complex (0.0)
-        val inv = impedances.map (z => (z._1.reciprocal, z._2)).foldLeft ((zero, false))((z1, z2) => (z1._1 + z2._1, z1._2 || z2._2))
+        val zero = Complex(0.0)
+        val inv = impedances.map(z => (z._1.reciprocal, z._2)).foldLeft((zero, false))((z1, z2) => (z1._1 + z2._1, z1._2 || z2._2))
         val parallel = (inv._1.reciprocal, inv._2)
 
         // per unit impedance
         if (0.0 == base_ohms)
-            (Complex (2.397460317, 16.07618325), true)
+            (Complex(2.397460317, 16.07618325), true)
         else
             (parallel._1 / base_ohms, parallel._2)
     }

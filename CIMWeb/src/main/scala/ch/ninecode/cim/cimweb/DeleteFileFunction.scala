@@ -11,19 +11,19 @@ case class DeleteFileFunction (path: String) extends CIMWebFunction
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
         // form the response
-        val file: Path = new Path (hdfs.getUri.toString, path)
+        val file: Path = new Path(hdfs.getUri.toString, path)
         val response = Json.createObjectBuilder
-            .add ("filesystem", uri.toString)
-            .add ("path", path)
+            .add("filesystem", uri.toString)
+            .add("path", path)
         // delete the file or directory
         val _ = try
         {
-            hdfs.delete (file, true)
+            hdfs.delete(file, true)
         }
         catch
         {
             case e: Exception =>
-                response.add ("error", e.getMessage)
+                response.add("error", e.getMessage)
         }
         response.build
     }

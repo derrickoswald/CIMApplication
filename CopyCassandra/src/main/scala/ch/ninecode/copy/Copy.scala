@@ -27,60 +27,60 @@ import ch.ninecode.util.SparkOptions
  */
 case class Copy (session: SparkSession, options: CopyOptions)
 {
-    org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.INFO)
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    org.apache.log4j.LogManager.getLogger(getClass).setLevel(org.apache.log4j.Level.INFO)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
     val HOST = "spark.cassandra.connection.host"
     val PORT = "spark.cassandra.connection.port"
 
     def cassandra (host: String, port: Int): SparkConf =
     {
         val s = session.sparkContext.getConf
-        s.set (HOST, host).set (PORT, port.toString)
+        s.set(HOST, host).set(PORT, port.toString)
     }
 
     def run (): Unit =
     {
-        val source: CassandraConnector = CassandraConnector (cassandra (options.source_host, options.source_port))
-        val target: CassandraConnector = CassandraConnector (cassandra (options.target_host, options.target_port))
-        val schema = Schema (session, "/simulation_schema.sql", true)
-        if (schema.make (target, options.target_keyspace, options.target_replication))
+        val source: CassandraConnector = CassandraConnector(cassandra(options.source_host, options.source_port))
+        val target: CassandraConnector = CassandraConnector(cassandra(options.target_host, options.target_port))
+        val schema = Schema(session, "/simulation_schema.sql", true)
+        if (schema.make(target, options.target_keyspace, options.target_replication))
         {
             val target_tables: Array[String] =
             {
                 implicit val c: CassandraConnector = target
-                val t = session.sparkContext.cassandraTable ("system_schema", "tables")
-                val f = t.where (s"keyspace_name='${options.target_keyspace}'")
-                f.collect.map (_.getString ("table_name"))
+                val t = session.sparkContext.cassandraTable("system_schema", "tables")
+                val f = t.where(s"keyspace_name='${options.target_keyspace}'")
+                f.collect.map(_.getString("table_name"))
             }
-            log.info (s"tables ${target_tables.mkString (",")}")
+            log.info(s"tables ${target_tables.mkString(",")}")
 
             val source_tables: Array[String] =
             {
                 implicit val c: CassandraConnector = source
-                val t = session.sparkContext.cassandraTable ("system_schema", "tables")
-                val f = t.where (s"keyspace_name='${options.source_keyspace}'")
-                f.collect.map (_.getString ("table_name"))
+                val t = session.sparkContext.cassandraTable("system_schema", "tables")
+                val f = t.where(s"keyspace_name='${options.source_keyspace}'")
+                f.collect.map(_.getString("table_name"))
             }
 
-            for (table <- target_tables if source_tables.contains (table))
+            for (table <- target_tables if source_tables.contains(table))
             {
                 val (data, columns) =
                 {
                     // sets source as default connection for everything in this code block
                     implicit val c: CassandraConnector = source
-                    implicit val configuration: ReadConf = ReadConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ONE)
-                    val rdd: CassandraTableScanRDD[CassandraRow] = session.sparkContext.cassandraTable (options.source_keyspace, table)
-                    val cols = rdd.columnNames.selectFrom (rdd.tableDef)
-                    log.info (s"table $table columns ${cols.map (_.columnName).mkString (",")}")
-                    (rdd, SomeColumns (cols: _*))
+                    implicit val configuration: ReadConf = ReadConf.fromSparkConf(session.sparkContext.getConf).copy(consistencyLevel = ConsistencyLevel.ONE)
+                    val rdd: CassandraTableScanRDD[CassandraRow] = session.sparkContext.cassandraTable(options.source_keyspace, table)
+                    val cols = rdd.columnNames.selectFrom(rdd.tableDef)
+                    log.info(s"table $table columns ${cols.map(_.columnName).mkString(",")}")
+                    (rdd, SomeColumns(cols: _*))
                 }
 
                 {
                     // sets target as the default connection for everything in this code block
                     implicit val c: CassandraConnector = target
-                    val configuration = WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
-                    data.saveToCassandra (options.target_keyspace, table, columns, configuration)
-                    log.info (s"table $table copied")
+                    val configuration = WriteConf.fromSparkConf(session.sparkContext.getConf).copy(consistencyLevel = ConsistencyLevel.ANY)
+                    data.saveToCassandra(options.target_keyspace, table, columns, configuration)
+                    log.info(s"table $table copied")
                 }
             }
         }
@@ -99,17 +99,17 @@ object Copy extends SparkInitializer[CopyOptions] with Main
     {
         if (options.main_options.valid)
         {
-            org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.INFO)
-            if (!same (options))
+            org.apache.log4j.LogManager.getLogger(getClass).setLevel(org.apache.log4j.Level.INFO)
+            if (!same(options))
             {
-                val session: SparkSession = createSession (options)
-                time ("execution: %s seconds")
+                val session: SparkSession = createSession(options)
+                time("execution: %s seconds")
                 {
-                    Copy (session, options).run ()
+                    Copy(session, options).run()
                 }
             }
             else
-                log.error (s"""copy to the same host "${options.source_host}" and keyspace "${options.source_keyspace}" ignored""")
+                log.error(s"""copy to the same host "${options.source_host}" and keyspace "${options.source_keyspace}" ignored""")
         }
     }
 
@@ -119,33 +119,33 @@ object Copy extends SparkInitializer[CopyOptions] with Main
         val need = scala_library_version
         if (have != need)
         {
-            log.error (s"Scala version ($have) does not match the version ($need) used to build $application_name")
-            sys.exit (1)
+            log.error(s"Scala version ($have) does not match the version ($need) used to build $application_name")
+            sys.exit(1)
         }
         else
         {
             // get the necessary jar files to send to the cluster
-            val jars = Set (
-                jarForObject (com.datastax.spark.connector.mapper.ColumnMapper),
-                jarForObject (CopyOptions ())
+            val jars = Set(
+                jarForObject(com.datastax.spark.connector.mapper.ColumnMapper),
+                jarForObject(CopyOptions())
             ).toArray
 
             // initialize the default options
-            val default = CopyOptions (
-                main_options = MainOptions (application_name, application_version),
-                spark_options = SparkOptions (jars = jars),
+            val default = CopyOptions(
+                main_options = MainOptions(application_name, application_version),
+                spark_options = SparkOptions(jars = jars),
             )
 
             // parse the command line arguments
-            new CopyOptionsParser (default).parse (args, default) match
+            new CopyOptionsParser(default).parse(args, default) match
             {
-                case Some (options) =>
+                case Some(options) =>
                     // execute the main program if everything checks out
-                    run (options)
+                    run(options)
                     if (!options.main_options.unittest)
-                        sys.exit (0)
+                        sys.exit(0)
                 case None =>
-                    sys.exit (1)
+                    sys.exit(1)
             }
         }
     }

@@ -21,66 +21,66 @@ import org.slf4j.LoggerFactory
  * @param options The simulation options.
  */
 case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(spark: SparkSession, options: SimulationOptions)
-    extends SimulationPostProcessor (spark, options)
+    extends SimulationPostProcessor(spark, options)
 {
-    if (options.verbose) org.apache.log4j.LogManager.getLogger (getClass.getName).setLevel (org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    if (options.verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
+    val log: Logger = LoggerFactory.getLogger(getClass)
 
     /**
      * Load factor
      */
     def run (implicit access: SimulationCassandraAccess): Unit =
     {
-        log.info ("Load Factor")
+        log.info("Load Factor")
 
         val typ = "power"
-        val queries = access.mrids_for_recorders (typ)
-        log.info (s"Computing ${queries.length} load factors")
+        val queries = access.mrids_for_recorders(typ)
+        log.info(s"Computing ${queries.length} load factors")
 
         for ((trafo, mrids) <- queries)
         {
             // get the mrid,power,date DataFrame for the trafo
-            log.info (trafo)
-            val simulated_power_values = simulatedPowerValues (mrids)
-                .drop ("time")
-                .persist (options.cim_options.storage)
+            log.info(trafo)
+            val simulated_power_values = simulatedPowerValues(mrids)
+                .drop("time")
+                .persist(options.cim_options.storage)
 
             // get the trafo aggregates
-            val _mrid = simulated_power_values.schema.fieldIndex ("mrid")
+            val _mrid = simulated_power_values.schema.fieldIndex("mrid")
             val trafo_aggregates = simulated_power_values
-                .filter (trafo == _.getString (_mrid))
-                .groupBy ("date") // sum and average over times for each day
-                .agg ("power" -> "avg", "power" -> "max")
-                .withColumnRenamed ("avg(power)", "avg_power")
-                .withColumnRenamed ("max(power)", "peak_power")
+                .filter(trafo == _.getString(_mrid))
+                .groupBy("date") // sum and average over times for each day
+                .agg("power" -> "avg", "power" -> "max")
+                .withColumnRenamed("avg(power)", "avg_power")
+                .withColumnRenamed("max(power)", "peak_power")
 
             val loadfactors = trafo_aggregates
-                .withColumn ("load_factor", trafo_aggregates ("avg_power") / trafo_aggregates ("peak_power"))
+                .withColumn("load_factor", trafo_aggregates("avg_power") / trafo_aggregates("peak_power"))
 
-            val date = loadfactors.schema.fieldIndex ("date")
-            val avg_power = loadfactors.schema.fieldIndex ("avg_power")
-            val peak_power = loadfactors.schema.fieldIndex ("peak_power")
-            val load_factor = loadfactors.schema.fieldIndex ("load_factor")
+            val date = loadfactors.schema.fieldIndex("date")
+            val avg_power = loadfactors.schema.fieldIndex("avg_power")
+            val peak_power = loadfactors.schema.fieldIndex("peak_power")
+            val load_factor = loadfactors.schema.fieldIndex("load_factor")
 
-            val work = loadfactors.rdd.map (
-                row => (trafo, typ, row.getDate (date), row.getDouble (avg_power), row.getDouble (peak_power), row.getDouble (load_factor), "VA÷VA", access.simulation))
+            val work = loadfactors.rdd.map(
+                row => (trafo, typ, row.getDate(date), row.getDouble(avg_power), row.getDouble(peak_power), row.getDouble(load_factor), "VA÷VA", access.simulation))
 
             // save to Cassandra
-            work.saveToCassandra (access.output_keyspace, "load_factor_by_day",
-                SomeColumns ("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
+            work.saveToCassandra(access.output_keyspace, "load_factor_by_day",
+                SomeColumns("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
 
-            unpersistDataFrame (simulated_power_values)
+            unpersistDataFrame(simulated_power_values)
         }
 
-        log.info (s"""Load Factor: load factor records saved to ${access.output_keyspace}.load_factor_by_day""")
+        log.info(s"""Load Factor: load factor records saved to ${access.output_keyspace}.load_factor_by_day""")
     }
 }
 
 object SimulationLoadFactor extends SimulationPostProcessorParser
 {
     // standard aggregation is daily
-    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List [SimulationAggregate](
-        SimulationAggregate (96, 0)
+    val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate](
+        SimulationAggregate(96, 0)
     )
 
     def cls: String = "load_factor"
@@ -93,24 +93,24 @@ object SimulationLoadFactor extends SimulationPostProcessorParser
     def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
         post =>
         {
-            val aggregates = if (post.containsKey ("aggregates"))
+            val aggregates = if (post.containsKey("aggregates"))
             {
-                val list = post.getJsonArray ("aggregates")
+                val list = post.getJsonArray("aggregates")
                 for (i <- 0 until list.size)
                     yield
                         {
-                            val aggregate = list.getJsonObject (i)
-                            val intervals = aggregate.getInt ("intervals", 96)
-                            val ttl = if (aggregate.isNull ("ttl"))
+                            val aggregate = list.getJsonObject(i)
+                            val intervals = aggregate.getInt("intervals", 96)
+                            val ttl = if (aggregate.isNull("ttl"))
                                 0
                             else
-                                aggregate.getJsonNumber ("ttl").intValue
-                            SimulationAggregate (intervals, ttl)
+                                aggregate.getJsonNumber("ttl").intValue
+                            SimulationAggregate(intervals, ttl)
                         }
             }
             else
                 STANDARD_AGGREGATES
 
-            SimulationLoadFactor (aggregates)(_: SparkSession, _: SimulationOptions)
+            SimulationLoadFactor(aggregates)(_: SparkSession, _: SimulationOptions)
         }
 }

@@ -16,17 +16,17 @@ case class CNT (
 
 object CNT extends FieldExtractor[CNT]
 {
-    private lazy val _6069 = alphanumeric (3)
+    private lazy val _6069 = alphanumeric(3)
 
-    private lazy val _6066 = numeric (18)
+    private lazy val _6066 = numeric(18)
 
-    private lazy val _6411 = alphanumeric_? (8)
+    private lazy val _6411 = alphanumeric_?(8)
 
     lazy val cnt_fields: Parser[CNT] =
-        fields (
+        fields(
             _6069 ~ _6066 ~ _6411 ^^
-                { case _6069 ~ _6066 ~ _6411 => CNT (_6069, _6066, _6411) }
-        ).named ("CNT")
+                { case _6069 ~ _6066 ~ _6411 => CNT(_6069, _6066, _6411) }
+        ).named("CNT")
 
     override def phrase: Parser[CNT] = cnt_fields
 }

@@ -39,7 +39,7 @@ final case class LineDetails (
      *
      * @return <code>true</code> if the <code>perLengthImpedance</code> uses a default value, <code>false</code> otherwise.
      */
-    lazy val perLengthImpedanceIsDefault: Boolean = checkIfPerLengthImpedanceIsDefault (this)
+    lazy val perLengthImpedanceIsDefault: Boolean = checkIfPerLengthImpedanceIsDefault(this)
 
     /**
      * Per length impedance of this line, as found in the CIM file.
@@ -51,7 +51,7 @@ final case class LineDetails (
      *
      * @return the positive and zero sequence impedances (Ω/m) at the temperature implicit in the CIM file
      */
-    lazy val perLengthImpedance: Sequences = getPerLengthImpedance (this)
+    lazy val perLengthImpedance: Sequences = getPerLengthImpedance(this)
 
     /**
      * Temperature adjusted resistance.
@@ -75,9 +75,9 @@ final case class LineDetails (
     def perLengthImpedanceAt (temperature: Double = CIMBaseTemperature, base: Double = CIMBaseTemperature): Sequences =
     {
         val z = perLengthImpedance
-        Sequences (
-            Complex (resistanceAt (z.z1.re, temperature, base), z.z1.im),
-            Complex (resistanceAt (z.z0.re, temperature, base), z.z0.im))
+        Sequences(
+            Complex(resistanceAt(z.z1.re, temperature, base), z.z1.im),
+            Complex(resistanceAt(z.z0.re, temperature, base), z.z0.im))
     }
 
     /**
@@ -88,7 +88,7 @@ final case class LineDetails (
      * @return the temperature compensated positive and zero sequence impedance (Ω)
      */
     def impedanceAt (temperature: Double = CIMBaseTemperature, base: Double = CIMBaseTemperature): Sequences =
-        perLengthImpedanceAt (temperature, base) * line.Conductor.len
+        perLengthImpedanceAt(temperature, base) * line.Conductor.len
 
     /**
      * Impedance not temperature adjusted.
@@ -108,37 +108,37 @@ final case class LineDetails (
  */
 object LineDetails
 {
-    lazy val log: Logger = LoggerFactory.getLogger (LineDetails.getClass)
+    lazy val log: Logger = LoggerFactory.getLogger(LineDetails.getClass)
 
     /**
      * Per meter positive sequence impedance corresponding to GKN 3x16rm/16 1/0.6 kV.
      */
-    lazy val DEFAULT_Z1_SMALL: Complex = Complex (1.12e-3, 0.075e-3)
+    lazy val DEFAULT_Z1_SMALL: Complex = Complex(1.12e-3, 0.075e-3)
 
     /**
      * Per meter zero sequence impedance corresponding to GKN 3x16rm/16 1/0.6 kV.
      */
-    lazy val DEFAULT_Z0_SMALL: Complex = Complex (4.48e-3, 0.3e-3)
+    lazy val DEFAULT_Z0_SMALL: Complex = Complex(4.48e-3, 0.3e-3)
 
     /**
      * Per meter positive sequence impedance corresponding to GKN 3x95se/95 1/0.6 kV.
      */
-    lazy val DEFAULT_Z1_MEDIUM: Complex = Complex (0.190e-3, 0.070e-3)
+    lazy val DEFAULT_Z1_MEDIUM: Complex = Complex(0.190e-3, 0.070e-3)
 
     /**
      * Per meter zero sequence impedance corresponding to GKN 3x95se/95 1/0.6 kV.
      */
-    lazy val DEFAULT_Z0_MEDIUM: Complex = Complex (0.760e-3, 0.28e-3)
+    lazy val DEFAULT_Z0_MEDIUM: Complex = Complex(0.760e-3, 0.28e-3)
 
     /**
      * Per meter positive sequence impedance corresponding to GKN 3x240se/240 1/0.6 kV.
      */
-    lazy val DEFAULT_Z1_LARGE: Complex = Complex (0.0767e-3, 0.069e-3)
+    lazy val DEFAULT_Z1_LARGE: Complex = Complex(0.0767e-3, 0.069e-3)
 
     /**
      * Per meter zero sequence impedance corresponding to GKN 3x240se/240 1/0.6 kV.
      */
-    lazy val DEFAULT_Z0_LARGE: Complex = Complex (0.307e-3, 0.276e-3)
+    lazy val DEFAULT_Z0_LARGE: Complex = Complex(0.307e-3, 0.276e-3)
 
     /**
      * Default per meter sequence impedances.
@@ -152,7 +152,7 @@ object LineDetails
      *          One can also change it to a bespoke value like so:
      *          LineDetails.DEFAULT_PER_LENGTH_IMPEDANCE = Sequences (Complex (r1, x1), Complex (r0, x0))
      */
-    var DEFAULT_PER_LENGTH_IMPEDANCE: Sequences = Sequences (DEFAULT_Z1_MEDIUM, DEFAULT_Z0_MEDIUM)
+    var DEFAULT_PER_LENGTH_IMPEDANCE: Sequences = Sequences(DEFAULT_Z1_MEDIUM, DEFAULT_Z0_MEDIUM)
 
     /**
      * Flag to emit a warning message in the log when a default impedance is used.
@@ -171,22 +171,22 @@ object LineDetails
     /**
      * Index of r field in ACLineSegment bitmask.
      */
-    lazy val r1Mask: Int = ACLineSegment.fields.indexOf ("r")
+    lazy val r1Mask: Int = ACLineSegment.fields.indexOf("r")
 
     /**
      * Index of x field in ACLineSegment bitmask.
      */
-    lazy val x1Mask: Int = ACLineSegment.fields.indexOf ("x")
+    lazy val x1Mask: Int = ACLineSegment.fields.indexOf("x")
 
     /**
      * Index of r0 field in ACLineSegment bitmask.
      */
-    lazy val r0Mask: Int = ACLineSegment.fields.indexOf ("r0")
+    lazy val r0Mask: Int = ACLineSegment.fields.indexOf("r0")
 
     /**
      * Index of x0 field in ACLineSegment bitmask.
      */
-    lazy val x0Mask: Int = ACLineSegment.fields.indexOf ("x0")
+    lazy val x0Mask: Int = ACLineSegment.fields.indexOf("x0")
 
     /**
      * Temperature (°C) of resistance values in the CIM file.
@@ -211,7 +211,7 @@ object LineDetails
      *
      * @param message method returning the warning message
      */
-    def maybe_warn (message: () => String): Unit = if (EMIT_WARNING_WHEN_DEFAULT) log.warn (message ())
+    def maybe_warn (message: () => String): Unit = if (EMIT_WARNING_WHEN_DEFAULT) log.warn(message())
 
     /**
      * Predicate to determine if the ACLineSegment has values for r, x, r0, or x0.
@@ -227,9 +227,9 @@ object LineDetails
          * @param mask single bit mask to check.
          * @return <code>true</code> if the bit is set, <code>false</code> otherwise.
          */
-        def isSet (mask: Int): Boolean = 0 != (details.line.bitfields (mask / 32) & (1 << (mask % 32)))
+        def isSet (mask: Int): Boolean = 0 != (details.line.bitfields(mask / 32) & (1 << (mask % 32)))
 
-        isSet (r1Mask) || isSet (x1Mask) || isSet (r0Mask) || isSet (x0Mask)
+        isSet(r1Mask) || isSet(x1Mask) || isSet(r0Mask) || isSet(x0Mask)
     }
 
     /**
@@ -241,14 +241,14 @@ object LineDetails
     {
         details.per_length_impedance match
         {
-            case Some (_: PerLengthSequenceImpedance) =>
+            case Some(_: PerLengthSequenceImpedance) =>
                 false
-            case Some (_: PerLengthPhaseImpedance) =>
+            case Some(_: PerLengthPhaseImpedance) =>
                 true
-            case Some (_: Element) =>
+            case Some(_: Element) =>
                 true
             case None =>
-                if (PROPERTIES_ARE_ERRONEOUSLY_PER_KM && hasRX (details))
+                if (PROPERTIES_ARE_ERRONEOUSLY_PER_KM && hasRX(details))
                     false
                 else
                     true
@@ -269,24 +269,24 @@ object LineDetails
     {
         details.per_length_impedance match
         {
-            case Some (seq: PerLengthSequenceImpedance) =>
-                Sequences (Complex (seq.r, seq.x), Complex (seq.r0, seq.x0))
-            case Some (phased: PerLengthPhaseImpedance) =>
-                maybe_warn (() => s"ACLineSegment ${details.line.id} PerLengthPhaseImpedance ${phased.id} is not supported, using default impedance $DEFAULT_PER_LENGTH_IMPEDANCE Ω/m")
+            case Some(seq: PerLengthSequenceImpedance) =>
+                Sequences(Complex(seq.r, seq.x), Complex(seq.r0, seq.x0))
+            case Some(phased: PerLengthPhaseImpedance) =>
+                maybe_warn(() => s"ACLineSegment ${details.line.id} PerLengthPhaseImpedance ${phased.id} is not supported, using default impedance $DEFAULT_PER_LENGTH_IMPEDANCE Ω/m")
                 DEFAULT_PER_LENGTH_IMPEDANCE
-            case Some (element: Element) =>
-                maybe_warn (() => s"ACLineSegment ${details.line.id} unrecognized PerLengthImpedance class ${element.id}, using default impedance $DEFAULT_PER_LENGTH_IMPEDANCE Ω/m")
+            case Some(element: Element) =>
+                maybe_warn(() => s"ACLineSegment ${details.line.id} unrecognized PerLengthImpedance class ${element.id}, using default impedance $DEFAULT_PER_LENGTH_IMPEDANCE Ω/m")
                 DEFAULT_PER_LENGTH_IMPEDANCE
             case None =>
-                if (PROPERTIES_ARE_ERRONEOUSLY_PER_KM && hasRX (details))
+                if (PROPERTIES_ARE_ERRONEOUSLY_PER_KM && hasRX(details))
                 {
-                    val z1 = Complex (details.line.r, details.line.x)
-                    val z0 = Complex (details.line.r0, details.line.x0)
-                    Sequences (z1 / 1000.0, z0 / 1000.0)
+                    val z1 = Complex(details.line.r, details.line.x)
+                    val z0 = Complex(details.line.r0, details.line.x0)
+                    Sequences(z1 / 1000.0, z0 / 1000.0)
                 }
                 else
                 {
-                    maybe_warn (() => s"ACLineSegment ${details.line.id} using default impedance ${DEFAULT_PER_LENGTH_IMPEDANCE} Ω/m")
+                    maybe_warn(() => s"ACLineSegment ${details.line.id} using default impedance ${DEFAULT_PER_LENGTH_IMPEDANCE} Ω/m")
                     DEFAULT_PER_LENGTH_IMPEDANCE
                 }
         }
@@ -323,6 +323,6 @@ object LineDetails
         PROPERTIES_ARE_ERRONEOUSLY_PER_KM = static_line_details.PropertiesAreErroneouslyPerKilometer
         CIM_BASE_TEMPERATURE = static_line_details.CIMBaseTemperature
         ALPHA = static_line_details.Alpha
-        LineDetails (line, terminal1, terminal2, per_length_impedance, wire_info, CIM_BASE_TEMPERATURE, ALPHA)
+        LineDetails(line, terminal1, terminal2, per_length_impedance, wire_info, CIM_BASE_TEMPERATURE, ALPHA)
     }
 }

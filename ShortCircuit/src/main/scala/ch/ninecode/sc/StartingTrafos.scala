@@ -21,9 +21,9 @@ case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: Transf
         val z1_min = transformer.network_short_circuit_impedance_min
         val netz_r0 = 0.0
         val netz_x0 = 0.0
-        val z0_max = Complex (netz_r0, netz_x0)
-        val z0_min = Complex (netz_r0, netz_x0)
-        Impedanzen (z1_max, z0_max, z1_min, z0_min)
+        val z0_max = Complex(netz_r0, netz_x0)
+        val z0_min = Complex(netz_r0, netz_x0)
+        Impedanzen(z1_max, z0_max, z1_min, z0_min)
     }
 
     val secondary_impedance: Impedanzen =
@@ -38,9 +38,9 @@ case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: Transf
         val ratio = v2 / v1
         val ratio2 = ratio * ratio
         val primary = primary_impedance
-        Impedanzen (
-            Complex (trafo_r1, trafo_x1) + (primary.impedanz_low * ratio2), Complex (trafo_r0, trafo_x0) + (primary.null_impedanz_low * ratio2),
-            Complex (trafo_r1, trafo_x1) + (primary.impedanz_high * ratio2), Complex (trafo_r0, trafo_x0) + (primary.null_impedanz_high * ratio2))
+        Impedanzen(
+            Complex(trafo_r1, trafo_x1) + (primary.impedanz_low * ratio2), Complex(trafo_r0, trafo_x0) + (primary.null_impedanz_low * ratio2),
+            Complex(trafo_r1, trafo_x1) + (primary.impedanz_high * ratio2), Complex(trafo_r0, trafo_x0) + (primary.null_impedanz_high * ratio2))
     }
 
     /**
@@ -59,21 +59,21 @@ case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: Transf
         val trafo_x1 = zt.im
         val trafo_x0 = zt.im // use r0=r1 & x0=x1 for trafos
         val v1 = transformer.v0
-        val _v = transformer.transformers.map (
-            _.voltages.find ((x: (String, Double)) => (Math.abs (x._2 - v) / x._2) <= 0.10) match
+        val _v = transformer.transformers.map(
+            _.voltages.find((x: (String, Double)) => (Math.abs(x._2 - v) / x._2) <= 0.10) match
             {
-                case Some (voltage) => voltage._2
+                case Some(voltage) => voltage._2
                 case None =>
-                    LoggerFactory.getLogger (getClass).error (s"voltage $v not found on transformer ${transformer.transformer_name}")
+                    LoggerFactory.getLogger(getClass).error(s"voltage $v not found on transformer ${transformer.transformer_name}")
                     v
             }
         )
-        val v2 = _v (0)
+        val v2 = _v(0)
         val ratio = v2 / v1
         val ratio2 = ratio * ratio
         val primary = primary_impedance
-        Impedanzen (
-            Complex (trafo_r1, trafo_x1) + (primary.impedanz_low * ratio2), Complex (trafo_r0, trafo_x0) + (primary.null_impedanz_low * ratio2),
-            Complex (trafo_r1, trafo_x1) + (primary.impedanz_high * ratio2), Complex (trafo_r0, trafo_x0) + (primary.null_impedanz_high * ratio2))
+        Impedanzen(
+            Complex(trafo_r1, trafo_x1) + (primary.impedanz_low * ratio2), Complex(trafo_r0, trafo_x0) + (primary.null_impedanz_low * ratio2),
+            Complex(trafo_r1, trafo_x1) + (primary.impedanz_high * ratio2), Complex(trafo_r0, trafo_x0) + (primary.null_impedanz_high * ratio2))
     }
 }

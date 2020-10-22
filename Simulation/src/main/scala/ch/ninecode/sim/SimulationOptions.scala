@@ -29,11 +29,11 @@ import ch.ninecode.util.Sparkable
  */
 case class SimulationOptions
 (
-    var main_options: MainOptions = MainOptions (),
-    var spark_options: SparkOptions = SparkOptions (),
-    var cim_options: CIMReaderOptions = CIMReaderOptions (
+    var main_options: MainOptions = MainOptions(),
+    var spark_options: SparkOptions = SparkOptions(),
+    var cim_options: CIMReaderOptions = CIMReaderOptions(
         topology = true,
-        topology_options = CIMTopologyOptions (identify_islands = true)),
+        topology_options = CIMTopologyOptions(identify_islands = true)),
     verbose: Boolean = false,
     host: String = "localhost",
     port: Int = 9042,
@@ -44,5 +44,5 @@ case class SimulationOptions
     simulationonly: Boolean = false,
     postprocessonly: Boolean = false,
     cable_impedance_limit: Double = 5.0,
-    simulation: Seq[String] = Seq ()
+    simulation: Seq[String] = Seq()
 ) extends Mainable with Sparkable with CIMAble

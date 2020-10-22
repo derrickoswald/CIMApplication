@@ -25,10 +25,10 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
     {
         var skip = false
         var stop = false
-        var start = buffer.position ()
+        var start = buffer.position()
         var size = 0
         var c = 0
-        var intervals = List [(Int, Int)]() // start and size of each piece of the segment
+        var intervals = List[(Int, Int)]() // start and size of each piece of the segment
 
         while ((0 < buffer.remaining) && !stop)
         {
@@ -56,12 +56,12 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
         intervals = intervals :+ ((start, if (stop) size - 1 else size))
 
         // copy the data piece by piece to a new array
-        val bytes = new Array[Byte](intervals.map (_._2).sum)
+        val bytes = new Array[Byte](intervals.map(_._2).sum)
         var offset = 0
-        intervals.foreach (
+        intervals.foreach(
             item =>
             {
-                val _ = buffer.position (item._1).get (bytes, offset, item._2)
+                val _ = buffer.position(item._1).get(bytes, offset, item._2)
                 offset += item._2
             }
         )
@@ -69,7 +69,7 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
         {
             val _ = buffer.get // discard terminator
         }
-        new String (bytes)
+        new String(bytes)
     }
 
     /**
@@ -82,7 +82,7 @@ case class SegmentScanner (buffer: ByteBuffer, una: UNA) extends Reader[String]
      * @return If `atEnd` is `true`, the result will be `this`;
      *         otherwise, it's a `Reader` containing more elements.
      */
-    def rest: Reader[String] = if (0 < buffer.remaining) SegmentScanner (buffer.slice, una) else this
+    def rest: Reader[String] = if (0 < buffer.remaining) SegmentScanner(buffer.slice, una) else this
 
     /** The position of the first element in the reader.
      */
@@ -111,31 +111,31 @@ object SegmentScanner
     //     segment terminator (')
     def parseUNA (buffer: ByteBuffer): UNA =
     {
-        if (buffer.limit () >= 9)
+        if (buffer.limit() >= 9)
         {
-            val _ = buffer.mark ()
+            val _ = buffer.mark()
             val buna = new Array[Char](9)
             for (i <- 0 until 9)
-                buna (i) = buffer.get.toChar
-            val una = new String (buna)
-            if (("UNA" == una.substring (0, 3)) && (" " == una.substring (7, 8)))
+                buna(i) = buffer.get.toChar
+            val una = new String(buna)
+            if (("UNA" == una.substring(0, 3)) && (" " == una.substring(7, 8)))
             {
-                UNA (
-                    component_data_element_separator = una.codePointAt (3),
-                    data_element_separator = una.codePointAt (4),
-                    decimal_notification = una.codePointAt (5),
-                    release_character = una.codePointAt (6),
-                    segment_terminator = una.codePointAt (8)
+                UNA(
+                    component_data_element_separator = una.codePointAt(3),
+                    data_element_separator = una.codePointAt(4),
+                    decimal_notification = una.codePointAt(5),
+                    release_character = una.codePointAt(6),
+                    segment_terminator = una.codePointAt(8)
                 )
             }
             else
             {
                 val _ = buffer.reset
-                UNA ()
+                UNA()
             }
         }
         else
-            UNA ()
+            UNA()
 
     }
 
@@ -147,8 +147,8 @@ object SegmentScanner
      */
     def apply (buffer: ByteBuffer): SegmentScanner =
     {
-        val una = parseUNA (buffer)
-        SegmentScanner (buffer, una)
+        val una = parseUNA(buffer)
+        SegmentScanner(buffer, una)
     }
 
     /**
@@ -159,8 +159,8 @@ object SegmentScanner
      */
     def apply (string: String): SegmentScanner =
     {
-        val buffer = ByteBuffer.wrap (string.getBytes)
-        val una = parseUNA (buffer)
-        SegmentScanner (buffer, una)
+        val buffer = ByteBuffer.wrap(string.getBytes)
+        val una = parseUNA(buffer)
+        SegmentScanner(buffer, una)
     }
 }

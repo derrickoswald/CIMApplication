@@ -34,16 +34,16 @@ case class ScExperiment
      * @param c The Calendar value to be cloned.
      * @return A clone of the calendar.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
 
     /**
      * The start time of the experiment.
      */
     lazy val t1: Calendar =
     {
-        val t = dup (t0)
-        t.add (Calendar.SECOND, slot * window)
+        val t = dup(t0)
+        t.add(Calendar.SECOND, slot * window)
         t
     }
 
@@ -52,19 +52,19 @@ case class ScExperiment
      */
     lazy val t2: Calendar =
     {
-        val t = dup (t0)
-        t.add (Calendar.SECOND, (slot + 1) * window)
+        val t = dup(t0)
+        t.add(Calendar.SECOND, (slot + 1) * window)
         t
     }
 
     override def toString: String =
     {
-        val time = ScExperiment.TIMEFORMAT.format (t0.getTime)
+        val time = ScExperiment.TIMEFORMAT.format(t0.getTime)
         s"Experiment($trafo,$mrid,$equipment,$time[${t0.getTimeInMillis}],$slot,$window,${voltage}V,${impedance.toString}Ω)"
     }
 }
 
 object ScExperiment
 {
-    lazy val TIMEFORMAT = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
+    lazy val TIMEFORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
 }

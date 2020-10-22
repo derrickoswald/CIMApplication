@@ -11,207 +11,207 @@ import ch.ninecode.util.SparkOptionsParser
 /**
  * Parser for command line operation.
  */
-@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
+@SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
 class IngestOptionsParser (options: IngestOptions) extends SparkOptionsParser[IngestOptions](options)
 {
-    var job: IngestJob = IngestJob ()
+    var job: IngestJob = IngestJob()
 
-    implicit val FormatsRead: scopt.Read[Formats.Value] = scopt.Read.reads (Formats.withName)
-    implicit val ModesRead: scopt.Read[Modes.Value] = scopt.Read.reads (Modes.withName)
+    implicit val FormatsRead: scopt.Read[Formats.Value] = scopt.Read.reads(Formats.withName)
+    implicit val ModesRead: scopt.Read[Modes.Value] = scopt.Read.reads(Modes.withName)
 
     def measurementTimestampFormat: SimpleDateFormat =
     {
-        val zone = TimeZone.getTimeZone (job.timezone)
-        val calendar = Calendar.getInstance ()
-        calendar.setTimeZone (zone)
-        val ret = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss")
-        ret.setCalendar (calendar)
+        val zone = TimeZone.getTimeZone(job.timezone)
+        val calendar = Calendar.getInstance()
+        calendar.setTimeZone(zone)
+        val ret = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        ret.setCalendar(calendar)
         ret
     }
 
     def parseTime (time: String): Long =
     {
-        measurementTimestampFormat.parse (time).getTime
+        measurementTimestampFormat.parse(time).getTime
     }
 
     def formatTime (time: Long): String =
     {
-        measurementTimestampFormat.format (time)
+        measurementTimestampFormat.format(time)
     }
 
-    def updateJson (options: IngestOptions): IngestOptions = options.copy (ingestions = Seq (job.asJson))
+    def updateJson (options: IngestOptions): IngestOptions = options.copy(ingestions = Seq(job.asJson))
 
     opt[Unit]("verbose")
-        .action ((_, c) => c.copy (verbose = true))
-        .text (s"emit progress messages [${options.verbose}]")
+        .action((_, c) => c.copy(verbose = true))
+        .text(s"emit progress messages [${options.verbose}]")
 
-    opt[String]("host").valueName ("Cassandra")
-        .action ((x, c) =>
-            {
-                c.copy (
-                    host = x,
-                    spark_options = c.spark_options.copy (options = c.spark_options.options + ("spark.cassandra.connection.host" -> x))
-                )
-            }
+    opt[String]("host").valueName("Cassandra")
+        .action((x, c) =>
+        {
+            c.copy(
+                host = x,
+                spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.host" -> x))
+            )
+        }
         )
-        .text (s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${options.host}]")
+        .text(s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${options.host}]")
 
-    opt[Int]("port").valueName ("<port_number>")
-        .action ((x, c) =>
-            {
-                c.copy (
-                    port = x,
-                    spark_options = c.spark_options.copy (options = c.spark_options.options + ("spark.cassandra.connection.port" -> x.toString))
-                )
-            }
+    opt[Int]("port").valueName("<port_number>")
+        .action((x, c) =>
+        {
+            c.copy(
+                port = x,
+                spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.port" -> x.toString))
+            )
+        }
         )
-        .text (s"Cassandra connection port [${options.port}]")
+        .text(s"Cassandra connection port [${options.port}]")
 
     opt[String]("workdir")
-        .action (
+        .action(
             (x, c) =>
             {
-                val sep = System.getProperty ("file.separator")
-                c.copy (workdir = if (x.endsWith (sep)) x else s"$x$sep")
+                val sep = System.getProperty("file.separator")
+                c.copy(workdir = if (x.endsWith(sep)) x else s"$x$sep")
             }
         )
-        .text (s"working directory for unzip and copy [${options.workdir}]")
+        .text(s"working directory for unzip and copy [${options.workdir}]")
 
     opt[String]("mapping")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (mapping = x)
-            updateJson (c)
+            job = job.copy(mapping = x)
+            updateJson(c)
         })
-        .text (s"file name of mapping CSV or RDF [${job.mapping}] (required)")
+        .text(s"file name of mapping CSV or RDF [${job.mapping}] (required)")
 
     opt[String]("metercol")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (metercol = x)
-            updateJson (c)
+            job = job.copy(metercol = x)
+            updateJson(c)
         })
-        .text (s"column name of meter id in mapping CSV [${job.metercol}]")
+        .text(s"column name of meter id in mapping CSV [${job.metercol}]")
 
     opt[String]("mridcol")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (mridcol = x)
-            updateJson (c)
+            job = job.copy(mridcol = x)
+            updateJson(c)
         })
-        .text (s"column name of CIM mRID in mapping CSV [${job.mridcol}]")
+        .text(s"column name of CIM mRID in mapping CSV [${job.mridcol}]")
 
     opt[String]("timezone")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (timezone = x)
-            updateJson (c)
+            job = job.copy(timezone = x)
+            updateJson(c)
         })
-        .text (s"measurement time zone for measurements [${job.timezone}]")
+        .text(s"measurement time zone for measurements [${job.timezone}]")
 
     opt[String]("mintime")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (mintime = parseTime (x))
-            updateJson (c)
+            job = job.copy(mintime = parseTime(x))
+            updateJson(c)
         })
-        .text (s"minimum time for ingestion timespan [${formatTime (job.mintime)}]")
+        .text(s"minimum time for ingestion timespan [${formatTime(job.mintime)}]")
 
     opt[String]("maxtime")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (maxtime = parseTime (x))
-            updateJson (c)
+            job = job.copy(maxtime = parseTime(x))
+            updateJson(c)
         })
-        .text (s"maximum time for ingestion timespan [${formatTime (job.maxtime)}]")
+        .text(s"maximum time for ingestion timespan [${formatTime(job.maxtime)}]")
 
     opt[String]("keyspace")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (keyspace = x)
-            updateJson (c)
+            job = job.copy(keyspace = x)
+            updateJson(c)
         })
-        .text (s"target Cassandra keyspace [${job.keyspace}]")
+        .text(s"target Cassandra keyspace [${job.keyspace}]")
 
     opt[Int]("replication")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (replication = x)
-            updateJson (c)
+            job = job.copy(replication = x)
+            updateJson(c)
         })
-        .text (s"keyspace replication if the Cassandra keyspace needs creation [${job.replication}]")
+        .text(s"keyspace replication if the Cassandra keyspace needs creation [${job.replication}]")
 
     opt[Formats.Value]("format")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (format = x)
-            updateJson (c)
+            job = job.copy(format = x)
+            updateJson(c)
         })
-        .text (s"format of the data files, one of ${Formats.values.iterator.mkString (",")} [${job.format}]")
+        .text(s"format of the data files, one of ${Formats.values.iterator.mkString(",")} [${job.format}]")
 
     opt[Modes.Value]("mode")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (mode = x)
-            updateJson (c)
+            job = job.copy(mode = x)
+            updateJson(c)
         })
-        .text (s"ingest mode, one of ${Modes.values.iterator.mkString (",")} [${job.mode}]")
+        .text(s"ingest mode, one of ${Modes.values.iterator.mkString(",")} [${job.mode}]")
 
     opt[Unit]("nocopy")
-        .action ((_, c) =>
+        .action((_, c) =>
         {
-            job = job.copy (nocopy = true)
-            updateJson (c)
+            job = job.copy(nocopy = true)
+            updateJson(c)
         })
-        .text (s"use files 'as is' without unzipping and copying to HDFS [${job.nocopy}]")
+        .text(s"use files 'as is' without unzipping and copying to HDFS [${job.nocopy}]")
 
     opt[String]("aws_s3a_access_key")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (aws_s3a_access_key = x)
-            updateJson (c)
+            job = job.copy(aws_s3a_access_key = x)
+            updateJson(c)
         })
-        .text (s"aws access key [${job.aws_s3a_access_key}]")
+        .text(s"aws access key [${job.aws_s3a_access_key}]")
 
     opt[String]("aws_s3a_secret_key")
-        .action ((x, c) =>
+        .action((x, c) =>
         {
-            job = job.copy (aws_s3a_secret_key = x)
-            updateJson (c)
+            job = job.copy(aws_s3a_secret_key = x)
+            updateJson(c)
         })
-        .text (s"aws seceret key [${job.aws_s3a_secret_key}]")
+        .text(s"aws seceret key [${job.aws_s3a_secret_key}]")
 
     arg[String]("<ZIP> or <CSV>...")
-        .optional ()
-        .unbounded ()
-        .action ((x, c) =>
+        .optional()
+        .unbounded()
+        .action((x, c) =>
         {
             try
             {
-                val sep = System.getProperty ("file.separator")
-                val file = if (x.startsWith (sep) || x.startsWith ("s3a:"))
+                val sep = System.getProperty("file.separator")
+                val file = if (x.startsWith(sep) || x.startsWith("s3a:"))
                 {
                     x
                 } else
                 {
-                    s"${new java.io.File (".").getCanonicalPath}$sep$x"
+                    s"${new java.io.File(".").getCanonicalPath}$sep$x"
                 }
-                job = job.copy (datafiles = job.datafiles :+ file)
-                updateJson (c)
+                job = job.copy(datafiles = job.datafiles :+ file)
+                updateJson(c)
             }
             catch
             {
                 case e: Exception =>
-                    val log = LoggerFactory.getLogger (getClass.getName)
-                    log.error ("bad input file name", e)
+                    val log = LoggerFactory.getLogger(getClass.getName)
+                    log.error("bad input file name", e)
                     helpout = true
-                    job = job.copy (datafiles = Seq ())
-                    updateJson (c)
+                    job = job.copy(datafiles = Seq())
+                    updateJson(c)
             }
         })
-        .text ("data files to process")
+        .text("data files to process")
 
-    note (
+    note(
         """
 Ingests smart meter data into Cassandra.
 

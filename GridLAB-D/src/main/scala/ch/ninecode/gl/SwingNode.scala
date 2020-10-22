@@ -6,5 +6,5 @@ case class SwingNode (
     override val id: String,
     override val nominal_voltage: Double,
     name: String)
-    extends LoadFlowNode (id, nominal_voltage)
+    extends LoadFlowNode(id, nominal_voltage)
         with GLMNode

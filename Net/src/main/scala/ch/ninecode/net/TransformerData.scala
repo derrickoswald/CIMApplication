@@ -42,43 +42,43 @@ case class TransformerData
             1 // no choice, end #2
         else
         {
-            val v = voltages.tail.map (_._2) // voltages excluding primary
-            if (-1 != v.indexOf (400.0))
-                v.indexOf (400.0) + 1 // use 400V end if there is one
+            val v = voltages.tail.map(_._2) // voltages excluding primary
+            if (-1 != v.indexOf(400.0))
+                v.indexOf(400.0) + 1 // use 400V end if there is one
             else
-                v.indexOf (v.max) + 1 // use the highest voltage otherwise
+                v.indexOf(v.max) + 1 // use the highest voltage otherwise
         }
 
     /** @return the (assumed) primary (high voltage) PowerTransformerEnd */
-    def end0: PowerTransformerEnd = ends (primary)
+    def end0: PowerTransformerEnd = ends(primary)
 
     /** @return the voltage for the transformer primary (high voltage) end (V) */
-    def v0: Double = voltages (primary)._2
+    def v0: Double = voltages(primary)._2
 
     /** @return the Terminal for the transformer primary (high voltage) end */
-    def terminal0: Terminal = terminals (primary)
+    def terminal0: Terminal = terminals(primary)
 
     /** @return the TopologicalNode for the transformer primary (high voltage) end */
-    def node0: TopologicalNode = nodes (primary)
+    def node0: TopologicalNode = nodes(primary)
 
     /** @return the (assumed) secondary (low voltage) PowerTransformerEnd, for three or more winding transformers this may not be the one you want */
-    def end1: PowerTransformerEnd = ends (secondary)
+    def end1: PowerTransformerEnd = ends(secondary)
 
     /** @return the voltage for the transformer secondary (low voltage) end (V) */
-    def v1: Double = voltages (secondary)._2
+    def v1: Double = voltages(secondary)._2
 
     /** @return the Terminal for the transformer secondary (low voltage) end */
-    def terminal1: Terminal = terminals (secondary)
+    def terminal1: Terminal = terminals(secondary)
 
     /** @return the TopologicalNode for the transformer secondary (low voltage) end */
-    def node1: TopologicalNode = nodes (secondary)
+    def node1: TopologicalNode = nodes(secondary)
 
     /** @return a summary string for the transformer */
     def asString: String = s"${transformer.id} ${
         station match
         {
-            case Some (s) => s.id
+            case Some(s) => s.id
             case _ => ""
         }
-    } ${(end0.ratedS / 1000.0).toInt.toString}kVA ${voltages.map (_._2.toInt).mkString (":")} ${nodes.map (_.id).mkString (":")}"
+    } ${(end0.ratedS / 1000.0).toInt.toString}kVA ${voltages.map(_._2.toInt).mkString(":")} ${nodes.map(_.id).mkString(":")}"
 }

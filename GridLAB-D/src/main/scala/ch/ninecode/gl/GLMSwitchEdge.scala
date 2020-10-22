@@ -14,7 +14,7 @@ import ch.ninecode.net.SwitchEdge
 case class GLMSwitchEdge (
     data: SwitchData
 )
-    extends SwitchEdge (data)
+    extends SwitchEdge(data)
         with GLMEdge
 {
     /**
@@ -58,22 +58,22 @@ object GLMSwitchEdge
         switches: Iterable[Element]
     ): GLMSwitchEdge =
     {
-        val basic1 = BasicElement (mRID = s"generated_terminal_${Random.nextInt (99999999)}")
-        val obj1 = IdentifiedObject (basic1, mRID = basic1.mRID)
-        obj1.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
-        val ac1 = ACDCTerminal (obj1, true, 1)
-        ac1.bitfields = ACDCTerminal.fieldsToBitfields ("connected", "sequenceNumber")
-        val t1 = Terminal (ac1, TopologicalNode = cn1)
-        t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
+        val basic1 = BasicElement(mRID = s"generated_terminal_${Random.nextInt(99999999)}")
+        val obj1 = IdentifiedObject(basic1, mRID = basic1.mRID)
+        obj1.bitfields = IdentifiedObject.fieldsToBitfields("mRID")
+        val ac1 = ACDCTerminal(obj1, true, 1)
+        ac1.bitfields = ACDCTerminal.fieldsToBitfields("connected", "sequenceNumber")
+        val t1 = Terminal(ac1, TopologicalNode = cn1)
+        t1.bitfields = Terminal.fieldsToBitfields("TopologicalNode")
 
-        val basic2 = BasicElement (mRID = s"generated_terminal_${Random.nextInt (99999999)}")
-        val obj2 = IdentifiedObject (basic2, mRID = basic2.mRID)
-        obj2.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
-        val ac2 = ACDCTerminal (obj2, true, 2)
-        ac2.bitfields = ACDCTerminal.fieldsToBitfields ("connected", "sequenceNumber")
-        val t2 = Terminal (ac2, TopologicalNode = cn2)
-        t2.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
+        val basic2 = BasicElement(mRID = s"generated_terminal_${Random.nextInt(99999999)}")
+        val obj2 = IdentifiedObject(basic2, mRID = basic2.mRID)
+        obj2.bitfields = IdentifiedObject.fieldsToBitfields("mRID")
+        val ac2 = ACDCTerminal(obj2, true, 2)
+        ac2.bitfields = ACDCTerminal.fieldsToBitfields("connected", "sequenceNumber")
+        val t2 = Terminal(ac2, TopologicalNode = cn2)
+        t2.bitfields = Terminal.fieldsToBitfields("TopologicalNode")
 
-        GLMSwitchEdge (SwitchData (switches.map (x => SwitchDetails (x, t1, t2, None, None))))
+        GLMSwitchEdge(SwitchData(switches.map(x => SwitchDetails(x, t1, t2, None, None))))
     }
 }

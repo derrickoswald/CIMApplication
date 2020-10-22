@@ -76,23 +76,23 @@ case class STS (
 
 object STS extends FieldExtractor[STS]
 {
-    private lazy val c601_9015 = alphanumeric (3)
-    private lazy val c601_1131 = alphanumeric_? (17)
-    private lazy val c601_3055 = alphanumeric_? (3)
+    private lazy val c601_9015 = alphanumeric(3)
+    private lazy val c601_1131 = alphanumeric_?(17)
+    private lazy val c601_3055 = alphanumeric_?(3)
     private lazy val c601 =
-        subfields (
+        subfields(
             c601_9015 ~ c601_1131 ~ c601_3055 ^^
-                { case _9015 ~ _1131 ~ _3055 => Status_Category (_9015, _1131, _3055) }
+                { case _9015 ~ _1131 ~ _3055 => Status_Category(_9015, _1131, _3055) }
         )
 
-    private lazy val c555_4405 = alphanumeric (3)
-    private lazy val c555_1131 = alphanumeric_? (17)
-    private lazy val c555_3055 = alphanumeric_? (3)
-    private lazy val c555_4404 = alphanumeric_? (35)
+    private lazy val c555_4405 = alphanumeric(3)
+    private lazy val c555_1131 = alphanumeric_?(17)
+    private lazy val c555_3055 = alphanumeric_?(3)
+    private lazy val c555_4404 = alphanumeric_?(35)
     private lazy val c555 =
-        subfields (
+        subfields(
             c555_4405 ~ c555_1131 ~ c555_3055 ~ c555_4404 ^^
-                { case _4405 ~ _1131 ~ _3055 ~ _4404 => Status (_4405, _1131, _3055, _4404) }
+                { case _4405 ~ _1131 ~ _3055 ~ _4404 => Status(_4405, _1131, _3055, _4404) }
         )
 
     //    030    C556 STATUS REASON                              C    1
@@ -101,21 +101,21 @@ object STS extends FieldExtractor[STS]
     //    3055  Code list responsible agency code         C      an..3
     //    9012  Status reason description                 C      an..256
 
-    private lazy val c556_9013 = alphanumeric (3)
-    private lazy val c556_1131 = alphanumeric_? (17)
-    private lazy val c556_3055 = alphanumeric_? (3)
-    private lazy val c556_9012 = alphanumeric_? (256)
+    private lazy val c556_9013 = alphanumeric(3)
+    private lazy val c556_1131 = alphanumeric_?(17)
+    private lazy val c556_3055 = alphanumeric_?(3)
+    private lazy val c556_9012 = alphanumeric_?(256)
     private lazy val c556 =
-        subfields (
+        subfields(
             c556_9013 ~ c556_1131 ~ c556_3055 ~ c556_9012 ^^
-                { case _9013 ~ _1131 ~ _3055 ~ _9012 => Status_Reason (_9013, _1131, _3055, _9012) }
+                { case _9013 ~ _1131 ~ _3055 ~ _9012 => Status_Reason(_9013, _1131, _3055, _9012) }
         )
 
     lazy val sts_fields: Parser[STS] =
-        fields (
+        fields(
             c601.? ~ c555.? ~ c556.? ~ c556.? ~ c556.? ~ c556.? ~ c556.? ^^
-                { case c601 ~ c555 ~ c556_1 ~ c556_2 ~ c556_3 ~ c556_4 ~ c556_5 => STS (c601, c555, c556_1, c556_2, c556_3, c556_4, c556_5) }
-        ).named ("STS")
+                { case c601 ~ c555 ~ c556_1 ~ c556_2 ~ c556_3 ~ c556_4 ~ c556_5 => STS(c601, c555, c556_1, c556_2, c556_3, c556_4, c556_5) }
+        ).named("STS")
 
     override def phrase: Parser[STS] = sts_fields
 }

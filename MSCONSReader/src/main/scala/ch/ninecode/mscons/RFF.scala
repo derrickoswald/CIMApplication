@@ -22,17 +22,17 @@ object RFF extends FieldExtractor[RFF]
     //    4000  Reference version identifier              C      an..35
     //    1060  Revision identifier                       C      an..6
 
-    private lazy val C506_1153 = alphanumeric (3)
-    private lazy val C506_1154 = alphanumeric_? (70)
-    private lazy val C506_1156 = alphanumeric_? (6)
-    private lazy val C506_4000 = alphanumeric_? (35)
-    private lazy val C506_1060 = alphanumeric_? (6)
+    private lazy val C506_1153 = alphanumeric(3)
+    private lazy val C506_1154 = alphanumeric_?(70)
+    private lazy val C506_1156 = alphanumeric_?(6)
+    private lazy val C506_4000 = alphanumeric_?(35)
+    private lazy val C506_1060 = alphanumeric_?(6)
 
     lazy val rff_fields: Parser[RFF] =
-        subfields (
+        subfields(
             C506_1153 ~ C506_1154 ~ C506_1156 ~ C506_4000 ~ C506_1060 ^^
-                { case _1153 ~ _1154 ~ _1156 ~ _4000 ~ _1060 => RFF (_1153, _1154, _1156, _4000, _1060) }
-        ).named ("RFF")
+                { case _1153 ~ _1154 ~ _1156 ~ _4000 ~ _1060 => RFF(_1153, _1154, _1156, _4000, _1060) }
+        ).named("RFF")
 
     override def phrase: Parser[RFF] = rff_fields
 }

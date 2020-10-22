@@ -41,29 +41,29 @@ object CUX extends FieldExtractor[CUX]
     //    6343  Currency type code qualifier              C      an..3
     //    6348  Currency rate                             C      n..4
 
-    private lazy val c504_6347 = alphanumeric (3)
-    private lazy val c504_6345 = alphanumeric_? (3)
-    private lazy val c504_6343 = alphanumeric_? (3)
-    private lazy val c504_6348 = numeric_? (4)
+    private lazy val c504_6347 = alphanumeric(3)
+    private lazy val c504_6345 = alphanumeric_?(3)
+    private lazy val c504_6343 = alphanumeric_?(3)
+    private lazy val c504_6348 = numeric_?(4)
     private lazy val c504 =
-        subfields (
+        subfields(
             c504_6347 ~ c504_6345 ~ c504_6343 ~ c504_6348 ^^
-                { case c504_6347 ~ c504_6345 ~ c504_6343 ~ c504_6348 => Currency_Details (c504_6347, c504_6345, c504_6343, c504_6348) }
+                { case c504_6347 ~ c504_6345 ~ c504_6343 ~ c504_6348 => Currency_Details(c504_6347, c504_6345, c504_6343, c504_6348) }
         )
 
     //    030    5402 CURRENCY EXCHANGE RATE                     C    1 n..12
 
-    private lazy val _5402 = numeric_? (12)
+    private lazy val _5402 = numeric_?(12)
 
     //    040    6341 EXCHANGE RATE CURRENCY MARKET IDENTIFIER   C    1 an..3
 
-    private lazy val _6341 = alphanumeric_? (3)
+    private lazy val _6341 = alphanumeric_?(3)
 
     lazy val cux_fields: Parser[CUX] =
-        fields (
+        fields(
             c504.? ~ c504.? ~ _5402 ~ _6341 ^^
-                { case c504_1 ~ c504_2 ~ _5402 ~ _6341 => CUX (c504_1, c504_2, _5402, _6341) }
-        ).named ("CUX")
+                { case c504_1 ~ c504_2 ~ _5402 ~ _6341 => CUX(c504_1, c504_2, _5402, _6341) }
+        ).named("CUX")
 
     override def phrase: Parser[CUX] = cux_fields
 }

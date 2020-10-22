@@ -22,22 +22,22 @@ case class SimulationPlayerData (
     time: Long = 0L,
     period: Int = 0,
     units: String = "",
-    readings: Array[Double] = Array (0.0, 0.0, 0.0, 0.0, 0.0, 0.0))
+    readings: Array[Double] = Array(0.0, 0.0, 0.0, 0.0, 0.0, 0.0))
 {
     def toTimeStamp (t: Long): String =
     {
-        val calendar: Calendar = Calendar.getInstance ()
-        calendar.setTimeZone (TimeZone.getTimeZone ("GMT"))
-        calendar.setTimeInMillis (0L)
+        val calendar: Calendar = Calendar.getInstance()
+        calendar.setTimeZone(TimeZone.getTimeZone("GMT"))
+        calendar.setTimeInMillis(0L)
 
-        val cassandra_date_format: SimpleDateFormat = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss.SSSZ")
-        cassandra_date_format.setCalendar (calendar)
+        val cassandra_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ")
+        cassandra_date_format.setCalendar(calendar)
 
         val c = Calendar.getInstance
-        c.setTimeZone (TimeZone.getTimeZone ("GMT"))
-        c.setTimeInMillis (t)
-        cassandra_date_format.format (c.getTime)
+        c.setTimeZone(TimeZone.getTimeZone("GMT"))
+        c.setTimeInMillis(t)
+        cassandra_date_format.format(c.getTime)
     }
 
-    override def toString: String = s"""("$transformer" "$mrid" "${`type`}" ${toTimeStamp (time)} [${readings.mkString (",")}])"""
+    override def toString: String = s"""("$transformer" "$mrid" "${`type`}" ${toTimeStamp(time)} [${readings.mkString(",")}])"""
 }

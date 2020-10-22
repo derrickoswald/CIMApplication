@@ -15,15 +15,15 @@ class LowVoltageGLMGenerator
     one_phase: Boolean,
     date_format: SimpleDateFormat,
     trafokreis: LowVoltageTrafokreis)
-    extends GLMGenerator (one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
+    extends GLMGenerator(one_phase, 20.0, date_format) // ToDo: get library base temperature and target temperature as command line input
 {
     /**
      * Calendar duplication utility function.
      *
      * @param c The Calendar value to be cloned.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
 
     override def name: String = trafokreis.name
 
@@ -31,24 +31,24 @@ class LowVoltageGLMGenerator
 
     override lazy val finish_time: Calendar =
     {
-        val t = dup (start_time)
-        t.add (Calendar.HOUR, 24)
+        val t = dup(start_time)
+        t.add(Calendar.HOUR, 24)
         t
     }
 
-    override lazy val edges: Iterable[GLMEdge] = trafokreis.edges.filter (_ match
+    override lazy val edges: Iterable[GLMEdge] = trafokreis.edges.filter(_ match
     { case _: GLMTransformerEdge => false
         case _ => true
     })
 
-    override lazy val transformers: Iterable[GLMTransformerEdge] = trafokreis.edges.flatMap (_ match
-    { case tx: GLMTransformerEdge => Some (tx)
+    override lazy val transformers: Iterable[GLMTransformerEdge] = trafokreis.edges.flatMap(_ match
+    { case tx: GLMTransformerEdge => Some(tx)
         case _ => None
     })
 
     // the swing node is the high voltage pin
     override lazy val swing_nodes: Iterable[GLMNode] =
-        transformers.map (tx => SwingNode (tx.transformer.node0, tx.transformer.v0, tx.transformer.transformer_name))
+        transformers.map(tx => SwingNode(tx.transformer.node0, tx.transformer.v0, tx.transformer.transformer_name))
 
     override def nodes: Iterable[GLMNode] = trafokreis.nodes
 
@@ -58,13 +58,13 @@ class LowVoltageGLMGenerator
         {
             case lv: LowVoltageNode =>
                 if (lv.isEnergyConsumer)
-                    s"${generate_recorder (lv)}${generate_load (lv)}"
+                    s"${generate_recorder(lv)}${generate_load(lv)}"
                 else
                     ""
             case _ =>
                 ""
         }
-        s"${super.emit_node (node)}$extra"
+        s"${super.emit_node(node)}$extra"
     }
 
     override def emit_edge (edge: GLMEdge): String =
@@ -120,7 +120,7 @@ class LowVoltageGLMGenerator
             case _ => ""
         }
 
-        s"${super.emit_edge (edge)}$rec"
+        s"${super.emit_edge(edge)}$rec"
     }
 
     override def emit_slack (node: GLMNode): String =
@@ -200,9 +200,9 @@ class LowVoltageGLMGenerator
     {
         val name = transformer.transformer.transformer_name
 
-        val swings = swing_nodes.map (_.id).toArray
-        super.emit_transformer (transformer) +
-            (if (!swings.contains (transformer.cn1) && !swings.contains (transformer.cn2))
+        val swings = swing_nodes.map(_.id).toArray
+        super.emit_transformer(transformer) +
+            (if (!swings.contains(transformer.cn1) && !swings.contains(transformer.cn2))
             {
                 val current = if (one_phase)
                     "current_in_A.real,current_in_A.imag"
@@ -260,9 +260,9 @@ class LowVoltageGLMGenerator
      */
     def nis_number (string: String): String =
     {
-        val n = string.indexOf ("_")
+        val n = string.indexOf("_")
         if (0 < n)
-            string.substring (0, n)
+            string.substring(0, n)
         else
             string
     }
@@ -272,7 +272,7 @@ class LowVoltageGLMGenerator
         if (node.isEnergyConsumer)
         {
             val id = node.id
-            val house = nis_number (id)
+            val house = nis_number(id)
             val voltage = if (one_phase)
                 "voltage_A.real,voltage_A.imag"
             else
@@ -309,7 +309,7 @@ class LowVoltageGLMGenerator
         if (node.isEnergyConsumer)
         {
             val id = node.id
-            val house = nis_number (node.equipment)
+            val house = nis_number(node.equipment)
             val player = if (one_phase)
                 s"""            object player
                    |            {

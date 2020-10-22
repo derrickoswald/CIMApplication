@@ -56,45 +56,45 @@ case class LOC (
 
 object LOC extends FieldExtractor[LOC]
 {
-    private lazy val _3227 = alphanumeric (3)
+    private lazy val _3227 = alphanumeric(3)
 
-    private lazy val c517_3225 = alphanumeric_? (35)
-    private lazy val c517_1131 = alphanumeric_? (17)
-    private lazy val c517_3055 = alphanumeric_? (3)
-    private lazy val c517_3224 = alphanumeric_? (256)
+    private lazy val c517_3225 = alphanumeric_?(35)
+    private lazy val c517_1131 = alphanumeric_?(17)
+    private lazy val c517_3055 = alphanumeric_?(3)
+    private lazy val c517_3224 = alphanumeric_?(256)
     private lazy val c517 =
-        subfields (
+        subfields(
             c517_3225 ~ c517_1131 ~ c517_3055 ~ c517_3224 ^^
-                { case _3225 ~ _1131 ~ _3055 ~ _3224 => Location_Identification (_3225, _1131, _3055, _3224) }
+                { case _3225 ~ _1131 ~ _3055 ~ _3224 => Location_Identification(_3225, _1131, _3055, _3224) }
         )
 
-    private lazy val c519_3223 = alphanumeric_? (35)
-    private lazy val c519_1131 = alphanumeric_? (17)
-    private lazy val c519_3055 = alphanumeric_? (3)
-    private lazy val c519_3222 = alphanumeric_? (70)
+    private lazy val c519_3223 = alphanumeric_?(35)
+    private lazy val c519_1131 = alphanumeric_?(17)
+    private lazy val c519_3055 = alphanumeric_?(3)
+    private lazy val c519_3222 = alphanumeric_?(70)
     private lazy val c519 =
-        subfields (
+        subfields(
             c519_3223 ~ c519_1131 ~ c519_3055 ~ c519_3222 ^^
-                { case _3223 ~ _1131 ~ _3055 ~ _3222 => Related_Location_One_Identification (_3223, _1131, _3055, _3222) }
+                { case _3223 ~ _1131 ~ _3055 ~ _3222 => Related_Location_One_Identification(_3223, _1131, _3055, _3222) }
         )
 
-    private lazy val c553_3223 = alphanumeric_? (35)
-    private lazy val c553_1131 = alphanumeric_? (17)
-    private lazy val c553_3055 = alphanumeric_? (3)
-    private lazy val c553_3222 = alphanumeric_? (70)
+    private lazy val c553_3223 = alphanumeric_?(35)
+    private lazy val c553_1131 = alphanumeric_?(17)
+    private lazy val c553_3055 = alphanumeric_?(3)
+    private lazy val c553_3222 = alphanumeric_?(70)
     private lazy val c553 =
-        subfields (
+        subfields(
             c553_3223 ~ c553_1131 ~ c553_3055 ~ c553_3222 ^^
-                { case _3223 ~ _1131 ~ _3055 ~ _3222 => Related_Location_Two_Identification (_3223, _1131, _3055, _3222) }
+                { case _3223 ~ _1131 ~ _3055 ~ _3222 => Related_Location_Two_Identification(_3223, _1131, _3055, _3222) }
         )
 
-    private lazy val _5479 = alphanumeric_? (3)
+    private lazy val _5479 = alphanumeric_?(3)
 
     lazy val loc_fields: Parser[LOC] =
-        fields (
+        fields(
             _3227 ~ c517.? ~ c519.? ~ c553.? ~ _5479 ^^
-                { case _3227 ~ c517 ~ c519 ~ c553 ~ _5479 => LOC (_3227, c517, c519, c553, _5479) }
-        ).named ("LOC")
+                { case _3227 ~ c517 ~ c519 ~ c553 ~ _5479 => LOC(_3227, c517, c519, c553, _5479) }
+        ).named("LOC")
 
     override def phrase: Parser[LOC] = loc_fields
 }

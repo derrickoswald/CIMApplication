@@ -2,7 +2,7 @@ package ch.ninecode.mfi
 
 import org.scalatest.Suites
 
-class MaximumFeedInTestSuite extends Suites (
+class MaximumFeedInTestSuite extends Suites(
     new MaximumFeedInMainSuite,
     new GridLABDSuite,
     new EinspeiseleistungGLMGeneratorSuite,

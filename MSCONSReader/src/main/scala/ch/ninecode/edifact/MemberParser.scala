@@ -13,11 +13,11 @@ case class MemberParser (una: UNA) extends Parsers
         override def apply (in: Input): ParseResult[Field] =
         {
             if (in.atEnd)
-                Failure ("EOF", in)
+                Failure("EOF", in)
             else
-                Success (in.first, in.rest)
+                Success(in.first, in.rest)
         }
     }
 
-    def parse[T] (p: Parser[T], in: MemberScanner): ParseResult[T] = p (in)
+    def parse[T] (p: Parser[T], in: MemberScanner): ParseResult[T] = p(in)
 }

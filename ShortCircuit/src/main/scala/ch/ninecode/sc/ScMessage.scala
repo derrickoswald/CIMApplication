@@ -13,7 +13,7 @@ import ch.ninecode.util.Complex
  * @param previous_node    the previous node mRID
  * @param errors           any errors encountered
  */
-@SuppressWarnings (Array ("org.wartremover.warts.Null"))
+@SuppressWarnings(Array("org.wartremover.warts.Null"))
 case class ScMessage
 (
     source_id: String = null,
@@ -26,8 +26,8 @@ case class ScMessage
 {
     def asString: String =
     {
-        val z = if ((null != ref) && (null != edge)) ref + edge else Impedanzen (0.0, 0.0, 0.0, 0.0)
-        "[%s(%sΩ) %s(%sΩ)+%sΩ=%sΩ %s %s]".format (
+        val z = if ((null != ref) && (null != edge)) ref + edge else Impedanzen(0.0, 0.0, 0.0, 0.0)
+        "[%s(%sΩ) %s(%sΩ)+%sΩ=%sΩ %s %s]".format(
             source_id,
             source_impedance,
             previous_node,
@@ -35,6 +35,6 @@ case class ScMessage
             if (null != edge) edge.impedanz_high else "",
             z,
             if (null != fuses) fuses.asString else "",
-            if (null != errors) errors.mkString ("{", ",", "}") else "")
+            if (null != errors) errors.mkString("{", ",", "}") else "")
     }
 }

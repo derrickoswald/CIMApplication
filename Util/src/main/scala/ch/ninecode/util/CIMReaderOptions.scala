@@ -23,9 +23,9 @@ import ch.ninecode.cim.State
  * @param files            the CIM RDF files to be read
  */
 case class CIMReaderOptions (
-    options: Map[String, String] = Map (),
+    options: Map[String, String] = Map(),
     topology: Boolean = false,
-    topology_options: CIMTopologyOptions = CIMTopologyOptions (),
+    topology_options: CIMTopologyOptions = CIMTopologyOptions(),
     about: Boolean = false,
     normalize: Boolean = false,
     dedup: Boolean = false,
@@ -35,7 +35,7 @@ case class CIMReaderOptions (
     splitsize: Long = 67108864L,
     cache: String = "",
     storage: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER,
-    files: Seq[String] = Seq ()
+    files: Seq[String] = Seq()
 )
 {
     /**
@@ -70,7 +70,7 @@ case class CIMReaderOptions (
      */
     def toMap: Map[String, String] =
     {
-        Map (
+        Map(
             "ch.ninecode.cim.do_topo" -> topology.toString,
             "ch.ninecode.cim.do_topo_islands" -> topology_options.identify_islands.toString,
             "ch.ninecode.cim.force_retain_switches" -> topology_options.force_retain_switches.toString,
@@ -87,7 +87,7 @@ case class CIMReaderOptions (
             "ch.ninecode.cim.split_maxsize" -> splitsize.toString,
             "ch.ninecode.cim.cache" -> cache,
             "StorageLevel" -> storageAsString,
-            "path" -> files.mkString (",")
+            "path" -> files.mkString(",")
         )
     }
 }
@@ -106,7 +106,7 @@ object CIMReaderOptions
         catch
         {
             case e: IllegalArgumentException =>
-                e.printStackTrace ()
+                e.printStackTrace()
                 default
         }
     }
@@ -120,7 +120,7 @@ object CIMReaderOptions
         catch
         {
             case e: IllegalArgumentException =>
-                e.printStackTrace ()
+                e.printStackTrace()
                 default
         }
     }
@@ -129,12 +129,12 @@ object CIMReaderOptions
     {
         try
         {
-            StorageLevel.fromString (text)
+            StorageLevel.fromString(text)
         }
         catch
         {
             case e: IllegalArgumentException =>
-                e.printStackTrace ()
+                e.printStackTrace()
                 default
         }
     }
@@ -153,9 +153,9 @@ object CIMReaderOptions
         {
             flag match
             {
-                case Some (string) =>
+                case Some(string) =>
                     hasTopoOption = true
-                    parseBoolean (string, otherwise)
+                    parseBoolean(string, otherwise)
                 case _ => otherwise
             }
         }
@@ -164,46 +164,46 @@ object CIMReaderOptions
         {
             state match
             {
-                case Some (string) =>
+                case Some(string) =>
                     hasTopoOption = true
-                    CIMTopologyOptions.parseState (string)
+                    CIMTopologyOptions.parseState(string)
                 case _ => otherwise
             }
         }
 
         val o = template match
         {
-            case Some (options) => options
-            case None => CIMReaderOptions ()
+            case Some(options) => options
+            case None => CIMReaderOptions()
         }
         val t = o.topology_options
 
-        val topology_options = CIMTopologyOptions (
-            identify_islands = asBoolean (src.get ("ch.ninecode.cim.do_topo_islands"), t.identify_islands),
-            force_retain_switches = asState (src.get ("ch.ninecode.cim.force_retain_switches"), t.force_retain_switches),
-            force_retain_fuses = asState (src.get ("ch.ninecode.cim.force_retain_fuses"), t.force_retain_fuses),
-            force_switch_separate_islands = asState (src.get ("ch.ninecode.cim.force_switch_separate_islands"), t.force_switch_separate_islands),
-            force_fuse_separate_islands = asState (src.get ("ch.ninecode.cim.force_fuse_separate_islands"), t.force_fuse_separate_islands),
-            default_switch_open_state = asBoolean (src.get ("ch.ninecode.cim.default_switch_open_state"), t.default_switch_open_state),
+        val topology_options = CIMTopologyOptions(
+            identify_islands = asBoolean(src.get("ch.ninecode.cim.do_topo_islands"), t.identify_islands),
+            force_retain_switches = asState(src.get("ch.ninecode.cim.force_retain_switches"), t.force_retain_switches),
+            force_retain_fuses = asState(src.get("ch.ninecode.cim.force_retain_fuses"), t.force_retain_fuses),
+            force_switch_separate_islands = asState(src.get("ch.ninecode.cim.force_switch_separate_islands"), t.force_switch_separate_islands),
+            force_fuse_separate_islands = asState(src.get("ch.ninecode.cim.force_fuse_separate_islands"), t.force_fuse_separate_islands),
+            default_switch_open_state = asBoolean(src.get("ch.ninecode.cim.default_switch_open_state"), t.default_switch_open_state),
             // these are duplicated in general CIMReader options:
-            debug = src.get ("ch.ninecode.cim.debug").map (parseBoolean (_, o.debug)).getOrElse (o.debug),
-            storage = src.get ("StorageLevel").map (parseStorage (_, o.storage)).getOrElse (o.storage)
+            debug = src.get("ch.ninecode.cim.debug").map(parseBoolean(_, o.debug)).getOrElse(o.debug),
+            storage = src.get("StorageLevel").map(parseStorage(_, o.storage)).getOrElse(o.storage)
         )
 
-        CIMReaderOptions (
+        CIMReaderOptions(
             options = src,
-            topology = hasTopoOption || asBoolean (src.get ("ch.ninecode.cim.do_topo"), o.topology),
+            topology = hasTopoOption || asBoolean(src.get("ch.ninecode.cim.do_topo"), o.topology),
             topology_options = topology_options,
-            about = src.get ("ch.ninecode.cim.do_about").map (parseBoolean (_, o.about)).getOrElse (o.about),
-            normalize = src.get ("ch.ninecode.cim.do_normalize").map (parseBoolean (_, o.normalize)).getOrElse (o.normalize),
-            dedup = src.get ("ch.ninecode.cim.do_deduplication").map (parseBoolean (_, o.dedup)).getOrElse (o.dedup),
-            edges = src.get ("ch.ninecode.cim.make_edges").map (parseBoolean (_, o.edges)).getOrElse (o.edges),
-            join = src.get ("ch.ninecode.cim.do_join").map (parseBoolean (_, o.join)).getOrElse (o.join),
-            debug = src.get ("ch.ninecode.cim.debug").map (parseBoolean (_, o.debug)).getOrElse (o.debug),
-            splitsize = src.get ("ch.ninecode.cim.split_maxsize").map (parseLong (_, o.splitsize)).getOrElse (o.splitsize),
-            cache = src.getOrElse ("ch.ninecode.cim.cache", o.cache),
-            storage = src.get ("StorageLevel").map (parseStorage (_, o.storage)).getOrElse (o.storage),
-            files = src.get ("path").map (_.split (",").toSeq).getOrElse (o.files)
+            about = src.get("ch.ninecode.cim.do_about").map(parseBoolean(_, o.about)).getOrElse(o.about),
+            normalize = src.get("ch.ninecode.cim.do_normalize").map(parseBoolean(_, o.normalize)).getOrElse(o.normalize),
+            dedup = src.get("ch.ninecode.cim.do_deduplication").map(parseBoolean(_, o.dedup)).getOrElse(o.dedup),
+            edges = src.get("ch.ninecode.cim.make_edges").map(parseBoolean(_, o.edges)).getOrElse(o.edges),
+            join = src.get("ch.ninecode.cim.do_join").map(parseBoolean(_, o.join)).getOrElse(o.join),
+            debug = src.get("ch.ninecode.cim.debug").map(parseBoolean(_, o.debug)).getOrElse(o.debug),
+            splitsize = src.get("ch.ninecode.cim.split_maxsize").map(parseLong(_, o.splitsize)).getOrElse(o.splitsize),
+            cache = src.getOrElse("ch.ninecode.cim.cache", o.cache),
+            storage = src.get("StorageLevel").map(parseStorage(_, o.storage)).getOrElse(o.storage),
+            files = src.get("path").map(_.split(",").toSeq).getOrElse(o.files)
         )
     }
 }

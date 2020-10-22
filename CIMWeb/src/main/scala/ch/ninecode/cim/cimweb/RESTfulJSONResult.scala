@@ -21,26 +21,26 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
     {
         if (null == FACTORY_INSTANCE)
         {
-            val properties = Map [String, AnyRef](
+            val properties = Map[String, AnyRef](
                 JsonGenerator.PRETTY_PRINTING -> "true")
-            FACTORY_INSTANCE = Json.createWriterFactory (properties.asJava)
+            FACTORY_INSTANCE = Json.createWriterFactory(properties.asJava)
         }
         FACTORY_INSTANCE
     }
 
     def this (status: String, message: String)
     {
-        this (status, message, Json.createObjectBuilder.build)
+        this(status, message, Json.createObjectBuilder.build)
     }
 
     def this (status: String)
     {
-        this (status, "")
+        this(status, "")
     }
 
     def this ()
     {
-        this (RESTfulJSONResult.OK)
+        this(RESTfulJSONResult.OK)
     }
 
     def setResult (structure: JsonStructure): Unit =
@@ -51,7 +51,7 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
     def setResult (string: String): Unit =
     {
         try
-        result = Json.createReader (new StringReader (string)).readObject
+        result = Json.createReader(new StringReader(string)).readObject
         catch
         {
             case je: JsonException =>
@@ -62,34 +62,34 @@ case class RESTfulJSONResult (var status: String, var message: String, var resul
 
     def setResultException (e: Exception, msg: String): Unit =
     {
-        val string = new StringWriter ()
-            .append (msg)
-            .append ("\n")
-        val writer = new PrintWriter (string)
-        e.printStackTrace (writer)
-        writer.flush ()
-        writer.close ()
+        val string = new StringWriter()
+            .append(msg)
+            .append("\n")
+        val writer = new PrintWriter(string)
+        e.printStackTrace(writer)
+        writer.flush()
+        writer.close()
         message = string.toString
         status = FAIL
     }
 
     def getJSON: JsonStructure =
     {
-        Json.createObjectBuilder.add ("status", status).add ("message", message).add ("result", result).build
+        Json.createObjectBuilder.add("status", status).add("message", message).add("result", result).build
     }
 
     override def toString: String =
     {
         val string = new StringWriter
-        val writer = getPrettyJsonWriterFactory.createWriter (string)
+        val writer = getPrettyJsonWriterFactory.createWriter(string)
         val data = getJSON
-        writer.write (data)
-        writer.close ()
+        writer.write(data)
+        writer.close()
         string.toString
     }
 }
 
-@SuppressWarnings (Array ("org.wartremover.warts.Null"))
+@SuppressWarnings(Array("org.wartremover.warts.Null"))
 object RESTfulJSONResult
 {
     var FACTORY_INSTANCE: JsonWriterFactory = _

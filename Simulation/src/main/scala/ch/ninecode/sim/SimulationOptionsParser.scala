@@ -7,99 +7,99 @@ import ch.ninecode.util.CIMReaderOptionsParser
 /**
  * Parser for command line operation.
  */
-@SuppressWarnings (Array ("org.wartremover.warts.NonUnitStatements"))
-class SimulationOptionsParser (default: SimulationOptions) extends CIMReaderOptionsParser[SimulationOptions] (default)
+@SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
+class SimulationOptionsParser (default: SimulationOptions) extends CIMReaderOptionsParser[SimulationOptions](default)
 {
     opt[Unit]("verbose")
-        .action ((_, c) => c.copy (verbose = true))
-        .text (s"emit progress messages [${default.verbose}]")
+        .action((_, c) => c.copy(verbose = true))
+        .text(s"emit progress messages [${default.verbose}]")
 
-    opt[String]("host").valueName ("Cassandra")
-        .action ((x, c) =>
+    opt[String]("host").valueName("Cassandra")
+        .action((x, c) =>
         {
-            c.copy (
+            c.copy(
                 host = x,
-                spark_options = c.spark_options.copy (options = c.spark_options.options + ("spark.cassandra.connection.host" -> x))
+                spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.host" -> x))
             )
         }
         )
-        .text (s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${default.host}]")
+        .text(s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${default.host}]")
 
-    opt[Int]("port").valueName ("<port_number>")
-        .action ((x, c) =>
+    opt[Int]("port").valueName("<port_number>")
+        .action((x, c) =>
         {
-            c.copy (
+            c.copy(
                 port = x,
-                spark_options = c.spark_options.copy (options = c.spark_options.options + ("spark.cassandra.connection.port" -> x.toString))
+                spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.port" -> x.toString))
             )
         }
         )
-        .text (s"Cassandra connection port [${default.port}]")
+        .text(s"Cassandra connection port [${default.port}]")
 
-    opt[String]("workdir").valueName ("<dir>")
-        .action (
+    opt[String]("workdir").valueName("<dir>")
+        .action(
             (x, c) =>
             {
-                val sep = System.getProperty ("file.separator")
-                c.copy (workdir = if (x.endsWith (sep)) x else s"$x$sep")
+                val sep = System.getProperty("file.separator")
+                c.copy(workdir = if (x.endsWith(sep)) x else s"$x$sep")
             }
         )
-        .text (s"directory for work files on each executor [${default.workdir}]")
+        .text(s"directory for work files on each executor [${default.workdir}]")
 
     opt[Unit]("three")
-        .action ((_, c) => c.copy (three_phase = true))
-        .text (s"perform simulation using three phase load-flow [${default.three_phase}]")
+        .action((_, c) => c.copy(three_phase = true))
+        .text(s"perform simulation using three phase load-flow [${default.three_phase}]")
 
     opt[Unit]("fake")
-        .action ((_, c) => c.copy (fake_three_phase = true))
-        .text (s"convert single phase measurements into three phase [${default.fake_three_phase}]")
+        .action((_, c) => c.copy(fake_three_phase = true))
+        .text(s"convert single phase measurements into three phase [${default.fake_three_phase}]")
 
     opt[Unit]("keep")
-        .action ((_, c) => c.copy (keep = true))
-        .text (s"keep intermediate glm and input/output files in workdir [${default.keep}]")
+        .action((_, c) => c.copy(keep = true))
+        .text(s"keep intermediate glm and input/output files in workdir [${default.keep}]")
 
     opt[Unit]("simulationonly")
-        .action ((_, c) => c.copy (simulationonly = true))
-        .text (s"perform simulation operations only [${default.simulationonly}]")
+        .action((_, c) => c.copy(simulationonly = true))
+        .text(s"perform simulation operations only [${default.simulationonly}]")
 
     opt[Unit]("postprocessonly")
-        .action ((_, c) => c.copy (postprocessonly = true))
-        .text (s"perform postprocessing operations only [${default.postprocessonly}]")
+        .action((_, c) => c.copy(postprocessonly = true))
+        .text(s"perform postprocessing operations only [${default.postprocessonly}]")
 
     opt[Double]("cable_impedance_limit")
-        .action ((x, c) => c.copy (cable_impedance_limit = x))
-        .text ("cables with higher impedances for R1 will not be processed with gridlabd [%g]".format (default.cable_impedance_limit))
+        .action((x, c) => c.copy(cable_impedance_limit = x))
+        .text("cables with higher impedances for R1 will not be processed with gridlabd [%g]".format(default.cable_impedance_limit))
 
     // turn off <CIM> files and use <JSON> instead
-    options.remove (options.indexOf (cim_files))
+    options.remove(options.indexOf(cim_files))
     arg[String]("<JSON> <JSON>...")
-        .optional ()
-        .unbounded ()
-        .action (
+        .optional()
+        .unbounded()
+        .action(
             (x, c) =>
             {
                 try
                 {
-                    val sep = System.getProperty ("file.separator")
-                    val file = if (x.startsWith (sep)) x else s"${new java.io.File (".").getCanonicalPath}$sep$x"
-                    val source = scala.io.Source.fromFile (file, "UTF-8")
+                    val sep = System.getProperty("file.separator")
+                    val file = if (x.startsWith(sep)) x else s"${new java.io.File(".").getCanonicalPath}$sep$x"
+                    val source = scala.io.Source.fromFile(file, "UTF-8")
                     val text = source.mkString
                     source.close
-                    c.copy (simulation = c.simulation :+ text)
+                    c.copy(simulation = c.simulation :+ text)
                 }
                 catch
                 {
                     case e: Exception =>
-                        val log = LoggerFactory.getLogger (getClass.getName)
-                        log.error ("bad input file name", e)
+                        val log = LoggerFactory.getLogger(getClass.getName)
+                        log.error("bad input file name", e)
                         helpout = true
                         c
                 }
             }
         )
-        .text ("simulation files to process")
+        .text("simulation files to process")
 
-    note (
+    note(
         """
 Simulates networks based on a CIM model and smart meter measurements.
 

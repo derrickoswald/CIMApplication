@@ -57,10 +57,10 @@ case class ScEdge
      */
     def switchClosed (switch: Switch): Boolean =
     {
-        if (0 != (switch.bitfields (openMask / 32) & (1 << (openMask % 32))))
+        if (0 != (switch.bitfields(openMask / 32) & (1 << (openMask % 32))))
             !switch.open // open valid
         else
-            if (0 != (switch.bitfields (normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
+            if (0 != (switch.bitfields(normalOpenMask / 32) & (1 << (normalOpenMask % 32))))
                 !switch.normalOpen
             else
                 true
@@ -72,7 +72,7 @@ case class ScEdge
      * @param node TopologicalNode to test
      * @return <code>false</code> for open Switch objects and higher voltage transformer nodes, <code>true</code> otherwise
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     def shouldContinueTo (node: ScNode, calculate_public_lighting: Boolean): Boolean =
     {
         if (node.id_prev == "network")
@@ -80,17 +80,17 @@ case class ScEdge
         else
             element match
             {
-                case switch: Switch => switchClosed (switch)
-                case cut: Cut => switchClosed (cut.Switch)
-                case disconnector: Disconnector => switchClosed (disconnector.Switch)
-                case fuse: Fuse => switchClosed (fuse.Switch)
-                case gd: GroundDisconnector => switchClosed (gd.Switch)
-                case jumper: Jumper => switchClosed (jumper.Switch)
-                case ps: ProtectedSwitch => switchClosed (ps.Switch)
-                case sectionaliser: Sectionaliser => switchClosed (sectionaliser.Switch)
-                case breaker: Breaker => switchClosed (breaker.ProtectedSwitch.Switch)
-                case lbs: LoadBreakSwitch => switchClosed (lbs.ProtectedSwitch.Switch)
-                case recloser: Recloser => switchClosed (recloser.ProtectedSwitch.Switch)
+                case switch: Switch => switchClosed(switch)
+                case cut: Cut => switchClosed(cut.Switch)
+                case disconnector: Disconnector => switchClosed(disconnector.Switch)
+                case fuse: Fuse => switchClosed(fuse.Switch)
+                case gd: GroundDisconnector => switchClosed(gd.Switch)
+                case jumper: Jumper => switchClosed(jumper.Switch)
+                case ps: ProtectedSwitch => switchClosed(ps.Switch)
+                case sectionaliser: Sectionaliser => switchClosed(sectionaliser.Switch)
+                case breaker: Breaker => switchClosed(breaker.ProtectedSwitch.Switch)
+                case lbs: LoadBreakSwitch => switchClosed(lbs.ProtectedSwitch.Switch)
+                case recloser: Recloser => switchClosed(recloser.ProtectedSwitch.Switch)
                 case _: ACLineSegment => true
                 case _: PowerTransformer =>
                     if (v1 < 230.0 || v2 < 230.0)
@@ -107,7 +107,7 @@ case class ScEdge
                                 if (id_cn == id_cn_2)
                                     v2 <= v1 || v2 <= 1000.0
                                 else
-                                    throw new Exception (s"edge $id_equ is not connected to $id_cn (only $id_cn_1 and $id_cn_2)")
+                                    throw new Exception(s"edge $id_equ is not connected to $id_cn (only $id_cn_1 and $id_cn_2)")
                         }
                 case _ =>
                     true
@@ -129,8 +129,8 @@ case class ScEdge
                 // ToDo: use PSRType_Bogus
                 if (cable.r >= options.cable_impedance_limit)
                 {
-                    val error = ScError (fatal = false, invalid = true, "invalid element (%s)".format (cable.id))
-                    ScError.combine_errors (errors, List (error), options.messagemax)
+                    val error = ScError(fatal = false, invalid = true, "invalid element (%s)".format(cable.id))
+                    ScError.combine_errors(errors, List(error), options.messagemax)
                 }
                 else
                     errors
@@ -138,22 +138,22 @@ case class ScEdge
                 // Three Winding Transformer - if there are more than 2 PowerTransformerEnd associated to the PowerTransformer
                 if (num_terminals > 2)
                 {
-                    val error = ScError (fatal = false, invalid = true, "%s transformer windings for edge %s".format (num_terminals, id_equ))
-                    ScError.combine_errors (errors, List (error), options.messagemax)
+                    val error = ScError(fatal = false, invalid = true, "%s transformer windings for edge %s".format(num_terminals, id_equ))
+                    ScError.combine_errors(errors, List(error), options.messagemax)
                 }
                 // Voltage Regulator Transformer: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 400V
                 else
                     if (v1 == v2)
                     {
-                        val error = ScError (fatal = false, invalid = true, "voltage (%sV) regulator edge %s".format (v1, id_equ))
-                        ScError.combine_errors (errors, List (error), options.messagemax)
+                        val error = ScError(fatal = false, invalid = true, "voltage (%sV) regulator edge %s".format(v1, id_equ))
+                        ScError.combine_errors(errors, List(error), options.messagemax)
                     }
                     // Low Voltage Transmission: if there are less than 3 PowerTransformerEnd associated to the PowerTransformer and the voltage of the two ends are both <= 1kV and one end is < 1kV
                     else
                         if (v1 <= 1000.0 && v2 <= 1000.0 && v2 != 230.0) // ignore public lighting
                         {
-                            val error = ScError (fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format (v1, v2, id_equ))
-                            ScError.combine_errors (errors, List (error), options.messagemax)
+                            val error = ScError(fatal = false, invalid = true, "low voltage (%sV:%sV) subtransmission edge %s".format(v1, v2, id_equ))
+                            ScError.combine_errors(errors, List(error), options.messagemax)
                         }
                         else
                             errors
@@ -178,14 +178,14 @@ case class ScEdge
                 {
                     val ratio = v1 / v2
                     val ratio2 = ratio * ratio
-                    Impedanzen (ref.impedanz_low * ratio2, ref.null_impedanz_low * ratio2, ref.impedanz_high * ratio2, ref.null_impedanz_high * ratio2)
+                    Impedanzen(ref.impedanz_low * ratio2, ref.null_impedanz_low * ratio2, ref.impedanz_high * ratio2, ref.null_impedanz_high * ratio2)
                 }
                 else
                     if (id_cn == id_cn_2)
                     {
                         val ratio = v2 / v1
                         val ratio2 = ratio * ratio
-                        Impedanzen (ref.impedanz_low * ratio2, ref.null_impedanz_low * ratio2, ref.impedanz_high * ratio2, ref.null_impedanz_high * ratio2)
+                        Impedanzen(ref.impedanz_low * ratio2, ref.null_impedanz_low * ratio2, ref.impedanz_high * ratio2, ref.null_impedanz_high * ratio2)
                     }
                     else
                         ref
@@ -211,7 +211,7 @@ case class ScEdge
                 {
                     val tx_impedance_low = this.impedance.impedanz_low
                     val tx_impedance_high = this.impedance.impedanz_high
-                    Impedanzen (tx_impedance_low, tx_impedance_low, tx_impedance_high, tx_impedance_high)
+                    Impedanzen(tx_impedance_low, tx_impedance_low, tx_impedance_high, tx_impedance_high)
                 }
                 else
                     if (id_cn == id_cn_2)
@@ -220,12 +220,12 @@ case class ScEdge
                         val ratio2 = ratio * ratio
                         val tx_impedance_low = this.impedance.impedanz_low * ratio2
                         val tx_impedance_high = this.impedance.impedanz_high * ratio2
-                        Impedanzen (tx_impedance_low, tx_impedance_low, tx_impedance_high, tx_impedance_high)
+                        Impedanzen(tx_impedance_low, tx_impedance_low, tx_impedance_high, tx_impedance_high)
                     }
                     else
-                        Impedanzen (Complex (0.0), Complex (0.0), Complex (0.0), Complex (0.0))
+                        Impedanzen(Complex(0.0), Complex(0.0), Complex(0.0), Complex(0.0))
             case _ =>
-                Impedanzen (Complex (0.0), Complex (0.0), Complex (0.0), Complex (0.0))
+                Impedanzen(Complex(0.0), Complex(0.0), Complex(0.0), Complex(0.0))
         }
     }
 
@@ -235,34 +235,34 @@ case class ScEdge
      * @param ref fuse network of the node at one end of the edge
      * @return network of fuses at the other end of the edge
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     def fusesTo (ref: Branch): Branch =
     {
         element match
         {
             case fuse: Fuse =>
-                val std = standard.getOrElse ("")
-                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (fuse.Switch.ratedCurrent), std)
+                val std = standard.getOrElse("")
+                val next = SimpleBranch(id_cn_1, id_cn_2, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some(fuse.Switch.ratedCurrent), std)
                 if (null == ref)
                     next
                 else
                     ref match
                     {
-                        case sim: SimpleBranch => SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
-                        case ser: SeriesBranch => SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
-                        case _ => throw new IllegalArgumentException (s"unknown class for ref (${ref.getClass.toString})")
+                        case sim: SimpleBranch => SeriesBranch(sim.from, id_cn_2, 0.0, Seq(ref, next))
+                        case ser: SeriesBranch => SeriesBranch(ser.from, id_cn_2, 0.0, ser.series ++ Seq(next))
+                        case _ => throw new IllegalArgumentException(s"unknown class for ref (${ref.getClass.toString})")
                     }
             case breaker: Breaker =>
-                val std = standard.getOrElse ("")
-                val next = SimpleBranch (id_cn_1, id_cn_2, 0.0, breaker.id, breaker.ProtectedSwitch.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some (breaker.ProtectedSwitch.Switch.ratedCurrent), std)
+                val std = standard.getOrElse("")
+                val next = SimpleBranch(id_cn_1, id_cn_2, 0.0, breaker.id, breaker.ProtectedSwitch.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some(breaker.ProtectedSwitch.Switch.ratedCurrent), std)
                 if (null == ref)
                     next
                 else
                     ref match
                     {
-                        case sim: SimpleBranch => SeriesBranch (sim.from, id_cn_2, 0.0, Seq (ref, next))
-                        case ser: SeriesBranch => SeriesBranch (ser.from, id_cn_2, 0.0, ser.series ++ Seq (next))
-                        case _ => throw new IllegalArgumentException (s"unknown class for ref (${ref.getClass.toString})")
+                        case sim: SimpleBranch => SeriesBranch(sim.from, id_cn_2, 0.0, Seq(ref, next))
+                        case ser: SeriesBranch => SeriesBranch(ser.from, id_cn_2, 0.0, ser.series ++ Seq(next))
+                        case _ => throw new IllegalArgumentException(s"unknown class for ref (${ref.getClass.toString})")
                     }
             case _ =>
                 ref
@@ -275,12 +275,12 @@ object ScEdge
     /**
      * Index of normalOpen field in Switch bitmask.
      */
-    val normalOpenMask: Int = Switch.fields.indexOf ("normalOpen")
+    val normalOpenMask: Int = Switch.fields.indexOf("normalOpen")
 
     /**
      * Index of open field in Switch bitmask.
      */
-    val openMask: Int = Switch.fields.indexOf ("open")
+    val openMask: Int = Switch.fields.indexOf("open")
 
     /**
      * Temperature coefficient of resistance.

@@ -13,7 +13,7 @@ import org.apache.spark.sql.SparkSession
 
 case class IngestBelvis (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {
-    if (options.verbose) LogManager.getLogger (getClass).setLevel (Level.INFO)
+    if (options.verbose) LogManager.getLogger(getClass).setLevel(Level.INFO)
     implicit val spark: SparkSession = session
 
     /**
@@ -27,23 +27,23 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
     {
         val ONE_MINUTE_IN_MILLIS = 60000
 
-        val fields = line.split (";")
+        val fields = line.split(";")
         // eliminate blank lines at the end
         if (fields.length > 1)
         {
-            val datetime = measurementDateTimeFormat.parse (fields (0))
-            join_table.get (fields (1)) match
+            val datetime = measurementDateTimeFormat.parse(fields(0))
+            join_table.get(fields(1)) match
             {
-                case Some (mrid) =>
-                    val (typ, real, imag, units, factor) = decode_obis (fields (2), fields (3), "1.0")
+                case Some(mrid) =>
+                    val (typ, real, imag, units, factor) = decode_obis(fields(2), fields(3), "1.0")
                     val time = datetime.getTime
-                    val period = fields (6).toInt
+                    val period = fields(6).toInt
                     val interval = period * ONE_MINUTE_IN_MILLIS
                     val list = for
                         {
                         i <- 7 until fields.length by 2
-                        reading = fields (i)
-                        value = if ("" != reading) asDouble (reading) * factor else 0.0
+                        reading = fields(i)
+                        value = if ("" != reading) asDouble(reading) * factor else 0.0
                         slot = (i - 7) / 2
                         timestamp = time + (interval * slot)
                         if (timestamp >= job.mintime) && (timestamp <= job.maxtime)
@@ -52,55 +52,55 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
                             (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
                     list
                 case _ =>
-                    List ()
+                    List()
             }
         }
         else
-            List ()
+            List()
     }
 
     def sub_belvis (filename: String, join_table: Map[String, String], job: IngestJob): Unit =
     {
-        val measurementTimeZone: TimeZone = TimeZone.getTimeZone (job.timezone)
-        val measurementCalendar: Calendar = Calendar.getInstance ()
-        measurementCalendar.setTimeZone (measurementTimeZone)
-        val measurementDateTimeFormat: SimpleDateFormat = new SimpleDateFormat ("dd.MM.yyyy HH:mm")
-        measurementDateTimeFormat.setCalendar (measurementCalendar)
+        val measurementTimeZone: TimeZone = TimeZone.getTimeZone(job.timezone)
+        val measurementCalendar: Calendar = Calendar.getInstance()
+        measurementCalendar.setTimeZone(measurementTimeZone)
+        val measurementDateTimeFormat: SimpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm")
+        measurementDateTimeFormat.setCalendar(measurementCalendar)
 
         // it's almost a CSV file
         // for daylight savings time changes, not all lines have the same number of columns
-        val lines = session.sparkContext.textFile (filename)
-        val rdd = lines.flatMap (parse_belvis_line (join_table, job, measurementDateTimeFormat))
+        val lines = session.sparkContext.textFile(filename)
+        val rdd = lines.flatMap(parse_belvis_line(join_table, job, measurementDateTimeFormat))
         // combine real and imaginary parts
         if (job.mode == Modes.Append)
         {
             val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
             implicit val configuration: ReadConf =
                 ReadConf
-                    .fromSparkConf (session.sparkContext.getConf)
-                    .copy (splitCount = Some (executors))
-            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select ("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-            val unioned = rdd.union (df)
-            val grouped = unioned.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
-            grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+                    .fromSparkConf(session.sparkContext.getConf)
+                    .copy(splitCount = Some(executors))
+            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val unioned = rdd.union(df)
+            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
+            grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
         else
         {
-            val grouped = rdd.groupBy (x => (x._1, x._2, x._3)).values.flatMap (complex)
-            grouped.saveToCassandra (job.keyspace, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            val grouped = rdd.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
+            grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
     }
 
     def process (filename: String, job: IngestJob): Unit =
     {
-        val join_table = loadCsvMapping (session, filename, job)
-        job.datafiles.foreach (
+        val join_table = loadCsvMapping(session, filename, job)
+        job.datafiles.foreach(
             file =>
-                for (filename <- getFiles (job, options.workdir)(file))
-                    time (s"process $filename: %s seconds")
+                for (filename <- getFiles(job, options.workdir)(file))
+                    time(s"process $filename: %s seconds")
                     {
-                        sub_belvis (filename, join_table, job)
-                        cleanUp (job, filename)
+                        sub_belvis(filename, join_table, job)
+                        cleanUp(job, filename)
                     }
         )
     }

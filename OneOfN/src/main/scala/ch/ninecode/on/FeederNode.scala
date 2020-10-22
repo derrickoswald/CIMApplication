@@ -16,10 +16,10 @@ case class FeederNode
     _id: String,
     override val nominal_voltage: Double,
     feeder: Option[Element])
-    extends LoadFlowNode (
+    extends LoadFlowNode(
         feeder match
         {
-            case Some (element) => element.id
+            case Some(element) => element.id
             case _ => _id
         },
         nominal_voltage)

@@ -13,7 +13,7 @@ case class PandaPowerExternalGridNode
     zmax: Complex,
     zmin: Complex
 )
-    extends LoadFlowNode (_id, _nominal_voltage)
+    extends LoadFlowNode(_id, _nominal_voltage)
 {
 }
 
@@ -22,7 +22,7 @@ object PandaPowerExternalGridNode
     def apply (transformer: TransformerEdge): PandaPowerExternalGridNode =
     {
         val set = transformer.transformer
-        PandaPowerExternalGridNode (
+        PandaPowerExternalGridNode(
             set.node0,
             set.v0,
             set.network_short_circuit_power_max,

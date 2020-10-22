@@ -31,7 +31,7 @@ case class PreEdge
     problem: String,
     ratedCurrent: Double,
     element: Element)
-    extends LoadFlowEdge (id, cn1, cn2)
+    extends LoadFlowEdge(id, cn1, cn2)
         with GLMEdge
 {
     override def emit (generator: GLMGenerator): String = "" // there isn't anything emitted by PreEdges

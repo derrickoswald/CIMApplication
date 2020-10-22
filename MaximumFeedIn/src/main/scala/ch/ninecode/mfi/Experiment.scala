@@ -39,15 +39,15 @@ case class Experiment
      *
      * @param c The Calendar value to be cloned.
      */
-    def dup (c: Calendar): Calendar = c.clone ().asInstanceOf [Calendar]
+    def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
 
     /**
      * The start time of the experiment.
      */
     def t1: Calendar =
     {
-        val t = dup (t0)
-        t.add (Calendar.SECOND, slot * window)
+        val t = dup(t0)
+        t.add(Calendar.SECOND, slot * window)
         t
     }
 
@@ -56,8 +56,8 @@ case class Experiment
      */
     def t2: Calendar =
     {
-        val t = dup (t0)
-        t.add (Calendar.SECOND, (slot + 1) * window)
+        val t = dup(t0)
+        t.add(Calendar.SECOND, (slot + 1) * window)
         t
     }
 
@@ -66,7 +66,7 @@ case class Experiment
         feeder + "," +
         node + "," +
         house + "," +
-        new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z").format (t0.getTime) + "[" + t0.getTimeInMillis + "]," +
+        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(t0.getTime) + "[" + t0.getTimeInMillis + "]," +
         slot + "," +
         window + "," +
         interval + "," +

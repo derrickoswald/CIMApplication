@@ -54,23 +54,23 @@ case class PIA (
 
 object PIA extends FieldExtractor[PIA]
 {
-    private lazy val _4347 = alphanumeric (3)
+    private lazy val _4347 = alphanumeric(3)
 
-    private lazy val c212_7140 = alphanumeric_? (35)
-    private lazy val c212_7143 = alphanumeric_? (3)
-    private lazy val c212_1131 = alphanumeric_? (17)
-    private lazy val c212_3055 = alphanumeric_? (3)
+    private lazy val c212_7140 = alphanumeric_?(35)
+    private lazy val c212_7143 = alphanumeric_?(3)
+    private lazy val c212_1131 = alphanumeric_?(17)
+    private lazy val c212_3055 = alphanumeric_?(3)
     private lazy val c212 =
-        subfields (
+        subfields(
             c212_7140 ~ c212_7143 ~ c212_1131 ~ c212_3055 ^^
-                { case _7140 ~ _7143 ~ _1131 ~ _3055 => Item_Number_Identification (_7140, _7143, _1131, _3055) }
+                { case _7140 ~ _7143 ~ _1131 ~ _3055 => Item_Number_Identification(_7140, _7143, _1131, _3055) }
         )
 
     lazy val pia_fields: Parser[PIA] =
-        fields (
+        fields(
             _4347 ~ c212 ~ c212.? ~ c212.? ~ c212.? ~ c212.? ^^
-                { case _4347 ~ c212_1 ~ c212_2 ~ c212_3 ~ c212_4 ~ c212_5 => PIA (_4347, c212_1, c212_2, c212_3, c212_4, c212_5) }
-        ).named ("PIA")
+                { case _4347 ~ c212_1 ~ c212_2 ~ c212_3 ~ c212_4 ~ c212_5 => PIA(_4347, c212_1, c212_2, c212_3, c212_4, c212_5) }
+        ).named("PIA")
 
     override def phrase: Parser[PIA] = pia_fields
 }

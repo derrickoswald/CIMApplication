@@ -17,7 +17,7 @@ case class SimulationExtraQuery
 
 object SimulationExtraQuery
 {
-    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def apply (title: String, queries: Seq[String]): SimulationExtraQuery =
-        SimulationExtraQuery (title, queries.lastOption.orNull)
+        SimulationExtraQuery(title, queries.lastOption.orNull)
 }

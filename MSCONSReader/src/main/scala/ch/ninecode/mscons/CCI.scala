@@ -44,36 +44,36 @@ case class CCI (
 
 object CCI extends FieldExtractor[CCI]
 {
-    private lazy val _7059 = alphanumeric_? (3)
+    private lazy val _7059 = alphanumeric_?(3)
 
-    private lazy val c502_6313 = alphanumeric_? (3)
-    private lazy val c502_6321 = alphanumeric_? (3)
-    private lazy val c502_6155 = alphanumeric_? (17)
-    private lazy val c502_6154 = alphanumeric_? (70)
+    private lazy val c502_6313 = alphanumeric_?(3)
+    private lazy val c502_6321 = alphanumeric_?(3)
+    private lazy val c502_6155 = alphanumeric_?(17)
+    private lazy val c502_6154 = alphanumeric_?(70)
     private lazy val c502 =
-        subfields (
+        subfields(
             c502_6313 ~ c502_6321 ~ c502_6155 ~ c502_6154 ^^
-                { case _6313 ~ _6321 ~ _6155 ~ _6154 => Measurement_Details (_6313, _6321, _6155, _6154) }
+                { case _6313 ~ _6321 ~ _6155 ~ _6154 => Measurement_Details(_6313, _6321, _6155, _6154) }
         )
 
-    private lazy val c240_7037 = alphanumeric (17)
-    private lazy val c240_1131 = alphanumeric_? (17)
-    private lazy val c240_3055 = alphanumeric_? (3)
-    private lazy val c240_7036_1 = alphanumeric_? (35)
-    private lazy val c240_7036_2 = alphanumeric_? (35)
+    private lazy val c240_7037 = alphanumeric(17)
+    private lazy val c240_1131 = alphanumeric_?(17)
+    private lazy val c240_3055 = alphanumeric_?(3)
+    private lazy val c240_7036_1 = alphanumeric_?(35)
+    private lazy val c240_7036_2 = alphanumeric_?(35)
     private lazy val c240 =
-        subfields (
+        subfields(
             c240_7037 ~ c240_1131 ~ c240_3055 ~ c240_7036_1 ~ c240_7036_2 ^^
-                { case _7037 ~ _1131 ~ _3055 ~ _7036_1 ~ _7036_2 => Characteristic_Description (_7037, _1131, _3055, _7036_1, _7036_2) }
+                { case _7037 ~ _1131 ~ _3055 ~ _7036_1 ~ _7036_2 => Characteristic_Description(_7037, _1131, _3055, _7036_1, _7036_2) }
         )
 
-    private lazy val _4051 = alphanumeric_? (3)
+    private lazy val _4051 = alphanumeric_?(3)
 
     lazy val cci_fields: Parser[CCI] =
-        fields (
+        fields(
             _7059 ~ c502.? ~ c240.? ~ _4051 ^^
-                { case _7059 ~ c502 ~ c240 ~ _4051 => CCI (_7059, c502, c240, _4051) }
-        ).named ("CCI")
+                { case _7059 ~ c502 ~ c240 ~ _4051 => CCI(_7059, c502, c240, _4051) }
+        ).named("CCI")
 
     override def phrase: Parser[CCI] = cci_fields
 }

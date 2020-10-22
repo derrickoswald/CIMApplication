@@ -22,7 +22,7 @@ class SimulationJobTests
 
     class TestAppender extends AppenderSkeleton
     {
-        val log: ArrayBuffer[LoggingEvent] = ArrayBuffer [LoggingEvent]()
+        val log: ArrayBuffer[LoggingEvent] = ArrayBuffer[LoggingEvent]()
 
         override def requiresLayout = false
 
@@ -42,7 +42,7 @@ class SimulationJobTests
         appenders.foreach
         {
             case appender: Appender =>
-                root.removeAppender (appender)
+                root.removeAppender(appender)
         }
     }
 
@@ -51,7 +51,7 @@ class SimulationJobTests
         appenders.foreach
         {
             case appender: Appender =>
-                root.addAppender (appender)
+                root.addAppender(appender)
         }
     }
 
@@ -59,66 +59,66 @@ class SimulationJobTests
     {
         val root: Logger = LogManager.getRootLogger
         val old = root.getAllAppenders.asScala
-        removeAppenders (root, old)
-        root.addAppender (appender)
+        removeAppenders(root, old)
+        root.addAppender(appender)
 
         try
         {
-            block (appender)
+            block(appender)
         }
         finally
         {
-            root.removeAllAppenders ()
-            addAppenders (root, old)
+            root.removeAllAppenders()
+            addAppenders(root, old)
         }
     }
 
     def toJsonObject (text: String): JsonObject =
     {
-        Json.createReader (new StringReader (text)).readObject match
+        Json.createReader(new StringReader(text)).readObject match
         {
             case obj: JsonObject => obj
             case _ =>
-                assert (false, "not a json")
+                assert(false, "not a json")
                 Json.createObjectBuilder.build
         }
     }
 
     @Test def notJSON (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val text = "Now is the time for all good men to come to the aid of the party."
-                val options = SimulationOptions (simulation = Seq (text))
-                val empty = SimulationJob.getAll (options)
-                assert (empty.isEmpty)
+                val options = SimulationOptions(simulation = Seq(text))
+                val empty = SimulationJob.getAll(options)
+                assert(empty.isEmpty)
                 val log = appender.getLog
-                assert (log.length == 2)
-                assert (log.exists (entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.startsWith ("unparseable as JSON")))
-                assert (log.exists (entry => entry.getLevel == Level.WARN && entry.getRenderedMessage.equals ("not all simulations will be processed")))
+                assert(log.length == 2)
+                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.startsWith("unparseable as JSON")))
+                assert(log.exists(entry => entry.getLevel == Level.WARN && entry.getRenderedMessage.equals("not all simulations will be processed")))
         }
     }
 
     @Test def emptyJSON (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val text = "{ }"
-                val options = SimulationOptions (simulation = Seq (text))
-                val empty = SimulationJob.getAll (options)
-                assert (empty.isEmpty)
+                val options = SimulationOptions(simulation = Seq(text))
+                val empty = SimulationJob.getAll(options)
+                assert(empty.isEmpty)
                 val log = appender.getLog
-                assert (log.length == 2)
-                assert (log.exists (entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains ("does not specify a CIM file")))
-                assert (log.exists (entry => entry.getLevel == Level.WARN && entry.getRenderedMessage.equals ("some simulation JSON files have errors")))
+                assert(log.length == 2)
+                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("does not specify a CIM file")))
+                assert(log.exists(entry => entry.getLevel == Level.WARN && entry.getRenderedMessage.equals("some simulation JSON files have errors")))
         }
     }
 
     @Test def queryTestNone (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val TITLE = "ratedCurrent"
@@ -129,17 +129,17 @@ class SimulationJobTests
                        |    "bork": "not correct"
                        |}
                     """.stripMargin
-                val extra = SimulationJob.parseExtra ("test", toJsonObject (text))
-                assert (extra.isEmpty)
+                val extra = SimulationJob.parseExtra("test", toJsonObject(text))
+                assert(extra.isEmpty)
                 val log = appender.getLog
-                assert (log.length == 1)
-                assert (log.exists (entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains ("does not specify a query")))
+                assert(log.length == 1)
+                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("does not specify a query")))
         }
     }
 
     @Test def queryTestType (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val TITLE = "ratedCurrent"
@@ -150,17 +150,17 @@ class SimulationJobTests
                        |    "query": 42
                        |}
                     """.stripMargin
-                val extra = SimulationJob.parseExtra ("test", toJsonObject (text))
-                assert (extra.isEmpty)
+                val extra = SimulationJob.parseExtra("test", toJsonObject(text))
+                assert(extra.isEmpty)
                 val log = appender.getLog
-                assert (log.length == 1)
-                assert (log.exists (entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains ("not a JSON string or array")))
+                assert(log.length == 1)
+                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("not a JSON string or array")))
         }
     }
 
     @Test def queryTestEmptyArray (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val TITLE = "ratedCurrent"
@@ -171,14 +171,14 @@ class SimulationJobTests
                        |    "query": []
                        |}
                     """.stripMargin
-                val extra = SimulationJob.parseExtra ("test", toJsonObject (text))
-                assert (extra.isEmpty)
+                val extra = SimulationJob.parseExtra("test", toJsonObject(text))
+                assert(extra.isEmpty)
                 val log = appender.getLog
-                assert (log.length == 1)
-                assert (log.exists (entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains ("has no valid queries")))
+                assert(log.length == 1)
+                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("has no valid queries")))
         }
 
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val TITLE = "ratedCurrent"
@@ -189,17 +189,17 @@ class SimulationJobTests
                        |    "query": [42]
                        |}
                     """.stripMargin
-                val extra = SimulationJob.parseExtra ("test", toJsonObject (text))
-                assert (extra.isEmpty)
+                val extra = SimulationJob.parseExtra("test", toJsonObject(text))
+                assert(extra.isEmpty)
                 val log = appender.getLog
-                assert (log.nonEmpty)
-                assert (log.exists (entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains ("has no valid queries")))
+                assert(log.nonEmpty)
+                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("has no valid queries")))
         }
     }
 
     @Test def queryTestSingle (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val TITLE = "ratedCurrent"
@@ -211,22 +211,22 @@ class SimulationJobTests
                        |    "query": "$QUERY"
                        |}
                     """.stripMargin
-                val extra = SimulationJob.parseExtra ("test", toJsonObject (text))
+                val extra = SimulationJob.parseExtra("test", toJsonObject(text))
                 extra match
                 {
-                    case Some (contents) =>
-                        assert (contents.title == TITLE)
-                        assert (contents.query == QUERY)
+                    case Some(contents) =>
+                        assert(contents.title == TITLE)
+                        assert(contents.query == QUERY)
                     case None =>
-                        assert (extra.isDefined)
+                        assert(extra.isDefined)
                 }
-                assert (appender.getLog.isEmpty)
+                assert(appender.getLog.isEmpty)
         }
     }
 
     @Test def queryTestMultiple (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val TITLE = "substation"
@@ -239,22 +239,22 @@ class SimulationJobTests
                        |    "query": ["$QUERY1", "$QUERY2"]
                        |}
                     """.stripMargin
-                val extra = SimulationJob.parseExtra ("test", toJsonObject (text))
+                val extra = SimulationJob.parseExtra("test", toJsonObject(text))
                 extra match
                 {
-                    case Some (contents) =>
-                        assert (contents.title == TITLE)
-                        assert (contents.query == QUERY2)
+                    case Some(contents) =>
+                        assert(contents.title == TITLE)
+                        assert(contents.query == QUERY2)
                     case None =>
-                        assert (extra.isDefined)
+                        assert(extra.isDefined)
                 }
-                assert (appender.getLog.isEmpty)
+                assert(appender.getLog.isEmpty)
         }
     }
 
     @Test def extrasNone (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val text =
@@ -264,23 +264,23 @@ class SimulationJobTests
                        |    "interval": {"start": "2018-01-01T00:00:00.000+0100", "end": "2018-02-01T00:00:00.000+0100"}
                        |}
                     """.stripMargin
-                val options: SimulationOptions = SimulationOptions (simulation = Seq (text))
-                val simulations = SimulationJob.getAll (options)
-                assert (simulations.length == 1)
+                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
+                val simulations = SimulationJob.getAll(options)
+                assert(simulations.length == 1)
                 simulations.headOption match
                 {
-                    case Some (simulation) =>
-                        assert (simulation.extras.isEmpty)
+                    case Some(simulation) =>
+                        assert(simulation.extras.isEmpty)
                     case None =>
                 }
                 val log = appender.getLog
-                assert (log.isEmpty)
+                assert(log.isEmpty)
         }
     }
 
     @Test def extrasType (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val text =
@@ -291,24 +291,24 @@ class SimulationJobTests
                        |    "extras": 42
                        |}
                     """.stripMargin
-                val options: SimulationOptions = SimulationOptions (simulation = Seq (text))
-                val simulations = SimulationJob.getAll (options)
-                assert (simulations.length == 1)
+                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
+                val simulations = SimulationJob.getAll(options)
+                assert(simulations.length == 1)
                 simulations.headOption match
                 {
-                    case Some (simulation) =>
-                        assert (simulation.extras.isEmpty)
+                    case Some(simulation) =>
+                        assert(simulation.extras.isEmpty)
                     case None =>
                 }
                 val log = appender.getLog
-                assert (log.length == 1)
-                assert (log.exists (entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains ("unexpected JSON type")))
+                assert(log.length == 1)
+                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("unexpected JSON type")))
         }
     }
 
     @Test def extrasEmpty (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val text =
@@ -319,23 +319,23 @@ class SimulationJobTests
                        |    "extras": []
                        |}
                     """.stripMargin
-                val options: SimulationOptions = SimulationOptions (simulation = Seq (text))
-                val simulations = SimulationJob.getAll (options)
-                assert (simulations.length == 1)
+                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
+                val simulations = SimulationJob.getAll(options)
+                assert(simulations.length == 1)
                 simulations.headOption match
                 {
-                    case Some (simulation) =>
-                        assert (simulation.extras.isEmpty)
+                    case Some(simulation) =>
+                        assert(simulation.extras.isEmpty)
                     case None =>
                 }
                 val log = appender.getLog
-                assert (log.isEmpty)
+                assert(log.isEmpty)
         }
     }
 
     @Test def extrasElementType (): Unit =
     {
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val text =
@@ -346,21 +346,21 @@ class SimulationJobTests
                        |    "extras": [42]
                        |}
                     """.stripMargin
-                val options: SimulationOptions = SimulationOptions (simulation = Seq (text))
-                val simulations = SimulationJob.getAll (options)
-                assert (simulations.length == 1)
+                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
+                val simulations = SimulationJob.getAll(options)
+                assert(simulations.length == 1)
                 simulations.headOption match
                 {
-                    case Some (simulation) =>
-                        assert (simulation.extras.isEmpty)
+                    case Some(simulation) =>
+                        assert(simulation.extras.isEmpty)
                     case None =>
                 }
                 val log = appender.getLog
-                assert (log.length == 1)
-                assert (log.exists (entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains ("unexpected JSON type")))
+                assert(log.length == 1)
+                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("unexpected JSON type")))
         }
 
-        loggingTo (new TestAppender)
+        loggingTo(new TestAppender)
         {
             appender =>
                 val text =
@@ -377,18 +377,18 @@ class SimulationJobTests
                        |    ]
                        |}
                     """.stripMargin
-                val options: SimulationOptions = SimulationOptions (simulation = Seq (text))
-                val simulations = SimulationJob.getAll (options)
-                assert (simulations.length == 1)
+                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
+                val simulations = SimulationJob.getAll(options)
+                assert(simulations.length == 1)
                 simulations.headOption match
                 {
-                    case Some (simulation) =>
-                        assert (simulation.extras.length == 1)
+                    case Some(simulation) =>
+                        assert(simulation.extras.length == 1)
                     case None =>
                 }
                 val log = appender.getLog
-                assert (log.length == 1)
-                assert (log.exists (entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains ("unexpected JSON type")))
+                assert(log.length == 1)
+                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("unexpected JSON type")))
         }
     }
 }

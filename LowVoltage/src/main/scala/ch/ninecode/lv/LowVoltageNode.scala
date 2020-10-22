@@ -18,7 +18,7 @@ case class LowVoltageNode
     equipment: String,
     isEnergyConsumer: Boolean
 )
-    extends LoadFlowNode (id, nominal_voltage) with GLMNode
+    extends LoadFlowNode(id, nominal_voltage) with GLMNode
 {
     override def toString: String = s"$id $equipment (${nominal_voltage}V)${if (isEnergyConsumer) " EnergyConsumer" else ""}"
 }

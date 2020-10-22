@@ -14,81 +14,81 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
     before
     {
         // unpack the zip files
-        if (!new File (s"$FILE_DEPOT$FILENAME1.rdf").exists)
-            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME1.zip", FILE_DEPOT)
-        if (!new File (s"$FILE_DEPOT$FILENAME2.rdf").exists)
-            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME2.zip", FILE_DEPOT)
-        if (!new File (s"$FILE_DEPOT$FILENAME3.rdf").exists)
-            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME3.zip", FILE_DEPOT)
+        if (!new File(s"$FILE_DEPOT$FILENAME1.rdf").exists)
+            new Unzip().unzip(s"$FILE_DEPOT$FILENAME1.zip", FILE_DEPOT)
+        if (!new File(s"$FILE_DEPOT$FILENAME2.rdf").exists)
+            new Unzip().unzip(s"$FILE_DEPOT$FILENAME2.zip", FILE_DEPOT)
+        if (!new File(s"$FILE_DEPOT$FILENAME3.rdf").exists)
+            new Unzip().unzip(s"$FILE_DEPOT$FILENAME3.zip", FILE_DEPOT)
     }
 
     after
     {
-        new File (s"$FILE_DEPOT$FILENAME1.rdf").delete
-        new File (s"$FILE_DEPOT$FILENAME2.rdf").delete
-        new File (s"$FILE_DEPOT$FILENAME3.rdf").delete
+        new File(s"$FILE_DEPOT$FILENAME1.rdf").delete
+        new File(s"$FILE_DEPOT$FILENAME2.rdf").delete
+        new File(s"$FILE_DEPOT$FILENAME3.rdf").delete
     }
 
     /**
      * Test for equality of precalculation and load-flow feed in values.
      */
-    test ("Basic")
+    test("Basic")
     {
         session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
-            val options = EinspeiseleistungOptions (
-                cim_options = setFile (filename),
+            val options = EinspeiseleistungOptions(
+                cim_options = setFile(filename),
                 verbose = true,
                 all = true
             )
-            runMFI (session, options)
+            runMFI(session, options)
 
-            val maxSimulation = getMaxSimulation (options.outputfile)
+            val maxSimulation = getMaxSimulation(options.outputfile)
             val query =
                 "select trafo, house, maximum, reason, details from results where " +
                     s"(simulation = ${maxSimulation} or simulation = ${maxSimulation} - 1)" +
                     "and house like 'USR%' order by house, simulation"
-            val result = querySQLite (options.outputfile, query)
+            val result = querySQLite(options.outputfile, query)
 
-            assert (result.size == 76, "number of records")
+            assert(result.size == 76, "number of records")
             while (result.next)
             {
-                val max_precalc = result.getDouble ("maximum")
-                assert (result.next, "expected pairs of results")
-                val max_loadflow = result.getDouble ("maximum")
-                assert (max_precalc - max_loadflow <= 1500.0, "compare precalc with loadflow")
+                val max_precalc = result.getDouble("maximum")
+                assert(result.next, "expected pairs of results")
+                val max_loadflow = result.getDouble("maximum")
+                assert(max_precalc - max_loadflow <= 1500.0, "compare precalc with loadflow")
             }
         }
     }
 
-    test ("Test cable_impedance_limit parameter")
+    test("Test cable_impedance_limit parameter")
     {
         session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
-            val options = EinspeiseleistungOptions (
-                cim_options = setFile (filename),
+            val options = EinspeiseleistungOptions(
+                cim_options = setFile(filename),
                 verbose = true,
                 all = true,
                 workdir = "simulation/",
                 cable_impedance_limit = 0.14
             )
-            runMFI (session, options)
+            runMFI(session, options)
 
-            val maxSimulation = getMaxSimulation (options.outputfile)
+            val maxSimulation = getMaxSimulation(options.outputfile)
             val query =
                 "select trafo, house, maximum, reason, details from results where " +
                     s"(simulation = ${maxSimulation} or simulation = ${maxSimulation} - 1) " +
                     "and house like 'USR%' and trafo like 'TX0002'"
-            val result = querySQLite (options.outputfile, query)
+            val result = querySQLite(options.outputfile, query)
 
-            assert (result.size == 28, "number of records")
+            assert(result.size == 28, "number of records")
             while (result.next)
             {
-                checkResults (result, null.asInstanceOf [Double], "no results", "invalid element (CAB0014 r=0.14600148356433446 > limit=0.14)")
+                checkResults(result, null.asInstanceOf[Double], "no results", "invalid element (CAB0014 r=0.14600148356433446 > limit=0.14)")
             }
         }
     }
@@ -96,28 +96,28 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
     /**
      * Test for the correct current limit on a parallel set of cables.
      */
-    test ("Parallel")
+    test("Parallel")
     {
         session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME2.rdf"
 
-            val options = EinspeiseleistungOptions (
-                cim_options = setFile (filename),
+            val options = EinspeiseleistungOptions(
+                cim_options = setFile(filename),
                 verbose = true,
                 workdir = "simulation/"
             )
-            runMFI (session, options)
+            runMFI(session, options)
 
             val query = "select trafo, house, maximum, reason, details from results where id = (select max(id) from results)"
-            val result = querySQLite (options.outputfile, query)
+            val result = querySQLite(options.outputfile, query)
 
-            assert (result.size == 1, "number of records")
+            assert(result.size == 1, "number of records")
             while (result.next)
             {
-                assert (result.getString (1) == "TX0001", "transformer name")
-                assert (result.getString (2) == "USR0001", "energy consumer name")
-                checkResults (result, 95000, "current limit", "CAB0001 > 134.0 Amps")
+                assert(result.getString(1) == "TX0001", "transformer name")
+                assert(result.getString(2) == "USR0001", "energy consumer name")
+                checkResults(result, 95000, "current limit", "CAB0001 > 134.0 Amps")
             }
         }
     }
@@ -125,34 +125,34 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
     /**
      * Test for the correct handling of special transformers.
      */
-    test ("Special transformer")
+    test("Special transformer")
     {
         session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME3.rdf"
 
-            val options = EinspeiseleistungOptions (
-                cim_options = setFile (filename),
+            val options = EinspeiseleistungOptions(
+                cim_options = setFile(filename),
                 verbose = true,
                 workdir = "simulation/"
             )
-            runMFI (session, options)
+            runMFI(session, options)
 
-            val query = s"select trafo, house, maximum, reason, details from results where simulation = ${getMaxSimulation (options.outputfile)}"
-            val result = querySQLite (options.outputfile, query)
+            val query = s"select trafo, house, maximum, reason, details from results where simulation = ${getMaxSimulation(options.outputfile)}"
+            val result = querySQLite(options.outputfile, query)
 
-            assert (result.size == 6, "should have 6 results")
+            assert(result.size == 6, "should have 6 results")
             while (result.next)
             {
-                if (result.getString (1) == "TX0003")
-                    fail ("""transformer "TX00003" should not be present""")
+                if (result.getString(1) == "TX0003")
+                    fail("""transformer "TX00003" should not be present""")
                 else
-                    if (result.getString (1) == "TX0002")
+                    if (result.getString(1) == "TX0002")
                     {
-                        if (result.getObject (3) != null) // some fuse nodes have no mrid
+                        if (result.getObject(3) != null) // some fuse nodes have no mrid
                         {
-                            assert (result.getString (4) == "current limit", "load-flow should find a current limit")
-                            assert (result.getString (5).contains (" > 67.0 Amps"), "limit should be set by GKN 3x10re/10 1/0.6 kV limit of 67 Amps")
+                            assert(result.getString(4) == "current limit", "load-flow should find a current limit")
+                            assert(result.getString(5).contains(" > 67.0 Amps"), "limit should be set by GKN 3x10re/10 1/0.6 kV limit of 67 Amps")
                         }
                     }
             }
@@ -163,47 +163,47 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
     /**
      * Test for equality of three phase and single phase feed in values.
      */
-    test ("Three phase")
+    test("Three phase")
     {
         session: SparkSession =>
         {
             val filename = s"$FILE_DEPOT$FILENAME1.rdf"
 
-            val options_one_phase = EinspeiseleistungOptions (
-                cim_options = setFile (filename),
+            val options_one_phase = EinspeiseleistungOptions(
+                cim_options = setFile(filename),
                 verbose = true,
                 all = true,
                 workdir = "simulation_three_phase/"
             )
-            runMFI (session, options_one_phase)
-            val one_phase = getMaxSimulation (options_one_phase.outputfile)
+            runMFI(session, options_one_phase)
+            val one_phase = getMaxSimulation(options_one_phase.outputfile)
 
-            val options_three_phase = EinspeiseleistungOptions (
-                cim_options = setFile (filename),
+            val options_three_phase = EinspeiseleistungOptions(
+                cim_options = setFile(filename),
                 verbose = true,
                 three = true,
                 all = true,
                 workdir = "simulation_three_phase/"
             )
-            runMFI (session, options_one_phase)
-            val three_phase = getMaxSimulation (options_three_phase.outputfile)
+            runMFI(session, options_one_phase)
+            val three_phase = getMaxSimulation(options_three_phase.outputfile)
 
             val queryOnePhase = s"select trafo, house, maximum, reason, details from results where simulation='$one_phase'"
-            val resultOnePhase = querySQLite (options_one_phase.outputfile, queryOnePhase)
+            val resultOnePhase = querySQLite(options_one_phase.outputfile, queryOnePhase)
 
             while (resultOnePhase.next)
             {
-                val trafo = resultOnePhase.getString (1)
-                val house = resultOnePhase.getString (2)
-                val maximum = resultOnePhase.getDouble (3)
-                val reason = resultOnePhase.getString (4)
-                val details = resultOnePhase.getString (5)
+                val trafo = resultOnePhase.getString(1)
+                val house = resultOnePhase.getString(2)
+                val maximum = resultOnePhase.getDouble(3)
+                val reason = resultOnePhase.getString(4)
+                val details = resultOnePhase.getString(5)
 
                 val queryThreePhase = s"select house, trafo, maximum, reason, details from results where simulation='$three_phase' and trafo='$trafo' and house='$house'"
-                val resultThreePhase = querySQLite (options_three_phase.outputfile, queryThreePhase)
+                val resultThreePhase = querySQLite(options_three_phase.outputfile, queryThreePhase)
 
-                assert (resultThreePhase.next, s"record for trafo '$trafo' house '$house' not found")
-                checkResults (resultThreePhase, maximum, reason, details)
+                assert(resultThreePhase.next, s"record for trafo '$trafo' house '$house' not found")
+                checkResults(resultThreePhase, maximum, reason, details)
             }
         }
     }

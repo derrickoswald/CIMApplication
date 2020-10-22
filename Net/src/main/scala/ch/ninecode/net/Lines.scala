@@ -22,30 +22,30 @@ final case class LineTerminals (line: ACLineSegment, t1: Terminal, t2: Terminal)
 
 final case class Lines (
     session: SparkSession,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER")
+    storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER")
 ) extends CIMRDD
 {
 
     import Lines._
 
     implicit val spark: SparkSession = session
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
-    implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
+    implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails()
 
     def unpack (pair: (ACLineSegment, Option[Iterable[Terminal]])): Option[LineTerminals] =
     {
         val (line, terminals) = pair
         terminals match
         {
-            case Some (terminals) =>
+            case Some(terminals) =>
                 if (2 == terminals.size)
                 {
                     val t1 :: t2 :: _ = terminals.toList
                     if ((null != t1.TopologicalNode) && (null != t2.TopologicalNode))
                         if (t1.ACDCTerminal.sequenceNumber < t2.ACDCTerminal.sequenceNumber)
-                            Some (LineTerminals (line, t1, t2))
+                            Some(LineTerminals(line, t1, t2))
                         else
-                            Some (LineTerminals (line, t2, t1))
+                            Some(LineTerminals(line, t2, t1))
                     else
                         None
                 }
@@ -55,17 +55,17 @@ final case class Lines (
         }
     }
 
-    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-    lazy val per_length_impedance: RDD[Element] = session.sparkContext.union (
-        getOrElse [PerLengthSequenceImpedance].asInstanceOf [RDD[Element]],
-        getOrElse [PerLengthPhaseImpedance].asInstanceOf [RDD[Element]] // ToDo: pick up PhaseImpedanceData
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    lazy val per_length_impedance: RDD[Element] = session.sparkContext.union(
+        getOrElse[PerLengthSequenceImpedance].asInstanceOf[RDD[Element]],
+        getOrElse[PerLengthPhaseImpedance].asInstanceOf[RDD[Element]] // ToDo: pick up PhaseImpedanceData
     )
 
-    @SuppressWarnings (Array ("org.wartremover.warts.AsInstanceOf"))
-    lazy val wire_info: RDD[Element] = session.sparkContext.union (
-        getOrElse [OverheadWireInfo].asInstanceOf [RDD[Element]],
-        getOrElse [ConcentricNeutralCableInfo].asInstanceOf [RDD[Element]],
-        getOrElse [TapeShieldCableInfo].asInstanceOf [RDD[Element]]
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    lazy val wire_info: RDD[Element] = session.sparkContext.union(
+        getOrElse[OverheadWireInfo].asInstanceOf[RDD[Element]],
+        getOrElse[ConcentricNeutralCableInfo].asInstanceOf[RDD[Element]],
+        getOrElse[TapeShieldCableInfo].asInstanceOf[RDD[Element]]
     )
 
     def refPerLengthImpedance (lt: LineTerminals): String = lt.line.PerLengthImpedance
@@ -76,7 +76,7 @@ final case class Lines (
         if (null == lt.t1.TopologicalNode || null == lt.t2.TopologicalNode)
             if (null == lt.t1.ConnectivityNode || null == lt.t2.ConnectivityNode)
             {
-                log.warn (s"${lt.line.id} has no topological or connectivity nodes on terminals ${lt.t1.id} or ${lt.t2.id}")
+                log.warn(s"${lt.line.id} has no topological or connectivity nodes on terminals ${lt.t1.id} or ${lt.t2.id}")
                 if (lt.t1.id < lt.t2.id)
                     s"${lt.t1.id}_${lt.t2.id}"
                 else
@@ -102,34 +102,34 @@ final case class Lines (
     def getLines (line_filter: LineData => Boolean = filter): RDD[LineData] =
     {
         // get ac lines with two terminals
-        val tt = getOrElse [Terminal].keyBy (_.ConductingEquipment).groupByKey
+        val tt = getOrElse[Terminal].keyBy(_.ConductingEquipment).groupByKey
         val lines_terminals =
-            getOrElse [ACLineSegment]
-                .keyBy (_.id)
-                .leftOuterJoin (tt)
+            getOrElse[ACLineSegment]
+                .keyBy(_.id)
+                .leftOuterJoin(tt)
                 .values
-                .flatMap (unpack)
+                .flatMap(unpack)
 
         // append parameters if any
         val lines_terminals_parameters: RDD[(LineTerminals, Option[Element])] =
-            lines_terminals.keyBy (x => refPerLengthImpedance (x)).leftOuterJoin (per_length_impedance.keyBy (_.id))
+            lines_terminals.keyBy(x => refPerLengthImpedance(x)).leftOuterJoin(per_length_impedance.keyBy(_.id))
                 .values
-                .map (x => (x._1, x._2))
+                .map(x => (x._1, x._2))
 
         // append asset info if any
         val lines_terminals_parameters_info: RDD[(LineTerminals, Option[Element], Option[Element])] =
-            lines_terminals_parameters.keyBy (x => refAssetDataSheet (x._1)).leftOuterJoin (wire_info.keyBy (_.id))
+            lines_terminals_parameters.keyBy(x => refAssetDataSheet(x._1)).leftOuterJoin(wire_info.keyBy(_.id))
                 .values
-                .map (x => (x._1._1, x._1._2, x._2))
+                .map(x => (x._1._1, x._1._2, x._2))
 
         // find parallel lines by grouping by alphabetically concatenated node id strings
         lines_terminals_parameters_info
-            .keyBy (x => topological_order (x._1))
+            .keyBy(x => topological_order(x._1))
             .groupByKey
             .values
-            .map (x => LineData (x.map (y => LineDetails (y._1.line, y._1.t1, y._1.t2, y._2, y._3))))
-            .filter (line_filter)
-            .persist (storage_level)
+            .map(x => LineData(x.map(y => LineDetails(y._1.line, y._1.t1, y._1.t2, y._2, y._3))))
+            .filter(line_filter)
+            .persist(storage_level)
     }
 }
 
@@ -150,7 +150,7 @@ object Lines
      */
     def impedance_limit (data: LineData): Boolean =
     {
-        data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.re < DEFAULT_CABLE_RESISTANCE_LIMIT)
+        data.lines.forall(line => (line.perLengthImpedance * 1000.0).z1.re < DEFAULT_CABLE_RESISTANCE_LIMIT)
     }
 
     /**
@@ -167,7 +167,7 @@ object Lines
      */
     def in_use (data: LineData): Boolean =
     {
-        data.lines.forall (
+        data.lines.forall(
             line =>
             {
                 val status = line.line.Conductor.ConductingEquipment.SvStatus
@@ -198,5 +198,5 @@ object Lines
      * @param data the ACLineSegment data to check
      * @return <code>true</code> if this is a valid line segment
      */
-    def filter (data: LineData): Boolean = topological_edge (data) && in_use (data) && impedance_limit (data)
+    def filter (data: LineData): Boolean = topological_edge(data) && in_use(data) && impedance_limit(data)
 }

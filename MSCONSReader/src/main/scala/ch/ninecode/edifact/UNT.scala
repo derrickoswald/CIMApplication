@@ -8,15 +8,15 @@ case class UNT (
 
 object UNT extends FieldExtractor[UNT]
 {
-    private lazy val _0074 = numeric (10)
+    private lazy val _0074 = numeric(10)
 
-    private lazy val _0062 = alphanumeric (14)
+    private lazy val _0062 = alphanumeric(14)
 
     lazy val unt_fields: Parser[UNT] =
-        fields (
+        fields(
             _0074 ~ _0062 ^^
-                { case _0074 ~ _0062 => UNT (_0074, _0062) }
-        ).named ("UNT")
+                { case _0074 ~ _0062 => UNT(_0074, _0062) }
+        ).named("UNT")
 
     override def phrase: Parser[UNT] = unt_fields
 }

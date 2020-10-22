@@ -5,10 +5,10 @@ import scala.util.parsing.input.Reader
 
 case class SegmentListParser (list: List[Segment]) extends Reader[Segment]
 {
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def first: Segment = list.head
 
-    override def rest: Reader[Segment] = SegmentListParser (list.drop (1))
+    override def rest: Reader[Segment] = SegmentListParser(list.drop(1))
 
     override def pos: Position = new Position
     {

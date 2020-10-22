@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory
  */
 case class SimulationExecutors (session: SparkSession)
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger(getClass)
 
     /**
      * Get the list of workers.
@@ -27,9 +27,9 @@ case class SimulationExecutors (session: SparkSession)
      */
     def getActiveWorkerHosts: List[String] =
     {
-        val driver = session.sparkContext.getConf.get ("spark.driver.host")
-        val hosts = session.sparkContext.getExecutorMemoryStatus.map (_._1.split (":")(0)).toList
-        hosts.diff (List (driver))
+        val driver = session.sparkContext.getConf.get("spark.driver.host")
+        val hosts = session.sparkContext.getExecutorMemoryStatus.map(_._1.split(":")(0)).toList
+        hosts.diff(List(driver))
     }
 
     /**
@@ -39,7 +39,7 @@ case class SimulationExecutors (session: SparkSession)
      */
     class ExecutorAccumulator (var executors: ConcurrentHashMap[String, String]) extends AccumulatorV2[ConcurrentHashMap[String, String], ConcurrentHashMap[String, String]]
     {
-        def this () = this (new ConcurrentHashMap[String, String]())
+        def this () = this(new ConcurrentHashMap[String, String]())
 
         /**
          * Returns if this accumulator is zero value or not. e.g. for a counter accumulator, 0 is zero value; for a list accumulator, Nil is zero value.
@@ -53,26 +53,26 @@ case class SimulationExecutors (session: SparkSession)
          *
          * @return a new copy of the accumulator with the same value as this
          */
-        override def copy (): AccumulatorV2[ConcurrentHashMap[String, String], ConcurrentHashMap[String, String]] = new ExecutorAccumulator (executors)
+        override def copy (): AccumulatorV2[ConcurrentHashMap[String, String], ConcurrentHashMap[String, String]] = new ExecutorAccumulator(executors)
 
         /**
          * Resets this accumulator, which is zero value.
          */
-        override def reset (): Unit = executors.clear ()
+        override def reset (): Unit = executors.clear()
 
         /**
          * Takes the inputs and accumulates.
          *
          * @param v the map to add to this accumulator (same as merge)
          */
-        override def add (v: ConcurrentHashMap[String, String]): Unit = executors.putAll (v)
+        override def add (v: ConcurrentHashMap[String, String]): Unit = executors.putAll(v)
 
         /**
          * Merges another same-type accumulator into this one and update its state, i.e. this should be merge-in-place.
          *
          * @param other the map to merge into to this accumulator
          */
-        override def merge (other: AccumulatorV2[ConcurrentHashMap[String, String], ConcurrentHashMap[String, String]]): Unit = executors.putAll (other.value)
+        override def merge (other: AccumulatorV2[ConcurrentHashMap[String, String], ConcurrentHashMap[String, String]]): Unit = executors.putAll(other.value)
 
         /**
          * Defines the current value of this accumulator
@@ -89,8 +89,8 @@ case class SimulationExecutors (session: SparkSession)
      */
     def getActiveWorkerHostSet: ConcurrentHashMap[String, String] =
     {
-        val accumulator = new ExecutorAccumulator ()
-        session.sparkContext.register (accumulator, "executors")
+        val accumulator = new ExecutorAccumulator()
+        session.sparkContext.register(accumulator, "executors")
 
         var foundNewHosts: Boolean = true
         val hosts = getActiveWorkerHosts.size
@@ -101,25 +101,25 @@ case class SimulationExecutors (session: SparkSession)
                 val old = accumulator.value
                 val dataSet = 1 to hosts * 1000
                 val numTasks = hosts * 100
-                val data = session.sparkContext.parallelize (dataSet, numTasks)
-                data.foreach (
+                val data = session.sparkContext.parallelize(dataSet, numTasks)
+                data.foreach(
                     _ =>
                     {
                         val identifier = SparkEnv.get.executorId
-                        log.info ("""executor id: %s""".format (identifier))
+                        log.info("""executor id: %s""".format(identifier))
                         val host = InetAddress.getLocalHost
                         val name = host.getHostName
-                        log.info ("""localhost is %s named %s""".format (host, name))
-                        val split = identifier.split ("=")
-                        val id = split (0)
-                        val worker = if (split.length > 1) split (1) else name
-                        log.info ("""worker %s id: %s""".format (worker, id))
+                        log.info("""localhost is %s named %s""".format(host, name))
+                        val split = identifier.split("=")
+                        val id = split(0)
+                        val worker = if (split.length > 1) split(1) else name
+                        log.info("""worker %s id: %s""".format(worker, id))
                         val executor = "executor_" + worker + "_" + id
                         val address = host.getHostAddress
-                        log.info ("""executing on %s @ %s""".format (executor, address))
+                        log.info("""executing on %s @ %s""".format(executor, address))
                         val v = new ConcurrentHashMap[String, String]()
-                        val _ = v.put (executor, address)
-                        accumulator.add (v)
+                        val _ = v.put(executor, address)
+                        accumulator.add(v)
                     }
                 )
                 val newSet = accumulator.value

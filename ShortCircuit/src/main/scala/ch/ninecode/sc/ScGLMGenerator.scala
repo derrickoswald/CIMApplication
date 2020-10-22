@@ -35,7 +35,7 @@ case class ScGLMGenerator
     date_format: SimpleDateFormat,
     area: SimulationTransformerServiceArea,
     isMax: Boolean)
-    extends GLMGenerator (one_phase, temperature, date_format)
+    extends GLMGenerator(one_phase, temperature, date_format)
 {
     override def name: String = area.name
 
@@ -45,25 +45,25 @@ case class ScGLMGenerator
 
     override def edges: Iterable[GLMEdge] = area.edges
 
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.flatMap (
+        val subtransmission_trafos = edges.flatMap(
             {
-                case trafo: GLMTransformerEdge => Some (trafo)
+                case trafo: GLMTransformerEdge => Some(trafo)
                 case _ => None
             }
         )
         val trafos = transformers ++ subtransmission_trafos
-        val configurations = trafos.groupBy (_.configurationName).values
-        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
+        val configurations = trafos.groupBy(_.configurationName).values
+        configurations.map(config => config.head.configuration(this, config.map(_.transformer.transformer_name).mkString(", ")))
     }
 
-    override def transformers: Iterable[GLMTransformerEdge] = area.island.transformers.map (GLMTransformerEdge)
+    override def transformers: Iterable[GLMTransformerEdge] = area.island.transformers.map(GLMTransformerEdge)
 
-    class ShortCircuitSwingNode (val set: TransformerSet) extends SwingNode (set.node0, set.v0, set.transformer_name)
+    class ShortCircuitSwingNode (val set: TransformerSet) extends SwingNode(set.node0, set.v0, set.transformer_name)
 
-    override def swing_nodes: Iterable[GLMNode] = area.island.transformers.map (new ShortCircuitSwingNode (_))
+    override def swing_nodes: Iterable[GLMNode] = area.island.transformers.map(new ShortCircuitSwingNode(_))
 
     override def finish_time: Calendar = area.finish_time
 
@@ -92,12 +92,12 @@ case class ScGLMGenerator
                 else
                     set.network_short_circuit_impedance_min
             case _ =>
-                Complex (0.0)
+                Complex(0.0)
         }
         val z = _z / 1000.0 // per length impedance is per meter now
 
         // if the network short circuit impedance isn't 0Ω, we have to invent a cable
-        if (z != Complex (0))
+        if (z != Complex(0))
         {
             val swing =
                 """
@@ -109,15 +109,15 @@ case class ScGLMGenerator
                   |            nominal_voltage %sV;
                   |            voltage_A %s;
                   |        };
-                  |""".stripMargin.format (phase, voltage, voltage)
+                  |""".stripMargin.format(phase, voltage, voltage)
             val mrid = s"_generated_N5_${node.id}"
-            val id = IdentifiedObject (Element = BasicElement (mRID = mrid), mRID = mrid)
-            val l = ACLineSegment (Conductor = Conductor (ConductingEquipment = ConductingEquipment (Equipment = Equipment (PowerSystemResource = PowerSystemResource (id)))))
-            val t1 = Terminal (TopologicalNode = "N5")
-            val t2 = Terminal (TopologicalNode = node.id)
-            implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails ()
-            val line = GLMLineEdge (LineData (Iterable (LineDetails (l, t1, t2, None, None))))
-            val config = line.make_line_configuration ("N5_configuration", Sequences (Complex (z.re, z.im), Complex (0.0)), false, this)
+            val id = IdentifiedObject(Element = BasicElement(mRID = mrid), mRID = mrid)
+            val l = ACLineSegment(Conductor = Conductor(ConductingEquipment = ConductingEquipment(Equipment = Equipment(PowerSystemResource = PowerSystemResource(id)))))
+            val t1 = Terminal(TopologicalNode = "N5")
+            val t2 = Terminal(TopologicalNode = node.id)
+            implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails()
+            val line = GLMLineEdge(LineData(Iterable(LineDetails(l, t1, t2, None, None))))
+            val config = line.make_line_configuration("N5_configuration", Sequences(Complex(z.re, z.im), Complex(0.0)), false, this)
             val cable =
                 """
                   |        object overhead_line
@@ -129,7 +129,7 @@ case class ScGLMGenerator
                   |            length 1000m;
                   |            configuration "N5_configuration";
                   |        };
-                  |""".stripMargin.format (phase, nodename)
+                  |""".stripMargin.format(phase, nodename)
 
             val meter =
                 """
@@ -140,7 +140,7 @@ case class ScGLMGenerator
                   |            bustype PQ;
                   |            nominal_voltage %sV;
                   |        };
-                  |""".stripMargin.format (nodename, phase, voltage)
+                  |""".stripMargin.format(nodename, phase, voltage)
 
             swing +
                 config +
@@ -157,7 +157,7 @@ case class ScGLMGenerator
               |            nominal_voltage %sV;
               |            voltage_A %s;
               |        };
-              |""".stripMargin.format (nodename, phase, voltage, voltage)
+              |""".stripMargin.format(nodename, phase, voltage, voltage)
     }
 
     /**
@@ -170,11 +170,11 @@ case class ScGLMGenerator
      */
     override def emit_node (node: GLMNode): String =
     {
-        val meter = super.emit_node (node)
+        val meter = super.emit_node(node)
         val id = node.id
-        val player = experiments.find (_.mrid == id) match
+        val player = experiments.find(_.mrid == id) match
         {
-            case Some (_) =>
+            case Some(_) =>
                 val phase = if (one_phase) "AN" else "ABCN"
                 val load =
                     """
@@ -190,7 +190,7 @@ case class ScGLMGenerator
                       |                file "input_data/%s.csv";
                       |            };
                       |        };
-                      |""".stripMargin.format (id, id, phase, node.nominal_voltage, id)
+                      |""".stripMargin.format(id, id, phase, node.nominal_voltage, id)
                 load
 
             case None => ""
@@ -200,7 +200,7 @@ case class ScGLMGenerator
 
     override def extra: Iterable[String] =
     {
-        experiments.map (
+        experiments.map(
             experiment =>
                 """
                   |        object voltdump
@@ -208,7 +208,7 @@ case class ScGLMGenerator
                   |            filename "output_data/%s_voltdump.csv";
                   |            runtime "%s";
                   |        };
-                  |""".stripMargin.format (experiment.mrid, date_format.format (experiment.t1.getTime))
+                  |""".stripMargin.format(experiment.mrid, date_format.format(experiment.t1.getTime))
         )
     }
 }

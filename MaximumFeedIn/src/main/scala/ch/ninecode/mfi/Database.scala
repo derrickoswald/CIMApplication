@@ -17,17 +17,17 @@ import org.slf4j.LoggerFactory
 
 object Database
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger(getClass)
 
     def makeSchema (connection: Connection)
     {
-        val statement = connection.createStatement ()
-        val resultset1 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'simulation'")
-        val exists1 = resultset1.next ()
-        resultset1.close ()
+        val statement = connection.createStatement()
+        val resultset1 = statement.executeQuery("select name from sqlite_master where type = 'table' and name = 'simulation'")
+        val exists1 = resultset1.next()
+        resultset1.close()
         if (!exists1)
         {
-            statement.executeUpdate (
+            statement.executeUpdate(
                 """create table simulation
                   |    -- table of simulation executions
                   |(
@@ -35,14 +35,14 @@ object Database
                   |    description text,                     -- textual description of the simulation run
                   |    time text                             -- the date and time at which the simulation was run
                   |)""".stripMargin)
-            statement.executeUpdate ("create index if not exists epoch on simulation (time)")
+            statement.executeUpdate("create index if not exists epoch on simulation (time)")
         }
-        val resultset2 = statement.executeQuery ("select name from sqlite_master where type = 'table' and name = 'results'")
-        val exists2 = resultset2.next ()
-        resultset2.close ()
+        val resultset2 = statement.executeQuery("select name from sqlite_master where type = 'table' and name = 'results'")
+        val exists2 = resultset2.next()
+        resultset2.close()
         if (!exists2)
         {
-            statement.executeUpdate (
+            statement.executeUpdate(
                 """create table results
                   |    -- table of calculated maximum feed-in values
                   |(
@@ -56,15 +56,15 @@ object Database
                   |    reason text,                          -- the criteria dictating the maximum: "voltage limit", "current limit" or "transformer limit"
                   |    details text                          -- details regarding the limiting criteria
                   |)""".stripMargin)
-            statement.executeUpdate ("create index if not exists house on results (house)")
-            statement.executeUpdate ("create index if not exists sim on results (simulation)")
+            statement.executeUpdate("create index if not exists house on results (house)")
+            statement.executeUpdate("create index if not exists sim on results (simulation)")
         }
-        val resultset3 = statement.executeQuery ("select name from sqlite_master where type = 'view' and name = 'feedin'")
-        val exists3 = resultset3.next ()
-        resultset3.close ()
+        val resultset3 = statement.executeQuery("select name from sqlite_master where type = 'view' and name = 'feedin'")
+        val exists3 = resultset3.next()
+        resultset3.close()
         if (!exists3)
         {
-            statement.executeUpdate (
+            statement.executeUpdate(
                 """create view if not exists intermediate as
                   |    -- staging view for unified (precalculated & GridLAB-D simulated) feed-in values
                   |    select
@@ -102,7 +102,7 @@ object Database
                   |    where
                   |        s.description = 'Einspeiseleistung' and -- select only load-flow values
                   |        s.id = r.simulation     -- join the program execution with the result value""".stripMargin)
-            statement.executeUpdate (
+            statement.executeUpdate(
                 """create view if not exists feedin as
                   |    -- view of the most recent best estimated value of maximum feed-in power
                   |    select
@@ -137,73 +137,73 @@ object Database
                   |    group by
                   |        House                   -- for each unique EnergyConsumer mRID""".stripMargin)
         }
-        statement.close ()
+        statement.close()
     }
 
     def store (description: String, outputfile: String)(records: Array[MaxEinspeiseleistung]): Int = synchronized
     {
         // make the directory
-        val file = Paths.get (outputfile)
+        val file = Paths.get(outputfile)
         if (null != file.getParent)
-            Files.createDirectories (file.getParent)
+            Files.createDirectories(file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
-        Class.forName ("org.sqlite.JDBC")
+        Class.forName("org.sqlite.JDBC")
 
         var connection: Connection = null
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection (s"jdbc:sqlite:${outputfile}")
-            connection.setAutoCommit (false)
+            connection = DriverManager.getConnection(s"jdbc:sqlite:${outputfile}")
+            connection.setAutoCommit(false)
 
             // create schema
-            makeSchema (connection)
+            makeSchema(connection)
 
             if (0 != records.length)
             {
                 // insert the simulation
-                val now = Calendar.getInstance ()
-                val insert = connection.prepareStatement ("insert into simulation (id, description, time) values (?, ?, ?)")
-                insert.setNull (1, Types.INTEGER)
-                insert.setString (2, description)
-                insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
-                insert.executeUpdate ()
-                val statement = connection.createStatement ()
-                val resultset = statement.executeQuery ("select last_insert_rowid() id")
-                resultset.next ()
-                val id = resultset.getInt ("id")
-                resultset.close ()
-                statement.close ()
+                val now = Calendar.getInstance()
+                val insert = connection.prepareStatement("insert into simulation (id, description, time) values (?, ?, ?)")
+                insert.setNull(1, Types.INTEGER)
+                insert.setString(2, description)
+                insert.setTimestamp(3, new Timestamp(now.getTimeInMillis))
+                insert.executeUpdate()
+                val statement = connection.createStatement()
+                val resultset = statement.executeQuery("select last_insert_rowid() id")
+                resultset.next()
+                val id = resultset.getInt("id")
+                resultset.close()
+                statement.close()
 
                 // insert the results
-                val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, feeder, house, maximum, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?)")
+                val datainsert = connection.prepareStatement("insert into results (id, simulation, trafo, feeder, house, maximum, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?)")
                 for (i <- records.indices)
                 {
-                    datainsert.setNull (1, Types.INTEGER)
-                    datainsert.setInt (2, id)
-                    datainsert.setString (3, records (i).trafo)
-                    datainsert.setString (4, records (i).feeder)
-                    datainsert.setString (5, records (i).house)
-                    records (i).reason match
+                    datainsert.setNull(1, Types.INTEGER)
+                    datainsert.setInt(2, id)
+                    datainsert.setString(3, records(i).trafo)
+                    datainsert.setString(4, records(i).feeder)
+                    datainsert.setString(5, records(i).house)
+                    records(i).reason match
                     {
                         case "voltage limit" | "current limit" | "transformer limit" =>
-                            records (i).max match
+                            records(i).max match
                             {
-                                case Some (kw) => datainsert.setDouble (6, kw)
-                                case None => datainsert.setNull (6, Types.DOUBLE)
+                                case Some(kw) => datainsert.setDouble(6, kw)
+                                case None => datainsert.setNull(6, Types.DOUBLE)
                             }
-                            datainsert.setString (7, records (i).reason)
-                            datainsert.setString (8, records (i).details)
+                            datainsert.setString(7, records(i).reason)
+                            datainsert.setString(8, records(i).details)
                         case _ =>
-                            datainsert.setNull (6, Types.DOUBLE)
-                            datainsert.setString (7, "no results")
-                            datainsert.setString (8, records (i).reason)
+                            datainsert.setNull(6, Types.DOUBLE)
+                            datainsert.setString(7, "no results")
+                            datainsert.setString(8, records(i).reason)
                     }
-                    datainsert.executeUpdate ()
+                    datainsert.executeUpdate()
                 }
-                datainsert.close ()
-                connection.commit ()
+                datainsert.close()
+                connection.commit()
 
                 id
             }
@@ -214,7 +214,7 @@ object Database
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException => log.error ("exception caught: " + e)
+            case e: SQLException => log.error("exception caught: " + e)
                 -1
         }
         finally
@@ -222,12 +222,12 @@ object Database
             try
             {
                 if (connection != null)
-                    connection.close ()
+                    connection.close()
             }
             catch
             {
                 // connection close failed
-                case e: SQLException => log.error ("exception caught: " + e);
+                case e: SQLException => log.error("exception caught: " + e);
             }
         }
 
@@ -236,64 +236,64 @@ object Database
     def store_precalculation (description: String, outputfile: String)(results: RDD[MaxPowerFeedingNodeEEA]): Int = synchronized
     {
         // make the directory
-        val file = Paths.get (outputfile)
+        val file = Paths.get(outputfile)
         if (null != file.getParent)
-            Files.createDirectories (file.getParent)
+            Files.createDirectories(file.getParent)
 
         // load the sqlite-JDBC driver using the current class loader
-        Class.forName ("org.sqlite.JDBC")
+        Class.forName("org.sqlite.JDBC")
 
         var connection: Connection = null
         try
         {
             // create a database connection
-            connection = DriverManager.getConnection (s"jdbc:sqlite:${outputfile}")
-            connection.setAutoCommit (false)
+            connection = DriverManager.getConnection(s"jdbc:sqlite:${outputfile}")
+            connection.setAutoCommit(false)
 
             // create schema
-            makeSchema (connection)
+            makeSchema(connection)
 
             // insert the simulation
-            val now = Calendar.getInstance ()
-            val insert = connection.prepareStatement ("insert into simulation (id, description, time) values (?, ?, ?)")
-            insert.setNull (1, Types.INTEGER)
-            insert.setString (2, description)
-            insert.setTimestamp (3, new Timestamp (now.getTimeInMillis))
-            insert.executeUpdate ()
-            val statement = connection.createStatement ()
-            val resultset = statement.executeQuery ("select last_insert_rowid() id")
-            resultset.next ()
-            val id = resultset.getInt ("id")
-            resultset.close ()
-            statement.close ()
+            val now = Calendar.getInstance()
+            val insert = connection.prepareStatement("insert into simulation (id, description, time) values (?, ?, ?)")
+            insert.setNull(1, Types.INTEGER)
+            insert.setString(2, description)
+            insert.setTimestamp(3, new Timestamp(now.getTimeInMillis))
+            insert.executeUpdate()
+            val statement = connection.createStatement()
+            val resultset = statement.executeQuery("select last_insert_rowid() id")
+            resultset.next()
+            val id = resultset.getInt("id")
+            resultset.close()
+            statement.close()
 
             // insert the results
-            val records = results.collect ()
+            val records = results.collect()
 
-            val datainsert = connection.prepareStatement ("insert into results (id, simulation, trafo, feeder, house, maximum, eea, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            val datainsert = connection.prepareStatement("insert into results (id, simulation, trafo, feeder, house, maximum, eea, reason, details) values (?, ?, ?, ?, ?, ?, ?, ?, ?)")
             for (i <- records.indices)
             {
-                datainsert.setNull (1, Types.INTEGER)
-                datainsert.setInt (2, id)
-                datainsert.setString (3, records (i).source_obj)
-                datainsert.setString (4, records (i).feeder)
-                datainsert.setString (5, records (i).mrid)
-                datainsert.setInt (7, if (records (i).eea != null) records (i).eea.size else 0)
-                records (i).reason match
+                datainsert.setNull(1, Types.INTEGER)
+                datainsert.setInt(2, id)
+                datainsert.setString(3, records(i).source_obj)
+                datainsert.setString(4, records(i).feeder)
+                datainsert.setString(5, records(i).mrid)
+                datainsert.setInt(7, if (records(i).eea != null) records(i).eea.size else 0)
+                records(i).reason match
                 {
                     case "voltage limit" | "current limit" | "transformer limit" =>
-                        datainsert.setDouble (6, records (i).max_power_feeding)
-                        datainsert.setString (8, records (i).reason)
-                        datainsert.setString (9, records (i).details)
+                        datainsert.setDouble(6, records(i).max_power_feeding)
+                        datainsert.setString(8, records(i).reason)
+                        datainsert.setString(9, records(i).details)
                     case _ =>
-                        datainsert.setNull (6, Types.DECIMAL) // also set the maximum to null
-                        datainsert.setString (8, "no results")
-                        datainsert.setString (9, records (i).reason)
+                        datainsert.setNull(6, Types.DECIMAL) // also set the maximum to null
+                        datainsert.setString(8, "no results")
+                        datainsert.setString(9, records(i).reason)
                 }
-                datainsert.executeUpdate ()
+                datainsert.executeUpdate()
             }
-            datainsert.close ()
-            connection.commit ()
+            datainsert.close()
+            connection.commit()
 
             return id
         }
@@ -301,7 +301,7 @@ object Database
         {
             // if the error message is "out of memory",
             // it probably means no database file is found
-            case e: SQLException => log.error ("exception caught: " + e)
+            case e: SQLException => log.error("exception caught: " + e)
                 return -1
         }
         finally
@@ -309,12 +309,12 @@ object Database
             try
             {
                 if (connection != null)
-                    connection.close ()
+                    connection.close()
             }
             catch
             {
                 // connection close failed
-                case e: SQLException => log.error ("exception caught: " + e);
+                case e: SQLException => log.error("exception caught: " + e);
             }
         }
     }
@@ -324,44 +324,44 @@ object Database
         val ret = new ArrayBuffer[String]()
 
         // check if the directory exists
-        val file = Paths.get (s"${outputfile}")
-        if (!Files.exists (file))
-            log.error (s"database file ${file} does not exist")
+        val file = Paths.get(s"${outputfile}")
+        if (!Files.exists(file))
+            log.error(s"database file ${file} does not exist")
         else
         {
             // load the sqlite-JDBC driver using the current class loader
-            Class.forName ("org.sqlite.JDBC")
+            Class.forName("org.sqlite.JDBC")
 
             var connection: Connection = null
             try
             {
                 // create a database connection
-                connection = DriverManager.getConnection (s"jdbc:sqlite:${outputfile}")
+                connection = DriverManager.getConnection(s"jdbc:sqlite:${outputfile}")
 
-                val statement = connection.prepareStatement ("select distinct(trafo) from results where eea > 0 and trafo not in (select trafo from results where simulation in (select id from simulation where id > ? and description = 'Einspeiseleistung'))")
-                statement.setInt (1, simulation)
-                val resultset = statement.executeQuery ()
-                while (resultset.next ())
-                    ret += resultset.getString (1)
-                resultset.close ()
+                val statement = connection.prepareStatement("select distinct(trafo) from results where eea > 0 and trafo not in (select trafo from results where simulation in (select id from simulation where id > ? and description = 'Einspeiseleistung'))")
+                statement.setInt(1, simulation)
+                val resultset = statement.executeQuery()
+                while (resultset.next())
+                    ret += resultset.getString(1)
+                resultset.close()
             }
             catch
             {
                 // if the error message is "out of memory",
                 // it probably means no database file is found
-                case e: SQLException => log.error ("exception caught: " + e);
+                case e: SQLException => log.error("exception caught: " + e);
             }
             finally
             {
                 try
                 {
                     if (connection != null)
-                        connection.close ()
+                        connection.close()
                 }
                 catch
                 {
                     // connection close failed
-                    case e: SQLException => log.error ("exception caught: " + e);
+                    case e: SQLException => log.error("exception caught: " + e);
                 }
             }
         }
@@ -382,46 +382,46 @@ object Database
         val ret = new ArrayBuffer[String]()
 
         // check if the directory exists
-        val file = Paths.get (s"${outputfile}")
-        if (!Files.exists (file))
-            log.error (s"database file ${file} does not exist")
+        val file = Paths.get(s"${outputfile}")
+        if (!Files.exists(file))
+            log.error(s"database file ${file} does not exist")
         else
         {
             // load the sqlite-JDBC driver using the current class loader
-            Class.forName ("org.sqlite.JDBC")
+            Class.forName("org.sqlite.JDBC")
 
             var connection: Connection = null
             try
             {
                 // create a database connection
-                connection = DriverManager.getConnection (s"jdbc:sqlite:${outputfile}")
+                connection = DriverManager.getConnection(s"jdbc:sqlite:${outputfile}")
 
-                val statement = connection.prepareStatement ("select distinct(current.house) from (select * from results where simulation = ?) current, (select * from results where simulation = ?) reference where current.house = reference.house and ((current.eea != reference.eea) or (abs(current.maximum - reference.maximum) > ?))")
-                statement.setInt (1, simulation)
-                statement.setInt (2, reference)
-                statement.setDouble (3, delta)
-                val resultset = statement.executeQuery ()
-                while (resultset.next ())
-                    ret += resultset.getString (1)
-                resultset.close ()
+                val statement = connection.prepareStatement("select distinct(current.house) from (select * from results where simulation = ?) current, (select * from results where simulation = ?) reference where current.house = reference.house and ((current.eea != reference.eea) or (abs(current.maximum - reference.maximum) > ?))")
+                statement.setInt(1, simulation)
+                statement.setInt(2, reference)
+                statement.setDouble(3, delta)
+                val resultset = statement.executeQuery()
+                while (resultset.next())
+                    ret += resultset.getString(1)
+                resultset.close()
             }
             catch
             {
                 // if the error message is "out of memory",
                 // it probably means no database file is found
-                case e: SQLException => log.error ("exception caught: " + e);
+                case e: SQLException => log.error("exception caught: " + e);
             }
             finally
             {
                 try
                 {
                     if (connection != null)
-                        connection.close ()
+                        connection.close()
                 }
                 catch
                 {
                     // connection close failed
-                    case e: SQLException => log.error ("exception caught: " + e);
+                    case e: SQLException => log.error("exception caught: " + e);
                 }
             }
         }

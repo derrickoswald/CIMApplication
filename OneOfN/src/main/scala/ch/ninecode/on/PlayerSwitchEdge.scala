@@ -12,7 +12,7 @@ case class PlayerSwitchEdge
     switch: Switch,
     fuse: Boolean
 )
-    extends LoadFlowEdge (switch.id, cn1, cn2)
+    extends LoadFlowEdge(switch.id, cn1, cn2)
         with GLMEdge
 {
     /**

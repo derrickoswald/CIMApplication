@@ -98,71 +98,71 @@ case class NAD (
 
 object NAD extends FieldExtractor[NAD]
 {
-    private lazy val _3035 = alphanumeric (3)
+    private lazy val _3035 = alphanumeric(3)
 
-    private lazy val c082_3039 = alphanumeric (35)
-    private lazy val c082_1131 = alphanumeric_? (17)
-    private lazy val c082_3055 = alphanumeric_? (3)
+    private lazy val c082_3039 = alphanumeric(35)
+    private lazy val c082_1131 = alphanumeric_?(17)
+    private lazy val c082_3055 = alphanumeric_?(3)
     private lazy val c082 =
-        subfields (
+        subfields(
             c082_3039 ~ c082_1131 ~ c082_3055 ^^
-                { case c082_3039 ~ c082_1131 ~ c082_3055 => Party_Identification_Details (c082_3039, c082_1131, c082_3055) }
+                { case c082_3039 ~ c082_1131 ~ c082_3055 => Party_Identification_Details(c082_3039, c082_1131, c082_3055) }
         )
 
-    private lazy val C058_3124_1 = alphanumeric (35)
-    private lazy val C058_3124_2 = alphanumeric_? (35)
-    private lazy val C058_3124_3 = alphanumeric_? (35)
-    private lazy val C058_3124_4 = alphanumeric_? (35)
-    private lazy val C058_3124_5 = alphanumeric_? (35)
+    private lazy val C058_3124_1 = alphanumeric(35)
+    private lazy val C058_3124_2 = alphanumeric_?(35)
+    private lazy val C058_3124_3 = alphanumeric_?(35)
+    private lazy val C058_3124_4 = alphanumeric_?(35)
+    private lazy val C058_3124_5 = alphanumeric_?(35)
     private lazy val c058 =
-        subfields (
+        subfields(
             C058_3124_1 ~ C058_3124_2 ~ C058_3124_3 ~ C058_3124_4 ~ C058_3124_5 ^^
-                { case _3124_1 ~ _3124_2 ~ _3124_3 ~ _3124_4 ~ _3124_5 => Name_And_Address (_3124_1, _3124_2, _3124_3, _3124_4, _3124_5) }
+                { case _3124_1 ~ _3124_2 ~ _3124_3 ~ _3124_4 ~ _3124_5 => Name_And_Address(_3124_1, _3124_2, _3124_3, _3124_4, _3124_5) }
         )
 
-    private lazy val C080_3036_1 = alphanumeric (35)
-    private lazy val C080_3036_2 = alphanumeric_? (35)
-    private lazy val C080_3036_3 = alphanumeric_? (35)
-    private lazy val C080_3036_4 = alphanumeric_? (35)
-    private lazy val C080_3036_5 = alphanumeric_? (35)
-    private lazy val C080_3045 = alphanumeric_? (35)
+    private lazy val C080_3036_1 = alphanumeric(35)
+    private lazy val C080_3036_2 = alphanumeric_?(35)
+    private lazy val C080_3036_3 = alphanumeric_?(35)
+    private lazy val C080_3036_4 = alphanumeric_?(35)
+    private lazy val C080_3036_5 = alphanumeric_?(35)
+    private lazy val C080_3045 = alphanumeric_?(35)
     private lazy val c080 =
-        subfields (
+        subfields(
             C080_3036_1 ~ C080_3036_2 ~ C080_3036_3 ~ C080_3036_4 ~ C080_3036_5 ~ C080_3045 ^^
-                { case _3036_1 ~ _3036_2 ~ _3036_3 ~ _3036_4 ~ _3036_5 ~ _3045 => Party_Name (_3036_1, _3036_2, _3036_3, _3036_4, _3036_5, _3045) }
+                { case _3036_1 ~ _3036_2 ~ _3036_3 ~ _3036_4 ~ _3036_5 ~ _3045 => Party_Name(_3036_1, _3036_2, _3036_3, _3036_4, _3036_5, _3045) }
         )
 
-    private lazy val C059_3042_1 = alphanumeric (35)
-    private lazy val C059_3042_2 = alphanumeric_? (35)
-    private lazy val C059_3042_3 = alphanumeric_? (35)
-    private lazy val C059_3042_4 = alphanumeric_? (35)
+    private lazy val C059_3042_1 = alphanumeric(35)
+    private lazy val C059_3042_2 = alphanumeric_?(35)
+    private lazy val C059_3042_3 = alphanumeric_?(35)
+    private lazy val C059_3042_4 = alphanumeric_?(35)
     private lazy val c059 =
-        subfields (
+        subfields(
             C059_3042_1 ~ C059_3042_2 ~ C059_3042_3 ~ C059_3042_4 ^^
-                { case _3042_1 ~ _3042_2 ~ _3042_3 ~ _3042_4 => Street (_3042_1, _3042_2, _3042_3, _3042_4) }
+                { case _3042_1 ~ _3042_2 ~ _3042_3 ~ _3042_4 => Street(_3042_1, _3042_2, _3042_3, _3042_4) }
         )
 
-    private lazy val _3164 = alphanumeric_? (35)
+    private lazy val _3164 = alphanumeric_?(35)
 
-    private lazy val C819_3229 = alphanumeric_? (9)
-    private lazy val C819_1131 = alphanumeric_? (17)
-    private lazy val C819_3055 = alphanumeric_? (3)
-    private lazy val C819_3228 = alphanumeric_? (70)
+    private lazy val C819_3229 = alphanumeric_?(9)
+    private lazy val C819_1131 = alphanumeric_?(17)
+    private lazy val C819_3055 = alphanumeric_?(3)
+    private lazy val C819_3228 = alphanumeric_?(70)
     private lazy val c819 =
-        subfields (
+        subfields(
             C819_3229 ~ C819_1131 ~ C819_3055 ~ C819_3228 ^^
-                { case _3229 ~ _1131 ~ _3055 ~ _3228 => Country_Sub_Entity_Details (_3229, _1131, _3055, _3228) }
+                { case _3229 ~ _1131 ~ _3055 ~ _3228 => Country_Sub_Entity_Details(_3229, _1131, _3055, _3228) }
         )
 
-    private lazy val _3251 = alphanumeric_? (17)
+    private lazy val _3251 = alphanumeric_?(17)
 
-    private lazy val _3207 = alphanumeric_? (3)
+    private lazy val _3207 = alphanumeric_?(3)
 
     lazy val nad_fields: Parser[NAD] =
-        fields (
+        fields(
             _3035 ~ c082.? ~ c058.? ~ c080.? ~ c059.? ~ _3164 ~ c819.? ~ _3251 ~ _3207 ^^
-                { case _3035 ~ c082 ~ c058 ~ c080 ~ c059 ~ _3164 ~ c819 ~ _3251 ~ _3207 => NAD (_3035, c082, c058, c080, c059, _3164, c819, _3251, _3207) }
-        ).named ("NAD")
+                { case _3035 ~ c082 ~ c058 ~ c080 ~ c059 ~ _3164 ~ c819 ~ _3251 ~ _3207 => NAD(_3035, c082, c058, c080, c059, _3164, c819, _3251, _3207) }
+        ).named("NAD")
 
     override def phrase: Parser[NAD] = nad_fields
 }

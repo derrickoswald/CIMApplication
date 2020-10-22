@@ -28,9 +28,9 @@ import ch.ninecode.net.Transformers
 
 class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, options: ShortCircuitOptions)
     extends
-        Island (session, storageLevel)
+        Island(session, storageLevel)
 {
-    override implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    override implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
     /**
      * Checks that the line segment impedance is not too large.
@@ -42,7 +42,7 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
      */
     def impedance_limit (data: LineData): Boolean =
     {
-        data.lines.forall (line => (line.perLengthImpedance * 1000.0).z1.re < options.cable_impedance_limit)
+        data.lines.forall(line => (line.perLengthImpedance * 1000.0).z1.re < options.cable_impedance_limit)
     }
 
     /**
@@ -51,9 +51,9 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
      * @param data the ACLineSegment data to check
      * @return <code>true</code> if this is a valid line segment
      */
-    def filter (data: LineData): Boolean = topological_edge (data) && in_use (data) && impedance_limit (data)
+    def filter (data: LineData): Boolean = topological_edge(data) && in_use(data) && impedance_limit(data)
 
-    override lazy val lines: RDD[LineData] = Lines (session, storageLevel).getLines (filter)
+    override lazy val lines: RDD[LineData] = Lines(session, storageLevel).getLines(filter)
 
     /**
      * Default transformer filter predicate.
@@ -66,16 +66,16 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
     def transformer_filter (transformer: TransformerData): Boolean =
     {
         val power_transformer = transformer.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
-        val power_significant = transformer.ends.forall (_.ratedS > 0.0)
-        val voltage_significant = options.calculate_public_lighting || transformer.voltages.tail.exists (_._2 >= 400.0)
+        val power_significant = transformer.ends.forall(_.ratedS > 0.0)
+        val voltage_significant = options.calculate_public_lighting || transformer.voltages.tail.exists(_._2 >= 400.0)
         power_transformer && power_significant && voltage_significant
     }
 
-    override lazy val transformers: RDD[TransformerSet] = Transformers (session, storageLevel).getTransformers (transformer_filter = transformer_filter) // substation filter
+    override lazy val transformers: RDD[TransformerSet] = Transformers(session, storageLevel).getTransformers(transformer_filter = transformer_filter) // substation filter
         // legacy naming: TransformerData should be TransformerDetails, TransformerSet should be TransformerData
-        .groupBy (transformer => transformer.nodes.map (_.id).mkString ("_"))
+        .groupBy(transformer => transformer.nodes.map(_.id).mkString("_"))
         .values
-        .map (trafos => TransformerSet (trafos.toArray)) // default_power_rating, default_impedance
+        .map(trafos => TransformerSet(trafos.toArray)) // default_power_rating, default_impedance
 
     override def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
     {
@@ -91,14 +91,14 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
             case _ => false
         }
 
-        rdd.map (
+        rdd.map(
             parts =>
             {
                 val head = parts.toIterator.next
-                val has = parts.find (h => house (h.element))
-                val bus = parts.find (b => busbar (b.element))
-                val ele: Element = has.getOrElse (bus.getOrElse (head)).element
-                (head.id, SimulationNode (head.node.id, head.voltage, ele.id, has.isDefined, bus.isDefined))
+                val has = parts.find(h => house(h.element))
+                val bus = parts.find(b => busbar(b.element))
+                val ele: Element = has.getOrElse(bus.getOrElse(head)).element
+                (head.id, SimulationNode(head.node.id, head.voltage, ele.id, has.isDefined, bus.isDefined))
             }
         )
     }
@@ -111,7 +111,7 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
      */
     override def line_maker (rdd: RDD[(LineData, (identifier, LoadFlowNode))]): RDD[(identifier, LoadFlowEdge)] =
     {
-        rdd.map (x => (x._2._1, new GLMLineEdge (x._1)))
+        rdd.map(x => (x._2._1, new GLMLineEdge(x._1)))
     }
 
     /**
@@ -122,16 +122,16 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
      */
     override def switch_maker (rdd: RDD[Iterable[(SwitchData, (identifier, LoadFlowNode))]]): RDD[(identifier, LoadFlowEdge)] =
     {
-        rdd.flatMap (
+        rdd.flatMap(
             x =>
             {
-                val unique_identifiers = x.map (_._2._1).toSet
-                unique_identifiers.flatMap (
+                val unique_identifiers = x.map(_._2._1).toSet
+                unique_identifiers.flatMap(
                     y =>
                     {
-                        x.find (_._2._1 == y) match
+                        x.find(_._2._1 == y) match
                         {
-                            case Some (switch) => Some ((switch._2._1, new GLMSwitchEdge (switch._1)))
+                            case Some(switch) => Some((switch._2._1, new GLMSwitchEdge(switch._1)))
                             case _ => None
                         }
                     }
@@ -148,16 +148,16 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
      */
     override def transformer_maker (rdd: RDD[Iterable[(TransformerSet, (identifier, LoadFlowNode))]]): RDD[(identifier, LoadFlowEdge)] =
     {
-        rdd.flatMap (
+        rdd.flatMap(
             x =>
             {
-                val unique_identifiers = x.map (_._2._1).toList.distinct
-                unique_identifiers.flatMap (
+                val unique_identifiers = x.map(_._2._1).toList.distinct
+                unique_identifiers.flatMap(
                     y =>
                     {
-                        x.find (_._2._1 == y) match
+                        x.find(_._2._1 == y) match
                         {
-                            case Some (transformer) => Some ((transformer._2._1, GLMTransformerEdge (transformer._1)))
+                            case Some(transformer) => Some((transformer._2._1, GLMTransformerEdge(transformer._1)))
                             case _ => None
                         }
                     }

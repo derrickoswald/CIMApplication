@@ -16,15 +16,15 @@ case class UNZ (
 
 object UNZ extends FieldExtractor[UNZ]
 {
-    private lazy val _0036 = numeric (6)
+    private lazy val _0036 = numeric(6)
 
-    private lazy val _0020 = alphanumeric (14)
+    private lazy val _0020 = alphanumeric(14)
 
     lazy val unz_fields: Parser[UNZ] =
-        fields (
+        fields(
             _0036 ~ _0020 ^^
-                { case _0036 ~ _0020 => UNZ (_0036, _0020) }
-        ).named ("UNZ")
+                { case _0036 ~ _0020 => UNZ(_0036, _0020) }
+        ).named("UNZ")
 
     override def phrase: Parser[UNZ] = unz_fields
 }

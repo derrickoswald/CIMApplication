@@ -19,7 +19,7 @@ case class SimulationRecorderQuery
 
 object SimulationRecorderQuery
 {
-    @SuppressWarnings (Array ("org.wartremover.warts.Null"))
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def apply (title: String, queries: Seq[String], interval: Int, aggregations: List[SimulationAggregate]): SimulationRecorderQuery =
-        SimulationRecorderQuery (title, queries.lastOption.orNull, interval, aggregations)
+        SimulationRecorderQuery(title, queries.lastOption.orNull, interval, aggregations)
 }

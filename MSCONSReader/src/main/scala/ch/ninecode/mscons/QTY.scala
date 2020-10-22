@@ -16,17 +16,17 @@ case class QTY (
 
 object QTY extends FieldExtractor[QTY]
 {
-    private lazy val _6063 = alphanumeric (3)
+    private lazy val _6063 = alphanumeric(3)
 
-    private lazy val _6060 = alphanumeric (35)
+    private lazy val _6060 = alphanumeric(35)
 
-    private lazy val _6411 = alphanumeric_? (8)
+    private lazy val _6411 = alphanumeric_?(8)
 
     lazy val qty_fields: Parser[QTY] =
-        subfields (
+        subfields(
             _6063 ~ _6060 ~ _6411 ^^
-                { case _6063 ~ _6060 ~ _6411 => QTY (_6063, _6060, _6411) }
-        ).named ("QTY")
+                { case _6063 ~ _6060 ~ _6411 => QTY(_6063, _6060, _6411) }
+        ).named("QTY")
 
     override def phrase: Parser[QTY] = qty_fields
 }

@@ -8,17 +8,17 @@ trait SQLite
     def querySQLite (databasePath: String, sqlStatement: String): CachedRowSetImpl =
     {
         // load the sqlite-JDBC driver using the current class loader
-        val _ = Class.forName ("org.sqlite.JDBC")
+        val _ = Class.forName("org.sqlite.JDBC")
         // create a database connection
-        val connection = DriverManager.getConnection (s"jdbc:sqlite:$databasePath")
+        val connection = DriverManager.getConnection(s"jdbc:sqlite:$databasePath")
 
-        val statement = connection.createStatement ()
-        val resultset = statement.executeQuery (sqlStatement)
+        val statement = connection.createStatement()
+        val resultset = statement.executeQuery(sqlStatement)
         val crs = new CachedRowSetImpl
-        crs.populate (resultset)
-        resultset.close ()
-        statement.close ()
-        connection.close ()
+        crs.populate(resultset)
+        resultset.close()
+        statement.close()
+        connection.close()
         crs
     }
 }

@@ -26,7 +26,7 @@ import ch.ninecode.util.Schema
 import ch.ninecode.testutil.Unzip
 import ch.ninecode.testutil.Using
 
-@FixMethodOrder (MethodSorters.NAME_ASCENDING)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class SimulationSuiteIT
 {
 
@@ -41,25 +41,25 @@ class SimulationSuiteIT
     def getSession: CqlSession =
     {
         val session: CqlSession = CqlSession
-            .builder ()
-            .withLocalDatacenter ("datacenter1")
-            .addContactPoint (new InetSocketAddress ("localhost", cassandra_port.toInt))
-            .build ()
+            .builder()
+            .withLocalDatacenter("datacenter1")
+            .addContactPoint(new InetSocketAddress("localhost", cassandra_port.toInt))
+            .build()
         session
     }
 
     @Test def Help ()
     {
-        Simulation.main (Array ("--unittest", "--help"))
+        Simulation.main(Array("--unittest", "--help"))
     }
 
     @Test def SimulationDemoData ()
     {
         val json = s"$FILE_DEPOT$FILENAME1.json"
-        using (new PrintWriter (new File (json), "UTF-8"))
+        using(new PrintWriter(new File(json), "UTF-8"))
         {
             writer =>
-                writer.write (
+                writer.write(
                     s"""
                        |{
                        |    "id": "Basic",
@@ -339,8 +339,8 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Simulation.main (
-            Array (
+        Simulation.main(
+            Array(
                 "--unittest",
                 "--master", "local[2]",
                 "--verbose",
@@ -348,17 +348,17 @@ class SimulationSuiteIT
                 "--host", "localhost",
                 "--port", cassandra_port,
                 json))
-        delete (json)
+        delete(json)
     }
 
     @Test def SimulationDemoDataReinforced ()
     {
         val ID_SIMULATION = "Reinforced"
         val json = s"$FILE_DEPOT$FILENAME2.json"
-        using (new PrintWriter (new File (json), "UTF-8"))
+        using(new PrintWriter(new File(json), "UTF-8"))
         {
             writer =>
-                writer.write (
+                writer.write(
                     s"""
                        |{
                        |    "id": "$ID_SIMULATION",
@@ -535,8 +535,8 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Simulation.main (
-            Array (
+        Simulation.main(
+            Array(
                 "--unittest",
                 "--master", "local[2]",
                 "--spark_options", "spark.driver.memory=2g,spark.executor.memory=2g,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.sql.catalog.casscatalog=com.datastax.spark.connector.datasource.CassandraCatalog,spark.kryo.registrator=ch.ninecode.cim.CIMRegistrator,spark.graphx.pregel.checkpointInterval=8,spark.ui.showConsoleProgress=false,spark.sql.debug.maxToStringFields=250",
@@ -547,24 +547,24 @@ class SimulationSuiteIT
                 json
             )
         )
-        using (getSession)
+        using(getSession)
         {
             cassandraSession =>
                 val sql1 = s"""select * from "$KEYSPACE".measured_value where mrid='USR0001' and type='energy' and time='2017-12-31 23:00:00.000+0000'"""
                 val sql2 = s"""select * from "$KEYSPACE".simulated_value where simulation='$ID_SIMULATION' and mrid='USR0001' and type='power' and period=900000 and time='2017-12-31 23:00:00.000+0000'"""
-                assert (cassandraSession.execute (sql1).all.asScala.headOption.fold (Double.NaN)(_.getDouble ("real_a")) * 4 ==
-                    cassandraSession.execute (sql2).all.asScala.headOption.fold (Double.NaN)(_.getDouble ("real_a")))
+                assert(cassandraSession.execute(sql1).all.asScala.headOption.fold(Double.NaN)(_.getDouble("real_a")) * 4 ==
+                    cassandraSession.execute(sql2).all.asScala.headOption.fold(Double.NaN)(_.getDouble("real_a")))
         }
-        delete (json)
+        delete(json)
     }
 
     @Test def ThreePhase ()
     {
         val json = s"$FILE_DEPOT$FILENAME1.json"
-        using (new PrintWriter (new File (json), "UTF-8"))
+        using(new PrintWriter(new File(json), "UTF-8"))
         {
             writer =>
-                writer.write (
+                writer.write(
                     s"""
                        |{
                        |    "id": "ThreePhase",
@@ -949,8 +949,8 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Simulation.main (
-            Array (
+        Simulation.main(
+            Array(
                 "--unittest",
                 "--master", "local[2]",
                 "--verbose",
@@ -962,17 +962,17 @@ class SimulationSuiteIT
                 json
             )
         )
-        delete (json)
+        delete(json)
     }
 
     @Test def VoltageFactor ()
     {
         val ID_SIMULATION = "VoltageFactor"
         val json = s"$FILE_DEPOT$FILENAME1.json"
-        using (new PrintWriter (new File (json), "UTF-8"))
+        using(new PrintWriter(new File(json), "UTF-8"))
         {
             writer =>
-                writer.write (
+                writer.write(
                     s"""
                        |{
                        |    "id": "$ID_SIMULATION",
@@ -1102,8 +1102,8 @@ class SimulationSuiteIT
                        |""".stripMargin
                 )
         }
-        Simulation.main (
-            Array (
+        Simulation.main(
+            Array(
                 "--unittest",
                 "--master", "local[2]",
                 "--verbose",
@@ -1111,21 +1111,21 @@ class SimulationSuiteIT
                 "--host", "localhost",
                 "--port", cassandra_port,
                 json))
-        using (getSession)
+        using(getSession)
         {
             cassandraSession =>
                 val sql = s"""select * from "$KEYSPACE".simulated_value where simulation='$ID_SIMULATION' and type='voltage' and period=900000 allow filtering"""
 
                 def mag (row: Row): Double =
                 {
-                    val r = row.getDouble ("real_a")
-                    val i = row.getDouble ("imag_a")
-                    Math.sqrt (r * r + i * i)
+                    val r = row.getDouble("real_a")
+                    val i = row.getDouble("imag_a")
+                    Math.sqrt(r * r + i * i)
                 }
 
-                assert (cassandraSession.execute (sql).all.asScala.forall (row => mag (row) > 403.0)) // min is 403.97855
+                assert(cassandraSession.execute(sql).all.asScala.forall(row => mag(row) > 403.0)) // min is 403.97855
         }
-        delete (json)
+        delete(json)
     }
 }
 
@@ -1136,24 +1136,24 @@ object SimulationSuiteIT extends Unzip with Using
     val FILENAME0 = "measurement_data"
     val FILENAME1 = "DemoData"
     val FILENAME2 = "DemoDataReinforced"
-    lazy val wd: String = "%s%s".format (new java.io.File (".").getCanonicalPath, System.getProperty ("file.separator"))
+    lazy val wd: String = "%s%s".format(new java.io.File(".").getCanonicalPath, System.getProperty("file.separator"))
 
     def delete (filename: String): Unit =
     {
-        val _ = new File (filename).delete
+        val _ = new File(filename).delete
     }
 
     def cassandra_port: String =
     {
         val properties: Properties =
         {
-            val in = this.getClass.getResourceAsStream ("/configuration.properties")
-            val p = new Properties ()
-            p.load (in)
-            in.close ()
+            val in = this.getClass.getResourceAsStream("/configuration.properties")
+            val p = new Properties()
+            p.load(in)
+            in.close()
             p
         }
-        val p = properties.getProperty ("nativeTransportPort", "9042")
+        val p = properties.getProperty("nativeTransportPort", "9042")
         if ("" == p)
             "9042"
         else
@@ -1162,23 +1162,23 @@ object SimulationSuiteIT extends Unzip with Using
 
     def populate_measured_data (): Unit =
     {
-        println ("creating Spark session")
+        println("creating Spark session")
 
         // create the configuration
-        val configuration = new SparkConf (false)
-            .setAppName ("SummarySuiteIT")
-            .setMaster ("local[*]")
-            .set ("spark.driver.memory", "2g")
-            .set ("spark.executor.memory", "2g")
-            .set ("spark.ui.port", "4041")
-            .set ("spark.ui.showConsoleProgress", "false")
-            .set ("spark.cassandra.connection.host", "localhost")
-            .set ("spark.cassandra.connection.port", cassandra_port)
+        val configuration = new SparkConf(false)
+            .setAppName("SummarySuiteIT")
+            .setMaster("local[*]")
+            .set("spark.driver.memory", "2g")
+            .set("spark.executor.memory", "2g")
+            .set("spark.ui.port", "4041")
+            .set("spark.ui.showConsoleProgress", "false")
+            .set("spark.cassandra.connection.host", "localhost")
+            .set("spark.cassandra.connection.port", cassandra_port)
 
-        val session = SparkSession.builder.config (configuration).getOrCreate
-        session.sparkContext.setLogLevel ("WARN")
+        val session = SparkSession.builder.config(configuration).getOrCreate
+        session.sparkContext.setLogLevel("WARN")
 
-        val measurement_options = Map [String, String](
+        val measurement_options = Map[String, String](
             "header" -> "false",
             "ignoreLeadingWhiteSpace" -> "false",
             "ignoreTrailingWhiteSpace" -> "false",
@@ -1196,35 +1196,35 @@ object SimulationSuiteIT extends Unzip with Using
             "mode" -> "DROPMALFORMED",
             "inferSchema" -> "true"
         )
-        Schema (session, "/test_simulation_schema.sql", verbose = true).make (keyspace = KEYSPACE, replication = 1)
-        println (s"reading $FILE_DEPOT$FILENAME0.csv")
-        val df = session.sqlContext.read.format ("csv").options (measurement_options).csv (s"$FILE_DEPOT$FILENAME0.csv")
-        val ok = df.rdd.map (row => (row.getString (0), "energy", row.getTimestamp (1), 900000, row.getDouble (2), 0.0, "Wh"))
-        println (s"saving to $KEYSPACE.measured_value")
-        val conf = WriteConf.fromSparkConf (session.sparkContext.getConf).copy (consistencyLevel = ConsistencyLevel.ANY)
-        ok.saveToCassandra (KEYSPACE, "measured_value", SomeColumns ("mrid", "type", "time", "period", "real_a", "imag_a", "units"), conf)
-        println ("stopping Spark session")
+        Schema(session, "/test_simulation_schema.sql", verbose = true).make(keyspace = KEYSPACE, replication = 1)
+        println(s"reading $FILE_DEPOT$FILENAME0.csv")
+        val df = session.sqlContext.read.format("csv").options(measurement_options).csv(s"$FILE_DEPOT$FILENAME0.csv")
+        val ok = df.rdd.map(row => (row.getString(0), "energy", row.getTimestamp(1), 900000, row.getDouble(2), 0.0, "Wh"))
+        println(s"saving to $KEYSPACE.measured_value")
+        val conf = WriteConf.fromSparkConf(session.sparkContext.getConf).copy(consistencyLevel = ConsistencyLevel.ANY)
+        ok.saveToCassandra(KEYSPACE, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"), conf)
+        println("stopping Spark session")
         session.stop
     }
 
     @BeforeClass def before ()
     {
         // unpack the zip files
-        if (!new File (s"$FILE_DEPOT$FILENAME0.csv").exists)
-            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME0.zip", FILE_DEPOT)
-        if (!new File (s"$FILE_DEPOT$FILENAME1.rdf").exists)
-            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME1.zip", FILE_DEPOT)
-        if (!new File (s"$FILE_DEPOT$FILENAME2.rdf").exists)
-            new Unzip ().unzip (s"$FILE_DEPOT$FILENAME2.zip", FILE_DEPOT)
-        println (s"populating $KEYSPACE.measured_value")
-        populate_measured_data ()
+        if (!new File(s"$FILE_DEPOT$FILENAME0.csv").exists)
+            new Unzip().unzip(s"$FILE_DEPOT$FILENAME0.zip", FILE_DEPOT)
+        if (!new File(s"$FILE_DEPOT$FILENAME1.rdf").exists)
+            new Unzip().unzip(s"$FILE_DEPOT$FILENAME1.zip", FILE_DEPOT)
+        if (!new File(s"$FILE_DEPOT$FILENAME2.rdf").exists)
+            new Unzip().unzip(s"$FILE_DEPOT$FILENAME2.zip", FILE_DEPOT)
+        println(s"populating $KEYSPACE.measured_value")
+        populate_measured_data()
     }
 
     @AfterClass def after ()
     {
         // erase the unpacked file
-        delete (s"$FILE_DEPOT$FILENAME0.csv")
-        delete (s"$FILE_DEPOT$FILENAME1.rdf")
-        delete (s"$FILE_DEPOT$FILENAME2.rdf")
+        delete(s"$FILE_DEPOT$FILENAME0.csv")
+        delete(s"$FILE_DEPOT$FILENAME1.rdf")
+        delete(s"$FILE_DEPOT$FILENAME2.rdf")
     }
 }

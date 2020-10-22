@@ -18,11 +18,11 @@ import ch.ninecode.util.Sparkable
  * @param target_port        Cassandra destination connection port.
  * @param target_keyspace    Cassandra destination keyspace.
  * @param target_replication Cassandra destination keyspace replication factor.
-
+ *
  */
 case class CopyOptions (
-    var main_options: MainOptions = MainOptions (),
-    var spark_options: SparkOptions = SparkOptions (),
+    var main_options: MainOptions = MainOptions(),
+    var spark_options: SparkOptions = SparkOptions(),
     source_host: String = "localhost",
     source_port: Int = 9042,
     source_keyspace: String = "cimapplication",

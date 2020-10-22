@@ -44,17 +44,17 @@ import ch.ninecode.util.Complex
  */
 final case class Transformers (
     session: SparkSession,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"),
+    storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"),
     default_supply_network_short_circuit_power_max: Double = 200.0e6,
-    default_supply_network_short_circuit_impedance_max: Complex = Complex (0.437785783, -1.202806555),
+    default_supply_network_short_circuit_impedance_max: Complex = Complex(0.437785783, -1.202806555),
     default_supply_network_short_circuit_angle_max: Double = Double.NaN,
     default_supply_network_short_circuit_power_min: Double = 100.0e6,
-    default_supply_network_short_circuit_impedance_min: Complex = Complex (0.875571570, -2.405613110),
+    default_supply_network_short_circuit_impedance_min: Complex = Complex(0.875571570, -2.405613110),
     default_supply_network_short_circuit_angle_min: Double = Double.NaN
 ) extends CIMRDD
 {
     implicit val spark: SparkSession = session
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
     /**
      * Default transformer filter predicate.
@@ -67,8 +67,8 @@ final case class Transformers (
     def transformer_filter (transformer: TransformerData): Boolean =
     {
         val power_transformer = transformer.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
-        val power_significant = transformer.ends.forall (_.ratedS > 0.0)
-        val voltage_significant = transformer.voltages.tail.exists (_._2 >= 400.0)
+        val power_significant = transformer.ends.forall(_.ratedS > 0.0)
+        val voltage_significant = transformer.voltages.tail.exists(_._2 >= 400.0)
         power_transformer && power_significant && voltage_significant
     }
 
@@ -97,7 +97,7 @@ final case class Transformers (
     {
         val magnitude = (voltage * voltage) / power
         val ang = angle * Math.PI / 180.0
-        Complex (Math.cos (ang) * magnitude, Math.sin (ang) * magnitude)
+        Complex(Math.cos(ang) * magnitude, Math.sin(ang) * magnitude)
     }
 
     /**
@@ -108,8 +108,8 @@ final case class Transformers (
      */
     def to_transformer_data (transformer: (PowerTransformer, Iterable[(PowerTransformerEnd, Terminal, (String, Double), TopologicalNode)])): TransformerData =
     {
-        val ends = transformer._2.toArray.sortWith (_._1.TransformerEnd.endNumber < _._1.TransformerEnd.endNumber)
-        TransformerData (transformer._1, ends.map (_._1), ends.map (_._2), ends.map (_._4), ends.map (_._3), None, None)
+        val ends = transformer._2.toArray.sortWith(_._1.TransformerEnd.endNumber < _._1.TransformerEnd.endNumber)
+        TransformerData(transformer._1, ends.map(_._1), ends.map(_._2), ends.map(_._4), ends.map(_._3), None, None)
     }
 
     /**
@@ -125,14 +125,14 @@ final case class Transformers (
     {
         container match
         {
-            case Some (element) =>
+            case Some(element) =>
                 element match
                 {
                     case station: Substation => station.id
                     case bay: Bay => bay.Substation
                     case level: VoltageLevel => level.Substation
                     case _ =>
-                        log.error (s"unknown container type (${element.getClass.toString}) for transformer")
+                        log.error(s"unknown container type (${element.getClass.toString}) for transformer")
                         ""
                 }
             case None => ""
@@ -153,22 +153,22 @@ final case class Transformers (
     {
         val mRID = "EquivalentInjection_" + transformer
         val description = "default equivalent generation injection"
-        val element = BasicElement (mRID = mRID)
-        val obj = IdentifiedObject (element, description = description, mRID = mRID)
-        obj.bitfields = IdentifiedObject.fieldsToBitfields ("description", "mRID")
-        val psr = PowerSystemResource (obj)
-        psr.bitfields = PowerSystemResource.fieldsToBitfields ()
+        val element = BasicElement(mRID = mRID)
+        val obj = IdentifiedObject(element, description = description, mRID = mRID)
+        obj.bitfields = IdentifiedObject.fieldsToBitfields("description", "mRID")
+        val psr = PowerSystemResource(obj)
+        psr.bitfields = PowerSystemResource.fieldsToBitfields()
         val s = station match
         {
-            case Some (s) => s.id
+            case Some(s) => s.id
             case _ => ""
         }
-        val equipment = Equipment (psr, inService = true, normallyInService = true, EquipmentContainer = s)
-        equipment.bitfields = Equipment.fieldsToBitfields ("inService", "normallyInService", "EquipmentContainer")
-        val conducting = ConductingEquipment (equipment, BaseVoltage = voltage._1)
-        conducting.bitfields = ConductingEquipment.fieldsToBitfields ("BaseVoltage")
-        val equivalent = EquivalentEquipment (conducting)
-        equivalent.bitfields = EquivalentEquipment.fieldsToBitfields ()
+        val equipment = Equipment(psr, inService = true, normallyInService = true, EquipmentContainer = s)
+        equipment.bitfields = Equipment.fieldsToBitfields("inService", "normallyInService", "EquipmentContainer")
+        val conducting = ConductingEquipment(equipment, BaseVoltage = voltage._1)
+        conducting.bitfields = ConductingEquipment.fieldsToBitfields("BaseVoltage")
+        val equivalent = EquivalentEquipment(conducting)
+        equivalent.bitfields = EquivalentEquipment.fieldsToBitfields()
 
         // if there is only one supplied angle, apply it to both max and min conditions
         val angle_max = if (default_supply_network_short_circuit_angle_max.isNaN)
@@ -184,20 +184,20 @@ final case class Transformers (
         val impedance_max = if (angle_max.isNaN)
             default_supply_network_short_circuit_impedance_max
         else
-            z (default_supply_network_short_circuit_power_max, voltage._2, angle_max)
+            z(default_supply_network_short_circuit_power_max, voltage._2, angle_max)
         val impedance_min = if (angle_min.isNaN)
             default_supply_network_short_circuit_impedance_min
         else
-            z (default_supply_network_short_circuit_power_min, voltage._2, angle_min)
+            z(default_supply_network_short_circuit_power_min, voltage._2, angle_min)
 
         // decompose sk values into P & Q
-        val maxP = default_supply_network_short_circuit_power_max * Math.cos (impedance_max.angle)
-        val maxQ = default_supply_network_short_circuit_power_max * Math.sin (impedance_max.angle)
-        val minP = default_supply_network_short_circuit_power_min * Math.cos (impedance_min.angle)
-        val minQ = default_supply_network_short_circuit_power_min * Math.sin (impedance_min.angle)
+        val maxP = default_supply_network_short_circuit_power_max * Math.cos(impedance_max.angle)
+        val maxQ = default_supply_network_short_circuit_power_max * Math.sin(impedance_max.angle)
+        val minP = default_supply_network_short_circuit_power_min * Math.cos(impedance_min.angle)
+        val minQ = default_supply_network_short_circuit_power_min * Math.sin(impedance_min.angle)
 
         // note: use RegulationStatus to indicate this is a default value, and not a real value
-        val injection = EquivalentInjection (
+        val injection = EquivalentInjection(
             equivalent,
             maxP = maxP,
             maxQ = maxQ,
@@ -214,7 +214,7 @@ final case class Transformers (
             x = impedance_max.im,
             x0 = 0.0,
             x2 = 0.0)
-        injection.bitfields = EquivalentInjection.fieldsToBitfields (
+        injection.bitfields = EquivalentInjection.fieldsToBitfields(
             "maxP",
             "maxQ",
             "minP",
@@ -247,29 +247,29 @@ final case class Transformers (
     ): RDD[TransformerData] =
     {
         // get ends and terminals
-        val ends_terminals = getOrElse [PowerTransformerEnd].keyBy (_.TransformerEnd.Terminal).join (getOrElse [Terminal].keyBy (_.id)).values
+        val ends_terminals = getOrElse[PowerTransformerEnd].keyBy(_.TransformerEnd.Terminal).join(getOrElse[Terminal].keyBy(_.id)).values
 
         // get a map of voltages
         // ToDo: fix this 1kV multiplier on the voltages
-        val voltages = getOrElse [BaseVoltage].map (v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap ()
+        val voltages = getOrElse[BaseVoltage].map(v => (v.id, v.nominalVoltage * 1000.0)).collectAsMap()
 
         // attach them to the ends
         val ends_terminals_voltages: RDD[(PowerTransformerEnd, Terminal, (String, Double))] = ends_terminals
-            .map (
+            .map(
                 x =>
                 {
                     val base_voltage = x._1.TransformerEnd.BaseVoltage
-                    val voltage = voltages.getOrElse (base_voltage, 0.0)
+                    val voltage = voltages.getOrElse(base_voltage, 0.0)
                     (x._1, x._2, (base_voltage, voltage))
                 }
             )
 
         // attach the nodes
         val ends_terminals_voltages_nodes: RDD[(PowerTransformerEnd, Terminal, (String, Double), TopologicalNode)] = ends_terminals_voltages
-            .keyBy (_._2.TopologicalNode)
-            .join (getOrElse [TopologicalNode].keyBy (_.id))
+            .keyBy(_._2.TopologicalNode)
+            .join(getOrElse[TopologicalNode].keyBy(_.id))
             .values
-            .map (
+            .map(
                 x =>
                 {
                     (x._1._1, x._1._2, x._1._3, x._2)
@@ -277,30 +277,30 @@ final case class Transformers (
             )
 
         // get the transformers of interest and join to end information (filter out transformers with less than 2 ends)
-        val ends = ends_terminals_voltages_nodes.keyBy (_._1.PowerTransformer).groupByKey.filter (_._2.size >= 2)
-        val transformers = getOrElse [PowerTransformer]
-            .keyBy (_.id).join (ends)
-            .values.map (to_transformer_data)
-            .filter (transformer_filter)
+        val ends = ends_terminals_voltages_nodes.keyBy(_._1.PowerTransformer).groupByKey.filter(_._2.size >= 2)
+        val transformers = getOrElse[PowerTransformer]
+            .keyBy(_.id).join(ends)
+            .values.map(to_transformer_data)
+            .filter(transformer_filter)
 
         // add station if any
         // ToDo: should we invent a dummy station?
-        val substations_by_id = getOrElse [Substation].filter (substation_filter).keyBy (_.id)
-        val transformers_stations = transformers.keyBy (_.transformer.ConductingEquipment.Equipment.EquipmentContainer)
-            .leftOuterJoin (getOrElse[Element].keyBy (_.id)).values
-            .map (x => (station_fn (x._2), x._1))
-            .leftOuterJoin (substations_by_id).values
-            .map (x => x._1.copy (station = x._2))
+        val substations_by_id = getOrElse[Substation].filter(substation_filter).keyBy(_.id)
+        val transformers_stations = transformers.keyBy(_.transformer.ConductingEquipment.Equipment.EquipmentContainer)
+            .leftOuterJoin(getOrElse[Element].keyBy(_.id)).values
+            .map(x => (station_fn(x._2), x._1))
+            .leftOuterJoin(substations_by_id).values
+            .map(x => x._1.copy(station = x._2))
 
         // add equivalent injection, or default
-        @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
-        val injections_by_node = getOrElse [EquivalentInjection].keyBy (_.id)
-            .join (getOrElse [Terminal].keyBy (_.ConductingEquipment)).values
-            .map (x => (x._2.TopologicalNode, x._1))
-            .groupByKey.mapValues (_.head) // ToDo: should really sum the (different) EquivalentInjection?
-        transformers_stations.keyBy (_.node0.id)
-            .leftOuterJoin (injections_by_node).values
-            .map (x => x._1.copy (shortcircuit = if (x._2.isDefined) x._2 else Some (default_injection (x._1.transformer.id, x._1.station, x._1.voltages (x._1.primary)))))
-            .persist (storage_level)
+        @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
+        val injections_by_node = getOrElse[EquivalentInjection].keyBy(_.id)
+            .join(getOrElse[Terminal].keyBy(_.ConductingEquipment)).values
+            .map(x => (x._2.TopologicalNode, x._1))
+            .groupByKey.mapValues(_.head) // ToDo: should really sum the (different) EquivalentInjection?
+        transformers_stations.keyBy(_.node0.id)
+            .leftOuterJoin(injections_by_node).values
+            .map(x => x._1.copy(shortcircuit = if (x._2.isDefined) x._2 else Some(default_injection(x._1.transformer.id, x._1.station, x._1.voltages(x._1.primary)))))
+            .persist(storage_level)
     }
 }

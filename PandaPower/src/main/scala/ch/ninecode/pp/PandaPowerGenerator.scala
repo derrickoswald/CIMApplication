@@ -36,28 +36,28 @@ class PandaPowerGenerator extends Serializable
      *
      * @return The ConnectivityNode or TopologicalNode elements to include in the export.
      */
-    def nodes: Iterable[LoadFlowNode] = List ()
+    def nodes: Iterable[LoadFlowNode] = List()
 
     /**
      * The cable edges to include in the PandaPower script.
      *
      * @return The edges to be included in the export.
      */
-    def lines: Iterable[LineEdge] = List ()
+    def lines: Iterable[LineEdge] = List()
 
     /**
      * The switch edges to include in the PandaPower script.
      *
      * @return The edges to be included in the export.
      */
-    def switches: Iterable[SwitchEdge] = List ()
+    def switches: Iterable[SwitchEdge] = List()
 
     /**
      * The transformer edges to include in the PandaPower script.
      *
      * @return The edges to be included in the export.
      */
-    def transformers: Iterable[TransformerEdge] = List ()
+    def transformers: Iterable[TransformerEdge] = List()
 
     /**
      * The ID of the SWING or slack bus nodes and their voltages.
@@ -67,7 +67,7 @@ class PandaPowerGenerator extends Serializable
      *
      * @return The id and voltage of the node or nodes that are a swing bus (or slack bus).
      */
-    def swing_nodes: Iterable[LoadFlowNode] = List ()
+    def swing_nodes: Iterable[LoadFlowNode] = List()
 
     /**
      * Additional text to add to the PandaPower script.
@@ -77,7 +77,7 @@ class PandaPowerGenerator extends Serializable
      *
      * @return Text to add to the .glm file.
      */
-    def extra: Iterable[String] = List ()
+    def extra: Iterable[String] = List()
 
     /**
      * Bus index lookup.
@@ -118,14 +118,14 @@ class PandaPowerGenerator extends Serializable
               |   return net.bus[(net.bus.name==name)].index.values[0]
               |""".stripMargin
 
-        Array (preamble, net, index)
+        Array(preamble, net, index)
     }
 
     def getTransformerConfigurations: Array[String] =
     {
         // get unique configurations
-        val configurations = transformers.map (_.configurationName).toSet
-        val templates = configurations.flatMap (configuration => transformers.find (_.configurationName == configuration))
+        val configurations = transformers.map(_.configurationName).toSet
+        val templates = configurations.flatMap(configuration => transformers.find(_.configurationName == configuration))
 
         def getShortCircuitVoltage (edge: TransformerEdge): Complex =
         {
@@ -149,8 +149,8 @@ class PandaPowerGenerator extends Serializable
                    |        "sn_mva":       ${edge.transformer.power_rating / 1000000.0},
                    |        "vn_hv_kv":     ${edge.transformer.v0 / 1000.0},
                    |        "vn_lv_kv":     ${edge.transformer.v1 / 1000.0},
-                   |        "vk_percent":   ${getShortCircuitVoltage (edge).modulus / edge.transformer.v0 * 100.0},
-                   |        "vkr_percent":  ${getShortCircuitVoltage (edge).re / edge.transformer.v0 * 100.0},
+                   |        "vk_percent":   ${getShortCircuitVoltage(edge).modulus / edge.transformer.v0 * 100.0},
+                   |        "vkr_percent":  ${getShortCircuitVoltage(edge).re / edge.transformer.v0 * 100.0},
                    |        "pfe_kw":       $getIronLosses,
                    |        "i0_percent":   $getOpenLoopLosses,
                    |        "shift_degree": $getPhaseShift
@@ -158,10 +158,10 @@ class PandaPowerGenerator extends Serializable
 
         val types =
             s"""transformertypes = {
-               |${details.mkString (",\n")}
+               |${details.mkString(",\n")}
                |}""".stripMargin
 
-        Array (
+        Array(
             types,
             s"""pp.std_types.create_std_types(net, data=transformertypes, element="trafo", overwrite=False)\n"""
         )
@@ -170,9 +170,9 @@ class PandaPowerGenerator extends Serializable
     def getLineConfigurations: Array[String] =
     {
         // get unique configurations
-        val configurations = lines.map (_.configurationName).toSet
+        val configurations = lines.map(_.configurationName).toSet
         // ToDo: find the "best" template - the one with PerLengthImpedance and WireInfo
-        val templates = configurations.flatMap (configuration => lines.find (_.configurationName == configuration))
+        val templates = configurations.flatMap(configuration => lines.find(_.configurationName == configuration))
 
         // line.data.perLengthCapacitance // ToDo: capacitance
         def getCapacitance (line: LineEdge): Double = 0.0
@@ -196,18 +196,18 @@ class PandaPowerGenerator extends Serializable
                    |    {
                    |        "r_ohm_per_km": ${z.z1.re * 1000.0},
                    |        "x_ohm_per_km": ${z.z1.im * 1000.0},
-                   |        "c_nf_per_km":  ${getCapacitance (line) * 1e-9 * 1000.0},
-                   |        "max_i_ka":     ${getCurrentRating (line) / 1000.0},
-                   |        "type":         "${getType (line)}",
-                   |        "q_mm2":        ${getCrossSectionalArea (line)},
+                   |        "c_nf_per_km":  ${getCapacitance(line) * 1e-9 * 1000.0},
+                   |        "max_i_ka":     ${getCurrentRating(line) / 1000.0},
+                   |        "type":         "${getType(line)}",
+                   |        "q_mm2":        ${getCrossSectionalArea(line)},
                    |        "alpha":        ${LineDetails.ALPHA}
                    |    }""".stripMargin
         val types =
             s"""linetypes = {
-               |${details.mkString (",\n")}
+               |${details.mkString(",\n")}
                |}""".stripMargin
 
-        Array (
+        Array(
             types,
             s"""pp.std_types.create_std_types(net, data=linetypes, element="line", overwrite=False)\n"""
         )
@@ -238,10 +238,10 @@ class PandaPowerGenerator extends Serializable
                 // s_sc_min_mva - minimal short circuit apparent power to calculate internal impedance of ext_grid
                 // rx_max - maximal R/X-ratio to calculate internal impedance of ext_grid
                 // rx_min - minimal R/X-ratio to calculate internal impedance of ext_grid
-                s""", s_sc_max_mva=${grid.pmax}, s_sc_min_mva=${grid.pmin}, rx_max=${rx (grid.zmax)}, rx_min=${rx (grid.zmin)}"""
+                s""", s_sc_max_mva=${grid.pmax}, s_sc_min_mva=${grid.pmin}, rx_max=${rx(grid.zmax)}, rx_min=${rx(grid.zmin)}"""
             case _: LoadFlowNode => ""
         }
-        s"""pp.create_ext_grid(net, bus=${busIndex (node.id)}$sc)"""
+        s"""pp.create_ext_grid(net, bus=${busIndex(node.id)}$sc)"""
     }
 
     def emitTransformer (transformer: TransformerEdge): String =
@@ -249,10 +249,10 @@ class PandaPowerGenerator extends Serializable
         val config = s"""${transformer.configurationName}"""
         val name = s"""${transformer.name}"""
         val nodes = transformer.transformer.transformers.head.nodes
-            .map (_.id)
+            .map(_.id)
             .toList
-            .map (node => busIndex (node))
-            .mkString (", ")
+            .map(node => busIndex(node))
+            .mkString(", ")
         // pandapower.create_transformer(net, hv_bus, lv_bus, std_type, name=None, tap_pos=nan, in_service=True,
         //    index=None, max_loading_percent=nan, parallel=1, df=1.0)
         // pandapower.create_transformer3w(net, hv_bus, mv_bus, lv_bus, std_type, name=None, tap_pos=nan, in_service=True,
@@ -265,11 +265,11 @@ class PandaPowerGenerator extends Serializable
     //    index=None, geodata=None, df=1.0, parallel=1, in_service=True, max_loading_percent=nan, alpha=None, temperature_degree_celsius=None)
     // ToDo: can we use alpha and temperature_degree_celsius to perform the temperature compensation?
     // ToDo: should we use parallel>1 given that it is limited to cables of the same type
-        s"""pp.create_line(net, ${busIndex (line.cn1)}, ${busIndex (line.cn2)}, ${line.length / 1000.0}, "${line.configurationName}", "${line.id}")"""
+        s"""pp.create_line(net, ${busIndex(line.cn1)}, ${busIndex(line.cn2)}, ${line.length / 1000.0}, "${line.configurationName}", "${line.id}")"""
 
     def emitSwitch (switch: SwitchEdge): String =
     // pandapower.create_switch(net, bus, element, et, closed=True, type=None, name=None, index=None, z_ohm=0)
-        s"""pp.create.switch(net, ${busIndex (switch.cn1)}, ${busIndex (switch.cn2)}, "b", ${switch.closed}, name="${switch.id}")"""
+        s"""pp.create.switch(net, ${busIndex(switch.cn1)}, ${busIndex(switch.cn2)}, "b", ${switch.closed}, name="${switch.id}")"""
 
     /**
      * Combine all the pieces into a complete network.
@@ -282,18 +282,18 @@ class PandaPowerGenerator extends Serializable
     def makeScript: String =
     {
         // create the output script
-        val allstrings = Array.concat (
+        val allstrings = Array.concat(
             prefix, // emit the prefix text
             getTransformerConfigurations, // emit the transformer configurations
             getLineConfigurations, // emit line configurations
-            nodes.map (emitNode).toArray, // emit the node strings
-            swing_nodes.map (emitGrid).toArray, // emit the swing node
-            transformers.map (emitTransformer).toArray, // emit the transformers
-            lines.map (emitLine).toArray, // emit the cables
-            switches.map (emitSwitch).toArray, // emit the switches
+            nodes.map(emitNode).toArray, // emit the node strings
+            swing_nodes.map(emitGrid).toArray, // emit the swing node
+            transformers.map(emitTransformer).toArray, // emit the transformers
+            lines.map(emitLine).toArray, // emit the cables
+            switches.map(emitSwitch).toArray, // emit the switches
             extra.toArray // emit any extra text
         )
 
-        allstrings.mkString ("\n")
+        allstrings.mkString("\n")
     }
 }

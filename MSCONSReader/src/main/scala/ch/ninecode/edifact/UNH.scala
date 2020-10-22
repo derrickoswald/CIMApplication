@@ -12,12 +12,12 @@ object UNH
                 identifier.submembers match
                 {
                     case typ :: version :: release :: agency :: code :: _ =>
-                        UNH (reference.text, typ.text, version.text, release.text, agency.text, code.text)
+                        UNH(reference.text, typ.text, version.text, release.text, agency.text, code.text)
                     case typ :: version :: release :: agency :: _ =>
-                        UNH (reference.text, typ.text, version.text, release.text, agency.text, "")
-                    case _ => UNH ("error", "in subfields", "", "", "", "")
+                        UNH(reference.text, typ.text, version.text, release.text, agency.text, "")
+                    case _ => UNH("error", "in subfields", "", "", "", "")
                 }
-            case _ => UNH ("error", "in fields", "", "", "", "")
+            case _ => UNH("error", "in fields", "", "", "", "")
         }
     }
 }

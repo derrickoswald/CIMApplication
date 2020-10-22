@@ -30,9 +30,9 @@ import ch.ninecode.net.TransformerSet
 import ch.ninecode.util.Complex
 
 class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDateFormat, trafokreis: Trafokreis, tbase: Double, tsim: Double)
-    extends GLMGenerator (one_phase, tsim, date_format, true)
+    extends GLMGenerator(one_phase, tsim, date_format, true)
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger(getClass)
 
     override def name: String = trafokreis.name
 
@@ -42,12 +42,12 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def finish_time: Calendar = trafokreis.finish_time
 
-    lazy val rootClass: String = ConductingEquipment.getClass.getName.replace ("$", "")
+    lazy val rootClass: String = ConductingEquipment.getClass.getName.replace("$", "")
 
     def classname (element: Element): String =
     {
         val clazz = element.getClass.getName
-        clazz.substring (clazz.lastIndexOf (".") + 1)
+        clazz.substring(clazz.lastIndexOf(".") + 1)
     }
 
     def baseClass (element: Element): String =
@@ -57,24 +57,24 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         while ((null != ret.sup) && (ret.sup.getClass.getName != rootClass))
             ret = ret.sup
 
-        classname (ret)
+        classname(ret)
     }
 
     def multiconductor (element: Element): Option[ACLineSegment] =
     {
         element match
         {
-            case acline: ACLineSegment => Some (acline)
+            case acline: ACLineSegment => Some(acline)
             case conductor: Conductor =>
-                Some (new ACLineSegment (conductor))
+                Some(new ACLineSegment(conductor))
             case _ =>
-                log.error (s"unexpected class in edge elements (${element.getClass})")
+                log.error(s"unexpected class in edge elements (${element.getClass})")
                 None
         }
     }
 
     case class fakeEdge (override val id: String, override val cn1: String, override val cn2: String)
-        extends LoadFlowEdge (id, cn1, cn2) with GLMEdge
+        extends LoadFlowEdge(id, cn1, cn2) with GLMEdge
 
     /**
      * Temporary measure until we figure out how to create subclasses of GMLEdge from:
@@ -95,91 +95,91 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             cls match
             {
                 case "Switch" =>
-                    GLMSwitchEdge (cn1, cn2, elements)
+                    GLMSwitchEdge(cn1, cn2, elements)
                 case "Conductor" =>
-                    val t1 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID = "terminal_1"))), TopologicalNode = cn1)
-                    t1.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
-                    val t2 = Terminal (ACDCTerminal (IdentifiedObject (BasicElement (mRID = "terminal_2"))), TopologicalNode = cn2)
-                    t2.bitfields = Terminal.fieldsToBitfields ("TopologicalNode")
-                    implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails (CIMBaseTemperature = tbase)
-                    GLMLineEdge (LineData (elements.flatMap (multiconductor).map (x => LineDetails (x, t1, t2, None, None))))
+                    val t1 = Terminal(ACDCTerminal(IdentifiedObject(BasicElement(mRID = "terminal_1"))), TopologicalNode = cn1)
+                    t1.bitfields = Terminal.fieldsToBitfields("TopologicalNode")
+                    val t2 = Terminal(ACDCTerminal(IdentifiedObject(BasicElement(mRID = "terminal_2"))), TopologicalNode = cn2)
+                    t2.bitfields = Terminal.fieldsToBitfields("TopologicalNode")
+                    implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails(CIMBaseTemperature = tbase)
+                    GLMLineEdge(LineData(elements.flatMap(multiconductor).map(x => LineDetails(x, t1, t2, None, None))))
                 // base_temperature: Double = 20.0,
                 // DEFAULT_R: Double = 0.225,
                 // DEFAULT_X: Double = 0.068
                 case "PowerTransformer" =>
-                    makeTransformerEdge (elements, cn1, cn2)
+                    makeTransformerEdge(elements, cn1, cn2)
                 case _ =>
-                    log.error (s"edge from $cn1 to $cn2 has unhandled class type '$cls'")
-                    fakeEdge (elements.map (_.id).mkString ("_"), cn1, cn2)
+                    log.error(s"edge from $cn1 to $cn2 has unhandled class type '$cls'")
+                    fakeEdge(elements.map(_.id).mkString("_"), cn1, cn2)
             }
         }
 
         // for now, we handle Conductor, Switch and eventually PowerTransformer
-        val tagged = elements.map (x => (baseClass (x), x))
+        val tagged = elements.map(x => (baseClass(x), x))
 
         // check that all elements are the same base class
-        val grouped = tagged.groupBy (_._1).mapValues (_.map (_._2)).toList
+        val grouped = tagged.groupBy(_._1).mapValues(_.map(_._2)).toList
         grouped match
         {
             case (cls, elem) :: Nil =>
-                makeEdge (cls, elem, cn1, cn2)
+                makeEdge(cls, elem, cn1, cn2)
             case (cls, elem) :: rest :: Nil =>
                 val v = (cls, elem) :: rest :: Nil
-                val types = v.map (
+                val types = v.map(
                     x =>
                     {
                         val (base, items) = x
-                        val details = items.map (element => s"${classname (element)}:${element.id}").mkString (",")
+                        val details = items.map(element => s"${classname(element)}:${element.id}").mkString(",")
                         s"$base($details)"
                     }
-                ).mkString (",")
-                log.error (s"edge from $cn1 to $cn2 has conflicting element types: $types")
-                makeEdge (cls, elem, cn1, cn2)
+                ).mkString(",")
+                log.error(s"edge from $cn1 to $cn2 has conflicting element types: $types")
+                makeEdge(cls, elem, cn1, cn2)
             case _ =>
-                fakeEdge (s"no_elements_provided_to_toGLMEdge", cn1, cn2)
+                fakeEdge(s"no_elements_provided_to_toGLMEdge", cn1, cn2)
         }
     }
 
     def makeTransformerEdge (elements: Iterable[Element], cn1: String, cn2: String): GLMTransformerEdge =
     {
-        val ids = elements.map (_.id).toArray
-        val trafo = trafokreis.subtransmission_trafos.filter (data => ids.contains (data.transformer.id))
-        GLMTransformerEdge (TransformerSet (trafo))
+        val ids = elements.map(_.id).toArray
+        val trafo = trafokreis.subtransmission_trafos.filter(data => ids.contains(data.transformer.id))
+        GLMTransformerEdge(TransformerSet(trafo))
     }
 
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
-    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy (_.key).values.map (
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
+    override def edges: Iterable[GLMEdge] = trafokreis.edges.groupBy(_.key).values.map(
         edges =>
         {
             val one = edges.head
-            toGLMEdge (edges.map (_.element), one.cn1, one.cn2, makeTransformerEdge, tbase)
+            toGLMEdge(edges.map(_.element), one.cn1, one.cn2, makeTransformerEdge, tbase)
         }
     )
 
     override def transformers: Iterable[GLMTransformerEdge] =
-        trafokreis.transformers.transformers.map (GLMTransformerEdge)
+        trafokreis.transformers.transformers.map(GLMTransformerEdge)
 
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.flatMap (edge => edge match
+        val subtransmission_trafos = edges.flatMap(edge => edge match
         {
-            case trafo: GLMTransformerEdge => Some (trafo)
+            case trafo: GLMTransformerEdge => Some(trafo)
             case _ => None
         }
         )
         val trafos = transformers ++ subtransmission_trafos
-        val configurations = trafos.groupBy (_.configurationName).values
-        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
+        val configurations = trafos.groupBy(_.configurationName).values
+        configurations.map(config => config.head.configuration(this, config.map(_.transformer.transformer_name).mkString(", ")))
     }
 
     override def swing_nodes: Iterable[GLMNode] =
-        trafokreis.transformers.transformers.map (
+        trafokreis.transformers.transformers.map(
             transformers =>
-                SwingNode (transformers.node0, transformers.v0, transformers.transformer_name)
+                SwingNode(transformers.node0, transformers.v0, transformers.transformer_name)
         )
             // distinct
-            .map (node => (node.id, node))
+            .map(node => (node.id, node))
             .toMap
             .values
 
@@ -187,25 +187,25 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
     override def extra: Iterable[String] =
     {
-        @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+        @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
         def extra_nodes: Iterable[MaxPowerFeedingNodeEEA] = trafokreis.houses
-            .filter (_.eea != null)
-            .groupBy (_.id_seq)
+            .filter(_.eea != null)
+            .groupBy(_.id_seq)
             .values
-            .map (_.head)
+            .map(_.head)
 
         def emit_extra_node (node: MaxPowerFeedingNodeEEA): String =
         {
-            emit_pv (node.eea, node)
+            emit_pv(node.eea, node)
         }
 
-        extra_nodes.map (emit_extra_node)
+        extra_nodes.map(emit_extra_node)
     }
 
     override def emit_node (node: GLMNode): String =
     {
         // or load_from_player_file (name, voltage)
-        s"${ super.emit_node (node) }${ generate_load (node) }"
+        s"${super.emit_node(node)}${generate_load(node)}"
     }
 
     /**
@@ -222,7 +222,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         val fuse_details = if (edge.fuse)
             """
               |            mean_replacement_time 3600.0;
-              |            current_limit %sA;""".format (current).stripMargin
+              |            current_limit %sA;""".format(current).stripMargin
         else
             ""
 
@@ -235,7 +235,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
           |            to "%s";
           |            status "%s";%s
           |        };
-          |""".stripMargin.format (if (edge.fuse) "fuse" else "switch", edge.id, if (generator.isSinglePhase) "AN" else "ABCN", edge.cn1, edge.cn2, status, fuse_details)
+          |""".stripMargin.format(if (edge.fuse) "fuse" else "switch", edge.id, if (generator.isSinglePhase) "AN" else "ABCN", edge.cn1, edge.cn2, status, fuse_details)
     }
 
     def generate_current_recorder (edge_id: String): String =
@@ -260,9 +260,9 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
     {
         edge match
         {
-            case cable: GLMLineEdge => s"${ super.emit_edge (cable) }${ generate_current_recorder (edge.id) }"
-            case swtch: GLMSwitchEdge => emit_switch (swtch, this)
-            case _ => super.emit_edge (edge)
+            case cable: GLMLineEdge => s"${super.emit_edge(cable)}${generate_current_recorder(edge.id)}"
+            case swtch: GLMSwitchEdge => emit_switch(swtch, this)
+            case _ => super.emit_edge(edge)
         }
     }
 
@@ -271,7 +271,7 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
         val name = transformer.transformer.transformer_name
 
         lazy val lv_windings: Array[PowerTransformerEnd] =
-            for (winding <- transformer.transformer.transformers (0).ends
+            for (winding <- transformer.transformer.transformers(0).ends
                  if winding.TransformerEnd.endNumber > 1)
                 yield winding
         lazy val multiwinding: Boolean = lv_windings.length > 1
@@ -279,20 +279,20 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
 
         val recorders = if (!multiwinding)
         {
-            addTrafoRecorders (name)
+            addTrafoRecorders(name)
         }
         else
         {
             val recs: Seq[String] = for (index <- lv_windings.indices)
                 yield
                     {
-                        val number = lv_windings (index).TransformerEnd.endNumber - 1
+                        val number = lv_windings(index).TransformerEnd.endNumber - 1
                         val newName = s"${name}_$number"
-                        addTrafoRecorders (newName)
+                        addTrafoRecorders(newName)
                     }
             recs.mkString
         }
-        s"${ super.emit_transformer (transformer)}$recorders"
+        s"${super.emit_transformer(transformer)}$recorders"
     }
 
     def addTrafoRecorders (name: String): String =
@@ -329,29 +329,29 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
     def generate_player (mrid: String): String =
     {
         if (one_phase)
-         s"""            object player
-            |            {
-            |                property "constant_power_A";
-            |                file "input_data/$mrid.csv";
-            |            };
-            |""".stripMargin
+            s"""            object player
+               |            {
+               |                property "constant_power_A";
+               |                file "input_data/$mrid.csv";
+               |            };
+               |""".stripMargin
         else
-         s"""            object player
-            |            {
-            |                property "constant_power_A";
-            |                file "input_data/${mrid}_R.csv";
-            |            };
-            |            object player
-            |            {
-            |                property "constant_power_B";
-            |                file "input_data/${mrid}_S.csv";
-            |            };
-            |            object player
-            |            {
-            |                property "constant_power_C";
-            |                file "input_data/${mrid}_T.csv";
-            |            };
-            |""".stripMargin
+            s"""            object player
+               |            {
+               |                property "constant_power_A";
+               |                file "input_data/${mrid}_R.csv";
+               |            };
+               |            object player
+               |            {
+               |                property "constant_power_B";
+               |                file "input_data/${mrid}_S.csv";
+               |            };
+               |            object player
+               |            {
+               |                property "constant_power_C";
+               |                file "input_data/${mrid}_T.csv";
+               |            };
+               |""".stripMargin
     }
 
     def generate_voltage_recorder (mrid: String, node_id: String): String =
@@ -374,9 +374,9 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
     def generate_load (node: GLMNode): String =
     {
         val phases = if (one_phase) "AN" else "ABCN"
-        trafokreis.experiments.find (_.node == node.id) match
+        trafokreis.experiments.find(_.node == node.id) match
         {
-            case Some (experiment) =>
+            case Some(experiment) =>
                 s"""|
                     |        object load
                     |        {
@@ -384,10 +384,10 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
                     |            parent "${node.id}";
                     |            phases $phases;
                     |            nominal_voltage ${node.nominal_voltage}V;
-                    |${ generate_player (experiment.house) }
+                    |${generate_player(experiment.house)}
                     |        };
                     |
-                    |${ generate_voltage_recorder (experiment.house, node.id) }
+                    |${generate_voltage_recorder(experiment.house, node.id)}
                     |""".stripMargin
             case None =>
                 ""
@@ -406,8 +406,8 @@ class EinspeiseleistungGLMGenerator (one_phase: Boolean, date_format: SimpleDate
             val ratedP = photoVoltaicUnit.connection.p * 1000 // [W]
             val ratedQ = photoVoltaicUnit.connection.q * 1000 // [var]
             val ratedS = Complex(ratedP, ratedQ) // [VA]
-            if (ratedS.modulus != photoVoltaicUnit.connection.ratedS*1000)
-                log.warn (s"Calculated different ratedS for ${photoVoltaicUnit.connection.id} (${ratedS.modulus}) and (${photoVoltaicUnit.connection.ratedS})")
+            if (ratedS.modulus != photoVoltaicUnit.connection.ratedS * 1000)
+                log.warn(s"Calculated different ratedS for ${photoVoltaicUnit.connection.id} (${ratedS.modulus}) and (${photoVoltaicUnit.connection.ratedS})")
 
             if (ratedS.modulus > 0)
             {

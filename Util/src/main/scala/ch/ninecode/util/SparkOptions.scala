@@ -14,7 +14,7 @@ import org.apache.log4j.Level
  */
 case class SparkOptions (
     master: String = "local[*]",
-    options: Map[String, String] = Map (
+    options: Map[String, String] = Map(
         "spark.graphx.pregel.checkpointInterval" -> "8",
         "spark.serializer" -> "org.apache.spark.serializer.KryoSerializer",
         "spark.kryo.registrator" -> "ch.ninecode.cim.CIMRegistrator",
@@ -23,8 +23,8 @@ case class SparkOptions (
         "spark.sql.catalog.casscatalog" -> "com.datastax.spark.connector.datasource.CassandraCatalog"
     ),
     log: Level = Level.OFF,
-    jars: Array[String] = Array (),
-    kryo: Array[Class[_]] = Array (),
+    jars: Array[String] = Array(),
+    kryo: Array[Class[_]] = Array(),
     checkpoint: String = ""
 )
 {

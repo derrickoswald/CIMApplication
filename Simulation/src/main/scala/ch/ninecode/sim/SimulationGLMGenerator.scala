@@ -25,7 +25,7 @@ case class SimulationGLMGenerator (
     cim_temperature: Double,
     simulation_temperature: Double,
     swing_voltage_factor: Double,
-    kreis: SimulationTrafoKreis) extends GLMGenerator (
+    kreis: SimulationTrafoKreis) extends GLMGenerator(
     one_phase = one_phase,
     temperature = cim_temperature,
     date_format = date_format,
@@ -44,25 +44,25 @@ case class SimulationGLMGenerator (
 
     override def edges: Iterable[SimulationEdge] = kreis.edges
 
-    override def transformers: Iterable[GLMTransformerEdge] = List (kreis.transformer_edge)
+    override def transformers: Iterable[GLMTransformerEdge] = List(kreis.transformer_edge)
 
     override def swing_nodes: Iterable[GLMNode] = kreis.swing_nodes
 
     override def nodes: Iterable[SimulationNode] = kreis.nodes
 
-    override def extra: Iterable[String] = List ("")
+    override def extra: Iterable[String] = List("")
 
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val subtransmission_trafos = edges.flatMap (edge => edge.rawedge match
+        val subtransmission_trafos = edges.flatMap(edge => edge.rawedge match
         {
-            case e: GLMTransformerEdge => Some (e)
+            case e: GLMTransformerEdge => Some(e)
             case _ => None
         })
         val trafos = transformers ++ subtransmission_trafos
-        val configurations = trafos.groupBy (_.configurationName).values
-        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
+        val configurations = trafos.groupBy(_.configurationName).values
+        configurations.map(config => config.head.configuration(this, config.map(_.transformer.transformer_name).mkString(", ")))
     }
 
     def emit_recorder (recorder: SimulationRecorder): String =
@@ -87,7 +87,7 @@ case class SimulationGLMGenerator (
     // relies on the player file being of the form: "input_data/" + player.name + ".csv"
     def phase_file (file: String, suffix: String): String =
     {
-        val base = file.substring (0, file.length - 4)
+        val base = file.substring(0, file.length - 4)
         s"$base$suffix.csv"
     }
 
@@ -99,7 +99,7 @@ case class SimulationGLMGenerator (
            |            name "$name$suffix";
            |            parent "$parent";
            |            property "$property$phase.real,$property$phase.imag";
-           |            file "${phase_file (file, suffix)}";
+           |            file "${phase_file(file, suffix)}";
            |        };
            |""".stripMargin
     }
@@ -107,10 +107,10 @@ case class SimulationGLMGenerator (
     def emit_node_player (node: SimulationNode)(player: SimulationPlayer): String =
     {
         val parent = if (player.`type` == "energy") s"${player.name}_object" else player.parent
-        val suffixes = if (one_phase) Seq (("_A", "")) else Seq (("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
+        val suffixes = if (one_phase) Seq(("_A", "")) else Seq(("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
         val players = for (suffix <- suffixes)
             yield
-                emit_player (player.name, parent, player.property, suffix._1, player.file, suffix._2)
+                emit_player(player.name, parent, player.property, suffix._1, player.file, suffix._2)
         if (player.`type` == "energy")
             s"""
                |        object load
@@ -127,10 +127,10 @@ case class SimulationGLMGenerator (
 
     def emit_edge_player (player: SimulationPlayer): String =
     {
-        val suffixes = if (one_phase) Seq (("_A", "")) else Seq (("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
+        val suffixes = if (one_phase) Seq(("_A", "")) else Seq(("_A", "_R"), ("_B", "_S"), ("_C", "_T"))
         val players = for (suffix <- suffixes)
             yield
-                emit_player (player.name, player.parent, player.property, suffix._1, player.file, suffix._2)
+                emit_player(player.name, player.parent, player.property, suffix._1, player.file, suffix._2)
         players.mkString
     }
 
@@ -139,11 +139,11 @@ case class SimulationGLMGenerator (
         edge match
         {
             case e: SimulationEdge =>
-                val recorders = e.recorders.map (emit_recorder).mkString ("")
-                val players = e.players.map (emit_edge_player).mkString ("")
-                super.emit_edge (e.rawedge) + recorders + players
+                val recorders = e.recorders.map(emit_recorder).mkString("")
+                val players = e.players.map(emit_edge_player).mkString("")
+                super.emit_edge(e.rawedge) + recorders + players
             case _ =>
-                super.emit_edge (edge) // should never happen
+                super.emit_edge(edge) // should never happen
         }
     }
 
@@ -152,11 +152,11 @@ case class SimulationGLMGenerator (
         node match
         {
             case n: SimulationNode =>
-                val recorders = n.recorders.map (emit_recorder).mkString ("")
-                val players = n.players.map (emit_node_player (n)).mkString ("")
-                super.emit_slack (node) + recorders + players
+                val recorders = n.recorders.map(emit_recorder).mkString("")
+                val players = n.players.map(emit_node_player(n)).mkString("")
+                super.emit_slack(node) + recorders + players
             case _ =>
-                super.emit_slack (node) // should never happen
+                super.emit_slack(node) // should never happen
         }
     }
 
@@ -165,19 +165,19 @@ case class SimulationGLMGenerator (
         node match
         {
             case n: SimulationNode =>
-                val recorders = n.recorders.map (emit_recorder).mkString ("")
-                val players = n.players.map (emit_node_player (n)).mkString ("")
-                super.emit_node (node) + recorders + players
+                val recorders = n.recorders.map(emit_recorder).mkString("")
+                val players = n.players.map(emit_node_player(n)).mkString("")
+                super.emit_node(node) + recorders + players
             case _ =>
-                super.emit_node (node) // should never happen
+                super.emit_node(node) // should never happen
         }
     }
 
     override def emit_transformer (transformer: GLMTransformerEdge): String =
     {
         val name = transformer.transformer.transformer_name
-        super.emit_transformer (transformer) +
-            kreis.recorders.filter (_.parent == name).map (emit_recorder).mkString
+        super.emit_transformer(transformer) +
+            kreis.recorders.filter(_.parent == name).map(emit_recorder).mkString
     }
 
     /**
@@ -187,13 +187,13 @@ case class SimulationGLMGenerator (
      * @return line edges
      */
     def rawLineEdges (edges: Iterable[GLMEdge]): Iterable[GLMLineEdge] =
-        edges.flatMap (
+        edges.flatMap(
             _ match
             {
                 case e: SimulationEdge =>
                     e.rawedge match
                     {
-                        case l: GLMLineEdge => Some (l)
+                        case l: GLMLineEdge => Some(l)
                         case _ => None
                     }
                 case _ => None
@@ -208,9 +208,9 @@ case class SimulationGLMGenerator (
      * @param edges The edges in the model.
      * @return The configuration elements as a single string.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        rawLineEdges (edges).groupBy (_.configurationName).values.map (_.head.configuration (this))
+        rawLineEdges(edges).groupBy(_.configurationName).values.map(_.head.configuration(this))
     }
 }

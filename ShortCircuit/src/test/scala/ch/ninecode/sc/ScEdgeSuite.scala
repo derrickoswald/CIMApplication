@@ -8,7 +8,7 @@ class ScEdgeSuite extends AnyFunSuite
     /**
      * See example 4.6.1 Motor Start-up in DACHCZ Technical Rules for the Assessment of Network Disturbances
      */
-    test ("ShortCircuitTrace: tracing should not continue on voltage level below 230")
+    test("ShortCircuitTrace: tracing should not continue on voltage level below 230")
     {
         val xml =
             """
@@ -23,12 +23,12 @@ class ScEdgeSuite extends AnyFunSuite
               |	</cim:PowerTransformer>
             """.stripMargin
 
-        val parser = new CHIM (xml)
-        val result = CHIM.parse (parser)
-        val transformerMock = result._1 ("ID123")
+        val parser = new CHIM(xml)
+        val result = CHIM.parse(parser)
+        val transformerMock = result._1("ID123")
 
-        val scEdgeMock = ScEdge ("ID121", 400.0, "ID123", 230.0, 2, "", transformerMock, None, Impedanzen ())
-        val scNodeMock = ScNode (id_seq = "ID123", voltage = 230.0, source_id = "", id_prev = "")
-        assert (!scEdgeMock.shouldContinueTo (scNodeMock, false), "should not continue on transformer with 230V")
+        val scEdgeMock = ScEdge("ID121", 400.0, "ID123", 230.0, 2, "", transformerMock, None, Impedanzen())
+        val scNodeMock = ScNode(id_seq = "ID123", voltage = 230.0, source_id = "", id_prev = "")
+        assert(!scEdgeMock.shouldContinueTo(scNodeMock, false), "should not continue on transformer with 230V")
     }
 }

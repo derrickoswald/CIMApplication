@@ -24,11 +24,11 @@ import ch.ninecode.util.Sparkable
  *                      each simulation is created in a subdirectory of this directory
  */
 case class LowVoltageOptions (
-    var main_options: MainOptions = MainOptions (),
-    var spark_options: SparkOptions = SparkOptions (),
-    var cim_options: CIMReaderOptions = CIMReaderOptions (
+    var main_options: MainOptions = MainOptions(),
+    var spark_options: SparkOptions = SparkOptions(),
+    var cim_options: CIMReaderOptions = CIMReaderOptions(
         topology = true,
-        topology_options = CIMTopologyOptions (identify_islands = true),
+        topology_options = CIMTopologyOptions(identify_islands = true),
         dedup = true),
     verbose: Boolean = false,
     three: Boolean = false,
@@ -41,8 +41,8 @@ case class LowVoltageOptions (
         files.toList match
         {
             case paths :: _ =>
-                val file = paths.split (",")(0).replace (" ", "%20")
-                val uri = new URI (file)
+                val file = paths.split(",")(0).replace(" ", "%20")
+                val uri = new URI(file)
                 val scheme = uri.getScheme
                 val auth = if (null == uri.getAuthority) "" else uri.getAuthority
                 if (null == scheme)
@@ -57,5 +57,5 @@ case class LowVoltageOptions (
     /**
      * Get user specified directory or generate a working directory matching the files.
      */
-    def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir (cim_options.files)
+    def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir(cim_options.files)
 }

@@ -11,14 +11,14 @@ import scala.collection.JavaConverters.propertiesAsScalaMapConverter
 
 abstract class PingPong extends RESTful
 {
-    def getEnvironment: JsonObjectBuilder = System.getenv.asScala.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2))
+    def getEnvironment: JsonObjectBuilder = System.getenv.asScala.foldLeft(Json.createObjectBuilder)((b, p) => b.add(p._1, p._2))
 
-    def getProperties: JsonObjectBuilder = System.getProperties.asScala.foldLeft (Json.createObjectBuilder)((b, p) => b.add (p._1, p._2))
+    def getProperties: JsonObjectBuilder = System.getProperties.asScala.foldLeft(Json.createObjectBuilder)((b, p) => b.add(p._1, p._2))
 
     def classLoaderFrom (element: StackTraceElement): Option[ClassLoader] =
     {
         try
-        Option (Class.forName (element.getClassName).getClassLoader)
+        Option(Class.forName(element.getClassName).getClassLoader)
         catch
         {
             case _: ClassNotFoundException =>
@@ -26,10 +26,10 @@ abstract class PingPong extends RESTful
         }
     }
 
-    @SuppressWarnings (Array ("org.wartremover.warts.Throw"))
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     def getClassLoaders: Set[ClassLoader] =
     {
-        val system = Set [ClassLoader](
+        val system = Set[ClassLoader](
             ClassLoader.getSystemClassLoader,
             Thread.currentThread.getContextClassLoader)
         val trace =
@@ -38,9 +38,9 @@ abstract class PingPong extends RESTful
             catch
             {
                 case exception: Exception =>
-                    exception.getStackTrace.flatMap (classLoaderFrom).toSet
+                    exception.getStackTrace.flatMap(classLoaderFrom).toSet
             }
-        system.union (trace)
+        system.union(trace)
     }
 
     def getClassPaths: JsonArrayBuilder =
@@ -53,7 +53,7 @@ abstract class PingPong extends RESTful
                 case url_loader: URLClassLoader =>
                     for (url <- url_loader.getURLs)
                         if ("file" == url.getProtocol)
-                            classpath.add (url.getFile)
+                            classpath.add(url.getFile)
                 case _ =>
             }
         classpath

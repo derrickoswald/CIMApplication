@@ -45,9 +45,9 @@ import ch.ninecode.net.Voltages
 case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.MEMORY_AND_DISK_SER, debug: Boolean = false) extends CIMRDD
 {
     if (debug)
-        org.apache.log4j.LogManager.getLogger (getClass).setLevel (org.apache.log4j.Level.DEBUG)
+        org.apache.log4j.LogManager.getLogger(getClass).setLevel(org.apache.log4j.Level.DEBUG)
     implicit val spark: SparkSession = session
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
     /**
      * Compute the hash code for the string to be used as a VertextId (Long).
@@ -88,17 +88,17 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     {
         element match
         {
-            case s: Switch => isExternal (s.ConductingEquipment)
-            case c: Cut => isExternal (c.Switch.ConductingEquipment)
-            case d: Disconnector => isExternal (d.Switch.ConductingEquipment)
-            case f: Fuse => isExternal (f.Switch.ConductingEquipment)
-            case g: GroundDisconnector => isExternal (g.Switch.ConductingEquipment)
-            case j: Jumper => isExternal (j.Switch.ConductingEquipment)
-            case p: ProtectedSwitch => isExternal (p.Switch.ConductingEquipment)
-            case s: Sectionaliser => isExternal (s.Switch.ConductingEquipment)
-            case b: Breaker => isExternal (b.ProtectedSwitch.Switch.ConductingEquipment)
-            case l: LoadBreakSwitch => isExternal (l.ProtectedSwitch.Switch.ConductingEquipment)
-            case r: Recloser => isExternal (r.ProtectedSwitch.Switch.ConductingEquipment)
+            case s: Switch => isExternal(s.ConductingEquipment)
+            case c: Cut => isExternal(c.Switch.ConductingEquipment)
+            case d: Disconnector => isExternal(d.Switch.ConductingEquipment)
+            case f: Fuse => isExternal(f.Switch.ConductingEquipment)
+            case g: GroundDisconnector => isExternal(g.Switch.ConductingEquipment)
+            case j: Jumper => isExternal(j.Switch.ConductingEquipment)
+            case p: ProtectedSwitch => isExternal(p.Switch.ConductingEquipment)
+            case s: Sectionaliser => isExternal(s.Switch.ConductingEquipment)
+            case b: Breaker => isExternal(b.ProtectedSwitch.Switch.ConductingEquipment)
+            case l: LoadBreakSwitch => isExternal(l.ProtectedSwitch.Switch.ConductingEquipment)
+            case r: Recloser => isExternal(r.ProtectedSwitch.Switch.ConductingEquipment)
             case _ => false
         }
     }
@@ -116,8 +116,8 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
         element match
         {
             case c: Connector =>
-                medium_voltages.contains (c.ConductingEquipment.BaseVoltage) &&
-                    psr_types.contains (c.ConductingEquipment.Equipment.PowerSystemResource.PSRType)
+                medium_voltages.contains(c.ConductingEquipment.BaseVoltage) &&
+                    psr_types.contains(c.ConductingEquipment.Equipment.PowerSystemResource.PSRType)
             case _ =>
                 false
         }
@@ -131,13 +131,13 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     def feeders: RDD[Element] =
     {
         // get the list of N5 voltages
-        val medium_voltages = Voltages (session, storage).getVoltages.filter (x => x._2 > 1000.0 && x._2 < 50000).keys.toArray
+        val medium_voltages = Voltages(session, storage).getVoltages.filter(x => x._2 > 1000.0 && x._2 < 50000).keys.toArray
 
         // get the list of N5 level feeders in substations
         // ToDo: is it faster to use RDD[Connector] and join with RDD[Element] ?
-        getOrElse[Element].filter (isFeeder (medium_voltages, Array ("PSRType_Substation")))
-            .persist (storage)
-            .setName ("Feeders")
+        getOrElse[Element].filter(isFeeder(medium_voltages, Array("PSRType_Substation")))
+            .persist(storage)
+            .setName("Feeders")
     }
 
     /**
@@ -148,9 +148,9 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def feederNodes: RDD[(String, Element)] =
     {
-        getOrElse [Terminal].map (x => (x.ConductingEquipment, x.TopologicalNode)).join (feeders.keyBy (_.id)).values // (feederid, nodeid)
-            .persist (storage)
-            .setName ("FeederNodes")
+        getOrElse[Terminal].map(x => (x.ConductingEquipment, x.TopologicalNode)).join(feeders.keyBy(_.id)).values // (feederid, nodeid)
+            .persist(storage)
+            .setName("FeederNodes")
     }
 
     /**
@@ -161,10 +161,10 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def feederIslands: RDD[(String, Element)] =
     {
-        val t = getOrElse [TopologicalNode].map (x => (x.id, x.TopologicalIsland)) // (nodeid, islandid)
-        t.join (feederNodes).values // (islandid, Feeder)
-            .persist (storage)
-            .setName ("FeederIslands")
+        val t = getOrElse[TopologicalNode].map(x => (x.id, x.TopologicalIsland)) // (nodeid, islandid)
+        t.join(feederNodes).values // (islandid, Feeder)
+            .persist(storage)
+            .setName("FeederIslands")
     }
 
     /**
@@ -183,16 +183,16 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
                 "0"
             else
             {
-                val index = description.indexOf (trigger)
+                val index = description.indexOf(trigger)
                 if (-1 == index)
                     "0"
                 else
                 {
-                    val array = description.substring (trigger.length).split (" ")
+                    val array = description.substring(trigger.length).split(" ")
                     if (0 == array.length)
                         "0"
                     else
-                        array (0)
+                        array(0)
                 }
             }
         }
@@ -202,26 +202,26 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
             val (connector, element) = x
             val description = connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.description
             val alias = connector.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.aliasName
-            val number = parseNumber (description)
+            val number = parseNumber(description)
             val header = s"$description [$alias]"
             val feeder = connector
 
             // the equipment container for a transformer could be a Bay, VoltageLevel or Station... the first two of which have a reference to their station
             element match
             {
-                case station: Substation => FeederMetadata (station.id, number, header, feeder)
-                case bay: Bay => FeederMetadata (bay.Substation, number, header, feeder)
-                case level: VoltageLevel => FeederMetadata (level.Substation, number, header, feeder)
+                case station: Substation => FeederMetadata(station.id, number, header, feeder)
+                case bay: Bay => FeederMetadata(bay.Substation, number, header, feeder)
+                case level: VoltageLevel => FeederMetadata(level.Substation, number, header, feeder)
                 case _ =>
-                    log.error (s"unknown container type for $connector")
-                    FeederMetadata (element.id, number, header, feeder)
+                    log.error(s"unknown container type for $connector")
+                    FeederMetadata(element.id, number, header, feeder)
             }
         }
 
-        val connectors = feeders.map (_.asInstanceOf [Connector])
-        connectors.keyBy (_.ConductingEquipment.Equipment.EquipmentContainer).join (getOrElse[Element].keyBy (_.id)).values.map (station_fn)
-            .persist (storage)
-            .setName ("feederStations")
+        val connectors = feeders.map(_.asInstanceOf[Connector])
+        connectors.keyBy(_.ConductingEquipment.Equipment.EquipmentContainer).join(getOrElse[Element].keyBy(_.id)).values.map(station_fn)
+            .persist(storage)
+            .setName("feederStations")
     }
 
     /**
@@ -231,15 +231,15 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def edges: RDD[Edge[EdgeData]] =
     {
-        val equipment_islands = getOrElse [Terminal].keyBy (_.TopologicalNode).join (getOrElse [TopologicalNode].keyBy (_.id)).values
-            .map (x => (x._1.ConductingEquipment, x._2.TopologicalIsland)).groupByKey // (equipmentid, [islandid])
-        val equipment = getOrElse [ConductingEquipment].keyBy (_.id).join (getOrElse[Element].keyBy (_.id)).map (x => (x._1, x._2._2)) // (equipmentid, element)
-            .join (equipment_islands).values // (Element, [islandid])
-        equipment.flatMap (
+        val equipment_islands = getOrElse[Terminal].keyBy(_.TopologicalNode).join(getOrElse[TopologicalNode].keyBy(_.id)).values
+            .map(x => (x._1.ConductingEquipment, x._2.TopologicalIsland)).groupByKey // (equipmentid, [islandid])
+        val equipment = getOrElse[ConductingEquipment].keyBy(_.id).join(getOrElse[Element].keyBy(_.id)).map(x => (x._1, x._2._2)) // (equipmentid, element)
+            .join(equipment_islands).values // (Element, [islandid])
+        equipment.flatMap(
             x =>
             {
                 val (element, islands) = x
-                if (isExternalSwitch (element))
+                if (isExternalSwitch(element))
                 {
                     islands.toList match
                     {
@@ -247,17 +247,17 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
                             for (island2 <- others if island2 != island1) // switches only on the boundary
                                 yield
                                     {
-                                        val edge = EdgeData (element.id, island1, island2)
-                                        Edge (asVertexId (edge.island1), asVertexId (edge.island2), edge)
+                                        val edge = EdgeData(element.id, island1, island2)
+                                        Edge(asVertexId(edge.island1), asVertexId(edge.island2), edge)
                                     }
                         case _ =>
-                            List ()
+                            List()
                     }
                 }
                 else
-                    List ()
+                    List()
             }
-        ).persist (storage) // Edge[EdgeData]
+        ).persist(storage) // Edge[EdgeData]
     }
 
     /**
@@ -268,14 +268,14 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
     def vertices: RDD[(VertexId, VertexData)] =
     {
         val sources = feederIslands.groupByKey
-        edges.flatMap (x => List ((x.attr.island1, x.attr.island1), (x.attr.island2, x.attr.island2))).leftOuterJoin (sources).values // (islandid, [feederid]?)
-            .map (
+        edges.flatMap(x => List((x.attr.island1, x.attr.island1), (x.attr.island2, x.attr.island2))).leftOuterJoin(sources).values // (islandid, [feederid]?)
+            .map(
                 x =>
                 {
-                    val starting_feeders = x._2.map (y => y.map (_.id).toSet).getOrElse (Set [String]())
-                    (asVertexId (x._1), VertexData (x._1, starting_feeders, starting_feeders))
+                    val starting_feeders = x._2.map(y => y.map(_.id).toSet).getOrElse(Set[String]())
+                    (asVertexId(x._1), VertexData(x._1, starting_feeders, starting_feeders))
                 }
-            ).persist (storage) // (vertexid, VertexData)
+            ).persist(storage) // (vertexid, VertexData)
     }
 
     /**
@@ -292,7 +292,7 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
      */
     def identifyFeeders: RDD[(String, String)] =
     {
-        log.info ("identifying feeders")
+        log.info("identifying feeders")
 
         def vertex_program (id: VertexId, attr: VertexData, msg: VertexData): VertexData =
         {
@@ -304,40 +304,40 @@ case class Feeder (session: SparkSession, storage: StorageLevel = StorageLevel.M
 
         def send_message (triplet: EdgeTriplet[VertexData, EdgeData]): Iterator[(VertexId, VertexData)] =
         {
-            var ret = List [(VertexId, VertexData)]()
+            var ret = List[(VertexId, VertexData)]()
             // the island on the source side can hop to the destination by closing the switch
-            if (!triplet.srcAttr.sources.subsetOf (triplet.dstAttr.feeders))
+            if (!triplet.srcAttr.sources.subsetOf(triplet.dstAttr.feeders))
             {
                 if (debug && log.isDebugEnabled)
-                    log.debug (s"${triplet.attr.id} ${triplet.srcAttr.sources.mkString (",")} ---> ${triplet.dstAttr.toString}")
+                    log.debug(s"${triplet.attr.id} ${triplet.srcAttr.sources.mkString(",")} ---> ${triplet.dstAttr.toString}")
                 val union = triplet.srcAttr.sources | triplet.dstAttr.feeders
-                ret = ret :+ ((triplet.dstId, VertexData (triplet.dstAttr.id, triplet.dstAttr.sources, union)))
+                ret = ret :+ ((triplet.dstId, VertexData(triplet.dstAttr.id, triplet.dstAttr.sources, union)))
             }
-            if (!triplet.dstAttr.sources.subsetOf (triplet.srcAttr.feeders))
+            if (!triplet.dstAttr.sources.subsetOf(triplet.srcAttr.feeders))
             {
                 if (debug && log.isDebugEnabled)
-                    log.debug (s"${triplet.attr.id} ${triplet.dstAttr.sources.mkString (",")} ---> ${triplet.srcAttr.toString}")
+                    log.debug(s"${triplet.attr.id} ${triplet.dstAttr.sources.mkString(",")} ---> ${triplet.srcAttr.toString}")
                 val union = triplet.dstAttr.sources | triplet.srcAttr.feeders
-                ret = ret :+ ((triplet.srcId, VertexData (triplet.srcAttr.id, triplet.srcAttr.sources, union)))
+                ret = ret :+ ((triplet.srcId, VertexData(triplet.srcAttr.id, triplet.srcAttr.sources, union)))
             }
             ret.toIterator
         }
 
         def merge_message (a: VertexData, b: VertexData): VertexData =
         {
-            VertexData (a.id, a.sources, a.feeders | b.feeders)
+            VertexData(a.id, a.sources, a.feeders | b.feeders)
         }
 
         // traverse the graph with the Pregel algorithm
         // assigns the minimum VertexId of all electrically identical islands
         // Note: on the first pass through the Pregel algorithm all nodes get a VertexData with no id
-        val graph: Graph[VertexData, EdgeData] = Graph (vertices, edges, VertexData (), storage, storage).cache
-        val g = graph.pregel[VertexData](VertexData (), 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message)
-            .persist (storage)
+        val graph: Graph[VertexData, EdgeData] = Graph(vertices, edges, VertexData(), storage, storage).cache
+        val g = graph.pregel[VertexData](VertexData(), 10000, EdgeDirection.Either)(vertex_program, send_message, merge_message)
+            .persist(storage)
 
         // label every node (not just the ones on the boundary switches
-        val island_feeders = g.vertices.map (x => (x._2.id, x._2.feeders)).filter (null != _._2) // (islandid, [feeders])
-        getOrElse [TopologicalNode].keyBy (_.TopologicalIsland).join (island_feeders).values
-            .flatMap (x => x._2.map (y => (x._1.id, y))) // (nodeid, feederid)
+        val island_feeders = g.vertices.map(x => (x._2.id, x._2.feeders)).filter(null != _._2) // (islandid, [feeders])
+        getOrElse[TopologicalNode].keyBy(_.TopologicalIsland).join(island_feeders).values
+            .flatMap(x => x._2.map(y => (x._1.id, y))) // (nodeid, feederid)
     }
 }

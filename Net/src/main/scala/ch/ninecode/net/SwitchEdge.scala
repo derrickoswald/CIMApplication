@@ -4,8 +4,8 @@ class SwitchEdge
 (
     data: SwitchData
 )
-    extends LoadFlowEdge (
-        data.switches.map (_.element.id).toArray.sortWith (_ < _).mkString ("_"),
+    extends LoadFlowEdge(
+        data.switches.map(_.element.id).toArray.sortWith(_ < _).mkString("_"),
         data.node0,
         data.node1
     )
@@ -13,11 +13,11 @@ class SwitchEdge
     def closed: Boolean = data.closed
 
     def ratedCurrent: Double =
-        data.switches.map (x => x.asSwitch.ratedCurrent)
-            .fold (Double.MaxValue)((a, b) => if (a < b) a else b) // instead of .min
+        data.switches.map(x => x.asSwitch.ratedCurrent)
+            .fold(Double.MaxValue)((a, b) => if (a < b) a else b) // instead of .min
 
     def fuse: Boolean =
-        data.switches.forall (_.fuse)
+        data.switches.forall(_.fuse)
 
 }
 

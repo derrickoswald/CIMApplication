@@ -19,12 +19,12 @@ case class SimulationNode
     override val id: String,
     override val nominal_voltage: Double,
     equipment: String,
-    world_position: Iterable[(Double, Double)] = Seq (),
-    schematic_position: Iterable[(Double, Double)] = Seq (),
-    players: Iterable[SimulationPlayer] = Seq (),
-    recorders: Iterable[SimulationRecorder] = Seq ()
+    world_position: Iterable[(Double, Double)] = Seq(),
+    schematic_position: Iterable[(Double, Double)] = Seq(),
+    players: Iterable[SimulationPlayer] = Seq(),
+    recorders: Iterable[SimulationRecorder] = Seq()
 )
-    extends LoadFlowNode (
+    extends LoadFlowNode(
         id,
         nominal_voltage
     )

@@ -24,8 +24,8 @@ class GLMGenerator
     temperature: Double = 60.0,
     date_format: SimpleDateFormat =
     {
-        val format = new SimpleDateFormat ("yyyy-MM-dd HH:mm:ss z")
-        format.setTimeZone (TimeZone.getTimeZone ("UTC"))
+        val format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
+        format.setTimeZone(TimeZone.getTimeZone("UTC"))
         format
     },
     emit_voltage_dump: Boolean = false,
@@ -63,7 +63,7 @@ class GLMGenerator
      *
      * @return The date and time of the simulation start with time zone.
      */
-    def start_time: Calendar = javax.xml.bind.DatatypeConverter.parseDateTime ("2017-05-08T12:00:00")
+    def start_time: Calendar = javax.xml.bind.DatatypeConverter.parseDateTime("2017-05-08T12:00:00")
 
     /**
      * Simulation clock stop time.
@@ -86,8 +86,8 @@ class GLMGenerator
      */
     def prefix: String =
     {
-        val t0 = date_format.format (start_time.getTime)
-        val t1 = date_format.format (finish_time.getTime)
+        val t0 = date_format.format(start_time.getTime)
+        val t1 = date_format.format(finish_time.getTime)
         val preamble =
             """// %s.glm
               |// %s
@@ -115,7 +115,7 @@ class GLMGenerator
               |        {
               |            complex value;
               |        };
-              |""".stripMargin.format (name, header, tzString, t0, t1)
+              |""".stripMargin.format(name, header, tzString, t0, t1)
         val voltage_dump =
             if (emit_voltage_dump)
                 """
@@ -125,7 +125,7 @@ class GLMGenerator
                   |            mode polar;
                   |            runtime "%s";
                   |        };
-                  |""".stripMargin.format (name, t0)
+                  |""".stripMargin.format(name, t0)
             else
                 ""
         val impedance_dump =
@@ -135,7 +135,7 @@ class GLMGenerator
                   |        {
                   |            filename "output_data/%s_impedancedump.xml";
                   |        };
-                  |""".stripMargin.format (name)
+                  |""".stripMargin.format(name)
             else
                 ""
         val fault_check =
@@ -146,7 +146,7 @@ class GLMGenerator
                   |            name fault_check_obj;
                   |            output_filename "output_data/%s_faultcheck.txt";
                   |        };
-                  |""".stripMargin.format (name)
+                  |""".stripMargin.format(name)
             else
                 ""
 
@@ -161,21 +161,21 @@ class GLMGenerator
      *
      * @return The edges to be included in the export.
      */
-    def edges: Iterable[GLMEdge] = List ()
+    def edges: Iterable[GLMEdge] = List()
 
     /**
      * The nodes to be included in the .glm file.
      *
      * @return The ConnectivityNode or TopologicalNode elements to include in the export.
      */
-    def nodes: Iterable[GLMNode] = List ()
+    def nodes: Iterable[GLMNode] = List()
 
     /**
      * Details about transformers used in the edges list.
      *
      * @return The TransformerSet objects to include in the export.
      */
-    def transformers: Iterable[GLMTransformerEdge] = List ()
+    def transformers: Iterable[GLMTransformerEdge] = List()
 
     /**
      * The ID of the SWING or slack bus nodes and their voltages.
@@ -185,7 +185,7 @@ class GLMGenerator
      *
      * @return The id and voltage of the node or nodes that are a swing bus (or slack bus).
      */
-    def swing_nodes: Iterable[GLMNode] = List ()
+    def swing_nodes: Iterable[GLMNode] = List()
 
     /**
      * Additional text to add to the .glm file.
@@ -195,7 +195,7 @@ class GLMGenerator
      *
      * @return Text to add to the .glm file.
      */
-    def extra: Iterable[String] = List ()
+    def extra: Iterable[String] = List()
 
     /**
      * Time zone.
@@ -207,14 +207,14 @@ class GLMGenerator
      */
     def tzString: String =
     {
-        if ((date_format.getTimeZone == TimeZone.getTimeZone ("UTC")) || (date_format.getTimeZone == TimeZone.getTimeZone ("GMT")))
+        if ((date_format.getTimeZone == TimeZone.getTimeZone("UTC")) || (date_format.getTimeZone == TimeZone.getTimeZone("GMT")))
             "UTC0UTC"
         else
         {
             val t = date_format.getCalendar
             val tz = t.getTimeZone
-            val hrs = -tz.getOffset (t.getTimeInMillis) / 60 / 60 / 1000
-            s"${tz.getDisplayName (false, TimeZone.SHORT)}$hrs${tz.getDisplayName (true, TimeZone.SHORT)}"
+            val hrs = -tz.getOffset(t.getTimeInMillis) / 60 / 60 / 1000
+            s"${tz.getDisplayName(false, TimeZone.SHORT)}$hrs${tz.getDisplayName(true, TimeZone.SHORT)}"
         }
     }
 
@@ -240,14 +240,14 @@ class GLMGenerator
      * @param edges The edges in the model.
      * @return The configuration elements as strings.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def getACLineSegmentConfigurations (edges: Iterable[GLMEdge]): Iterable[String] =
     {
-        val lines = edges.flatMap (_ match
-        { case line: GLMLineEdge => Some (line);
+        val lines = edges.flatMap(_ match
+        { case line: GLMLineEdge => Some(line);
             case _ => None
         })
-        lines.groupBy (_.configurationName).values.map (_.head.configuration (this))
+        lines.groupBy(_.configurationName).values.map(_.head.configuration(this))
     }
 
     /**
@@ -258,11 +258,11 @@ class GLMGenerator
      * @param transformers The transformers in the model.
      * @return The configuration elements as strings.
      */
-    @SuppressWarnings (Array ("org.wartremover.warts.TraversableOps"))
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
     {
-        val configurations = transformers.groupBy (_.configurationName).values
-        configurations.map (config => config.head.configuration (this, config.map (_.transformer.transformer_name).mkString (", ")))
+        val configurations = transformers.groupBy(_.configurationName).values
+        configurations.map(config => config.head.configuration(this, config.map(_.transformer.transformer_name).mkString(", ")))
     }
 
     /**
@@ -275,7 +275,7 @@ class GLMGenerator
      */
     def gather (rdd: Iterable[String]): String =
     {
-        rdd.fold ("")((x: String, y: String) => s"$x$y")
+        rdd.fold("")((x: String, y: String) => s"$x$y")
     }
 
     /**
@@ -288,7 +288,7 @@ class GLMGenerator
      */
     def emit_edge (edge: GLMEdge): String =
     {
-        edge.emit (this)
+        edge.emit(this)
     }
 
     /**
@@ -301,7 +301,7 @@ class GLMGenerator
      */
     def emit_node (node: GLMNode): String =
     {
-        node.emit (this)
+        node.emit(this)
     }
 
     /**
@@ -320,7 +320,7 @@ class GLMGenerator
                 s"            voltage_A $voltage;"
             else
             {
-                val phase_voltage = voltage / math.sqrt (3.0)
+                val phase_voltage = voltage / math.sqrt(3.0)
                 s"""            voltage_A $phase_voltage+0.0d;
                    |            voltage_B $phase_voltage-120.0d;
                    |            voltage_C $phase_voltage+120.0d;""".stripMargin
@@ -347,7 +347,7 @@ class GLMGenerator
      */
     def emit_transformer (transformer: GLMTransformerEdge): String =
     {
-        transformer.emit (this)
+        transformer.emit(this)
     }
 
     /**
@@ -361,37 +361,37 @@ class GLMGenerator
     def make_glm (): String =
     {
         // get the transformer configurations
-        val t_string = getTransformerConfigurations (transformers)
+        val t_string = getTransformerConfigurations(transformers)
 
         // get a configuration for each type of ACLineSegment
-        val l_strings = getACLineSegmentConfigurations (edges)
+        val l_strings = getACLineSegmentConfigurations(edges)
 
         // emit the swing node
-        val o_strings = swing_nodes.map (emit_slack)
+        val o_strings = swing_nodes.map(emit_slack)
 
         // get the node strings
-        val swing_ids = swing_nodes.map (_.id).toSet
-        val n_strings = nodes.filter (node => !swing_ids.contains (node.id)).map (emit_node)
+        val swing_ids = swing_nodes.map(_.id).toSet
+        val n_strings = nodes.filter(node => !swing_ids.contains(node.id)).map(emit_node)
 
         // get the transformer strings
-        val t_edges = transformers.map (emit_transformer)
+        val t_edges = transformers.map(emit_transformer)
 
         // get the edge strings
-        val l_edges = edges.map (emit_edge)
+        val l_edges = edges.map(emit_edge)
 
         // get the extra strings
         val e_strings = extra
 
         // create the output file.
-        val result = new StringBuilder ()
-            .append (prefix)
-            .append (gather (t_string))
-            .append (gather (l_strings))
-            .append (gather (o_strings))
-            .append (gather (n_strings))
-            .append (gather (t_edges))
-            .append (gather (l_edges))
-            .append (gather (e_strings))
+        val result = new StringBuilder()
+            .append(prefix)
+            .append(gather(t_string))
+            .append(gather(l_strings))
+            .append(gather(o_strings))
+            .append(gather(n_strings))
+            .append(gather(t_edges))
+            .append(gather(l_edges))
+            .append(gather(e_strings))
 
         result.toString
     }

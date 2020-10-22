@@ -24,12 +24,12 @@ import ch.ninecode.model.PowerTransformer
 case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOptions) extends CIMRDD with Serializable
 {
     implicit val spark: SparkSession = session
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
     def trace (initial: Graph[ScNode, ScEdge]): Graph[ScNode, ScEdge] =
     {
-        log.info ("tracing")
-        initial.pregel (ScMessage (), 10000, EdgeDirection.Either)(vprog, sendMessage, mergeMessage)
+        log.info("tracing")
+        initial.pregel(ScMessage(), 10000, EdgeDirection.Either)(vprog, sendMessage, mergeMessage)
     }
 
     // do the Pregel algorithm
@@ -39,10 +39,10 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
             v
         else
         {
-            val errors = ScError.combine_errors (v.errors, message.errors, options.messagemax)
+            val errors = ScError.combine_errors(v.errors, message.errors, options.messagemax)
             val z = if ((null != message.ref) && (null != message.edge)) message.ref + message.edge else v.impedance
             val branches = if (null != message.fuses) message.fuses else v.branches
-            v.copy (source_id = message.source_id, source_impedance = message.source_impedance, id_prev = message.previous_node, impedance = z, branches = branches, errors = errors)
+            v.copy(source_id = message.source_id, source_impedance = message.source_impedance, id_prev = message.previous_node, impedance = z, branches = branches, errors = errors)
         }
     }
 
@@ -51,26 +51,26 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
         if (a.previous_node != b.previous_node)
         {
             val text = s"non-radial network detected from ${a.previous_node} to ${b.previous_node}"
-            log.error (text)
-            val error = ScError (fatal = true, invalid = true, text)
-            val error1 = ScError.combine_errors (b.errors, List (error), options.messagemax)
-            val errors = ScError.combine_errors (a.errors, error1, options.messagemax)
-            a.copy (errors = errors)
+            log.error(text)
+            val error = ScError(fatal = true, invalid = true, text)
+            val error1 = ScError.combine_errors(b.errors, List(error), options.messagemax)
+            val errors = ScError.combine_errors(a.errors, error1, options.messagemax)
+            a.copy(errors = errors)
         }
         else
         {
             val parallel =
                 if ((null != a.edge) && (null != b.edge))
-                    a.edge.parallel (b.edge)
+                    a.edge.parallel(b.edge)
                 else
                     if (null != a.edge)
                         a.edge
                     else
                         b.edge
-            val warning = ScError (fatal = false, invalid = false, s"reinforcement detected from ${a.previous_node}")
-            val error1 = ScError.combine_errors (b.errors, List (warning), options.messagemax)
-            val errors = ScError.combine_errors (a.errors, error1, options.messagemax)
-            a.copy (edge = parallel, errors = errors)
+            val warning = ScError(fatal = false, invalid = false, s"reinforcement detected from ${a.previous_node}")
+            val error1 = ScError.combine_errors(b.errors, List(warning), options.messagemax)
+            val errors = ScError.combine_errors(a.errors, error1, options.messagemax)
+            a.copy(edge = parallel, errors = errors)
         }
     }
 
@@ -82,7 +82,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
         if ((src.id_prev == dst.id_seq) || (dst.id_prev == src.id_seq)) // reinforcement
             Iterator.empty
         else
-            if (!edge.shouldContinueTo (dst, options.calculate_public_lighting)) // boundary switch ?
+            if (!edge.shouldContinueTo(dst, options.calculate_public_lighting)) // boundary switch ?
                 Iterator.empty
             else
             {
@@ -91,55 +91,55 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                 {
                     case _: ACLineSegment =>
                         val diff = src.impedance - dst.impedance
-                        val expected = edge.impedanceTo ("not important")
-                        val isequal = Math.abs (!diff.impedanz_low - !expected.impedanz_low) < 1e-6 && Math.abs (!diff.null_impedanz_low - !expected.null_impedanz_low) < 1e-6
+                        val expected = edge.impedanceTo("not important")
+                        val isequal = Math.abs(!diff.impedanz_low - !expected.impedanz_low) < 1e-6 && Math.abs(!diff.null_impedanz_low - !expected.null_impedanz_low) < 1e-6
                         if (isequal)
                             Iterator.empty
                         else
                         {
-                            val error = ScError (fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
-                            log.error (error.message)
+                            val error = ScError(fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
+                            log.error(error.message)
                             if (!src.fatalErrors && !dst.fatalErrors)
                             // neither node has a fatal error yet, send a message to both to mark them with a fatal error
-                                Iterator (
-                                    (triplet.dstId, ScMessage (source_id = dst.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = src.id_seq, errors = List (error))),
-                                    (triplet.srcId, ScMessage (source_id = src.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = dst.id_seq, errors = List (error)))
+                                Iterator(
+                                    (triplet.dstId, ScMessage(source_id = dst.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = src.id_seq, errors = List(error))),
+                                    (triplet.srcId, ScMessage(source_id = src.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = dst.id_seq, errors = List(error)))
                                 )
                             else
                                 Iterator.empty
                         }
                     case _: PowerTransformer =>
                         val diff = src.impedance - dst.impedance
-                        val expected = edge.impedanceTo (dst.id_seq)
-                        val isequal = Math.abs (!diff.impedanz_low - !expected.impedanz_low) < 1e-6 && Math.abs (!diff.null_impedanz_low - !expected.null_impedanz_low) < 1e-6
+                        val expected = edge.impedanceTo(dst.id_seq)
+                        val isequal = Math.abs(!diff.impedanz_low - !expected.impedanz_low) < 1e-6 && Math.abs(!diff.null_impedanz_low - !expected.null_impedanz_low) < 1e-6
                         if (isequal)
                             Iterator.empty
                         else
                         {
-                            val error = ScError (fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
-                            log.error (error.message)
+                            val error = ScError(fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
+                            log.error(error.message)
                             if (!src.fatalErrors && !dst.fatalErrors)
                             // neither node has a fatal error yet, send a message to both to mark them with a fatal error
-                                Iterator (
-                                    (triplet.dstId, ScMessage (source_id = dst.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = src.id_seq, errors = List (error))),
-                                    (triplet.srcId, ScMessage (source_id = src.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = dst.id_seq, errors = List (error)))
+                                Iterator(
+                                    (triplet.dstId, ScMessage(source_id = dst.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = src.id_seq, errors = List(error))),
+                                    (triplet.srcId, ScMessage(source_id = src.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = dst.id_seq, errors = List(error)))
                                 )
                             else
                                 Iterator.empty
                         }
                     case _: Switch | _: Fuse =>
-                        val isequal = Math.abs (!src.impedance.impedanz_low - !dst.impedance.impedanz_low) < 1e-6 && Math.abs (!src.impedance.null_impedanz_low - !dst.impedance.null_impedanz_low) < 1e-6
+                        val isequal = Math.abs(!src.impedance.impedanz_low - !dst.impedance.impedanz_low) < 1e-6 && Math.abs(!src.impedance.null_impedanz_low - !dst.impedance.null_impedanz_low) < 1e-6
                         if (isequal)
                             Iterator.empty
                         else
                         {
-                            val error = ScError (fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
-                            log.error (error.message)
+                            val error = ScError(fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
+                            log.error(error.message)
                             if (!src.fatalErrors && !dst.fatalErrors)
                             // neither node has a fatal error yet, send a message to both to mark them with a fatal error
-                                Iterator (
-                                    (triplet.dstId, ScMessage (source_id = dst.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = src.id_seq, errors = List (error))),
-                                    (triplet.srcId, ScMessage (source_id = src.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = dst.id_seq, errors = List (error)))
+                                Iterator(
+                                    (triplet.dstId, ScMessage(source_id = dst.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = src.id_seq, errors = List(error))),
+                                    (triplet.srcId, ScMessage(source_id = src.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = dst.id_seq, errors = List(error)))
                                 )
                             else
                                 Iterator.empty
@@ -154,34 +154,34 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
     {
         val x =
             if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance != null)
-                handleMesh (triplet)
+                handleMesh(triplet)
             else
                 if (triplet.srcAttr.impedance != null && triplet.dstAttr.impedance == null)
-                    if (triplet.attr.shouldContinueTo (triplet.dstAttr, options.calculate_public_lighting))
+                    if (triplet.attr.shouldContinueTo(triplet.dstAttr, options.calculate_public_lighting))
                     {
-                        val from = triplet.attr.impedanceFrom (triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
-                        val to = triplet.attr.impedanceTo (triplet.dstAttr.id_seq)
-                        val branches = triplet.attr.fusesTo (triplet.srcAttr.branches)
-                        val errors = triplet.attr.hasIssues (triplet.srcAttr.errors, options)
-                        val message = ScMessage (triplet.srcAttr.source_id, triplet.srcAttr.source_impedance, from, to, branches, triplet.srcAttr.id_seq, errors)
+                        val from = triplet.attr.impedanceFrom(triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
+                        val to = triplet.attr.impedanceTo(triplet.dstAttr.id_seq)
+                        val branches = triplet.attr.fusesTo(triplet.srcAttr.branches)
+                        val errors = triplet.attr.hasIssues(triplet.srcAttr.errors, options)
+                        val message = ScMessage(triplet.srcAttr.source_id, triplet.srcAttr.source_impedance, from, to, branches, triplet.srcAttr.id_seq, errors)
                         if (log.isDebugEnabled)
-                            log.debug ("%s <-- %s".format (triplet.dstAttr.id_seq, message.asString))
-                        Iterator ((triplet.dstId, message))
+                            log.debug("%s <-- %s".format(triplet.dstAttr.id_seq, message.asString))
+                        Iterator((triplet.dstId, message))
                     }
                     else
                         Iterator.empty
                 else
                     if (triplet.dstAttr.impedance != null && triplet.srcAttr.impedance == null)
-                        if (triplet.attr.shouldContinueTo (triplet.srcAttr, options.calculate_public_lighting))
+                        if (triplet.attr.shouldContinueTo(triplet.srcAttr, options.calculate_public_lighting))
                         {
-                            val from = triplet.attr.impedanceFrom (triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
-                            val to = triplet.attr.impedanceTo (triplet.srcAttr.id_seq)
-                            val branches = triplet.attr.fusesTo (triplet.dstAttr.branches)
-                            val errors = triplet.attr.hasIssues (triplet.dstAttr.errors, options)
-                            val message = ScMessage (triplet.dstAttr.source_id, triplet.dstAttr.source_impedance, from, to, branches, triplet.dstAttr.id_seq, errors)
+                            val from = triplet.attr.impedanceFrom(triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
+                            val to = triplet.attr.impedanceTo(triplet.srcAttr.id_seq)
+                            val branches = triplet.attr.fusesTo(triplet.dstAttr.branches)
+                            val errors = triplet.attr.hasIssues(triplet.dstAttr.errors, options)
+                            val message = ScMessage(triplet.dstAttr.source_id, triplet.dstAttr.source_impedance, from, to, branches, triplet.dstAttr.id_seq, errors)
                             if (log.isDebugEnabled)
-                                log.debug ("%s <-- %s".format (triplet.srcAttr.id_seq, message.asString))
-                            Iterator ((triplet.srcId, message))
+                                log.debug("%s <-- %s".format(triplet.srcAttr.id_seq, message.asString))
+                            Iterator((triplet.srcId, message))
                         }
                         else
                             Iterator.empty

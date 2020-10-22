@@ -15,7 +15,7 @@ import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.jarForObject
 
-@FixMethodOrder (MethodSorters.NAME_ASCENDING)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class MetaTest
 {
 
@@ -23,41 +23,41 @@ class MetaTest
 
     def time[R] (template: String)(block: => R): R =
     {
-        val t0 = System.nanoTime ()
+        val t0 = System.nanoTime()
         val ret = block
-        val t1 = System.nanoTime ()
-        println (template.format ((t1 - t0) / 1e9))
+        val t1 = System.nanoTime()
+        println(template.format((t1 - t0) / 1e9))
         ret
     }
 
     /* @Test */ def makeModel ()
     {
         val kWh = 894.40999 * 96 * 365.25 / 1000.0
-        val format = new SimpleDateFormat ("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-        format.setTimeZone (TimeZone.getTimeZone ("UTC"))
-        val start = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
-        start.setTimeInMillis (format.parse ("2017-10-22T00:00:00.000+0000").getTime)
-        val end = Calendar.getInstance (TimeZone.getTimeZone ("GMT"))
-        end.setTimeInMillis (format.parse ("2017-10-25T00:00:00.000+0000").getTime)
+        val format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        format.setTimeZone(TimeZone.getTimeZone("UTC"))
+        val start = Calendar.getInstance(TimeZone.getTimeZone("GMT"))
+        start.setTimeInMillis(format.parse("2017-10-22T00:00:00.000+0000").getTime)
+        val end = Calendar.getInstance(TimeZone.getTimeZone("GMT"))
+        end.setTimeInMillis(format.parse("2017-10-25T00:00:00.000+0000").getTime)
 
-        time ("total execution: %s seconds")
+        time("total execution: %s seconds")
         {
-            val temp = TimeSeriesOptions ()
-            val options = TimeSeriesOptions (spark_options = temp.spark_options.copy (log = Level.INFO), keyspace = KEYSPACE, tree_depth = Array (8), model_file = "hdfs://sandbox:8020/models/myMetaModel16")
-            val model = TimeSeriesModel (session, options)
-            time ("modelling time: %s seconds")
+            val temp = TimeSeriesOptions()
+            val options = TimeSeriesOptions(spark_options = temp.spark_options.copy(log = Level.INFO), keyspace = KEYSPACE, tree_depth = Array(8), model_file = "hdfs://sandbox:8020/models/myMetaModel16")
+            val model = TimeSeriesModel(session, options)
+            time("modelling time: %s seconds")
             {
-                model.makeMetaDecisionTreeRegressorModel ()
+                model.makeMetaDecisionTreeRegressorModel()
             }
-            time ("synthesis time: %s seconds")
+            time("synthesis time: %s seconds")
             {
-                model.generateMetaTimeSeries ("HAS7165", start, end, 900000, kWh, Map [String, Int]("Apartment" -> 12, "General" -> 1))
+                model.generateMetaTimeSeries("HAS7165", start, end, 900000, kWh, Map[String, Int]("Apartment" -> 12, "General" -> 1))
             }
         }
     }
 }
 
-@SuppressWarnings (Array ("org.wartremover.warts.Null"))
+@SuppressWarnings(Array("org.wartremover.warts.Null"))
 object MetaTest
 {
     val KEYSPACE = "subsample"
@@ -65,34 +65,34 @@ object MetaTest
 
     @BeforeClass def before ()
     {
-        println ("creating Spark session")
+        println("creating Spark session")
 
         // create the configuration
-        val s1 = jarForObject (ch.ninecode.ts.TimeSeriesOptions ())
-        val s2 = jarForObject (com.datastax.spark.connector.SomeColumns ())
-        val s3 = jarForObject (com.datastax.spark.connector.TableRef ("bogus", "fake", None))
-        val s4 = jarForObject (com.datastax.oss.driver.api.core.`type`.DataTypes.ASCII)
-        val s5 = jarForObject (com.datastax.oss.driver.shaded.guava.common.collect.BoundType.OPEN)
-        val configuration = new SparkConf (false)
-            .setAppName ("MetaSuite")
-            .setMaster ("spark://sandbox:7077")
-            .set ("spark.driver.memory", "2g")
-            .set ("spark.executor.memory", "2g")
-            .set ("spark.ui.port", "4041")
-            .set ("spark.ui.showConsoleProgress", "false")
-            .set ("spark.cassandra.connection.host", "beach")
-            .set ("spark.cassandra.connection.port", "9042")
-            .set ("spark.sql.catalog.casscatalog", "com.datastax.spark.connector.datasource.CassandraCatalog")
-            .setJars (Array (s1, s2, s3, s4, s5))
+        val s1 = jarForObject(ch.ninecode.ts.TimeSeriesOptions())
+        val s2 = jarForObject(com.datastax.spark.connector.SomeColumns())
+        val s3 = jarForObject(com.datastax.spark.connector.TableRef("bogus", "fake", None))
+        val s4 = jarForObject(com.datastax.oss.driver.api.core.`type`.DataTypes.ASCII)
+        val s5 = jarForObject(com.datastax.oss.driver.shaded.guava.common.collect.BoundType.OPEN)
+        val configuration = new SparkConf(false)
+            .setAppName("MetaSuite")
+            .setMaster("spark://sandbox:7077")
+            .set("spark.driver.memory", "2g")
+            .set("spark.executor.memory", "2g")
+            .set("spark.ui.port", "4041")
+            .set("spark.ui.showConsoleProgress", "false")
+            .set("spark.cassandra.connection.host", "beach")
+            .set("spark.cassandra.connection.port", "9042")
+            .set("spark.sql.catalog.casscatalog", "com.datastax.spark.connector.datasource.CassandraCatalog")
+            .setJars(Array(s1, s2, s3, s4, s5))
 
-        session = SparkSession.builder.config (configuration).getOrCreate
-        session.sparkContext.setLogLevel ("WARN")
-        session.sparkContext.setCheckpointDir ("hdfs://sandbox:8020/checkpoint")
+        session = SparkSession.builder.config(configuration).getOrCreate
+        session.sparkContext.setLogLevel("WARN")
+        session.sparkContext.setCheckpointDir("hdfs://sandbox:8020/checkpoint")
     }
 
     @AfterClass def after ()
     {
-        println ("stopping Spark session")
+        println("stopping Spark session")
         session.stop
     }
 }

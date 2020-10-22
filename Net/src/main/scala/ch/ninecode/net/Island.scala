@@ -25,29 +25,29 @@ import ch.ninecode.net.Island.node_id
  */
 class Island (
     spark: SparkSession,
-    storage_level: StorageLevel = StorageLevel.fromString ("MEMORY_AND_DISK_SER"))
+    storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"))
     extends CIMRDD with Serializable
 {
     implicit val session: SparkSession = spark
-    implicit val log: Logger = LoggerFactory.getLogger (getClass)
+    implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
     // get the edges we understand
-    lazy val lines: RDD[LineData] = Lines (session, storage_level).getLines () // line filter
-    lazy val switches: RDD[SwitchData] = Switches (session, storage_level).getSwitches
-    lazy val transformers: RDD[TransformerSet] = Transformers (session, storage_level).getTransformers () // transformer filter, substation filter
+    lazy val lines: RDD[LineData] = Lines(session, storage_level).getLines() // line filter
+    lazy val switches: RDD[SwitchData] = Switches(session, storage_level).getSwitches
+    lazy val transformers: RDD[TransformerSet] = Transformers(session, storage_level).getTransformers() // transformer filter, substation filter
         // legacy naming: TransformerData should be TransformerDetails, TransformerSet should be TransformerData
-        .groupBy (transformer => transformer.nodes.map (_.id).mkString ("_"))
+        .groupBy(transformer => transformer.nodes.map(_.id).mkString("_"))
         .values
-        .map (trafos => TransformerSet (trafos.toArray)) // default_power_rating, default_impedance
+        .map(trafos => TransformerSet(trafos.toArray)) // default_power_rating, default_impedance
 
     // we only need the TopologicalNode that have associated edges we care about
-    lazy val line_nodes: RDD[node_id] = lines.flatMap (x => List (x.node0, x.node1))
-    lazy val switch_nodes: RDD[node_id] = switches.flatMap (x => List (x.node0, x.node1))
-    lazy val transformer_nodes: RDD[node_id] = transformers.flatMap (x => x.transformers (0).nodes.map (_.id))
+    lazy val line_nodes: RDD[node_id] = lines.flatMap(x => List(x.node0, x.node1))
+    lazy val switch_nodes: RDD[node_id] = switches.flatMap(x => List(x.node0, x.node1))
+    lazy val transformer_nodes: RDD[node_id] = transformers.flatMap(x => x.transformers(0).nodes.map(_.id))
     lazy val all_nodes: RDD[(node_id, node_id)] = session.sparkContext
-        .union (line_nodes, switch_nodes, transformer_nodes)
+        .union(line_nodes, switch_nodes, transformer_nodes)
         .distinct
-        .keyBy (identity)
+        .keyBy(identity)
 
     /**
      * The composite terminal objects.
@@ -60,41 +60,41 @@ class Island (
      */
     def terminals_plus (islands_identifiers: RDD[(island_id, identifier)]): RDD[TerminalPlus] =
     {
-        val voltages = Voltages (session).getVoltages
+        val voltages = Voltages(session).getVoltages
         islands_identifiers
-            .join (
-                getOrElse [Terminal]
-                    .keyBy (terminal => terminal.TopologicalNode)
-                    .join (getOrElse [TopologicalNode].keyBy (_.id))
+            .join(
+                getOrElse[Terminal]
+                    .keyBy(terminal => terminal.TopologicalNode)
+                    .join(getOrElse[TopologicalNode].keyBy(_.id))
                     .values
-                    .keyBy (_._1.ConductingEquipment)
-                    .join (getOrElse[Element].keyBy (_.id))
+                    .keyBy(_._1.ConductingEquipment)
+                    .join(getOrElse[Element].keyBy(_.id))
                     .values
-                    .keyBy (_._1._2.TopologicalIsland)
+                    .keyBy(_._1._2.TopologicalIsland)
             )
             .values
-            .map (
+            .map(
                 x =>
                 {
                     val (id, ((terminal, node), element)) = x
-                    TerminalPlus (id, terminal, node, voltages.getOrElse (node.BaseVoltage, 0.0), element)
+                    TerminalPlus(id, terminal, node, voltages.getOrElse(node.BaseVoltage, 0.0), element)
                 }
             )
     }
 
     // for these network nodes, find single terminal equipment if possible
     lazy val one_terminal_equipment: RDD[(String, Iterable[Terminal])] =
-        getOrElse [Terminal]
-            .groupBy (_.ConductingEquipment)
+        getOrElse[Terminal]
+            .groupBy(_.ConductingEquipment)
             .values
-            .flatMap (
+            .flatMap(
                 _.toList match
                 {
-                    case t :: Nil => Some (t) // only one terminal
+                    case t :: Nil => Some(t) // only one terminal
                     case _ => None
                 }
             )
-            .groupBy (_.TopologicalNode)
+            .groupBy(_.TopologicalNode)
 
     /**
      * Create nodes from TopologicalNode TerminalData.
@@ -103,7 +103,7 @@ class Island (
      * @return an RDD of nodes
      */
     def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
-        rdd.flatMap (parts => parts.headOption.map (x => (x.id, new LoadFlowNode (x.node.id, x.voltage))))
+        rdd.flatMap(parts => parts.headOption.map(x => (x.id, new LoadFlowNode(x.node.id, x.voltage))))
 
     /**
      * Create edges from ACLineSegment LineData.
@@ -112,7 +112,7 @@ class Island (
      * @return an RDD of edges to be used in load flow simulation
      */
     def line_maker (rdd: RDD[(LineData, (identifier, LoadFlowNode))]): RDD[(identifier, LoadFlowEdge)] =
-        rdd.map (x => (x._2._1, new LineEdge (x._1)))
+        rdd.map(x => (x._2._1, new LineEdge(x._1)))
 
     /**
      * Create edges from Switch SwitchData.
@@ -122,12 +122,12 @@ class Island (
      */
     def switch_maker (rdd: RDD[Iterable[(SwitchData, (identifier, LoadFlowNode))]]): RDD[(identifier, LoadFlowEdge)] =
     {
-        rdd.flatMap (
+        rdd.flatMap(
             x =>
             {
-                val unique_identifiers = x.map (_._2._1).toSet
-                unique_identifiers.flatMap (
-                    y => x.find (_._2._1 == y).map (switch => (switch._2._1, new SwitchEdge (switch._1)))
+                val unique_identifiers = x.map(_._2._1).toSet
+                unique_identifiers.flatMap(
+                    y => x.find(_._2._1 == y).map(switch => (switch._2._1, new SwitchEdge(switch._1)))
                 )
             }
         )
@@ -141,12 +141,12 @@ class Island (
      */
     def transformer_maker (rdd: RDD[Iterable[(TransformerSet, (identifier, LoadFlowNode))]]): RDD[(identifier, LoadFlowEdge)] =
     {
-        rdd.flatMap (
+        rdd.flatMap(
             x =>
             {
-                val unique_identifiers = x.map (_._2._1).toSet
-                unique_identifiers.flatMap (
-                    y => x.find (_._2._1 == y).map (trafo => (trafo._2._1, new TransformerEdge (trafo._1)))
+                val unique_identifiers = x.map(_._2._1).toSet
+                unique_identifiers.flatMap(
+                    y => x.find(_._2._1 == y).map(trafo => (trafo._2._1, new TransformerEdge(trafo._1)))
                 )
             }
         )
@@ -157,9 +157,9 @@ class Island (
         val (many, one_terminals) = arg
         one_terminals match
         {
-            case Some (ones) =>
-                val ids = ones.map (_.id).toList
-                many.filter (x => ids.contains (x.terminal.id))
+            case Some(ones) =>
+                val ids = ones.map(_.id).toList
+                many.filter(x => ids.contains(x.terminal.id))
             case None =>
                 many
         }
@@ -167,23 +167,23 @@ class Island (
 
     def makeNodes (net_nodes: RDD[TerminalPlus]): RDD[(identifier, LoadFlowNode)] =
     {
-        node_maker (
+        node_maker(
             net_nodes
-                .groupBy (x => x.node.id) // TopologicalNode.id
-                .leftOuterJoin (one_terminal_equipment)
+                .groupBy(x => x.node.id) // TopologicalNode.id
+                .leftOuterJoin(one_terminal_equipment)
                 .values
-                .map (keep_one)
+                .map(keep_one)
         )
-            .persist (storage_level)
+            .persist(storage_level)
     }
 
     // for cables, they are always in the same island, so it's easy
     def makeLines (keyed_nodes: RDD[(String, (identifier, LoadFlowNode))]): RDD[(identifier, LoadFlowEdge)] =
     {
-        line_maker (
+        line_maker(
             lines
-                .map (x => (x.node0, x))
-                .join (keyed_nodes)
+                .map(x => (x.node0, x))
+                .join(keyed_nodes)
                 .values
         )
     }
@@ -191,27 +191,27 @@ class Island (
     // switches may separate islands, so we possibly need to keep both
     def makeSwitches (keyed_nodes: RDD[(String, (identifier, LoadFlowNode))]): RDD[(identifier, LoadFlowEdge)] =
     {
-        switch_maker (
+        switch_maker(
             switches
-                .flatMap (x => List ((x.node0, x), (x.node1, x)))
-                .join (keyed_nodes)
+                .flatMap(x => List((x.node0, x), (x.node1, x)))
+                .join(keyed_nodes)
                 .values
-                .groupBy (x => s"${x._1.switches.map (_.element.id).mkString ("||")}${x._2._1}")
+                .groupBy(x => s"${x._1.switches.map(_.element.id).mkString("||")}${x._2._1}")
                 .values
                 // keep only switches with both terminals in this island
-                .filter (_.size > 1)
+                .filter(_.size > 1)
         )
     }
 
     // transformers definitely separate islands
     def makeTransformers (keyed_nodes: RDD[(String, (identifier, LoadFlowNode))]): RDD[(identifier, LoadFlowEdge)] =
     {
-        transformer_maker (
+        transformer_maker(
             transformers
-                .flatMap (x => x.transformers.head.nodes.map (y => (y.id, x)))
-                .join (keyed_nodes)
+                .flatMap(x => x.transformers.head.nodes.map(y => (y.id, x)))
+                .join(keyed_nodes)
                 .values
-                .groupBy (x => s"${x._1.transformer_name}${x._2._1}")
+                .groupBy(x => s"${x._1.transformer_name}${x._2._1}")
                 .values
         )
     }
@@ -219,35 +219,35 @@ class Island (
     def queryNetwork (identifiers_islands: IslandMap): (Nodes, Edges) =
     {
         // the mapping between island and identifier (transformer service area, feeder)
-        val islands_identifiers: RDD[(island_id, identifier)] = identifiers_islands.map (_.swap).distinct
+        val islands_identifiers: RDD[(island_id, identifier)] = identifiers_islands.map(_.swap).distinct
 
         // get all the Terminal with
         // - the identifier (transformer service area, feeder) it belongs to
         // - the TopologicalNode it refers to
         // - its voltage
-        val terminals: RDD[TerminalPlus] = terminals_plus (islands_identifiers)
+        val terminals: RDD[TerminalPlus] = terminals_plus(islands_identifiers)
 
         val net_nodes: RDD[TerminalPlus] =
             all_nodes
-                .join (terminals.keyBy (_.node.id))
+                .join(terminals.keyBy(_.node.id))
                 .values
                 .values
 
-        val nodes = makeNodes (net_nodes)
+        val nodes = makeNodes(net_nodes)
 
         // for each edge, we join to the nodes it connects to and keep one edge for each island it's in
         // we'll be joining to the nodes a lot
 
-        val keyed_nodes: RDD[(String, (identifier, LoadFlowNode))] = nodes.keyBy (_._2.id) // (GMLNode.id, (identifier, GMLNode))
-        val ll = makeLines (keyed_nodes)
-        val ss = makeSwitches (keyed_nodes)
-        val tt = makeTransformers (keyed_nodes)
+        val keyed_nodes: RDD[(String, (identifier, LoadFlowNode))] = nodes.keyBy(_._2.id) // (GMLNode.id, (identifier, GMLNode))
+        val ll = makeLines(keyed_nodes)
+        val ss = makeSwitches(keyed_nodes)
+        val tt = makeTransformers(keyed_nodes)
         val edges: RDD[(identifier, LoadFlowEdge)] = session.sparkContext
-            .union (
+            .union(
                 ll,
                 ss,
                 tt)
-            .persist (storage_level)
+            .persist(storage_level)
 
         (nodes, edges)
     }

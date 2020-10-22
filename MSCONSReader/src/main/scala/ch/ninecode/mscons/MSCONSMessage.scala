@@ -12,13 +12,13 @@ import ch.ninecode.edifact.Segment
 
 trait MSCONSMessage extends Parsers
 {
-    val log: Logger = LoggerFactory.getLogger (getClass)
+    val log: Logger = LoggerFactory.getLogger(getClass)
     type Elem = Segment
     override type Input = Reader[Segment]
 
     def expect[Q] (name: String, constructor: Segment => Q): Parser[Q] =
-        acceptIf (x => x.name == name)(segment => s"expected $name, got ${segment.name}") ^^
-            (x => constructor (x))
+        acceptIf(x => x.name == name)(segment => s"expected $name, got ${segment.name}") ^^
+            (x => constructor(x))
 
     /** A parser generator for a maximum specified number of repetitions.
      *
@@ -34,7 +34,7 @@ trait MSCONSMessage extends Parsers
     def repAtMostN[T] (num: Int, one: Boolean, p: => Parser[T]): Parser[List[T]] =
     {
         if (num == 0)
-            success (Nil)
+            success(Nil)
         else
             Parser
             {
@@ -44,21 +44,21 @@ trait MSCONSMessage extends Parsers
 
                     @tailrec
                     def applyp (in0: Input): ParseResult[List[T]] =
-                        p0 (in0) match
+                        p0(in0) match
                         {
-                            case Success (x, rest) =>
+                            case Success(x, rest) =>
                                 if (elems.length >= num)
-                                    Error (s"$num repetitions exceeded ${p0.toString}", in0)
+                                    Error(s"$num repetitions exceeded ${p0.toString}", in0)
                                 else
                                 {
                                     val _ = elems += x
-                                    applyp (rest)
+                                    applyp(rest)
                                 }
-                            case e@Error (_, _) => e // still have to propagate error
-                            case f@Failure (_, _) => if (one && elems.isEmpty) f else Success (elems.toList, in0)
+                            case e@Error(_, _) => e // still have to propagate error
+                            case f@Failure(_, _) => if (one && elems.isEmpty) f else Success(elems.toList, in0)
                         }
 
-                    applyp (in)
+                    applyp(in)
             }
     }
 }

@@ -52,7 +52,7 @@ case class SimulationTrafoKreis
     players: Iterable[SimulationPlayer],
     var recorders: Iterable[SimulationRecorder],
     directory: String,
-    directions: Map[String, Int] = Map (),
+    directions: Map[String, Int] = Map(),
     var hacked: Boolean = false)
 {
     val name: String = transformer.transformer_name
@@ -63,30 +63,30 @@ case class SimulationTrafoKreis
     // so to fix this we adjust recorders with property "measured_power" to measure power_in of a new switch edge
     // between the (only?) incoming edge and the node
 
-    var transformer_edge: GLMTransformerEdge = GLMTransformerEdge (transformer)
+    var transformer_edge: GLMTransformerEdge = GLMTransformerEdge(transformer)
 
     def swing_nodes: Array[GLMNode] = if ("lo" == swing)
-        nodes.filter (_.id == transformer.node1).toArray
+        nodes.filter(_.id == transformer.node1).toArray
     else
-        nodes.filter (_.id == transformer.node0).toArray
+        nodes.filter(_.id == transformer.node0).toArray
 
-    def attached (node: String): Iterable[GLMEdge] = (raw_edges ++ Seq (transformer_edge)).filter (edge => (edge.cn1 == node) || (edge.cn2 == node))
+    def attached (node: String): Iterable[GLMEdge] = (raw_edges ++ Seq(transformer_edge)).filter(edge => (edge.cn1 == node) || (edge.cn2 == node))
 
-    def voltage (node: String): Double = raw_nodes.find (_.id == node).map (_.nominal_voltage).getOrElse (0.0)
+    def voltage (node: String): Double = raw_nodes.find(_.id == node).map(_.nominal_voltage).getOrElse(0.0)
 
     def newSwitch (id: String): Switch =
     {
-        val basic = BasicElement (mRID = id)
-        val obj = IdentifiedObject (basic, mRID = id)
-        obj.bitfields = IdentifiedObject.fieldsToBitfields ("mRID")
-        val psr = PowerSystemResource (obj)
-        psr.bitfields = PowerSystemResource.fieldsToBitfields ()
-        val equipment = Equipment (psr)
-        equipment.bitfields = Equipment.fieldsToBitfields ()
-        val conducting = ConductingEquipment (equipment)
-        conducting.bitfields = ConductingEquipment.fieldsToBitfields ()
-        val s = Switch (conducting)
-        s.bitfields = Switch.fieldsToBitfields ()
+        val basic = BasicElement(mRID = id)
+        val obj = IdentifiedObject(basic, mRID = id)
+        obj.bitfields = IdentifiedObject.fieldsToBitfields("mRID")
+        val psr = PowerSystemResource(obj)
+        psr.bitfields = PowerSystemResource.fieldsToBitfields()
+        val equipment = Equipment(psr)
+        equipment.bitfields = Equipment.fieldsToBitfields()
+        val conducting = ConductingEquipment(equipment)
+        conducting.bitfields = ConductingEquipment.fieldsToBitfields()
+        val s = Switch(conducting)
+        s.bitfields = Switch.fieldsToBitfields()
         s
     }
 
@@ -94,7 +94,7 @@ case class SimulationTrafoKreis
     {
         if (terminal.TopologicalNode == original_node)
         {
-            val t = Terminal (
+            val t = Terminal(
                 terminal.ACDCTerminal,
                 phases = terminal.phases,
                 ConductingEquipment = terminal.ConductingEquipment,
@@ -111,15 +111,15 @@ case class SimulationTrafoKreis
     {
         if (node.id == original_node)
         {
-            val idobj = IdentifiedObject (
-                BasicElement (mRID = new_node),
+            val idobj = IdentifiedObject(
+                BasicElement(mRID = new_node),
                 aliasName = node.IdentifiedObject.aliasName,
                 description = node.IdentifiedObject.description,
                 mRID = new_node,
                 name = node.IdentifiedObject.name)
             idobj.bitfields = node.IdentifiedObject.bitfields.clone
-            IdentifiedObject.fieldsToBitfields ("mRID").zipWithIndex.foreach (x => idobj.bitfields (x._2) |= x._1)
-            val n = TopologicalNode (
+            IdentifiedObject.fieldsToBitfields("mRID").zipWithIndex.foreach(x => idobj.bitfields(x._2) |= x._1)
+            val n = TopologicalNode(
                 idobj,
                 BaseVoltage = node.BaseVoltage,
                 TopologicalIsland = node.TopologicalIsland)
@@ -135,24 +135,24 @@ case class SimulationTrafoKreis
         edge match
         {
             case old: SimulationEdge =>
-                old.copy (rawedge = alterEdgeNode (old.rawedge, original_node, new_node))
+                old.copy(rawedge = alterEdgeNode(old.rawedge, original_node, new_node))
             case old: GLMSwitchEdge =>
-                GLMSwitchEdge (old.data.copy (old.data.switches.map (
-                    x => x.copy (
-                        terminal1 = alterTerminal (x.terminal1, original_node, new_node),
-                        terminal2 = alterTerminal (x.terminal2, original_node, new_node)))))
+                GLMSwitchEdge(old.data.copy(old.data.switches.map(
+                    x => x.copy(
+                        terminal1 = alterTerminal(x.terminal1, original_node, new_node),
+                        terminal2 = alterTerminal(x.terminal2, original_node, new_node)))))
             case old: GLMLineEdge =>
-                GLMLineEdge (old.data.copy (old.data.lines.map (
-                    x => x.copy (
-                        terminal1 = alterTerminal (x.terminal1, original_node, new_node),
-                        terminal2 = alterTerminal (x.terminal2, original_node, new_node)))))
+                GLMLineEdge(old.data.copy(old.data.lines.map(
+                    x => x.copy(
+                        terminal1 = alterTerminal(x.terminal1, original_node, new_node),
+                        terminal2 = alterTerminal(x.terminal2, original_node, new_node)))))
             case old: GLMTransformerEdge =>
-                GLMTransformerEdge (old.transformer.copy (old.transformer.transformers.map (
-                    (x: TransformerData) => x.copy (
-                        nodes = x.nodes.map (y => alterNode (y, original_node, new_node))))))
+                GLMTransformerEdge(old.transformer.copy(old.transformer.transformers.map(
+                    (x: TransformerData) => x.copy(
+                        nodes = x.nodes.map(y => alterNode(y, original_node, new_node))))))
             case _ =>
-                val log: Logger = LoggerFactory.getLogger (getClass)
-                log.error (s"unrecognized edge type ($edge)")
+                val log: Logger = LoggerFactory.getLogger(getClass)
+                log.error(s"unrecognized edge type ($edge)")
                 edge
         }
     }
@@ -162,18 +162,18 @@ case class SimulationTrafoKreis
         now match
         {
             case None => next
-            case Some (current) => next match
+            case Some(current) => next match
             {
                 case None => now
-                case Some (v) =>
+                case Some(v) =>
                     if (current == v)
                         now
                     else
                     {
                         // we have a problem Houston
-                        val log: Logger = LoggerFactory.getLogger (getClass)
-                        log.error (s"conflicting edge directions to node ($bus)")
-                        Some (true)
+                        val log: Logger = LoggerFactory.getLogger(getClass)
+                        log.error(s"conflicting edge directions to node ($bus)")
+                        Some(true)
                     }
 
             }
@@ -190,22 +190,22 @@ case class SimulationTrafoKreis
     def minitrace_incoming (start: String, edge: GLMEdge): Option[Boolean] =
     {
         // if this edge has a direction
-        if (directions.contains (edge.id))
+        if (directions.contains(edge.id))
         {
             // use it
-            val direction = directions (edge.id) // +1 = cn1->cn2 away from trafo, -1 = cn1->cn2 towards trafo
-            Some (((edge.cn1 == start) && (-1 == direction)) || ((edge.cn2 == start) && (1 == direction)))
+            val direction = directions(edge.id) // +1 = cn1->cn2 away from trafo, -1 = cn1->cn2 towards trafo
+            Some(((edge.cn1 == start) && (-1 == direction)) || ((edge.cn2 == start) && (1 == direction)))
         }
         else
         {
             // otherwise, try edges at the other end
             val other = if (edge.cn1 == start) edge.cn2 else edge.cn1
-            val connected = attached (other).filter (_.id != edge.id) // filter out the edge we arrived on
+            val connected = attached(other).filter(_.id != edge.id) // filter out the edge we arrived on
             if (0 < connected.size)
             {
-                val votes = connected.map (e => minitrace_incoming (other, e))
+                val votes = connected.map(e => minitrace_incoming(other, e))
                 val initial: Option[Boolean] = None
-                votes.foldLeft (initial)(vote (other))
+                votes.foldLeft(initial)(vote(other))
             }
             else
                 None
@@ -215,21 +215,21 @@ case class SimulationTrafoKreis
     def incoming (power_recorders: Iterable[SimulationRecorder]): Iterable[(SimulationRecorder, GLMEdge)] =
     {
         // find the incoming edge for each measured_power node
-        power_recorders.flatMap (
+        power_recorders.flatMap(
             recorder =>
             {
-                val directed = attached (recorder.parent).map (e => (e, minitrace_incoming (recorder.parent, e)))
-                val incoming = directed.filter (_._2.fold (false)(identity)).map (_._1)
+                val directed = attached(recorder.parent).map(e => (e, minitrace_incoming(recorder.parent, e)))
+                val incoming = directed.filter(_._2.fold(false)(identity)).map(_._1)
                 incoming.toList match
                 {
                     case Nil =>
-                        val log: Logger = LoggerFactory.getLogger (getClass)
-                        log.error (s"no incoming edges to node ${recorder.parent} (${directed.map (_._1.id).mkString (" ")})")
+                        val log: Logger = LoggerFactory.getLogger(getClass)
+                        log.error(s"no incoming edges to node ${recorder.parent} (${directed.map(_._1.id).mkString(" ")})")
                         None
-                    case x :: Nil => Some ((recorder, x))
+                    case x :: Nil => Some((recorder, x))
                     case _ =>
-                        val log: Logger = LoggerFactory.getLogger (getClass)
-                        log.error (s"multiple incoming edges to node ${recorder.parent} (${directed.map (_._1.id).mkString (" ")})")
+                        val log: Logger = LoggerFactory.getLogger(getClass)
+                        log.error(s"multiple incoming edges to node ${recorder.parent} (${directed.map(_._1.id).mkString(" ")})")
                         None
                 }
             }
@@ -246,46 +246,46 @@ case class SimulationTrafoKreis
      */
     def kludge: (Iterable[GLMNode], Iterable[GLMEdge], Iterable[SimulationRecorder], GLMTransformerEdge) =
     {
-        val (power_recorders, normal_recorders) = recorders.partition (_.property == "measured_power")
-        val incoming_node_edges = incoming (power_recorders)
+        val (power_recorders, normal_recorders) = recorders.partition(_.property == "measured_power")
+        val incoming_node_edges = incoming(power_recorders)
 
         // step 1) create the new nodes
-        val new_nodes = incoming_node_edges.map (
+        val new_nodes = incoming_node_edges.map(
             x =>
-                SimulationNode (
+                SimulationNode(
                     id = s"${x._1.parent}_pseudo",
-                    nominal_voltage = voltage (x._1.parent),
+                    nominal_voltage = voltage(x._1.parent),
                     equipment = s"${x._1.parent}_pseudo_equipment"
                 )
         )
 
         // step 2) make the incoming edges use the new nodes
-        val edge_node_map = incoming_node_edges.map (x => (x._2.id, x._1.parent)).toMap
-        val modified_edges = raw_edges.map (
-            edge => edge_node_map.get (edge.id).fold (edge)(node => alterEdgeNode (edge, node, s"${node}_pseudo")))
+        val edge_node_map = incoming_node_edges.map(x => (x._2.id, x._1.parent)).toMap
+        val modified_edges = raw_edges.map(
+            edge => edge_node_map.get(edge.id).fold(edge)(node => alterEdgeNode(edge, node, s"${node}_pseudo")))
         val modified_transformer = // the transformer is not part of the edge list and needs to be handled specially
-            edge_node_map.get (transformer_edge.id).fold (transformer_edge)(
-                node => GLMTransformerEdge (transformer_edge.transformer.copy (
-                    transformer_edge.transformer.transformers.map (
-                        (x: TransformerData) => x.copy (
-                            nodes = x.nodes.map (y => alterNode (y, node, s"${node}_pseudo")))))))
+            edge_node_map.get(transformer_edge.id).fold(transformer_edge)(
+                node => GLMTransformerEdge(transformer_edge.transformer.copy(
+                    transformer_edge.transformer.transformers.map(
+                        (x: TransformerData) => x.copy(
+                            nodes = x.nodes.map(y => alterNode(y, node, s"${node}_pseudo")))))))
 
         // step 3) create the new edges from the new node to the original node
-        val new_edges = incoming_node_edges.map (
+        val new_edges = incoming_node_edges.map(
             x =>
             {
-                SimulationEdge (
-                    rawedge = GLMSwitchEdge (s"${x._1.parent}_pseudo", x._1.parent, Seq (newSwitch (s"${x._1.parent}_switch")))
+                SimulationEdge(
+                    rawedge = GLMSwitchEdge(s"${x._1.parent}_pseudo", x._1.parent, Seq(newSwitch(s"${x._1.parent}_switch")))
                 )
             }
         )
 
         // step 4) set the parent of the recorder to the new switch and alter the property to power_in
-        val new_recorders = power_recorders.map (
+        val new_recorders = power_recorders.map(
             recorder =>
             {
-                incoming_node_edges.find (_._1.name == recorder.name).fold (recorder)(
-                    x => x._1.copy (parent = s"${x._1.parent}_switch", property = "power_in"))
+                incoming_node_edges.find(_._1.name == recorder.name).fold(recorder)(
+                    x => x._1.copy(parent = s"${x._1.parent}_switch", property = "power_in"))
             }
         )
 
@@ -305,15 +305,15 @@ case class SimulationTrafoKreis
             transformer_edge = _t
             hacked = true
         }
-        (raw_nodes ++ Seq (SimulationNode (transformer_edge.cn1, transformer_edge.transformer.v0, transformer_edge.transformer.transformer_name))).map (
+        (raw_nodes ++ Seq(SimulationNode(transformer_edge.cn1, transformer_edge.transformer.v0, transformer_edge.transformer.transformer_name))).map(
             {
                 case node: SimulationNode =>
-                    val my_players = players.filter (_.parent == node.id)
+                    val my_players = players.filter(_.parent == node.id)
                     // for power recorders of nodes with players, it has to be attached to the player, not the node
                     // the query has been altered to make the parent name for these nodes have the form <mrid>_load_object
-                    val my_player_objects = my_players.map (x => s"${x.name}_object").toArray
-                    val my_recorders = recorders.filter (x => x.parent == node.id || my_player_objects.contains (x.parent))
-                    node.copy (players = my_players, recorders = my_recorders)
+                    val my_player_objects = my_players.map(x => s"${x.name}_object").toArray
+                    val my_recorders = recorders.filter(x => x.parent == node.id || my_player_objects.contains(x.parent))
+                    node.copy(players = my_players, recorders = my_recorders)
             }
         )
     }
@@ -346,13 +346,13 @@ case class SimulationTrafoKreis
                     false
             }
 
-        raw_edges.filter (notTheTransformer).map (
+        raw_edges.filter(notTheTransformer).map(
             {
                 case edge: SimulationEdge =>
                     val id = edge.id
-                    val these_recorders = recorders.filter (_.parent == id)
-                    val these_players = players.filter (_.parent == id)
-                    SimulationEdge (
+                    val these_recorders = recorders.filter(_.parent == id)
+                    val these_players = players.filter(_.parent == id)
+                    SimulationEdge(
                         edge.rawedge,
                         edge.world_position,
                         edge.schematic_position,

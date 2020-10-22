@@ -28,7 +28,7 @@ abstract class MeasurementTransform extends Serializable
      */
     def transform (data: Array[SimulationPlayerData]): Array[SimulationPlayerData] =
     {
-        data.map (
+        data.map(
             reading =>
                 reading.`type` match
                 {
@@ -36,7 +36,7 @@ abstract class MeasurementTransform extends Serializable
                     case "energy" =>
                         val factor = MILLISECONDS_PER_HOUR / reading.period
                         val t = reading.time - reading.period
-                        reading.copy (time = t, readings = reading.readings.map (_ * factor), units = "VA")
+                        reading.copy(time = t, readings = reading.readings.map(_ * factor), units = "VA")
                     case _ =>
                         reading
                 }
@@ -52,19 +52,19 @@ object MeasurementTransform
 
     def build (program: String): MeasurementTransform =
     {
-        val toolbox = scala.reflect.runtime.currentMirror.mkToolBox ()
-        val tree = toolbox.parse ("import ch.ninecode.sim._; import ch.ninecode.gl._; import ch.ninecode.net._; import ch.ninecode.util._; " + program)
-        val compiledCode = toolbox.compile (tree)
-        val code = compiledCode ()
+        val toolbox = scala.reflect.runtime.currentMirror.mkToolBox()
+        val tree = toolbox.parse("import ch.ninecode.sim._; import ch.ninecode.gl._; import ch.ninecode.net._; import ch.ninecode.util._; " + program)
+        val compiledCode = toolbox.compile(tree)
+        val code = compiledCode()
         code match
         {
             case cls: Class[_] =>
-                val constructor: Constructor[_] = cls.getConstructor ()
-                constructor.newInstance () match
+                val constructor: Constructor[_] = cls.getConstructor()
+                constructor.newInstance() match
                 {
                     case m: MeasurementTransform => m
                     case _ =>
-                        LoggerFactory.getLogger (getClass).error (s"supplied code cannot be constructed as MeasurementTransform ($program)")
+                        LoggerFactory.getLogger(getClass).error(s"supplied code cannot be constructed as MeasurementTransform ($program)")
                         identity
                 }
             case inst: MeasurementTransform =>
@@ -78,12 +78,12 @@ object MeasurementTransform
             identity
         else
         {
-            if (cache.contains (program))
-                cache (program)
+            if (cache.contains(program))
+                cache(program)
             else
             {
-                val transform = build (program)
-                val _ = cache.put (program, transform)
+                val transform = build(program)
+                val _ = cache.put(program, transform)
                 transform
             }
         }

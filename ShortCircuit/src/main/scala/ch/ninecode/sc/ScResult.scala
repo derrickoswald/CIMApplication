@@ -77,7 +77,7 @@ case class ScResult
 )
 {
     def csv (options: ShortCircuitOptions): String =
-        s"$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString (",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm;$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;${fuseMax (options)};${fuseOK (options)}"
+        s"$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString(",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm;$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;${fuseMax(options)};${fuseOK(options)}"
 
     def fuseString: String =
     {
@@ -86,7 +86,7 @@ case class ScResult
         else
             branches.justFuses match
             {
-                case Some (branch) => branch.asFuse
+                case Some(branch) => branch.asFuse
                 case None => ""
             }
         s
@@ -99,7 +99,7 @@ case class ScResult
         else
             branches.justFuses match
             {
-                case Some (branch) => branch.lastFuses.map (_.asFuse).mkString (",")
+                case Some(branch) => branch.lastFuses.map(_.asFuse).mkString(",")
                 case None => ""
             }
         s
@@ -112,7 +112,7 @@ case class ScResult
         else
             branches.justFuses match
             {
-                case Some (branch) => branch.lastFuses.map (_.asId).mkString (",")
+                case Some(branch) => branch.lastFuses.map(_.asId).mkString(",")
                 case None => ""
             }
         s
@@ -125,7 +125,7 @@ case class ScResult
         else
             branches.justFuses match
             {
-                case Some (branch) => branch.ratios.map (x => x._1 * high_ik).map (_.toString).mkString (",")
+                case Some(branch) => branch.ratios.map(x => x._1 * high_ik).map(_.toString).mkString(",")
                 case None => ""
             }
     }
@@ -143,9 +143,9 @@ case class ScResult
     def fuses (ik: Double, options: ShortCircuitOptions, branches: Branch): String =
     {
         if (ik.isNaN || (null == branches))
-            options.fuse_table.fuse (Double.NaN, std (branches)).toInt.toString
+            options.fuse_table.fuse(Double.NaN, std(branches)).toInt.toString
         else
-            branches.ratios.map (x => (x._1 * Math.abs (ik), x._2)).map (x => options.fuse_table.fuse (x._1, std (x._2)).toInt).mkString (",")
+            branches.ratios.map(x => (x._1 * Math.abs(ik), x._2)).map(x => options.fuse_table.fuse(x._1, std(x._2)).toInt).mkString(",")
     }
 
     def fuseMax (options: ShortCircuitOptions): String =
@@ -155,7 +155,7 @@ case class ScResult
         else
             branches.justFuses match
             {
-                case Some (branch) => fuses (high_ik, options, branch)
+                case Some(branch) => fuses(high_ik, options, branch)
                 case None => ""
             }
     }
@@ -168,10 +168,10 @@ case class ScResult
         {
             val missing = branches match
             {
-                case sim: SimpleBranch => sim.rating.getOrElse (Double.MinValue) <= 0.0
-                case ser: SeriesBranch => ser.lastFuses.exists (lastFuseHasMissingValues)
-                case par: ParallelBranch => par.parallel.exists (lastFuseHasMissingValues)
-                case com: ComplexBranch => com.basket.exists (lastFuseHasMissingValues)
+                case sim: SimpleBranch => sim.rating.getOrElse(Double.MinValue) <= 0.0
+                case ser: SeriesBranch => ser.lastFuses.exists(lastFuseHasMissingValues)
+                case par: ParallelBranch => par.parallel.exists(lastFuseHasMissingValues)
+                case com: ComplexBranch => com.basket.exists(lastFuseHasMissingValues)
             }
             missing
         }
@@ -181,14 +181,14 @@ case class ScResult
     {
         branches.justFuses match
         {
-            case Some (branch) => lastFuseHasMissingValues (branch)
+            case Some(branch) => lastFuseHasMissingValues(branch)
             case None => true
         }
     }
 
     def calculate_ik (voltage: Double, cmin: Double, impedanz: Complex, null_impedanz: Complex): Double =
     {
-        val root3 = Math.sqrt (3.0)
+        val root3 = Math.sqrt(3.0)
 
         // Einpoligen Kurzschlussstrom berechnen
         val ik_z = root3 * cmin * voltage
@@ -209,20 +209,20 @@ case class ScResult
             false
         else
         {
-            var network: Option[Branch] = Some (branches)
+            var network: Option[Branch] = Some(branches)
             var changed = false
             // recompute the impedance of the trafo and the EquivalentInjection together
-            val high_z = Impedanzen (Complex (low_r, low_x), Complex (low_r0, low_x0), Complex (high_r, high_x), Complex (high_r0, high_x0))
-            val supply_z = high_z - branches.z (Impedanzen ())
+            val high_z = Impedanzen(Complex(low_r, low_x), Complex(low_r0, low_x0), Complex(high_r, high_x), Complex(high_r0, high_x0))
+            val supply_z = high_z - branches.z(Impedanzen())
             do
             {
                 network match
                 {
-                    case Some (n) =>
-                        val z = n.z (supply_z)
+                    case Some(n) =>
+                        val z = n.z(supply_z)
                         // first time through this should be high_ik
-                        val ik = calculate_ik (voltage, options.cmin, z.impedanz_high, z.null_impedanz_high)
-                        val (blows, newnet) = n.checkFuses (ik, options)
+                        val ik = calculate_ik(voltage, options.cmin, z.impedanz_high, z.null_impedanz_high)
+                        val (blows, newnet) = n.checkFuses(ik, options)
                         changed = blows
                         network = newnet
                     case None =>
@@ -235,7 +235,7 @@ case class ScResult
 
     def toPseudo: PseudoScResult =
     {
-        PseudoScResult (
+        PseudoScResult(
             node,
             equipment,
             terminal: Int,
@@ -269,7 +269,7 @@ case class ScResult
             if (null != branches)
                 branches.justFuses match
                 {
-                    case Some (branch) => branch.asString
+                    case Some(branch) => branch.asString
                     case None => ""
                 }
             else
