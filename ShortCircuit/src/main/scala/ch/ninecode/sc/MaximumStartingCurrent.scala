@@ -1,11 +1,11 @@
 package ch.ninecode.sc
 
+import scala.math.Pi
 import scala.math.abs
 import scala.math.acos
 import scala.math.cos
 import scala.math.min
 import scala.math.sqrt
-import scala.math.Pi
 
 import ch.ninecode.util.Complex
 

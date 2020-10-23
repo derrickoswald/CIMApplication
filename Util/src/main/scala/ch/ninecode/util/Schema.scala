@@ -138,17 +138,17 @@ final case class Schema (session: SparkSession, resource: String, verbose: Boole
                                 catch
                                 {
                                     case exception: Exception =>
-                                        log.error(s"""failed to create schema in Cassandra keyspace $keyspace""", exception)
+                                        log.error(s"failed to create schema in Cassandra keyspace $keyspace", exception)
                                         false
                                 }
                             }
                         )
                     case None =>
-                        log.error(s"""invalid keyspace name (max 48 alphanumeric or underscore): $keyspace""")
+                        log.error(s"invalid keyspace name (max 48 alphanumeric or underscore): $keyspace")
                         false
                 }
             case None =>
-                log.error(s"""failed to get schema sql resource: $resource""")
+                log.error(s"failed to get schema sql resource: $resource")
                 false
         }
     }

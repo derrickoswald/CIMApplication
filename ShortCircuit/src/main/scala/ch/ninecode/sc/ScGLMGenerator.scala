@@ -5,10 +5,10 @@ import java.util.Calendar
 
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
-import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GLMLineEdge
-import ch.ninecode.gl.SwingNode
+import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GLMTransformerEdge
+import ch.ninecode.gl.SwingNode
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.BasicElement
 import ch.ninecode.model.ConductingEquipment

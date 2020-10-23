@@ -11,8 +11,8 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.model.Fuse
-import ch.ninecode.model.Switch
 import ch.ninecode.model.PowerTransformer
+import ch.ninecode.model.Switch
 
 /**
  * Short circuit calculation tracing.

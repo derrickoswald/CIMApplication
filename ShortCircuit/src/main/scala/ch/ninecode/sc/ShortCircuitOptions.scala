@@ -53,6 +53,7 @@ case class ShortCircuitOptions
             identify_islands = true,
             force_retain_fuses = ForceTrue)),
     verbose: Boolean = true,
+    id: String = "",
     description: String = "",
     default_short_circuit_power_max: Double = 200.0e6,
     default_short_circuit_impedance_max: Complex = Complex(0.437785783, -1.202806555),
@@ -75,7 +76,13 @@ case class ShortCircuitOptions
     trafos: String = "",
     cable_impedance_limit: Double = 5.0,
     workdir: String = "",
-    calculate_public_lighting: Boolean = false
+    calculate_public_lighting: Boolean = false,
+    output: ShortCircuitOutputType.Value = ShortCircuitOutputType.SQLite,
+    outputfile: String = "results/shortcircuit.db",
+    host: String = "localhost",
+    port: Int = 9042,
+    keyspace: String = "cimapplication",
+    replication: Int = 1
 ) extends Mainable with Sparkable with CIMAble
 {
     def derive_work_dir (files: Seq[String]): String =

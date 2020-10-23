@@ -1294,8 +1294,19 @@ object ShortCircuit extends CIMInitializer[ShortCircuitOptions] with Main
                 {
                     val sc = ShortCircuit(session, options.cim_options.storage, options)
                     val results = sc.run()
-                    val db = new Database(options, "shortcircuit.db")
-                    val _ = db.store(results)
+                    options.output match
+                    {
+                        case ShortCircuitOutputType.SQLite =>
+                            val db = Database(options)
+                            val _ = db.store(results)
+                        case ShortCircuitOutputType.Cassandra =>
+                            val opts = if ("" == options.id)
+                                options.copy(id = java.util.UUID.randomUUID.toString)
+                            else
+                                options
+                            val cassandra = ScCassandra(session, opts)
+                            val _ = cassandra.store(results)
+                    }
                 }
             }
             else

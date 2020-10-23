@@ -16,7 +16,7 @@ import org.apache.spark.rdd.RDD
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.db") extends Serializable
+case class Database (options: ShortCircuitOptions) extends Serializable
 {
     val log: Logger = LoggerFactory.getLogger(getClass)
 
@@ -61,7 +61,7 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
         else
         {
             // make the directory
-            val file = Paths.get("results/dummy")
+            val file = Paths.get(options.outputfile)
             mkdirs(file)
 
             // load the sqlite-JDBC driver using the current class loader
@@ -70,7 +70,7 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
             try
             {
                 // create a database connection
-                using(DriverManager.getConnection(s"jdbc:sqlite:results/$filename"))
+                using(DriverManager.getConnection(s"jdbc:sqlite:${options.outputfile}"))
                 {
                     connection =>
                         connection.setAutoCommit(false)
@@ -120,7 +120,7 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
                   |(
                   |    id integer primary key autoincrement,        -- unique id for each program execution
                   |    description text,                            -- arbitrary text value describing this program execution
-                  |    time text,                                   -- the time of this program execution (number of miliseconds since 1970-01-01 00:00:00 UTC)
+                  |    time text,                                   -- the time of this program execution (number of milliseconds since 1970-01-01 00:00:00 UTC)
                   |    max_default_short_circuit_power double,      -- maximum available short circuit network power used (at transformer primary) where no equivalent injection was found (VA)
                   |    max_default_short_circuit_resistance double, -- maximum network short circuit resistance used where no equivalent injection was found (Ω)
                   |    max_default_short_circuit_reactance double,  -- maximum network short circuit reactance used where no equivalent injection was found (Ω)
@@ -167,7 +167,7 @@ class Database (options: ShortCircuitOptions, filename: String = "shortcircuit.d
                   |    ik3pol double,                        -- three phase bolted short circuit current (A)
                   |    ip double,                            -- maximum aperiodic short-circuit current according to IEC 60909-0 (A)
                   |    sk double,                            -- short-circuit power at the point of common coupling (VA)
-                  |    costerm,                              -- cos(Ψ-φ) value used in calculating imax values (dimensionless)
+                  |    costerm double,                       -- cos(Ψ-φ) value used in calculating imax values (dimensionless)
                   |    imax_3ph_low double,                  -- maximum inrush current (3 phase) for repetition_rate<0.01/min (A)
                   |    imax_1ph_low double,                  -- maximum inrush current (1 phase, line to neutral) for repetition_rate<0.01/min (A)
                   |    imax_2ph_low double,                  -- maximum inrush current (line to line) for repetition_rate<0.01/min (A)

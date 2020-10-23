@@ -395,7 +395,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             string.saveAsTextFile(output)
 
             // output SQLite database
-            val _ = new Database(sc_options).store(results)
+            val _ = Database(sc_options).store(results)
 
             val csv = string.collect
             println(s"results: ${csv.length}")

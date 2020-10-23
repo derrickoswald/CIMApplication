@@ -21,6 +21,10 @@
         <developerConnection>scm:git:git@github.com:derrickoswald/CIMApplication.git</developerConnection>
     </scm>
 
+    <properties>
+        <version.dependency.log4j>2.12.1</version.dependency.log4j>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -151,6 +155,12 @@
                 <filtering>true</filtering>
             </resource>
         </resources>
+        <testResources>
+            <testResource>
+                <directory>${basedir}/src/test/resources</directory>
+                <filtering>true</filtering>
+            </testResource>
+        </testResources>
         <plugins>
             <!-- disable surefire -->
             <plugin>
@@ -178,6 +188,135 @@
                         <goals>
                             <goal>test</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${version.dependency.maven-failsafe-plugin}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skipAfterFailureCount>1</skipAfterFailureCount>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>${version.dependency.build-helper-maven-plugin}</version>
+                <executions>
+                    <execution>
+                        <id>check-for-local-cassandra</id>
+                        <goals>
+                            <goal>bsh-property</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <source>skipCassandra = ${localCassandra} || ${skipITs};</source>
+                            <properties>
+                                <property>skipCassandra</property>
+                            </properties>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>reserve-network-port</id>
+                        <goals>
+                            <goal>reserve-network-port</goal>
+                        </goals>
+                        <!-- reserve the ports in the phase before process-test-resources (where the resources are filtered and copied) -->
+                        <phase>generate-test-resources</phase>
+                        <configuration>
+                            <portNames>
+                                <portName>cassandra.jmxPort</portName>
+                                <portName>cassandra.rpcPort</portName>
+                                <portName>cassandra.stopPort</portName>
+                                <portName>cassandra.storagePort</portName>
+                                <portName>cassandra.nativeTransportPort</portName>
+                            </portNames>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>set-cassandra-ports</id>
+                        <goals>
+                            <goal>bsh-property</goal>
+                        </goals>
+                        <phase>generate-test-resources</phase>
+                        <configuration>
+                            <source>jmxPort = ${localCassandra} ? 7199 : ${cassandra.jmxPort};
+                            rpcPort = ${localCassandra} ? 9160 : ${cassandra.rpcPort};
+                            storagePort = ${localCassandra} ? 7000 : ${cassandra.storagePort};
+                            nativeTransportPort = ${localCassandra} ? 9042 : ${cassandra.nativeTransportPort};</source>
+                            <properties>
+                                <property>jmxPort</property>
+                                <property>rpcPort</property>
+                                <property>storagePort</property>
+                                <property>nativeTransportPort</property>
+                            </properties>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>cassandra-maven-plugin</artifactId>
+                <version>${version.dependency.cassandra-maven-plugin}</version>
+                <configuration>
+                    <clusterSize>1</clusterSize>
+                    <startNativeTransport>true</startNativeTransport>
+                    <cqlVersion>${version.dependency.cql}</cqlVersion>
+                    <yaml>
+rpc_port: ${rpcPort}
+storage_port: ${storagePort}
+native_transport_port: ${nativeTransportPort}
+enable_user_defined_functions: true
+enable_scripted_user_defined_functions: true
+                    </yaml>
+                    <script>${basedir}/src/test/resources/test_shortcircuit_schema.sql</script>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.cassandra</groupId>
+                        <artifactId>cassandra-all</artifactId>
+                        <version>${version.dependency.cassandra_all}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.apache.logging.log4j</groupId>
+                        <artifactId>log4j-cassandra</artifactId>
+                        <version>${version.dependency.log4j}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.apache.logging.log4j</groupId>
+                        <artifactId>log4j-slf4j-impl</artifactId>
+                        <version>${version.dependency.log4j}</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>Start Cassandra</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>start</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipCassandra}</skip>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>Stop Cassandra</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipCassandra}</skip>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
