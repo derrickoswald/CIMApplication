@@ -38,7 +38,7 @@ class MFITestBase extends TestUtil
         val eins = Einspeiseleistung(session, options)
         val count = eins.run()
         val total = System.nanoTime()
-        info("einspeiseleistung: " + (total - begin) / 1e9 + " seconds für " + count + " trafokreise")
+        info(s"einspeiseleistung: ${ (total - begin) / 1e9 } seconds for $count trafokreise")
     }
 
     def readFile (session: SparkSession, filename: String): Unit =

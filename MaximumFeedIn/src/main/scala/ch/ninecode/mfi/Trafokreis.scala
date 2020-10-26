@@ -53,6 +53,7 @@ case class Trafokreis
             // only do houses where we know it's more than a kilowatt or it's zero because of a three winding transformer
             (h.max_power_feeding > 1000.0 || 0 != h.reason.indexOf("transformer windings for edge"))
 
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def best (nodes: Iterable[MaxPowerFeedingNodeEEA]): String =
     {
         // heuristic that node name starts with the mRID of the element
@@ -65,6 +66,7 @@ case class Trafokreis
         }
     }
 
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def gen_exp (h: (Iterable[MaxPowerFeedingNodeEEA], Int)): Experiment =
     {
         val (nodes, index) = h // (precalc_nodes, experiment #)
@@ -87,9 +89,17 @@ case class Trafokreis
 
     def start_time: Calendar = start
 
+    /**
+     * Calendar duplication utility function.
+     *
+     * @param c The Calendar value to be cloned.
+     */
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
+
     def finish_time: Calendar =
     {
-        val t = start_time.clone().asInstanceOf[Calendar]
+        val t = dup (start_time)
         t.add(Calendar.SECOND, experiments.length * window)
         t
     }

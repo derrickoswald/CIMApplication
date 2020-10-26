@@ -6,6 +6,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.scalatest.BeforeAndAfter
 
+@SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.NonUnitStatements"))
 class PrecalculationSuite extends MFITestBase with BeforeAndAfter
 {
     val FILENAME1 = "multipleconductor"

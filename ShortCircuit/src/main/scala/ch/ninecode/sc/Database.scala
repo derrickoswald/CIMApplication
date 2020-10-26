@@ -22,7 +22,11 @@ case class Database (options: ShortCircuitOptions) extends Serializable
 
     def mkdirs (path: Path): Unit =
     {
-        val _ = Files.createDirectories(path.getParent)
+        val parent = path.getParent
+        if (null != parent)
+        {
+            val _ = Files.createDirectories(parent)
+        }
     }
 
     def loadDriver (className: String): Unit =
@@ -46,7 +50,7 @@ case class Database (options: ShortCircuitOptions) extends Serializable
             {
                 // connection close failed?
                 case e: Exception =>
-                    log.error(s"exception caught: $e")
+                    log.error(s"exception caught: ${e.toString}")
             }
         }
     }
@@ -86,7 +90,7 @@ case class Database (options: ShortCircuitOptions) extends Serializable
                 // if the error message is "out of memory",
                 // it probably means no database file is found
                 case e: SQLException =>
-                    log.error(s"exception caught: $e")
+                    log.error(s"exception caught: ${e.toString}")
                     -1
             }
         }

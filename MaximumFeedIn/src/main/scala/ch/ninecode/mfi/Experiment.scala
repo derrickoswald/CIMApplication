@@ -39,6 +39,7 @@ case class Experiment
      *
      * @param c The Calendar value to be cloned.
      */
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
     def dup (c: Calendar): Calendar = c.clone().asInstanceOf[Calendar]
 
     /**
@@ -61,16 +62,11 @@ case class Experiment
         t
     }
 
-    override def toString: String = "Experiment(" +
-        trafo + "," +
-        feeder + "," +
-        node + "," +
-        house + "," +
-        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(t0.getTime) + "[" + t0.getTimeInMillis + "]," +
-        slot + "," +
-        window + "," +
-        interval + "," +
-        from + "," +
-        to + "," +
-        step + ")"
+    lazy val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
+    override def toString: String =
+    {
+        val date = date_format.format(t0.getTime)
+        val time = t0.getTimeInMillis
+        s"Experiment($trafo,$feeder,$node,$house,$date[$time],$slot,$window,$interval,$from,$to,$step)"
+    }
 }

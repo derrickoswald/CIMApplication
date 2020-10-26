@@ -112,7 +112,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
                     else
                         if ("" != edge.problem) edge.problem
                         else from.problem
-        val message = PowerFeedingNode(to.id, from.id, null, to.nominal_voltage, from.source_obj, feeder, sum_z, min_ir, problem)
+        val message = PowerFeedingNode(to.id, from.id, Array[PreEdge](), to.nominal_voltage, from.source_obj, feeder, sum_z, min_ir, problem)
         if (log.isDebugEnabled)
             log.info("%s --> %s".format(from.id, message.asString))
         Iterator((toId, message))
@@ -155,26 +155,29 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         node
     }
 
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def trace (initial: Graph[PreNode, PreEdge], starting_nodes: RDD[StartingTrafo], feeders: RDD[Feeder]): Graph[PowerFeedingNode, PreEdge] =
     {
         log.info("trace")
+        val no_trafo: StartingTrafo = null
 
         // create the initial Graph with PowerFeedingNode vertices
         def add_feeder (id: VertexId, v: PreNode, feeder: Option[Feeder]): PowerFeedingNode =
-            PowerFeedingNode(v.id, null, null, v.nominal_voltage, null.asInstanceOf[StartingTrafo], feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
+            PowerFeedingNode(v.id, null, null, v.nominal_voltage, no_trafo, feeder.orNull, Double.NegativeInfinity, Double.PositiveInfinity, v.problem)
 
         val pregraph = initial.outerJoinVertices(feeders.keyBy(_.vertex))(add_feeder)
 
         def starting_map (id: VertexId, v: PowerFeedingNode, trafo: Option[StartingTrafo]): PowerFeedingNode =
-            if (trafo.isDefined)
-                v.copy(source_obj = trafo.get, sum_z = 0.0)
-            else
-                v
+            trafo match
+            {
+                case Some (transformer) => v.copy(source_obj = transformer, sum_z = 0.0)
+                case _ => v
+            }
 
         val graph = pregraph.outerJoinVertices(starting_nodes.keyBy(_.nsPin))(starting_map).persist(storage_level)
 
         // run Pregel
-        val default_message = PowerFeedingNode(null, null, null, 0, null.asInstanceOf[StartingTrafo], null, Double.NegativeInfinity, Double.PositiveInfinity)
+        val default_message = PowerFeedingNode(null, null, null, 0, no_trafo, null, Double.NegativeInfinity, Double.PositiveInfinity)
         graph.pregel[PowerFeedingNode](default_message, 10000, EdgeDirection.Either)(
             vertexProgram,
             sendMessage,
@@ -182,6 +185,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         )
     }
 
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def calc_max_feeding_power (options: EinspeiseleistungOptions)(a: (PowerFeedingNode, Option[(String, String)])): MaxPowerFeedingNodeEEA =
     {
         val (node, equipment) = a
@@ -243,6 +247,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         string.substring(0, string.indexOf("_"))
     }
 
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def get_threshold_per_has (nodes: RDD[PowerFeedingNode], options: EinspeiseleistungOptions): RDD[MaxPowerFeedingNodeEEA] =
     {
         val houses = nodes.filter(_.sum_z.re > 0.0)
@@ -253,7 +258,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
 
     def trafo_mapping (island: TransformerIsland): Iterable[StartingTrafo] =
     {
-        val pn = PreNode("", 0.0, null)
+        val pn = PreNode("", 0.0, "")
         val ratedS = island.power_rating
         island.transformers.flatMap(
             transformers =>
@@ -272,6 +277,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         )
     }
 
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def threshold_calculation (initial: Graph[PreNode, PreEdge], sdata: RDD[(String, Iterable[PV])], transformers: RDD[TransformerIsland], options: EinspeiseleistungOptions): PreCalculationResults =
     {
         val feeders = new Feeders(session, storage_level)
@@ -305,6 +311,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val traced_house_nodes_EEA: RDD[(MaxPowerFeedingNodeEEA, Option[Iterable[PV]])] = house_nodes.keyBy(_.id_seq).leftOuterJoin(sdata).values
 
         // prioritize unhandled issues over a non-radial network problem
+        @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
         def pickWorst (pfn: Iterable[PowerFeedingNode]): String =
         {
             val issues = pfn.filter(_.hasIssues)
@@ -346,28 +353,29 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         )
             .persist(storage_level)
 
+        val b4_db = System.nanoTime()
         val simulation = Database.store_precalculation("Threshold Precalculation", options.outputfile)(has.filter(_.mrid != null))
-        log.info("the simulation number is " + simulation)
+        val dbsave = System.nanoTime()
+        log.info(s"database save: ${ (dbsave - b4_db) / 1e9 } seconds simulation id=$simulation")
 
+        @SuppressWarnings(Array("org.wartremover.warts.Null"))
         def mapGraphEdges (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =
         {
             val source = triplet.srcAttr.source_obj
             val target = triplet.dstAttr.source_obj
+            lazy val no_trafo: String = null
 
             if (source != null && target != null && source.trafo_id != null && target.trafo_id != null)
                 if (triplet.attr.connected)
                     (source.trafo_id, triplet.attr)
                 else
-                    (null.asInstanceOf[String], triplet.attr)
+                    (no_trafo, triplet.attr)
             else
-                (null.asInstanceOf[String], triplet.attr)
+                (no_trafo, triplet.attr)
         }
 
-        val vertices = graph.vertices.values
-        val edges = graph.triplets.map(mapGraphEdges)
-
-        vertices.persist(storage_level)
-        edges.persist(storage_level)
+        val vertices = graph.vertices.values.persist(storage_level)
+        val edges = graph.triplets.map(mapGraphEdges).persist(storage_level)
         if (session.sparkContext.getCheckpointDir.isDefined)
         {
             has.checkpoint()

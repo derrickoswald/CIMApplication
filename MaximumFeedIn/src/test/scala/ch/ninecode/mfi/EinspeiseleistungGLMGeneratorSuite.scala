@@ -7,8 +7,10 @@ import ch.ninecode.gl.PV
 import ch.ninecode.model.PhotoVoltaicUnit
 import ch.ninecode.model.PowerElectronicsConnection
 
+@SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
 class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
 {
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
     def parseSolarGen (xml: String): PhotoVoltaicUnit =
     {
         val parser = new CHIM(xml)
@@ -16,7 +18,7 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
         result._1("ID123").asInstanceOf[PhotoVoltaicUnit]
     }
 
-
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
     def parsePowerElectronicsConnection (xml: String): PowerElectronicsConnection =
     {
         val parser = new CHIM(xml)
@@ -24,6 +26,7 @@ class EinspeiseleistungGLMGeneratorSuite extends AnyFunSuite
         result._1("ID123_ID321").asInstanceOf[PowerElectronicsConnection]
     }
 
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def getConstantPower (pvgen: PhotoVoltaicUnit, pvconn: PowerElectronicsConnection, one_phase: Boolean = true): List[(String, String)] =
     {
         val node_mock = MaxPowerFeedingNodeEEA("ID123", 400.0, "", "", "", "", 0.0, null, "", "")

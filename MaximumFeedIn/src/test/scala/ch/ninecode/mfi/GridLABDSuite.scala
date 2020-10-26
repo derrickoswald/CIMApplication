@@ -5,6 +5,7 @@ import java.io.File
 import org.apache.spark.sql.SparkSession
 import org.scalatest.BeforeAndAfter
 
+@SuppressWarnings(Array("org.wartremover.warts.Null", "org.wartremover.warts.NonUnitStatements", "org.wartremover.warts.AsInstanceOf"))
 class GridLABDSuite extends MFITestBase with BeforeAndAfter
 {
     val FILENAME1 = "DemoData"

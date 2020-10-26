@@ -65,6 +65,7 @@ class Feeders (
      * @param test predicate to determine if this element:terminal pair is a feeder
      * @return the RDD of feeders
      */
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def getFeeders (test: Element => Boolean = isFeeder): RDD[Feeder] =
     {
         // get terminals keyed by their conducting equipment
@@ -77,7 +78,7 @@ class Feeders (
             .groupByKey
             .filter(x => x._2.size < 2)
             .map(x => (x._1, x._2.headOption.orNull))
-        // join filtered feeders with swtches and create Feeder objects
+        // join filtered feeders with switches and create Feeder objects
         val feeders = getOrElse[Element]
             .keyBy(_.id)
             .join(terminals)
