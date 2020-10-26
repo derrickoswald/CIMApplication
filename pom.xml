@@ -201,6 +201,7 @@
                         <arg>-Ywarn-dead-code</arg>
                         <arg>-Ywarn-unused:_,-explicits</arg>
                         <arg>-Xlint:_</arg>
+                        <arg>-Xfatal-warnings</arg>
                         <arg>-target:jvm-1.8</arg>
                         <!-- see https://github.com/wartremover/wartremover/blob/704113034f9d2829aa8d577ac4f059c2136c6781/core/src/main/scala/wartremover/warts/Unsafe.scala -->
                         <!-- arg>-P:wartremover:only-warn-traverser:org.wartremover.warts.Any</arg -->

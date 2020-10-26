@@ -10,7 +10,6 @@ import org.apache.spark.sql.SparkSession
 import org.junit.AfterClass
 import org.junit.BeforeClass
 import org.junit.FixMethodOrder
-import org.junit.Test
 import org.junit.runners.MethodSorters
 
 import ch.ninecode.ts.TimeSeries.jarForObject
@@ -30,7 +29,7 @@ class MetaTest
         ret
     }
 
-    /* @Test */ def makeModel ()
+    /* @org.junit.Test */ def makeModel ()
     {
         val kWh = 894.40999 * 96 * 365.25 / 1000.0
         val format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")

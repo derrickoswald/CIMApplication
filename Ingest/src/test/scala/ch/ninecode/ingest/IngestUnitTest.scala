@@ -20,10 +20,20 @@ class IngestUnitTest extends AnyFunSuite with BeforeAndAfterAll with MockitoSuga
         val measuredValue = ingestCustom.line_custom(joinTable, new IngestJob())(line)
         assert(measuredValue.length == 3, "should have 3 values")
 
-        val periodFirst: Int = measuredValue.head._4
-        assert(periodFirst == 900000, "period of first value should be 90000 (15 minutes)")
+        measuredValue.headOption match
+        {
+            case Some (record) =>
+                assert(record._4 == 900000, "period of first value should be 90000 (15 minutes)")
+            case None =>
+                assert (false)
+        }
 
-        val periodLast: Int = measuredValue.last._4
-        assert(periodLast == 900000, "period of last value should be 90000 (15 minutes)")
+        measuredValue.lastOption match
+        {
+            case Some (record) =>
+                assert(record._4 == 900000, "period of last value should be 90000 (15 minutes)")
+            case None =>
+                assert (false)
+        }
     }
 }

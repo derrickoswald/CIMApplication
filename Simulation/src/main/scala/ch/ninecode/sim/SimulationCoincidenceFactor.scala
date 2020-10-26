@@ -84,7 +84,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
             )
 
             // save to Cassandra
-            work.saveToCassandra(access.output_keyspace, "coincidence_factor_by_day",
+            val _ = work.saveToCassandra(access.output_keyspace, "coincidence_factor_by_day",
                 SomeColumns("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
 
             unpersistDataFrame(simulated_power_values_by_day)

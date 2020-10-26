@@ -66,7 +66,7 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(sp
                 row => (trafo, typ, row.getDate(date), row.getDouble(avg_power), row.getDouble(peak_power), row.getDouble(load_factor), "VA÷VA", access.simulation))
 
             // save to Cassandra
-            work.saveToCassandra(access.output_keyspace, "load_factor_by_day",
+            val _ = work.saveToCassandra(access.output_keyspace, "load_factor_by_day",
                 SomeColumns("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
 
             unpersistDataFrame(simulated_power_values)
