@@ -26,6 +26,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
     /**
      * Coincidence factor
      */
+    @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
     def run (implicit access: SimulationCassandraAccess): Unit =
     {
         log.info(s"Coincidence Factor")
@@ -84,7 +85,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
             )
 
             // save to Cassandra
-            val _ = work.saveToCassandra(access.output_keyspace, "coincidence_factor_by_day",
+            work.saveToCassandra(access.output_keyspace, "coincidence_factor_by_day",
                 SomeColumns("mrid", "type", "date", "peak_power", "sum_power", "coincidence_factor", "units", "simulation"))
 
             unpersistDataFrame(simulated_power_values_by_day)

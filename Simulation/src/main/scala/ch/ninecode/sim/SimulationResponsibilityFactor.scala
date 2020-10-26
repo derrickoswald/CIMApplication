@@ -29,6 +29,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
     /**
      * Responsibility factor
      */
+    @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
     def run (implicit access: SimulationCassandraAccess): Unit =
     {
         log.info("Responsibility Factor")
@@ -90,7 +91,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
                 }
             )
             // save to Cassandra
-            val _ = work.saveToCassandra(access.output_keyspace, "responsibility_by_day",
+            work.saveToCassandra(access.output_keyspace, "responsibility_by_day",
                 SomeColumns("mrid", "type", "date", "time", "transformer", "power", "peak", "responsibility", "units", "simulation"))
 
             unpersistDataFrame(simulated_power_values)

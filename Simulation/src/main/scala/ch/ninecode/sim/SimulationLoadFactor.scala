@@ -29,6 +29,7 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(sp
     /**
      * Load factor
      */
+    @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
     def run (implicit access: SimulationCassandraAccess): Unit =
     {
         log.info("Load Factor")
@@ -66,7 +67,7 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(sp
                 row => (trafo, typ, row.getDate(date), row.getDouble(avg_power), row.getDouble(peak_power), row.getDouble(load_factor), "VA÷VA", access.simulation))
 
             // save to Cassandra
-            val _ = work.saveToCassandra(access.output_keyspace, "load_factor_by_day",
+            work.saveToCassandra(access.output_keyspace, "load_factor_by_day",
                 SomeColumns("mrid", "type", "date", "avg_power", "peak_power", "load_factor", "units", "simulation"))
 
             unpersistDataFrame(simulated_power_values)
