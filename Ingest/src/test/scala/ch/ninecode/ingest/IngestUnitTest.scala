@@ -23,17 +23,17 @@ class IngestUnitTest extends AnyFunSuite with BeforeAndAfterAll with MockitoSuga
         measuredValue.headOption match
         {
             case Some (record) =>
-                assert(record._4 == 900000, "period of first value should be 90000 (15 minutes)")
+                val _ = assert(record._4 == 900000, "period of first value should be 90000 (15 minutes)")
             case None =>
-                assert (false)
+                val _ = assert (false)
         }
 
         measuredValue.lastOption match
         {
             case Some (record) =>
-                assert(record._4 == 900000, "period of last value should be 90000 (15 minutes)")
+                val _ = assert(record._4 == 900000, "period of last value should be 90000 (15 minutes)")
             case None =>
-                assert (false)
+                val _ = assert (false)
         }
     }
 }
