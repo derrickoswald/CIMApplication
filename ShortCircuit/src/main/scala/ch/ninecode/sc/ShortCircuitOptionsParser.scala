@@ -1,11 +1,9 @@
 package ch.ninecode.sc
 
-import java.io.FileNotFoundException
 import java.io.StringReader
 
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
-import scala.collection.mutable
 
 import javax.json.Json
 import javax.json.JsonArray
@@ -32,12 +30,17 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
 
     implicit val FormatsRead: scopt.Read[ShortCircuitOutputType.Value] = scopt.Read.reads(ShortCircuitOutputType.withName)
 
-    def readFuseTable (file: String): Option[FuseData] =
-    {
-        val fileText = readFile(file)
-        val json = readJSON(fileText)
-        parseFuseTables(json)
-    }
+    implicit val FuseTableRead: scopt.Read[FuseData] = scopt.Read.reads(
+        s =>
+        {
+            readFile(s).flatMap(readJSON).flatMap(parseFuseTables) match
+            {
+                case Right(fusedata) => fusedata
+                case Left(error) =>
+                    throw new Exception(error) // sadly, scopt only understands exceptions
+            }
+        }
+    )
 
     opt[Unit]("verbose")
         .action((_, c) => c.copy(verbose = true))
@@ -125,17 +128,8 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
         .action((x, c) => c.copy(cosphi = x, worstcasepf = false))
         .text("load power factor, used for maximum inrush current[worst case]")
 
-    opt[String]("fuse_table")
-        .action(
-            (x, c) =>
-            {
-                readFuseTable(x) match
-                {
-                    case Some(fuse_table) => c.copy(fuse_table = fuse_table)
-                    case None => c
-                }
-            }
-        )
+    opt[FuseData]("fuse_table")
+        .action((x, c) => c.copy(fuse_table = x))
         .text(s"recommended fuse sizing table JSON file, [${options.fuse_table}]")
 
     opt[Int]("messagemax")
@@ -197,143 +191,232 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
         .action((x, c) => c.copy(replication = x))
         .text(s"keyspace replication if the Cassandra keyspace needs creation [${options.replication}]")
 
-    def parseFuseTables (json: JsonObject): Option[FuseData] =
+    /**
+     * Either convert the JSON object into a FuseData object, or a concatenated error string.
+     *
+     * @param json the object to convert
+     * @return either the FuseData object or concatenated error strings
+     */
+    def parseFuseTables (json: JsonObject): Either[String, FuseData] =
     {
         val MEMBERNAME = "fuse_mapping"
 
         if (json.containsKey(MEMBERNAME))
         {
-            val value: JsonValue = json.get(MEMBERNAME)
-            value match
+            json.get(MEMBERNAME) match
             {
                 case obj: JsonObject =>
-                    val mapping: mutable.Map[String, JsonValue] = obj.asScala
-                    val array = mapping.flatMap(
-                        {
-                            case (standard: String, table: JsonArray) =>
-                                parseFuseTable(table) match
-                                {
-                                    case Some(breakpoints) =>
-                                        Some(FuseTable(standard, breakpoints))
-                                    case _ => None
-                                }
-                            case (_, x: JsonValue) =>
-                                log.error(s"""expected JSON array type, got "${typeString(x)}"""")
-                                throw new JsonException("non valid input for fuse table mapping")
-                        }
-                    ).toArray
-                    if (0 != array.length)
-                        Some(FuseData(array))
-                    else
+                    val list = obj.asScala.map
                     {
-                        log.error(s"""no mappings found""")
-                        throw new JsonException("non valid input for fuse table mapping")
-                    }
-                case _ =>
-                    log.warn(s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString(value)}")""")
-                    throw new JsonException("non valid input for fuse table mapping")
+                        case (standard: String, table: JsonArray) =>
+                            parseFuseTable(table).flatMap(breakpoints => Right(FuseTable(standard, breakpoints)))
+                        case (_, x: JsonValue) =>
+                            Left(s"""expected JSON array type, got "${typeString(x)}" for fuse mapping table""")
+                    }.toList
+                    gatherFuseTables(list)
+                case x: Any =>
+                    Left(s"""JSON member "$MEMBERNAME" is not a JSON object (type "${typeString(x)}") for fuse mapping table""")
             }
         }
         else
-        {
-            log.error(s"$MEMBERNAME missing in fuse mapping table")
-            throw new JsonException("non valid input for fuse table mapping")
-        }
+            Left(s"$MEMBERNAME missing for fuse mapping table")
     }
 
-    def parseFuseTable (json: JsonArray): Option[Array[Amp]] =
+    /**
+     * Parse an array of fuse table breakpoints.
+     *
+     * @param array the JSON array of (theoretically) Amp objects
+     * @return either the array of Amp objects or an error string
+     */
+    def parseFuseTable (array: JsonArray): Either[String, Array[Amp]] =
     {
-        val array = json
-            .asScala
-            .flatMap(
-                {
-                    case obj: JsonObject =>
-                        parseAmp(obj)
-                    case x: Any =>
-                        log.error(s"""expected JSON object type, got "${typeString(x)}"""")
-                        throw new FileNotFoundException("non valid input for fuse table mapping")
-                }
-            )
-            .toArray
-        if (0 != array.length)
-            Some(array)
-        else
+        val list = array.asScala.map
         {
-            log.error(s"""no fuse elements found""")
-            throw new FileNotFoundException("non valid input for fuse table mapping")
-        }
+            case obj: JsonObject =>
+                parseAmp(obj)
+            case x: Any =>
+                Left(s"""expected JSON object type, got "${typeString(x)}" for fuse mapping table""")
+        }.toList
+        gatherAmps(list)
     }
 
-    def parseAmp (obj: JsonObject): Option[Amp] =
+    /**
+     * Turn a JSON object into an Amp object.
+     *
+     * Validates the JSON object and if it passes the checks, converts it to an Amp object.
+     * Note: This could be an apply() constructor on the Amp class eventually - if the Amp class is JSON cognizant.
+     *
+     * @param obj the object to convert
+     * @return either the Amp object or an error string
+     */
+    def parseAmp (obj: JsonObject): Either[String, Amp] =
     {
         val checks = Seq(
-            ("ik", JsonValue.ValueType.NUMBER, true),
-            ("rating", JsonValue.ValueType.NUMBER, true)
+            Check("ik", JsonValue.ValueType.NUMBER, true),
+            Check("rating", JsonValue.ValueType.NUMBER, true)
         )
-        if (pass(obj, checks))
-            Some(Amp(obj.getJsonNumber("ik").doubleValue(), obj.getJsonNumber("rating").doubleValue()))
-        else
-            None
+        pass(obj, checks).flatMap(obj => Right(asAmp(obj)))
     }
 
-    def pass (obj: JsonObject, checks: Seq[(String, JsonValue.ValueType, Boolean)]): Boolean =
+    /**
+     * Validate the JSON object passes all checks.
+     *
+     * @param obj    the JSON object to check
+     * @param checks the list of validity checks to apply
+     * @return either the JSON object or a string or error messages
+     */
+    def pass (obj: JsonObject, checks: Seq[Check]): Either[String, JsonObject] =
     {
-        checks.forall(x =>
-        {
-            val (name, typ, required) = x
-            if (required && !obj.containsKey(name))
+        val errors = checks.flatMap(error(obj))
+        if (0 == errors.length)
+            Right(obj)
+        else
+            Left(errors.mkString(","))
+    }
+
+    /**
+     * Apply validity check to candidate object.
+     *
+     * @param candidate the candidate object
+     * @param check     the validity check to apply
+     * @return an error if any, or None
+     */
+    def error (candidate: JsonObject)(check: Check): Option[String] =
+    {
+        if (check.required && !candidate.containsKey(check.property))
+            Some(s"""missing ${check.property} element in "$candidate"""")
+        else
+            if (candidate.containsKey(check.property))
             {
-                log.error(s"""missing $name element in "$obj"""")
-                false
+                val value = candidate.get(check.property)
+                if (value.getValueType == check.typ)
+                    None
+                else
+                    Some(s"""unexpected JSON type for $candidate element ("${typeString(value)}")""")
             }
             else
-                if (obj.containsKey(name))
-                {
-                    if (obj.get(name).getValueType == typ)
-                        true
-                    else
-                    {
-                        log.error(s"""unexpected JSON type for $obj element ("${typeString(obj.get(name))}")""")
-                        false
-                    }
-                }
-                else
-                    true
-        }
-        )
+                None
     }
 
+    /**
+     * Turn a JSON object into an Amp object.
+     *
+     * Note: It is assumed that the object is a valid Amp representation.
+     *
+     * @param obj the object to convert
+     * @return the Amp object
+     */
+    def asAmp (obj: JsonObject): Amp = Amp(
+        obj.getJsonNumber("ik").doubleValue(),
+        obj.getJsonNumber("rating").doubleValue())
+
+    /**
+     * Either gather the Amp values from the list into an array, or a concatenated error string.
+     *
+     * @param list the list of Amp or error strings
+     * @return either the array of Amp or concatenated error strings
+     */
+    def gatherAmps (list: List[Either[String, Amp]]): Either[String, Array[Amp]] =
+    {
+        list.partition(_.isLeft) match
+        {
+            case (Nil, amps) =>
+                val ampList = for (Right(amp) <- amps) yield amp
+                if (0 != ampList.length)
+                    Right(ampList.toArray)
+                else
+                    Left(s"""no fuse elements found for fuse mapping table""")
+            case (strings, _) =>
+                Left(gatherLeft(strings))
+        }
+    }
+
+    /**
+     * Utility to return the JSON type as a string.
+     *
+     * @param value the JSON value
+     * @return the string representation of the type
+     */
     def typeString (value: JsonValue): String = value.getValueType.toString
 
-    def readJSON (json: String): JsonObject =
+    /**
+     * Either gather the FuseTable values from the list into a FuseData, or a concatenated error string.
+     *
+     * @param list the list of FuseTable or error strings
+     * @return either the FuseData or concatenated error strings
+     */
+    def gatherFuseTables (list: List[Either[String, FuseTable]]): Either[String, FuseData] =
+    {
+        list.partition(_.isLeft) match
+        {
+            case (Nil, tables) =>
+                val fuseTables = for (Right(table) <- tables) yield table
+                if (0 != fuseTables.length)
+                    Right(FuseData(fuseTables.toArray))
+                else
+                    Left(s"""no mappings found for fuse mapping table""")
+            case (strings, _) =>
+                Left(gatherLeft(strings))
+        }
+    }
+
+    /**
+     * Concatenate the error messages held in the Left() elements.
+     *
+     * @param strings   the list of (all Left()) items to gather
+     * @param separator the separator characters, default is ","
+     * @return the concatenation of the strings
+     */
+    def gatherLeft (strings: List[Either[String, _]], separator: String = ","): String =
+    {
+        val list = for (Left(string) <- strings) yield string
+        list.mkString(separator)
+    }
+
+    /**
+     * Either convert a string into a JSON object or an error strings.
+     *
+     * @param string the String to convert
+     * @return either a JSON object or an error string
+     */
+    def readJSON (string: String): Either[String, JsonObject] =
     {
         try
         {
-            Json.createReader(new StringReader(json)).readObject
-        } catch
+            Right(Json.createReader(new StringReader(string)).readObject)
+        }
+        catch
         {
             case je: JsonException =>
-                log.error(s"""non valid input for fuse table mapping (${je.getMessage})""")
-                throw new JsonException("non valid input for fuse table mapping")
+                Left(s"""non valid input for fuse mapping table (${je.getMessage})""")
         }
     }
 
-    def readFile (filename: String): String =
+    /**
+     * Either read a file name into its string contents or an error string.
+     *
+     * @param filename the file name to read
+     * @return either the file contents or an error string
+     */
+    def readFile (filename: String): Either[String, String] =
     {
         try
         {
             val sep = System.getProperty("file.separator")
-            val file = if (filename.startsWith(sep)) filename else s"${new java.io.File(".").getCanonicalPath}$sep$filename"
+            lazy val pwd = new java.io.File(".").getCanonicalPath
+            val file = if (filename.startsWith(sep)) filename else s"$pwd$sep$filename"
             val source = scala.io.Source.fromFile(file, "UTF-8")
             val text = source.mkString
             source.close
-            text
+            Right(text)
         }
         catch
         {
             case e: Exception =>
-                log.error("bad input file for fuse table mapping", e)
-                throw new FileNotFoundException("bad input file for fuse table mapping")
+                Left(s"bad input file for fuse mapping table ${e.getMessage}")
         }
     }
+
+    case class Check (property: String, typ: JsonValue.ValueType, required: Boolean)
+
 }
