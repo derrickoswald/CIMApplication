@@ -63,6 +63,7 @@ case class Experiment
     }
 
     lazy val date_format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
+
     override def toString: String =
     {
         val date = date_format.format(t0.getTime)

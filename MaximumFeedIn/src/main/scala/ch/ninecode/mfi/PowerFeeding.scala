@@ -170,7 +170,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         def starting_map (id: VertexId, v: PowerFeedingNode, trafo: Option[StartingTrafo]): PowerFeedingNode =
             trafo match
             {
-                case Some (transformer) => v.copy(source_obj = transformer, sum_z = 0.0)
+                case Some(transformer) => v.copy(source_obj = transformer, sum_z = 0.0)
                 case _ => v
             }
 
@@ -356,7 +356,7 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
         val b4_db = System.nanoTime()
         val simulation = Database.store_precalculation("Threshold Precalculation", options.outputfile)(has.filter(_.mrid != null))
         val dbsave = System.nanoTime()
-        log.info(s"database save: ${ (dbsave - b4_db) / 1e9 } seconds simulation id=$simulation")
+        log.info(s"database save: ${(dbsave - b4_db) / 1e9} seconds simulation id=$simulation")
 
         @SuppressWarnings(Array("org.wartremover.warts.Null"))
         def mapGraphEdges (triplet: EdgeTriplet[PowerFeedingNode, PreEdge]): (String, PreEdge) =

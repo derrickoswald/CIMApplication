@@ -217,7 +217,7 @@ object Database
                         insert.setNull(1, Types.INTEGER)
                         insert.setString(2, description)
                         insert.setTimestamp(3, new Timestamp(now.getTimeInMillis))
-                        executeUpdate (insert)
+                        executeUpdate(insert)
                         val statement = connection.createStatement()
                         val resultset = statement.executeQuery("select last_insert_rowid() id")
                         val id = if (resultset.next()) resultset.getInt("id") else -1

@@ -19,6 +19,7 @@ import ch.ninecode.testutil.Using
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class ShortCircuitSuiteIT
 {
+
     import ch.ninecode.sc.ShortCircuitSuiteIT._
 
     def getSession: CqlSession =
@@ -75,27 +76,27 @@ class ShortCircuitSuiteIT
                 val sql1 = s"""select * from "$KEYSPACE".shortcircuit where id='$ID' and node='USR0023_topo' and equipment='USR0023' and terminal=1"""
                 cassandraSession.execute(sql1).all.asScala.headOption match
                 {
-                    case Some (row) =>
-                        assert (row.getString ("errors") == "", "no errors")
-                        near (row.getDouble ("ik"), 7689.81243)
-                        near (row.getDouble ("r"), 0.013776)
-                        near (row.getDouble ("x"), 0.016641)
+                    case Some(row) =>
+                        assert(row.getString("errors") == "", "no errors")
+                        near(row.getDouble("ik"), 7689.81243)
+                        near(row.getDouble("r"), 0.013776)
+                        near(row.getDouble("x"), 0.016641)
                     case None =>
-                        assert (false, "no result record")
+                        assert(false, "no result record")
                 }
                 val sql2 = s"""select * from "$KEYSPACE".nullungsbedingung where id='$ID' and node='USR0023_topo' and equipment='USR0023' and terminal=1"""
                 cassandraSession.execute(sql2).all.asScala.headOption match
                 {
-                    case Some (row) =>
-                        assert (row.getString ("errors") == "", "no errors")
-                        near (row.getDouble ("ik"), 7443.77019)
-                        near (row.getDouble ("r"), 0.015006)
-                        near (row.getDouble ("x"), 0.015618)
-                        assert (row.getString ("fuses") == "(125,100)", "fuseString")
-                        assert (row.getBoolean ("fuseok"), "fuseOK")
-                        assert (row.getString ("fusemax") == "630", "fuseMax")
+                    case Some(row) =>
+                        assert(row.getString("errors") == "", "no errors")
+                        near(row.getDouble("ik"), 7443.77019)
+                        near(row.getDouble("r"), 0.015006)
+                        near(row.getDouble("x"), 0.015618)
+                        assert(row.getString("fuses") == "(125,100)", "fuseString")
+                        assert(row.getBoolean("fuseok"), "fuseOK")
+                        assert(row.getString("fusemax") == "630", "fuseMax")
                     case None =>
-                        assert (false, "no result record")
+                        assert(false, "no result record")
                 }
         }
     }

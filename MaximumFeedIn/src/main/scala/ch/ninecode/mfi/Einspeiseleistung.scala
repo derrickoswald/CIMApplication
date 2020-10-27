@@ -148,9 +148,9 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         def getThreshold (element: String, experiment: Experiment): Double =
         {
-            lookup.get (element) match
+            lookup.get(element) match
             {
-                case Some (feeder) => if (feeder == experiment.feeder) max else neighbormax
+                case Some(feeder) => if (feeder == experiment.feeder) max else neighbormax
                 case None => max
             }
         }
@@ -159,13 +159,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             x =>
             {
                 for
-                {
+                    {
                     e <- experiments
                     if (e.t1.getTimeInMillis <= x.millis) && (e.t2.getTimeInMillis >= x.millis)
-                    threshold = getThreshold (x.element, e)
+                    threshold = getThreshold(x.element, e)
                     if overvoltage(x, threshold)
                 }
-                    yield (e, x, limit, s"${ x.element } > $threshold Volts")
+                    yield (e, x, limit, s"${x.element} > $threshold Volts")
             }
         )
     }
@@ -182,7 +182,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
 
         // look up node to get feeders
         val lookup = if (options.ignore_other)
-            feeders.groupBy (_._1).map (x => (x._1, x._2.map (_._2).toList.distinct))
+            feeders.groupBy(_._1).map(x => (x._1, x._2.map(_._2).toList.distinct))
         else
             Map[String, List[String]]()
 
@@ -201,7 +201,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                     threshold = cdata_map.getOrElse(x.element, Double.PositiveInfinity)
                     if overcurrent(x, threshold)
                 }
-                    yield (e, x, limit, s"${ x.element } > $threshold Amps")
+                    yield (e, x, limit, s"${x.element} > $threshold Amps")
             }
         )
     }
@@ -239,7 +239,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 e <- experiments
                 if (e.t1.getTimeInMillis <= r.millis) && (e.t2.getTimeInMillis >= r.millis)
             }
-                yield (e, r, limit, s"${ r.element } > $power Watts")
+                yield (e, r, limit, s"${r.element} > $power Watts")
         }
 
         // P = VI = 400 / sqrt(3) * I [one phase] = sqrt(3) * 400 * I [three phase]
@@ -289,18 +289,18 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 {
                     raw_results.get(experiment.node) match
                     {
-                        case Some (values) =>
-                            Some ((experiment, values))
+                        case Some(values) =>
+                            Some((experiment, values))
                         case None =>
                             None
                     }
                 }
             )
-            val ret = shuffle.map (
+            val ret = shuffle.map(
                 x =>
                 {
                     val (experiment, values) = x
-                    (experiment, values.map (y => (y._2, y._3, y._4)))
+                    (experiment, values.map(y => (y._2, y._3, y._4)))
                 }
             )
             // find the least maximum
@@ -321,7 +321,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             val errorMessage = error match
             {
-                case Some (problem) => problem.errorMessages.mkString("\n")
+                case Some(problem) => problem.errorMessages.mkString("\n")
                 case None => "no returned errors"
             }
             trafo._2._2._2.map(e => MaxEinspeiseleistung(e.trafo, e.feeder, e.node, e.house, None, s"gridlabd failed \n $errorMessage", "no results")).toList
@@ -347,11 +347,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
         val output = gridlabd.read_output_files(!options.three, trafos.collect)
         val read = System.nanoTime()
-        log.info(s"read: ${ (read - solved) / 1e9 } seconds")
+        log.info(s"read: ${(read - solved) / 1e9} seconds")
         val prepared_results = reduced_trafos.join(output.cogroup(experiments.keyBy(_.trafo)))
         val ret = prepared_results.flatMap(analyse(options, gridlabFailures))
         val anal = System.nanoTime()
-        log.info(s"analyse: ${ (anal - read) / 1e9 } seconds")
+        log.info(s"analyse: ${(anal - read) / 1e9} seconds")
         ret
     }
 
@@ -382,11 +382,11 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         var power = exp.from
         while (power <= exp.to)
         {
-            val _ = ret.append (addrow(time, power))
+            val _ = ret.append(addrow(time, power))
             power = power + exp.step
         }
         // gridlab extends the first and last rows till infinity -> make them zero
-        val _ = ret.append (addrow(time, 0.0))
+        val _ = ret.append(addrow(time, 0.0))
 
         ret.toString.getBytes(StandardCharsets.UTF_8)
     }
@@ -418,15 +418,15 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         }
 
         val experiments = trafokreise.flatMap(doit).persist(storage_level)
-        log.info(s"created: ${ experiments.count } experiments")
+        log.info(s"created: ${experiments.count} experiments")
 
         val write = System.nanoTime()
-        log.info(s"export: ${ (write - start) / 1e9 } seconds")
+        log.info(s"export: ${(write - start) / 1e9} seconds")
 
         if (!options.export_only)
         {
             val c = experiments.map(generate_player_file(gridlabd)).count
-            log.info(s"${ c.toString } experiments")
+            log.info(s"${c.toString} experiments")
 
             val reduced_trafos = trafokreise
                 .flatMap(x => x.transformers.transformers.map(y => (y.transformer_name, x)))
@@ -447,7 +447,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 ).persist(storage_level)
 
             var ret = solve_and_analyse(gridlabd, reduced_trafos, experiments).persist(storage_level)
-            log.info(s"results: ${ ret.count }")
+            log.info(s"results: ${ret.count}")
 
             val b4_experiment = System.nanoTime()
             val experiments2 = experiments.keyBy(_.house).leftOuterJoin(ret.keyBy(_.house)).map(
@@ -462,10 +462,10 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                     var from = to - experiment.step
                     max_option match
                     {
-                        case Some (maximum) =>
+                        case Some(maximum) =>
                             maximum.max match
                             {
-                                case Some (f) =>
+                                case Some(f) =>
                                     if (maximum.reason != "no limit")
                                     {
                                         from = f
@@ -484,24 +484,24 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             ).persist(storage_level)
 
             val experiment_adjusted = System.nanoTime()
-            log.info(s"experiment2: ${ (experiment_adjusted - b4_experiment) / 1e9 } seconds")
+            log.info(s"experiment2: ${(experiment_adjusted - b4_experiment) / 1e9} seconds")
 
             trafokreise.foreach(t => gridlabd.cleanup(t.trafo, includes_glm = false, includes_input = true, includes_output = options.erase))
             val d = experiments2.map(generate_player_file(gridlabd)).count
-            log.info(s"${ d.toString } experiments")
+            log.info(s"${d.toString} experiments")
 
             val export2 = System.nanoTime()
-            log.info(s"export2: ${ (export2 - experiment_adjusted) / 1e9 } seconds")
+            log.info(s"export2: ${(export2 - experiment_adjusted) / 1e9} seconds")
 
             ret = solve_and_analyse(gridlabd, reduced_trafos, experiments2).persist(storage_level)
 
             val analyse = System.nanoTime()
-            log.info(s"solve and analyse: ${ (analyse - export2) / 1e9 } seconds ${ ret.count } results")
+            log.info(s"solve and analyse: ${(analyse - export2) / 1e9} seconds ${ret.count} results")
 
             val b4_db = System.nanoTime()
             val id = Database.store("Einspeiseleistung", options.outputfile)(ret.collect)
             val dbsave = System.nanoTime()
-            log.info(s"database save: ${ (dbsave - b4_db) / 1e9 } seconds simulation id=$id")
+            log.info(s"database save: ${(dbsave - b4_db) / 1e9} seconds simulation id=$id")
 
             trafokreise.foreach(t => gridlabd.cleanup(t.trafo, options.erase, options.erase, options.erase))
         }
@@ -542,7 +542,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 log.error("no transformers to process")
                 sys.exit(1)
             }
-            Some (lines)
+            Some(lines)
         }
         else
             if (-1 != options.simulation)
@@ -554,7 +554,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                     log.error("prior simulation has no transformers to process")
                     sys.exit(1)
                 }
-                Some (records)
+                Some(records)
             }
             else
                 None
@@ -577,7 +577,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         // determine the set of transformers to work on
         val transformers: RDD[TransformerIsland] = trafos match
         {
-            case Some (lines) =>
+            case Some(lines) =>
                 val selected = transformer_data.filter(x => lines.contains(x.transformer.id)).distinct
                 selected.groupBy(island).values.map(TransformerIsland.apply)
             case None =>

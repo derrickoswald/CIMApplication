@@ -119,7 +119,8 @@ case class TimeSeriesModel (session: SparkSession, options: TimeSeriesOptions)
         {
             map.toArray.sortBy(_._1).map(x =>
             {
-                val (k, v) = x; s"$k=$v"
+                val (k, v) = x;
+                s"$k=$v"
             }).mkString(",")
         }
     )

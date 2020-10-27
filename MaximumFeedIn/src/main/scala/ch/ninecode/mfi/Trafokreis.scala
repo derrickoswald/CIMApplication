@@ -99,7 +99,7 @@ case class Trafokreis
 
     def finish_time: Calendar =
     {
-        val t = dup (start_time)
+        val t = dup(start_time)
         t.add(Calendar.SECOND, experiments.length * window)
         t
     }
