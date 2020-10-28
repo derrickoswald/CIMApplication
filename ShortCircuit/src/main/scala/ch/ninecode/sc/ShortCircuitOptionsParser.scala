@@ -20,7 +20,7 @@ import ch.ninecode.util.Complex
  * Parser for command line operation.
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements", "org.wartremover.warts.Throw"))
-class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReaderOptionsParser[ShortCircuitOptions](options)
+class ShortCircuitOptionsParser (default: ShortCircuitOptions) extends CIMReaderOptionsParser[ShortCircuitOptions](default)
 {
     val log: Logger = LoggerFactory.getLogger(getClass)
 
@@ -37,6 +37,11 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
             {
                 case Right(fusedata) => fusedata
                 case Left(error) =>
+                    options.find (_.name == "fuse_table") match
+                    {
+                        case Some (option) => option.validate(_ => Left (error))
+                        case None => sys.exit(1)
+                    }
                     throw new Exception(error) // sadly, scopt only understands exceptions
             }
         }
@@ -44,62 +49,62 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
 
     opt[Unit]("verbose")
         .action((_, c) => c.copy(verbose = true))
-        .text(s"log informational messages [${options.verbose}]")
+        .text(s"log informational messages [${default.verbose}]")
 
     opt[String]("id")
         .valueName("<text>")
         .action((x, c) => c.copy(id = x))
-        .text(s"unique id for this analysis (not used for SQLite output) [${options.id}]")
+        .text(s"unique id for this analysis (not used for SQLite output) [${default.id}]")
 
     opt[String]("description")
         .valueName("<text>")
         .action((x, c) => c.copy(description = x))
-        .text(s"text describing this program execution [${options.description}]")
+        .text(s"text describing this program execution [${default.description}]")
 
     opt[Double]("netp_max")
         .valueName("<Sk_max>")
         .action((x, c) => c.copy(default_short_circuit_power_max = x)).
-        text(s"maximum network power if not in CIM, VA [${options.default_short_circuit_power_max}]")
+        text(s"maximum network power if not in CIM, VA [${default.default_short_circuit_power_max}]")
 
     opt[Complex]("netz_max")
         .valueName("<r + xj>")
         .action((x, c) => c.copy(default_short_circuit_impedance_max = x))
-        .text(s"network impedance at maximum power if not in CIM, Ω [${options.default_short_circuit_impedance_max}]")
+        .text(s"network impedance at maximum power if not in CIM, Ω [${default.default_short_circuit_impedance_max}]")
 
     opt[Double]("neta_max")
         .valueName("<angle>")
         .action((x, c) => c.copy(default_short_circuit_angle_max = x))
-        .text(s"network power factor angle at maximum power if not in CIM, overrides impedance, ° [${options.default_short_circuit_angle_max}]")
+        .text(s"network power factor angle at maximum power if not in CIM, overrides impedance, ° [${default.default_short_circuit_angle_max}]")
 
     opt[Double]("netp_min")
         .valueName("<Sk_min>")
         .action((x, c) => c.copy(default_short_circuit_power_min = x))
-        .text(s"minimum network power if not in CIM, VA [${options.default_short_circuit_power_min}]")
+        .text(s"minimum network power if not in CIM, VA [${default.default_short_circuit_power_min}]")
 
     opt[Complex]("netz_min")
         .valueName("<r + xj>")
         .action((x, c) => c.copy(default_short_circuit_impedance_min = x))
-        .text(s"network impedance at minumum power if not in CIM, Ω [${options.default_short_circuit_impedance_min}]")
+        .text(s"network impedance at minumum power if not in CIM, Ω [${default.default_short_circuit_impedance_min}]")
 
     opt[Double]("neta_min")
         .valueName("<angle>")
         .action((x, c) => c.copy(default_short_circuit_angle_min = x))
-        .text(s"network power factor angle at minimum power if not in CIM, overrides impedance, ° [${options.default_short_circuit_angle_min}]")
+        .text(s"network power factor angle at minimum power if not in CIM, overrides impedance, ° [${default.default_short_circuit_angle_min}]")
 
     opt[Double]("tbase")
         .valueName("<value>")
         .action((x, c) => c.copy(base_temperature = x))
-        .text(s"temperature assumed in CIM file (°C) [${options.base_temperature}]")
+        .text(s"temperature assumed in CIM file (°C) [${default.base_temperature}]")
 
     opt[Double]("tlow")
         .valueName("<value>")
         .action((x, c) => c.copy(low_temperature = x))
-        .text(s"low temperature for maximum fault (°C) [${options.low_temperature}]")
+        .text(s"low temperature for maximum fault (°C) [${default.low_temperature}]")
 
     opt[Double]("thigh")
         .valueName("<value>")
         .action((x, c) => c.copy(high_temperature = x))
-        .text(s"high temperature for minimum fault (°C) [${options.high_temperature}]")
+        .text(s"high temperature for minimum fault (°C) [${default.high_temperature}]")
 
     opt[String]("trafos")
         .valueName("<TRA file>")
@@ -109,20 +114,20 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
     opt[Double]("trafop")
         .valueName("<ratedS>")
         .action((x, c) => c.copy(default_transformer_power_rating = x))
-        .text(s"transformer power if not in CIM, VA [${options.default_transformer_power_rating}]")
+        .text(s"transformer power if not in CIM, VA [${default.default_transformer_power_rating}]")
 
     opt[Complex]("trafoz")
         .valueName("<r + xj>")
         .action((x, c) => c.copy(default_transformer_impedance = x))
-        .text(s"transformer impedance if not in CIM, Ω [${options.default_transformer_impedance}]")
+        .text(s"transformer impedance if not in CIM, Ω [${default.default_transformer_impedance}]")
 
     opt[Double]("cmax")
         .action((x, c) => c.copy(cmax = x))
-        .text(s"voltage factor for maximum fault level, used for rating equipment[${options.cmax}]")
+        .text(s"voltage factor for maximum fault level, used for rating equipment[${default.cmax}]")
 
     opt[Double]("cmin")
         .action((x, c) => c.copy(cmin = x))
-        .text(s"voltage factor for minimum fault level, used for protections settings [${options.cmin}]")
+        .text(s"voltage factor for minimum fault level, used for protections settings [${default.cmin}]")
 
     opt[Double]("cosphi")
         .action((x, c) => c.copy(cosphi = x, worstcasepf = false))
@@ -130,24 +135,24 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
 
     opt[FuseData]("fuse_table")
         .action((x, c) => c.copy(fuse_table = x))
-        .text(s"recommended fuse sizing table JSON file, [${options.fuse_table}]")
+        .text(s"recommended fuse sizing table JSON file, [${default.fuse_table}]")
 
     opt[Int]("messagemax")
         .action((x, c) => c.copy(messagemax = x))
-        .text(s"maximum number of warning and error messages per node [${options.messagemax}]")
+        .text(s"maximum number of warning and error messages per node [${default.messagemax}]")
 
     opt[Long]("batchsize")
         .action((x, c) => c.copy(batchsize = x))
-        .text(s"size of result collections for driver database writes [${options.batchsize}]")
+        .text(s"size of result collections for driver database writes [${default.batchsize}]")
 
     opt[Double]("cable_impedance_limit")
         .valueName("<value>")
         .action((x, c) => c.copy(cable_impedance_limit = x))
-        .text(s"cables with higher impedances for R1 will not be processed with gridlabd [${options.cable_impedance_limit}]")
+        .text(s"cables with higher impedances for R1 will not be processed with gridlabd [${default.cable_impedance_limit}]")
 
     opt[Boolean]("calculate_public_lighting")
         .action((x, c) => c.copy(calculate_public_lighting = x))
-        .text(s"calculate public lighting [${options.calculate_public_lighting}]")
+        .text(s"calculate public lighting [${default.calculate_public_lighting}]")
 
     opt[String]("workdir")
         .valueName("<dir>")
@@ -156,12 +161,12 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
 
     opt[ShortCircuitOutputType.Value]("output")
         .action((x, c) => c.copy(output = x))
-        .text(s"type of output, one of ${ShortCircuitOutputType.values.iterator.mkString(",")} [${options.output}]")
+        .text(s"type of output, one of ${ShortCircuitOutputType.values.iterator.mkString(",")} [${default.output}]")
 
     opt[String]("outputfile")
         .valueName("<file>")
         .action((x, c) => c.copy(outputfile = x))
-        .text(s"name of the SQLite database results file [${options.outputfile}]")
+        .text(s"name of the SQLite database results file [${default.outputfile}]")
 
     opt[String]("host")
         .valueName("Cassandra")
@@ -171,7 +176,7 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
                 spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.host" -> x))
             )
         )
-        .text(s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${options.host}]")
+        .text(s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${default.host}]")
 
     opt[Int]("port")
         .valueName("<port_number>")
@@ -181,15 +186,15 @@ class ShortCircuitOptionsParser (options: ShortCircuitOptions) extends CIMReader
                 spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.port" -> x.toString))
             )
         )
-        .text(s"Cassandra connection port [${options.port}]")
+        .text(s"Cassandra connection port [${default.port}]")
 
     opt[String]("keyspace")
         .action((x, c) => c.copy(keyspace = x))
-        .text(s"target Cassandra keyspace [${options.keyspace}]")
+        .text(s"target Cassandra keyspace [${default.keyspace}]")
 
     opt[Int]("replication")
         .action((x, c) => c.copy(replication = x))
-        .text(s"keyspace replication if the Cassandra keyspace needs creation [${options.replication}]")
+        .text(s"keyspace replication if the Cassandra keyspace needs creation [${default.replication}]")
 
     /**
      * Either convert the JSON object into a FuseData object, or a concatenated error string.
