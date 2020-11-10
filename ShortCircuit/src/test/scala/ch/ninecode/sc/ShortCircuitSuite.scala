@@ -12,8 +12,8 @@ import org.scalatest.BeforeAndAfter
 class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
 {
 
-    val FILENAME1 = "Beispiel zur Ermittlung der Kurzschlussleistung"
-    val FILENAME2 = "Beispiel zur Ermittlung der Kurzschlussleistung mit EquivalentInjection"
+    val FILENAME1 = "Beispiel_zur_Ermittlung_der_Kurzschlussleistung"
+    val FILENAME2 = "Beispiel_zur_Ermittlung_der_Kurzschlussleistung_mit_EquivalentInjection"
     val FILENAME3 = "sak_sample"
     val FILENAME4 = "sak_sample_ganged"
     val FILENAME5 = "sak_sample_parallel"
