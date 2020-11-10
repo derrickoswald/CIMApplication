@@ -9,7 +9,7 @@ import org.junit.Test
 
 import ch.ninecode.testutil.Using
 
-class OptionParserSuite extends Using
+class OptionParserTest extends Using
 {
     val FILE_DEPOT = "data/"
     val JSON = "test.json"
