@@ -445,22 +445,20 @@ define
                 // ToDo: should it/can it be made fully recursive
                 for (let j = 0; j < ret.length; j++)
                 {
-                    const cls = cim.class_map (ret[j]);
+                    const element = ret[j]
+                    const cls = cim.class_map (element);
                     const relations = cls.prototype.relations ();
                     for (let i = 0; i < relations.length; i++)
                         if (relations[i][1] === "0..1")
                         {
-                            const ref = ret[j][relations[i][0]];
+                            const ref = element[relations[i][0]];
                             if (ref)
                             {
                                 let obj = this._cimmap.get (relations[i][3], ref);
-                                if (obj && this.only_related (obj, ret[j]))
+                                if (obj && this.only_related (obj, element))
                                     add (obj);
                             }
                         }
-                        else
-                            if (relations[i][2] === "0..1" || relations[i][2] === "1")
-                                this._cimmap.forAll (relations[i][3], obj => { if (obj[relations[i][4]] === ret[j].id) add (obj); });
                 }
 
                 return (this.orderBySequenceNumber (ret));
@@ -588,6 +586,8 @@ define
             // [ ] => new => [ { id: "x", property: "a", EditDisposition: "new" } ]
             // [ { id: "x", property: "a" } ] => del => [ { id: "1:x", property: "a", EditDisposition: "delete" } ]
             // [ { id: "x", property: "a" } ] => save => [ { id: "x", property: "b", EditDisposition: "edit" } { id: "1:x", property: "a", EditDisposition: "delete" } ]
+            // [ { id: "x", property: "b", EditDisposition: "new" } ] => save => [ { id: "x", property: "c", EditDisposition: "new" } { id: "1:x", property: "a", EditDisposition: "delete" } ]
+            // [ { id: "x", property: "a", EditDisposition: "new" } ] => del => []
             // [ { id: "x", property: "b", EditDisposition: "edit" } { id: "1:x", property: "a", EditDisposition: "delete" } ] => save => [ { id: "x", property: "c", EditDisposition: "edit" } { id: "2:x", property: "b", EditDisposition: "delete" } { id: "1:x", property: "a", EditDisposition: "delete" } ]
 
             // on export non-difference model, export only where EditDisposition is undefined or "edit"
@@ -642,26 +642,45 @@ define
                 this._cimmap.make_map ();
             }
 
-            // remove the old object and replace it with a "deleted" version
+            // remove the old object and replace it with a "deleted" version, unless it's "new", in which case remove them
             retire (old_obj, data)
             {
                 const cls = cim.class_map (old_obj);
                 cls.prototype.remove (old_obj, data);
 
-                old_obj.id = this.next_version (old_obj, data);
-                if (old_obj.mRID)
-                    old_obj.mRID = old_obj.id;
-                old_obj.EditDisposition = "delete";
-                new cls (old_obj, data);
+                if ("new" !== old_obj.EditDisposition)
+                {
+                    old_obj.id = this.next_version (old_obj, data);
+                    if (old_obj.mRID)
+                        old_obj.mRID = old_obj.id;
+                    old_obj.EditDisposition = "delete";
+                    new cls (old_obj, data);
+                }
+                else
+                {
+                    // delete all previous versions too
+                    let version = 1;
+                    const list = data[old_obj.cls];
+                    const mrid = this.mrid (old_obj);
+                    let obj = null;
+                    do
+                    {
+                        obj = list[version.toString () + ":" + mrid];
+                        if (null != obj)
+                            cls.prototype.remove (obj, data);
+                    }
+                    while (null != obj)
+                }
             }
 
             // retire the old and add the new object
             replace (old_obj, new_obj, data)
             {
+                const disposition = ("new" === old_obj.EditDisposition) ? "new" : "edit"; // keep new disposition
                 this.retire (old_obj, data);
 
                 const cls = cim.class_map (new_obj);
-                new_obj.EditDisposition = "edit";
+                new_obj.EditDisposition = disposition;
                 new cls (new_obj, data);
             }
 
