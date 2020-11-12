@@ -525,7 +525,7 @@ define
          * @summary Handler for a current feature link click.
          * @description Sets the current feature and redisplay the highlighting appropriately and notify listeners.
          * @param mrid {string} the mrid of the selection
-         * @param list {Array.string} the list of alternate selections
+         * @param list {Array.string=} the list of alternate selections
          */
         function select (mrid, list)
         {
@@ -1147,12 +1147,14 @@ define
                     poink (event.point.x, event.point.y);
                 else if (rightbutton)
                 {
+                    /*
                     //<i id="" class="fa fa-map-marker"></i>
                     const element = document.createElement ("i");
                     element.className = "fa fa-map-marker fa-2x";
                     const marker = new mapboxgl.Marker (element)
                       .setLngLat (event.lngLat)
                       .addTo (event.target);
+                    */
                 }
             }
         }

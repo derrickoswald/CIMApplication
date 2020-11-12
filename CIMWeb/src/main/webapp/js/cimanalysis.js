@@ -225,7 +225,7 @@ define
                 TheAnalysis = data;
                 const theme = new AnalysisTheme (TheAnalysis.records);
                 cimmap.get_themer ().removeTheme (theme);
-                cimmap.get_themer ().addTheme (theme);
+                cimmap.get_themer ().addTheme (theme, true);
                 alert ("successfully sent results to the map");
             }
 
