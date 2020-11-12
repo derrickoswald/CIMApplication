@@ -35,6 +35,31 @@ abstract class CIMWebFunction extends CIMFunction
 
     override def getJars: Array[String] = jars
 
+    def jarForClass (cls:  Class[_]): String =
+    {
+        // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file
+        var ret = cls.getProtectionDomain.getCodeSource.getLocation.getPath
+        try
+        {
+            ret = URLDecoder.decode(ret, "UTF-8")
+        }
+        catch
+        {
+            case e: UnsupportedEncodingException => e.printStackTrace()
+        }
+        if (!ret.toLowerCase().endsWith(".jar"))
+        {
+            // as an aid to debugging, make jar in tmp and pass that name
+            val name = s"/tmp/${Random.nextInt(99999999)}.jar"
+            val writer = new Jar(new scala.reflect.io.File(new java.io.File(name))).jarWriter()
+            writer.addDirectory(new scala.reflect.io.Directory(new java.io.File(s"${ret}ch/")), "ch/")
+            writer.close()
+            ret = name
+        }
+
+        ret
+    }
+
     def jarForObject (obj: Object): String =
     {
         // see https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file

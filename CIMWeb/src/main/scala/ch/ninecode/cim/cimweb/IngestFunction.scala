@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.ingest.IngestOptions
+import ch.ninecode.util.MainOptions
 import ch.ninecode.util.SparkOptions
 
 /**
@@ -26,28 +27,32 @@ case class IngestFunction (job: String) extends CIMWebFunction
     jars = Array(
         jarForObject(this),
         jarForObject(IngestOptions()), // Ingest.jar
+        jarForObject(MainOptions()), // Util.jar
         jarForObject(com.datastax.oss.driver.api.core.ConsistencyLevel.ANY), // spark-cassandra-connector.jar
+        jarForObject(com.datastax.oss.driver.shaded.guava.common.collect.ImmutableListMultimap.of[String,String]()), // com/datastax/oss/driver/shaded/guava/common/collect/
+        jarForObject(new com.datastax.oss.protocol.internal.util.Flags ()), // com.datastax.oss.protocol.internal.util.collection.NullAllowingImmutableMap
+        jarForClass (classOf[org.reactivestreams.Publisher[_]]), // org/reactivestreams/Publisher
+        jarForObject(com.typesafe.config.ConfigMemorySize.ofBytes(0)), // com/typesafe/config/ConfigMergeable
         jarForObject(Json.createObjectBuilder)) // javaee-api <JSON implementation>.jar
-
     override def getReturnType: Return = Return.JSON
 
     def readJSON (json: String): Option[JsonObject] =
     {
         try
-        try
-        Json.createReader(new StringReader(json)).readObject match
-        {
-            case obj: JsonObject => Some(obj)
-            case _ =>
-                Logger.getLogger(getClass.getName).log(Level.SEVERE, """not a JsonObject""")
-                None
-        }
-        catch
-        {
-            case je: JsonException =>
-                Logger.getLogger(getClass.getName).log(Level.SEVERE, """unparseable as JSON""", je)
-                None
-        }
+            try
+            Json.createReader(new StringReader(json)).readObject match
+            {
+                case obj: JsonObject => Some(obj)
+                case _ =>
+                    Logger.getLogger(getClass.getName).log(Level.SEVERE, """not a JsonObject""")
+                    None
+            }
+            catch
+            {
+                case je: JsonException =>
+                    Logger.getLogger(getClass.getName).log(Level.SEVERE, """unparseable as JSON""", je)
+                    None
+            }
         catch
         {
             case e: Exception =>
@@ -65,6 +70,7 @@ case class IngestFunction (job: String) extends CIMWebFunction
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
         val temp = IngestOptions()
+        // since these are set when the Spark instance is created, they cannot affect the Ingest run, but include them anyway
         val host = spark.sparkContext.getConf.get("spark.cassandra.connection.host", "localhost")
         val port = spark.sparkContext.getConf.get("spark.cassandra.connection.port", "9042")
         val options = IngestOptions(
