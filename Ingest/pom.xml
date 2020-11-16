@@ -177,6 +177,7 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-scala-scalatest_${version.dependency.scala}</artifactId>
             <version>1.15.0</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
