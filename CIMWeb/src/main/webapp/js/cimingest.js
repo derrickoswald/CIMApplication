@@ -6,14 +6,14 @@
  */
 define
 (
-    ["util", "mustache", "cim", "cimmap", "moment", "lib/daterangepicker"],
+    ["util", "mustache", "cim", "cimmap", "cimfiles", "moment", "lib/daterangepicker"],
     /**
      * @summary Functions to perform ingestion.
      * @name cimingest
      * @exports cimingest
      * @version 1.0
      */
-    function (util, mustache, cim, cimmap, moment, DateRangePicker)
+    function (util, mustache, cim, cimmap, cimfiles, moment, DateRangePicker)
     {
         const TimeZones =
             [
@@ -370,35 +370,35 @@ define
         {
             const option =
             `
-            <option value="${zone.time_zone}"${selected === zone.time_zone ? " selected" : ""}>${zone.time_zone} (${zone.utc_offset}/${zone.utc_dst_offset})</option>`;
+            <option${selected === zone.time_zone ? " selected" : ""} value="${zone.time_zone}">${zone.time_zone} (${zone.utc_offset}/${zone.utc_dst_offset})</option>`;
             return (option);
         }
 
-        function derive_work_dir (file)
-        {
-            let ret = "/simulation/";
-            try
-            {
-                let url = new URL (file);
-                const protocol = url.protocol;
-                switch (protocol)
-                {
-                    case "hdfs:":
-                        url = new URL (file.replace ("hdfs:", "http:"));
-                        const last1 = url.pathname.lastIndexOf ("/", file.length - 1);
-                        ret = protocol + "//" + url.host + ((last1 !== -1) ? url.pathname.substring (0, last1) : "") + ret;
-                        break;
-                    case "file:":
-                        const last2 = url.pathname.lastIndexOf ("/", file.length - 1);
-                        ret = protocol + "//" + ((last2 !== -1) ? url.pathname.substring (0, last2) : "") + ret;
-                        break;
-                }
-            }
-            catch (error)
-            {
-            }
-            return (ret)
-        }
+        // function derive_work_dir (file)
+        // {
+        //     let ret = "/simulation/";
+        //     try
+        //     {
+        //         let url = new URL (file);
+        //         const protocol = url.protocol;
+        //         switch (protocol)
+        //         {
+        //             case "hdfs:":
+        //                 url = new URL (file.replace ("hdfs:", "http:"));
+        //                 const last1 = url.pathname.lastIndexOf ("/", file.length - 1);
+        //                 ret = protocol + "//" + url.host + ((last1 !== -1) ? url.pathname.substring (0, last1) : "") + ret;
+        //                 break;
+        //             case "file:":
+        //                 const last2 = url.pathname.lastIndexOf ("/", file.length - 1);
+        //                 ret = protocol + "//" + ((last2 !== -1) ? url.pathname.substring (0, last2) : "") + ret;
+        //                 break;
+        //         }
+        //     }
+        //     catch (error)
+        //     {
+        //     }
+        //     return (ret)
+        // }
 
         /**
          * @summary Execute ingest.
@@ -492,6 +492,31 @@ define
                 null, 4));
         }
 
+        function getFiles ()
+        {
+            return (
+                    cimfiles.fetch ("\\").then (
+                            (response) =>
+                            {
+                                if (response.status === "OK")
+                                {
+                                    let csv = response.result.files.filter (file => file.path.toLowerCase ().endsWith (".csv"));
+                                    const file_template =
+                                            `
+                                {{#files}}
+                                    <option value="{{root}}{{path}}">{{path}}</option>
+                                {{/files}}
+                                `;
+                                    document.getElementById ("mapping_file").innerHTML = mustache.render (file_template, { root: response.result.root, files: csv });
+                                    document.getElementById ("data_file").innerHTML = mustache.render (file_template, response.result);
+                                }
+                                else
+                                    alert (response.message);
+                            }
+                    )
+            );
+        }
+
         /**
          * @summary Render the ingest page.
          * @description Uses mustache to create HTML DOM elements that display the ingest options.
@@ -525,7 +550,8 @@ define
         <div class='form-group row'>
           <label class='col-sm-2 col-form-label' for='mapping_file'>Mapping file</label>
           <div class='col-sm-10'>
-            <input id='mapping_file' class='form-control' type='text' name='mapping_file' aria-describedby='mapping_fileHelp' value=''>
+            <select id="mapping_file" class="form-control custom-select" name='mapping_file' aria-describedby="mapping_fileHelp">
+            </select>
             <small id='mapping_fileHelp' class='form-text text-muted'>Comma Separated Value (CSV) file with correspondence between meter ID (CH#) and CIM mRID.</small>
           </div>
         </div>
@@ -580,7 +606,8 @@ define
         <div class='form-group row'>
           <label class='col-sm-2 col-form-label' for='data_file'>Data file</label>
           <div class='col-sm-10'>
-            <input id='data_file' class='form-control' type='text' name='data_file' aria-describedby='data_fileHelp' value=''>
+            <select id="data_file" class="form-control custom-select" name='data_file' aria-describedby="data_fileHelp">
+            </select>
             <small id='data_fileHelp' class='form-text text-muted'>Data file to ingest.</small>
           </div>
         </div>
@@ -615,6 +642,7 @@ define
                 },
                 setDateRange
             );
+            getFiles ();
             document.getElementById ("do_ingest").onclick = do_ingest;
         }
 
