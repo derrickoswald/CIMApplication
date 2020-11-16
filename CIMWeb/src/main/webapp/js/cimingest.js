@@ -586,7 +586,7 @@ define
             <small id='timezoneHelp' class='form-text text-muted'>Time zone for smart meter readings.</small>
           </div>
         </div>
-        <div class='form-group row'>
+        <div class='form-group row' style="display: none">
           <label class='col-sm-2 col-form-label' for='mintime'>Minimum time</label>
           <div class='col-sm-4'>
             <input id='mintime' class='form-control' type='text' name='mintime' aria-describedby='mintimeHelp' value='0'>
