@@ -60,8 +60,12 @@ WORKDIR /usr/local/tomee
 
 #	&& gpg --batch --verify tomee.tar.gz.asc tomee.tar.gz \
 
+ENV TOMEE_VERSION 8.0.0
+ENV CATALINA_BASE /usr/local/tomee
+# a little more memory than 4049600512 bytes
+ENV CATALINA_OPTS -Xmx8g
+
 RUN set -x \
-	&& export TOMEE_VERSION=8.0.0 \
 	&& curl --fail --show-error --location https://repo.maven.apache.org/maven2/org/apache/tomee/apache-tomee/${TOMEE_VERSION}/apache-tomee-${TOMEE_VERSION}-plus.tar.gz --output tomee.tar.gz \
 	&& tar --gunzip --extract --file=tomee.tar.gz \
 	&& mv apache-tomee-plus-${TOMEE_VERSION}/* /usr/local/tomee \
@@ -69,11 +73,11 @@ RUN set -x \
 	&& rm /usr/local/tomee/bin/*.bat \
 	&& rm tomee.tar.gz*
 
-# a little more memory than 4049600512 bytes
-ENV CATALINA_OPTS -Xmx8g
+# increase the cache size
+RUN sed -i.bak "s|</Context>|    <Resources cacheMaxSize=\"51200\" />\r\n</Context>|g" ${CATALINA_BASE}/conf/context.xml
 
 # Tomcat/TomEE+ web UI
-RUN sed -i.bak "s|Connector port=\"8080\" protocol=\"HTTP/1.1\"|Connector port=\"9080\" protocol=\"HTTP/1.1\"|g" /usr/local/tomee/conf/server.xml
+RUN sed -i.bak "s|Connector port=\"8080\" protocol=\"HTTP/1.1\"|Connector port=\"9080\" protocol=\"HTTP/1.1\"|g" ${CATALINA_BASE}/conf/server.xml
 EXPOSE 9080
 
 # remove jul-to-slf4j, jul-to-slf4j is used by Spark and Hadoop and both can't exist together: see https://www.slf4j.org/legacy.html#jul-to-slf4j

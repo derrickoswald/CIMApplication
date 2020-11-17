@@ -10,6 +10,7 @@ import javax.naming.NameNotFoundException
 import javax.naming.NamingException
 import javax.resource.ResourceException
 import javax.resource.cci.MappedRecord
+import javax.ws.rs.core.Response
 
 import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.util.Failure
@@ -30,6 +31,18 @@ class RESTful ()
     import RESTful._
 
     type map = java.util.Map[String, Object]
+
+    def withConnection (fn: CIMConnection => Response): Response =
+    {
+        val ret = new RESTfulJSONResult
+        getConnection(ret) match
+        {
+            case Some(connection) =>
+                fn (connection)
+            case None =>
+                Response.status(Response.Status.SERVICE_UNAVAILABLE).entity(s"could not get connection: ${ret.message}").build
+        }
+    }
 
     def asBoolean (string: String): Boolean =
     {
