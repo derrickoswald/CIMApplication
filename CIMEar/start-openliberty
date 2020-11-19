@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-set -x
 # not sure about this: source /etc/bash.bashrc
 
 # Set default HDFS user if not set

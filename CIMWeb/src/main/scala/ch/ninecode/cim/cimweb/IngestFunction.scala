@@ -33,7 +33,7 @@ case class IngestFunction (job: String) extends CIMWebFunction
         jarForObject(new com.datastax.oss.protocol.internal.util.Flags ()), // com.datastax.oss.protocol.internal.util.collection.NullAllowingImmutableMap
         jarForClass (classOf[org.reactivestreams.Publisher[_]]), // org/reactivestreams/Publisher
         jarForObject(com.typesafe.config.ConfigMemorySize.ofBytes(0)), // com/typesafe/config/ConfigMergeable
-        jarForObject(Json.createObjectBuilder)) // javaee-api <JSON implementation>.jar
+        jarForClass(classOf[javax.json.JsonStructure])) // javaee-api <JSON implementation>.jar
     override def getReturnType: Return = Return.JSON
 
     def readJSON (json: String): Option[JsonObject] =

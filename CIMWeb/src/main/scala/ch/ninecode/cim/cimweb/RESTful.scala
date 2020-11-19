@@ -35,7 +35,7 @@ class RESTful ()
     def withConnection (fn: CIMConnection => Response): Response =
     {
         val ret = new RESTfulJSONResult
-        getConnection(ret) match
+        getConnection(ret, true) match
         {
             case Some(connection) =>
                 fn (connection)

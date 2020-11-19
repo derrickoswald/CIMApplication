@@ -35,6 +35,7 @@ class ApplicationConfig extends Application
             classOf[Query],
             classOf[ShortCircuitCalculation],
             classOf[Spatial],
-            classOf[View]))
+            classOf[View],
+            classOf[Status]))
     }
 }
