@@ -67,11 +67,12 @@ RUN bin/server create cimapplication
 # copy server configuration doesn't work
 # COPY CIMEar/server.xml /usr/local/openliberty/usr/servers/cimapplication/server.xml
 # so we edit the file:
-RUN sed --in-place "s|<server description=\"new server\">|<server description=\"cimapplication\">|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
+RUN sed --in-place "s|<server description=\"new server\">|<server description=\"cimapplication\">\n\n    <variable name=\"spark_host\" value=\"\${NAMENODE}\" defaultValue=\"sandbox\" />\n    <variable name=\"cassandra_host\" value=\"\${CASSANDRANODE}\" defaultValue=\"beach\" />|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
 RUN sed --in-place "s|<httpEndpoint|<httpEndpoint host=\"*\"|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
 RUN sed --in-place "s|<\!-- <user name=\"yourUserName\" password=\"\" />  -->|<user name=\"admin\" password=\"Green1antern\" />|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
-RUN sed --in-place "s|</server>|  <connectionFactory jndiName=\"eis/SparkConnectionFactory\">\n    <interface-name>ch.ninecode.cim.connector.CIMConnectionFactory</interface-name>\n    <resource-adapter>#CIMConnector</resource-adapter>\n    <properties.CIMApplication.CIMConnector ConnectionURL=\"spark://sandbox:7077\"/>\n    <properties.CIMApplication.CIMConnector ServerName=\"beach\"/>\n  </connectionFactory>\n\n</server>|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
-RUN sed --in-place "s|</server>|  <cors\n    domain=\"/cimweb\"\n    allowedOrigins=\"*\"\n    allowedMethods=\"GET, POST, HEAD, OPTIONS, PUT, DELETE\"\n    allowCredentials=\"true\"/>\n\n</server>|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
+RUN sed --in-place "s|</server>|    <connectionFactory jndiName=\"eis/SparkConnectionFactory\">\n        <interface-name>ch.ninecode.cim.connector.CIMConnectionFactory</interface-name>\n        <resource-adapter>#CIMConnector</resource-adapter>\n        <properties.CIMApplication.CIMConnector ConnectionURL=\"spark://\${spark_host}:7077\"/>\n        <properties.CIMApplication.CIMConnector ServerName=\"\${cassandra_host}\"/>\n    </connectionFactory>\n\n</server>|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
+RUN sed --in-place "s|</server>|    <cors\n        domain=\"/cimweb\"\n        allowedOrigins=\"*\"\n        allowedMethods=\"GET, POST, HEAD, OPTIONS, PUT, DELETE\"\n        allowCredentials=\"true\"/>\n\n</server>|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
+RUN sed --in-place "s|</server>|    <transaction totalTranLifetimeTimeout=\"10m\"/>\n\n</server>|g" /usr/local/openliberty/usr/servers/cimapplication/server.xml
 
 # copy the .ear to dropins to install it
 ADD CIMEar/target/CIMApplication.ear /usr/local/openliberty/usr/servers/cimapplication/dropins/

@@ -1,8 +1,8 @@
 package ch.ninecode.cim.connector;
 
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -27,13 +27,8 @@ import ch.ninecode.cim.CIMExportOptionsParser;
 
 /**
  * Connection to Apache Spark (http://spark.apache.org).
- * Assumes access to maven packages like:
- * org.apache.spark:spark-core_2.11-2.4.5
- * org.apache.spark:spark-sql_2.11-2.4.5
- * org.apache.spark:spark-hive-thriftserver_2.11-2.4.5
- * org.apache.spark:spark-graphx_2.11-2.4.5
- * org.apache.spark:spark-yarn_2.11-2.4.5
  *
+ * Assumes access to Spark packages.
  */
 public class CIMManagedConnection implements ManagedConnection, DissociatableManagedConnection
 {
@@ -71,6 +66,16 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         if (null != connection)
             if (connection._Valid)
             {
+                try
+                {
+                    PrintWriter logger = getLogWriter ();
+                    if (null != logger)
+                        logger.println ("close Connection");
+                }
+                catch (ResourceException re)
+                {
+                    // so, no logging
+                }
                 connection.invalidate ();
                 ConnectionEvent event = new ConnectionEvent (this, ConnectionEvent.CONNECTION_CLOSED);
                 event.setConnectionHandle (connection);
@@ -92,14 +97,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
 
         logger = getLogWriter ();
         ret = obj.getClass ().getProtectionDomain ().getCodeSource ().getLocation ().getPath ();
-        try
-        {
-            ret = URLDecoder.decode (ret, "UTF-8");
-        }
-        catch (UnsupportedEncodingException e)
-        {
-            // good enough
-        }
+        ret = URLDecoder.decode (ret, StandardCharsets.UTF_8);
 
         if (!ret.endsWith (".jar") && !ret.endsWith (".rar"))
         {
@@ -107,9 +105,6 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
                 logger.println ("jar file could not be determined for " + obj.getClass ().getName ());
             ret = null;
         }
-        else
-            if (null != logger)
-                logger.println (obj.getClass ().getName () + " jar file: " + ret);
 
         return (ret);
     }
@@ -160,7 +155,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         throws ResourceException
     {
         // arbitrarily pick a class to instantiate
-        // ToDo: find a better way to find javaee-api-7.0-1.jar (/usr/local/tomee/lib/javaee-api-7.0-1.jar)
+        // ToDo: find a better way to find javaee-api-8.0.1.jar (/usr/local/tomee/lib/javaee-api-8.0.1.jar)
         return (jarForObject (new javax.enterprise.concurrent.AbortedException ()));
     }
 
@@ -186,15 +181,17 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         if ((null != logger) && (null != _Subject))
             logger.println ("Subject = " + _Subject.toString ());
         if (null == _RequestInfo)
+        {
             if ((null == info) || (!info.getClass ().isAssignableFrom (CIMConnectionRequestInfo.class)))
                 _RequestInfo = new CIMConnectionRequestInfo ();
             else
-                _RequestInfo = (CIMConnectionRequestInfo)info;
+                _RequestInfo = (CIMConnectionRequestInfo) info;
+            if (null != logger)
+                logger.println ("CIMConnectionRequestInfo = " + _RequestInfo.toString ());
+        }
         else
             if ((null != info) && !_RequestInfo.equals (info))
                 throw new ResourceException ("connection request info " + info.toString () + " not equal to current info " + _RequestInfo.toString ());
-        if (null != logger)
-            logger.println ("CIMConnectionRequestInfo = " + _RequestInfo.toString ());
     }
 
     /**
@@ -202,7 +199,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
      * @param subject The principal under which to connect.
      * @param info The connection request information.
      * @see CIMConnectionRequestInfo
-     * @throws ResourceException
+     * @throws ResourceException <em>not used</em>
      */
     public void connect (Subject subject, ConnectionRequestInfo info)
         throws ResourceException
@@ -287,9 +284,6 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
             configuration.registerKryoClasses (CIMClasses.list ());
             configuration.set ("spark.kryo.registrator", "ch.ninecode.cim.CIMRegistrator");
 
-//            if (null != logger)
-//                logger.println ("SparkConf:\n" + configuration.toDebugString ());
-
             // setting spark.executor.memory as a property of SparkConf doesn't work:
             if (null != _RequestInfo.getProperties ().get ("spark.executor.memory"))
                 System.setProperty ("spark.executor.memory", _RequestInfo.getProperties ().get ("spark.executor.memory"));
@@ -308,6 +302,9 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
     public Object getConnection (Subject subject, ConnectionRequestInfo info)
         throws ResourceException
     {
+        PrintWriter logger = getLogWriter ();
+        if (null != logger)
+            logger.println ("get Connection");
         check (subject, info);
         CIMConnection connection = new CIMConnection (this);
         _Connections.add (connection);
@@ -319,6 +316,10 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
      */
     public void destroy () throws ResourceException
     {
+        PrintWriter logger = getLogWriter ();
+        if (null != logger)
+            logger.println ("destroying CIMManagedConnection");
+
         cleanup ();
         // Note:
         //
@@ -334,7 +335,7 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         // according to the local transaction contract that specifies all ejbs can see the same
         // resource adapter state
         // (http://download.oracle.com/otn-pub/jcp/connector_architecture-1.6-fr-oth-JSpec/connector-1_6-final-spec.pdf),
-        // but it needs implementation at the CIMReasourceAdapter level
+        // but it needs implementation at the CIMResourceAdapter level
         // (TransactionSupport.TransactionSupportLevel transactionSupport() default TransactionSupport.TransactionSupportLevel.LocalTransaction;)
         // and a way for the javax.ws.rs.core.Application to specify the ConnectionFactoryDefinition with
         // transactionSupport = TransactionSupportLevel.LocalTransaction
@@ -360,7 +361,12 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
     public void disssociateConnection (Object connection) throws ResourceException
     {
         if (null != connection)
+        {
+            PrintWriter logger = getLogWriter ();
+            if (null != logger)
+                logger.println ("disssociate CIMConnection");
             _Connections.remove ((CIMConnection)connection);
+        }
         else
             throw new ResourceException ("null cannot be dissociated as a connection object");
     }
@@ -373,6 +379,10 @@ public class CIMManagedConnection implements ManagedConnection, DissociatableMan
         if (null != connection)
             if (connection.getClass ().isAssignableFrom (CIMConnection.class))
             {
+                PrintWriter logger = getLogWriter ();
+                if (null != logger)
+                    logger.println ("associate CIMConnection");
+
                 CIMConnection c = (CIMConnection)connection;
                 c._ManagedConnection.disssociateConnection (c);
                 if (!_Connections.contains (c))

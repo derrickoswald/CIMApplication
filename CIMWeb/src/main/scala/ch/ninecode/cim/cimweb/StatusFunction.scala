@@ -8,7 +8,7 @@ import org.apache.spark.SparkJobInfo
 import org.apache.spark.SparkStatusTracker
 import org.apache.spark.sql.SparkSession
 
-case class StatusFunction () extends CIMWebFunction
+case class StatusFunction (group: String = "") extends CIMWebFunction
 {
     def getStages (job: SparkJobInfo, tracker: SparkStatusTracker): JsonArrayBuilder =
     {
@@ -40,8 +40,9 @@ case class StatusFunction () extends CIMWebFunction
     {
         // form the response
         val tracker = spark.sparkContext.statusTracker
+        val jobids = if ("" != group) tracker.getJobIdsForGroup(group) else tracker.getActiveJobIds
         val jobs = Json.createArrayBuilder
-        for (job <- tracker.getActiveJobIds) // assume that for long running sessions this is only jobs for the current function
+        for (job <- jobids) // assume that for long running sessions this is only jobs for the current function
         {
             tracker.getJobInfo(job) match
             {

@@ -6,14 +6,14 @@
  */
 define
 (
-    ["util", "mustache", "cim", "cimmap", "cimfiles", "moment", "lib/daterangepicker"],
+    ["util", "mustache", "cim", "cimmap", "cimfiles", "cimstatus", "moment", "lib/daterangepicker"],
     /**
      * @summary Functions to perform ingestion.
      * @name cimingest
      * @exports cimingest
      * @version 1.0
      */
-    function (util, mustache, cim, cimmap, cimfiles, moment, DateRangePicker)
+    function (util, mustache, cim, cimmap, cimfiles, CIMStatus, moment, DateRangePicker)
     {
         const TimeZones =
             [
@@ -403,14 +403,16 @@ define
         /**
          * @summary Execute ingest.
          * @description Perform an ingest operation.
+         * @param {string} id a unique id for this run
          * @return a Promise to resolve or reject the ingest
          * @function ingest
          * @memberOf module:cimingest
          */
-        function ingest ()
+        function ingest (id)
         {
             // ToDo: validation
             const job = {
+                id: id,
                 mapping: document.getElementById ("mapping_file").value,
                 metercol: document.getElementById ("metercol").value,
                 mridcol: document.getElementById ("mridcol").value,
@@ -457,6 +459,11 @@ define
             );
         }
 
+        function getRandomInt (max)
+        {
+            return (Math.floor (Math.random () * Math.floor (max)));
+        }
+
         /**
          * @summary Execute ingest process.
          * @description Perform an ingest to read smart meter data files into Cassandra.
@@ -466,17 +473,21 @@ define
          */
         function do_ingest (event)
         {
+            const id = "Ingest" + getRandomInt (1e9);
+            const status = new CIMStatus ("progress_modal", "progress", id);
             function successCallback (data)
             {
+                status.stop();
                 document.getElementById ("ingest_results").innerHTML = "<pre>" + JSON.stringify (data, null, 4) + "</pre>";
             }
 
             function failureCallback (message)
             {
+                status.stop();
                 alert ("ingest failed: " + JSON.stringify (message, null, 4));
             }
-
-            ingest ().then (successCallback, failureCallback);
+            status.start();
+            ingest (id).then (successCallback, failureCallback);
         }
 
         function setDateRange (start, end)

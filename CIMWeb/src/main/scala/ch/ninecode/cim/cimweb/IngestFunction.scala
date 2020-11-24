@@ -8,6 +8,7 @@ import javax.json.Json
 import javax.json.JsonObject
 import javax.json.JsonStructure
 import javax.json.JsonException
+import javax.json.JsonString
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
@@ -67,8 +68,21 @@ case class IngestFunction (job: String) extends CIMWebFunction
      * @param spark the Spark session to use
      * @return the ingest status and options used
      */
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
+        val json = readJSON(job).getOrElse(Json.createObjectBuilder.build)
+        val id = if (json.containsKey("id"))
+        {
+            val value = json.get("id")
+            value match
+            {
+                case string: JsonString => string.getString
+                case _ => "Ingest"
+            }
+        }
+        else
+            "Ingest"
         val temp = IngestOptions()
         // since these are set when the Spark instance is created, they cannot affect the Ingest run, but include them anyway
         val host = spark.sparkContext.getConf.get("spark.cassandra.connection.host", "localhost")
@@ -86,14 +100,16 @@ case class IngestFunction (job: String) extends CIMWebFunction
             ingestions = Seq(job)
         )
         val ingest = new ch.ninecode.ingest.Ingest(spark, options)
+        spark.sparkContext.setJobGroup(id, "ingest smart meter data")
         ingest.run()
         LoggerFactory.getLogger(getClass).info("ingested")
+        spark.sparkContext.setJobGroup(null, null)
         val result = Json.createObjectBuilder
             .add("verbose", options.verbose)
             .add("host", options.host)
             .add("port", options.port)
             .add("workdir", options.workdir)
-            .add("ingestions", Json.createObjectBuilder(readJSON(job).getOrElse(Json.createObjectBuilder.build)))
+            .add("ingestions", Json.createObjectBuilder(json))
         RESTfulJSONResult(OK, "ingest successful", result.build).getJSON
     }
 

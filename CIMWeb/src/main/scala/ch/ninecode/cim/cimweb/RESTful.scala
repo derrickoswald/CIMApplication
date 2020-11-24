@@ -38,7 +38,9 @@ class RESTful ()
         getConnection(ret, true) match
         {
             case Some(connection) =>
-                fn (connection)
+                val response = fn (connection)
+                connection.close ()
+                response
             case None =>
                 Response.status(Response.Status.SERVICE_UNAVAILABLE).entity(s"could not get connection: ${ret.message}").build
         }

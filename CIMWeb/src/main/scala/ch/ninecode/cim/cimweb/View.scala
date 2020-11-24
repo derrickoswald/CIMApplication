@@ -45,7 +45,7 @@ class View extends RESTful
      * @return the result set as a CIM RDF XML file
      */
     @GET
-    @Path("{about:[^;]*}")
+    @Path("{about:.*}")
     @Produces(Array(MediaType.APPLICATION_XML, "application/zip"))
     def Read (
         @PathParam("about") about: String, // the about string if any
