@@ -61,6 +61,15 @@ define
                             {{/jobs}}
                         </ol>
                         `;
+
+                    this.set ("");
+                }
+
+                set (text)
+                {
+                    const target = document.getElementById (this.target);
+                    if (target)
+                        target.innerHTML = text;
                 }
 
                 /**
@@ -90,13 +99,15 @@ define
 
                     const jobs = result.sort ((a, b) => b.id - a.id);
                     jobs.map (j => { if (j.stages) j.stages.sort ((a, b) => a.id - b.id) });
-                    document.getElementById (this.target).innerHTML = mustache.render (
-                        this.template,
-                        {
-                            jobs: jobs,
-                            datetime: datetime,
-                            percent: percent
-                        }
+                    this.set (
+                        mustache.render (
+                            this.template,
+                            {
+                                jobs: jobs,
+                                datetime: datetime,
+                                percent: percent
+                            }
+                        )
                     );
                 };
 
@@ -104,7 +115,10 @@ define
                 {
                     const modal = document.getElementById (this.modal);
                     if ((null == modal) || modal.hidden)
+                    {
                         window.clearInterval (this.intervalID);
+                        this.set ("");
+                    }
                     else
                     {
                         const url = util.home () + "cim/status" + (this.group ? ";group=" + this.group : "");

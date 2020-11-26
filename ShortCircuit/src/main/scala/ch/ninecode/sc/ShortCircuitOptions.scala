@@ -2,6 +2,9 @@ package ch.ninecode.sc
 
 import java.net.URI
 
+import javax.json.Json
+import javax.json.JsonObjectBuilder
+
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceTrue
 import ch.ninecode.util.CIMAble
@@ -18,6 +21,7 @@ import ch.ninecode.util.Sparkable
  * @param main_options                        main() program options
  * @param spark_options                       Spark session options
  * @param cim_options                         CIMReader options
+ * @param id                                  run id on input, primary key for database on output
  * @param verbose                             flag to output progress and interesting values
  * @param description                         text describing this program execution
  * @param default_short_circuit_power_max     maximum available short circuit power (at transformer primary) to be used if no equivalent injection is found (VA)
@@ -52,8 +56,8 @@ case class ShortCircuitOptions
         topology_options = CIMTopologyOptions(
             identify_islands = true,
             force_retain_fuses = ForceTrue)),
-    verbose: Boolean = true,
     id: String = "",
+    verbose: Boolean = true,
     description: String = "",
     default_short_circuit_power_max: Double = 200.0e6,
     default_short_circuit_impedance_max: Complex = Complex(0.437785783, -1.202806555),
@@ -107,4 +111,56 @@ case class ShortCircuitOptions
      * Get user specified directory or generate a working directory matching the files.
      */
     def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir(cim_options.files)
+
+    /**
+     * Make a complex value into JSON.
+     *
+     * @param value the comlex value to encode
+     * @return a JSON object with complex value
+     */
+    def complexAsJSON (value: Complex): JsonObjectBuilder =
+    {
+        Json.createObjectBuilder
+            .add("re", value.re)
+            .add("im", value.im)
+    }
+
+    /**
+     * JSON representation of the options.
+     *
+     * @return a JSON object with the parameters as properties
+     */
+    def asJSON: JsonObjectBuilder =
+    {
+        Json.createObjectBuilder
+            .add("id", id)
+            .add("verbose", verbose)
+            .add("description", description)
+            .add("default_short_circuit_power_max", complexAsJSON(default_short_circuit_power_max))
+            .add("default_short_circuit_impedance_max", complexAsJSON(default_short_circuit_impedance_max))
+            .add("default_short_circuit_power_min", complexAsJSON(default_short_circuit_power_min))
+            .add("default_short_circuit_impedance_min", complexAsJSON(default_short_circuit_impedance_min))
+            .add("default_transformer_power_rating", default_transformer_power_rating)
+            .add("default_transformer_impedance", complexAsJSON(default_transformer_impedance))
+            .add("base_temperature", base_temperature)
+            .add("low_temperature", low_temperature)
+            .add("high_temperature", high_temperature)
+            .add("cmax", cmax)
+            .add("cmin", cmin)
+            .add("worstcasepf", worstcasepf)
+            .add("cosphi", cosphi)
+            .add("fuse_table", fuse_table.toString)
+            .add("messagemax", messagemax)
+            .add("batchsize", batchsize)
+            .add("trafos", trafos)
+            .add("cable_impedance_limit", cable_impedance_limit)
+            .add("workdir", workdir)
+            .add("calculate_public_lighting", calculate_public_lighting)
+            .add("output", output.toString)
+            .add("outputfile", outputfile)
+            .add("host", host)
+            .add("port", port)
+            .add("keyspace", keyspace)
+            .add("replication", replication)
+    }
 }

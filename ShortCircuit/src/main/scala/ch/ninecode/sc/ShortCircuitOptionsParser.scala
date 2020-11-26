@@ -47,14 +47,14 @@ class ShortCircuitOptionsParser (default: ShortCircuitOptions) extends CIMReader
         }
     )
 
-    opt[Unit]("verbose")
-        .action((_, c) => c.copy(verbose = true))
-        .text(s"log informational messages [${default.verbose}]")
-
     opt[String]("id")
         .valueName("<text>")
         .action((x, c) => c.copy(id = x))
         .text(s"unique id for this analysis (not used for SQLite output) [${default.id}]")
+
+    opt[Unit]("verbose")
+        .action((_, c) => c.copy(verbose = true))
+        .text(s"log informational messages [${default.verbose}]")
 
     opt[String]("description")
         .valueName("<text>")

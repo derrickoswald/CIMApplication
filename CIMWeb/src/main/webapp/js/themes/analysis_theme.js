@@ -106,7 +106,7 @@ define
                                 color = "rgb(143, 0, 255)";
                             else
                                 if (anal.fuses)
-                                    color = anal.fuseOK ? "rgb(0, 255, 0)" : "rgb(255, 0, 0)";
+                                    color = anal.fuseok ? "rgb(0, 255, 0)" : "rgb(255, 0, 0)";
                         }
                         equipment[id].color = color;
                     }
@@ -167,11 +167,7 @@ define
             {
                 let ret = "";
                 if (analysis.fuses)
-                {
-                    const f = analysis.fuses.filter (x => x > 0.0);
-                    if (f.length > 0)
-                        ret = "<div>Fuse" + (f.length > 1 ? "s" : "") + " = " + f.map (a => a.toString ().split("\\.")[0] + "A").join (", ") + " recommended: " + analysis.fuse + "A " + this.glyph (analysis.fuseOK) + "</div>"
-                }
+                    ret = "<div>Fuses = " + analysis.fuses + " recommended: " + analysis.fusemax + "A " + this.glyph (analysis.fuseok) + "</div>"
                 return (ret);
             }
 
@@ -195,7 +191,7 @@ define
                     if ("string" == typeof (analysis))
                         analysis = JSON.parse (analysis);
                     ret =
-                        "<strong>" + analysis.equipment + " (" + analysis.tx + ")</strong>" +
+                        "<strong>" + analysis.equipment + " (" + analysis.trafo + ")</strong>" +
                         "<p>" +
                         "<div>S<sub>k</sub> = " + this.mvalue (analysis.low_sk) + "VA</div>" +
                         "<div>Z<sub>11</sub> = " + this.impedance (analysis.low_r, analysis.low_x) + " Z<sub>00</sub> = " + this.impedance (analysis.low_r0, analysis.low_x0) + "</div>" +

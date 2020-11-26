@@ -5,7 +5,7 @@
  */
 define
 (
-    ["mustache", "util", "cimfiles", "cimmap", "cimquery", "cim", "cimapp", "chooser", "themes/simulation_theme", "moment", "lib/daterangepicker"],
+    ["mustache", "util", "cimfiles", "cimmap", "cimcassandra", "cimquery", "cim", "cimapp", "chooser", "themes/simulation_theme", "moment", "lib/daterangepicker"],
     /**
      * @summary Functions to simulate using CIM files and measurement time series in Cassandra.
      * Clean up with script:
@@ -23,7 +23,7 @@ truncate table cimapplication.responsibility_by_day;
      * @exports cimsimulate
      * @version 1.0
      */
-    function (mustache, util, cimfiles, cimmap, cimquery, cim, cimapp, Chooser, SimulationTheme, moment, DateRangePicker)
+    function (mustache, util, cimfiles, cimmap, cimcassandra, cimquery, cim, cimapp, Chooser, SimulationTheme, moment, DateRangePicker)
     {
         let KeySpaces = [];
 
@@ -1613,7 +1613,7 @@ truncate table cimapplication.responsibility_by_day;
         function render ()
         {
             document.getElementById ("simulate").innerHTML = "";
-            formFill.call (this);
+            formFill ();
             return (getSimulationNames ().then (getFiles).then (getDateRange));
         }
 
@@ -1833,45 +1833,6 @@ truncate table cimapplication.responsibility_by_day;
             );
         }
 
-        function get_keyspaces ()
-        {
-            return (
-                new Promise (
-                    (resolve, reject) =>
-                    {
-                        cimquery.queryPromise (
-                            {
-                                cassandra: true,
-                                sql: "select * from system_schema.keyspaces"
-                            }
-                        ).then (
-                            (result) =>
-                            {
-                                this.setKeySpaces (result.map (x => x.keyspace_name).filter (
-                                        x =>
-                                        {
-                                            switch (x)
-                                            {
-                                                case "system_auth":
-                                                case "system_schema":
-                                                case "system_distributed":
-                                                case "system":
-                                                case "system_traces":
-                                                    return (false);
-                                                default:
-                                                    return (true);
-                                            }
-                                        }
-                                    )
-                                );
-                                resolve ();
-                            }
-                        )
-                    }
-                )
-            );
-        }
-
         /**
          * @summary Render the simulations page.
          * @description Uses mustache to create HTML DOM elements that display the simulation options.
@@ -1879,7 +1840,7 @@ truncate table cimapplication.responsibility_by_day;
          */
         function initialize ()
         {
-            setReplication ().then (get_keyspaces.bind (this)).then (render.bind (this));
+            setReplication ().then (cimcassandra.getKeyspaces ()).then (setKeySpaces.bind(this)).then (render.bind (this));
         }
 
         return (

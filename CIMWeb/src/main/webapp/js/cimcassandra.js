@@ -109,13 +109,57 @@ define
             );
         }
 
+        /**
+         * Get the available keyspace names.
+         *
+         * @returns {Promise<String[]>}
+         */
+        function getKeyspaces ()
+        {
+            return (
+                    new Promise (
+                            (resolve, reject) =>
+                            {
+                                cimquery.queryPromise (
+                                        {
+                                            cassandra: true,
+                                            sql: "select * from system_schema.keyspaces"
+                                        }
+                                ).then (
+                                        (result) =>
+                                        {
+                                            resolve (result.map (x => x.keyspace_name).filter (
+                                                    x =>
+                                                    {
+                                                        switch (x)
+                                                        {
+                                                            case "system_auth":
+                                                            case "system_schema":
+                                                            case "system_distributed":
+                                                            case "system":
+                                                            case "system_traces":
+                                                                return (false);
+                                                            default:
+                                                                return (true);
+                                                        }
+                                                    }
+                                                    )
+                                            );
+                                        }
+                                )
+                            }
+                    )
+            );
+        }
+
         return (
             {
                 getSimulationDetails: getSimulationDetails,
                 getSimulationsWithDetails: getSimulationsWithDetails,
                 getSimulations: getSimulations,
                 getAllSimulations: getAllSimulations,
-                getAllSimulationsWithDetails: getAllSimulationsWithDetails
+                getAllSimulationsWithDetails: getAllSimulationsWithDetails,
+                getKeyspaces: getKeyspaces
             }
         );
     }

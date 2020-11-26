@@ -73,25 +73,17 @@ class ShortCircuitSuiteIT
         using(getSession)
         {
             cassandraSession =>
-                val sql1 = s"""select * from "$KEYSPACE".shortcircuit where id='$ID' and node='USR0023_topo' and equipment='USR0023' and terminal=1"""
-                cassandraSession.execute(sql1).all.asScala.headOption match
+                val sql = s"""select * from "$KEYSPACE".shortcircuit where id='$ID' and node='USR0023_topo' and equipment='USR0023' and terminal=1"""
+                cassandraSession.execute(sql).all.asScala.headOption match
                 {
                     case Some(row) =>
                         assert(row.getString("errors") == "", "no errors")
-                        near(row.getDouble("ik"), 7689.81243)
-                        near(row.getDouble("r"), 0.013776)
-                        near(row.getDouble("x"), 0.016641)
-                    case None =>
-                        assert(false, "no result record")
-                }
-                val sql2 = s"""select * from "$KEYSPACE".nullungsbedingung where id='$ID' and node='USR0023_topo' and equipment='USR0023' and terminal=1"""
-                cassandraSession.execute(sql2).all.asScala.headOption match
-                {
-                    case Some(row) =>
-                        assert(row.getString("errors") == "", "no errors")
-                        near(row.getDouble("ik"), 7443.77019)
-                        near(row.getDouble("r"), 0.015006)
-                        near(row.getDouble("x"), 0.015618)
+                        near(row.getDouble("low_ik"), 7689.81243)
+                        near(row.getDouble("low_r"), 0.013776)
+                        near(row.getDouble("low_x"), 0.016641)
+                        near(row.getDouble("high_ik"), 7443.77019)
+                        near(row.getDouble("high_r"), 0.015006)
+                        near(row.getDouble("high_x"), 0.015618)
                         assert(row.getString("fuses") == "(125,100)", "fuseString")
                         assert(row.getBoolean("fuseok"), "fuseOK")
                         assert(row.getString("fusemax") == "630", "fuseMax")

@@ -172,3 +172,16 @@ footer.page-footer {
 {
     top: 0;
 }
+
+.analysis-table
+{
+    border: 1px solid lightgray;
+    border-collapse: collapse;
+    width: 100%;
+    padding: 2px;
+}
+
+.analysis-table tr:nth-child(even)
+{
+    background-color: #f2f2f2;
+}

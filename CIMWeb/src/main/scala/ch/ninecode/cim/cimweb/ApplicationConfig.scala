@@ -33,7 +33,7 @@ class ApplicationConfig extends Application
             classOf[Ping],
             classOf[Pong],
             classOf[Query],
-            classOf[ShortCircuitCalculation],
+            classOf[ShortCircuit],
             classOf[Spatial],
             classOf[View],
             classOf[Status]))

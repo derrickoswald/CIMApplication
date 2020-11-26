@@ -98,6 +98,24 @@ case class ScCassandra (
     {
         val container = if ((null == result.container) || ("" == result.container)) null else result.container
         val errors = if (null == result.errors) null else result.errors.mkString(",")
+        val (fuseString, lastFusesString, lastFusesId, iksplitString, fusemax, fuseok) =
+            if (null == result.branches)
+                (null, null, null, null, null, null)
+            else
+            {
+                val fuseok = if (result.lastFuseHasMissingValues)
+                    null
+                else
+                    result.fuseOK(options)
+                (
+                    result.fuseString,
+                    result.lastFusesString,
+                    result.lastFusesId,
+                    result.iksplitString,
+                    result.fuseMax(options),
+                    fuseok
+                )
+            }
         val data = Map[String, Any](
             "id" -> options.id,
             "node" -> result.node,
@@ -107,21 +125,35 @@ case class ScCassandra (
             "errors" -> errors,
             "trafo" -> result.tx,
             "prev" -> result.prev,
-            "r" -> result.low_r,
-            "x" -> result.low_x,
-            "r0" -> result.low_r0,
-            "x0" -> result.low_x0,
-            "ik" -> result.low_ik,
-            "ik3pol" -> result.low_ik3pol,
-            "ip" -> result.low_ip,
-            "sk" -> result.low_sk,
+            "low_r" -> result.low_r,
+            "low_x" -> result.low_x,
+            "low_r0" -> result.low_r0,
+            "low_x0" -> result.low_x0,
+            "low_ik" -> result.low_ik,
+            "low_ik3pol" -> result.low_ik3pol,
+            "low_ip" -> result.low_ip,
+            "low_sk" -> result.low_sk,
+            "high_r" -> result.high_r,
+            "high_x" -> result.high_x,
+            "high_r0" -> result.high_r0,
+            "high_x0" -> result.high_x0,
+            "high_ik" -> result.high_ik,
+            "high_ik3pol" -> result.high_ik3pol,
+            "high_ip" -> result.high_ip,
+            "high_sk" -> result.high_sk,
             "costerm" -> result.costerm,
             "imax_3ph_low" -> result.imax_3ph_low,
             "imax_1ph_low" -> result.imax_1ph_low,
             "imax_2ph_low" -> result.imax_2ph_low,
             "imax_3ph_med" -> result.imax_3ph_med,
             "imax_1ph_med" -> result.imax_1ph_med,
-            "imax_2ph_med" -> result.imax_2ph_med
+            "imax_2ph_med" -> result.imax_2ph_med,
+            "fuses" -> fuseString,
+            "last_fuses" -> lastFusesString,
+            "last_fuses_id" -> lastFusesId,
+            "iksplit" -> iksplitString,
+            "fusemax" -> fusemax,
+            "fuseok" -> fuseok
         )
         CassandraRow.fromMap(data)
     }
@@ -141,99 +173,29 @@ case class ScCassandra (
                 "errors",
                 "trafo",
                 "prev",
-                "r",
-                "x",
-                "r0",
-                "x0",
-                "ik",
-                "ik3pol",
-                "ip",
-                "sk",
+                "low_r",
+                "low_x",
+                "low_r0",
+                "low_x0",
+                "low_ik",
+                "low_ik3pol",
+                "low_ip",
+                "low_sk",
+                "high_r",
+                "high_x",
+                "high_r0",
+                "high_x0",
+                "high_ik",
+                "high_ik3pol",
+                "high_ip",
+                "high_sk",
                 "costerm",
                 "imax_3ph_low",
                 "imax_1ph_low",
                 "imax_2ph_low",
                 "imax_3ph_med",
                 "imax_1ph_med",
-                "imax_2ph_med"
-            )
-        )
-    }
-
-    @SuppressWarnings(Array("org.wartremover.warts.Null"))
-    def toNullungsbedingungRow (result: ScResult): CassandraRow =
-    {
-        val container = if ((null == result.container) || ("" == result.container)) null else result.container
-        val errors = if (null == result.errors) null else result.errors.mkString(",")
-        val (fuseString, lastFusesString, lastFusesId, iksplitString, fusemax, fuseok) = if (null == result.branches)
-            (null, null, null, null, null, null)
-        else
-        {
-            val fuseok = if (result.lastFuseHasMissingValues)
-                null
-            else
-                result.fuseOK(options)
-            (
-                result.fuseString,
-                result.lastFusesString,
-                result.lastFusesId,
-                result.iksplitString,
-                result.fuseMax(options),
-                fuseok
-            )
-        }
-        val data = Map[String, Any](
-            "id" -> options.id,
-            "node" -> result.node,
-            "equipment" -> result.equipment,
-            "terminal" -> result.terminal,
-            "container" -> container,
-            "errors" -> errors,
-            "trafo" -> result.tx,
-            "prev" -> result.prev,
-            "r" -> result.high_r,
-            "x" -> result.high_x,
-            "r0" -> result.high_r0,
-            "x0" -> result.high_x0,
-            "ik" -> result.high_ik,
-            "ik3pol" -> result.high_ik3pol,
-            "ip" -> result.high_ip,
-            "sk" -> result.high_sk,
-            "costerm" -> result.costerm,
-            "fuses" -> fuseString,
-            "last_fuses" -> lastFusesString,
-            "last_fuses_id" -> lastFusesId,
-            "iksplit" -> iksplitString,
-            "fusemax" -> fusemax,
-            "fuseok" -> fuseok
-        )
-        CassandraRow.fromMap(data)
-    }
-
-    def storeNullungsbedingungTable (results: RDD[ScResult]): Unit =
-    {
-        val rdd = results.map(toNullungsbedingungRow)
-        rdd.saveToCassandra(
-            options.keyspace,
-            "nullungsbedingung",
-            SomeColumns(
-                "id",
-                "node",
-                "equipment",
-                "terminal",
-                "container",
-                "errors",
-                "trafo",
-                "prev",
-                "r",
-                "x",
-                "r0",
-                "x0",
-                "ik",
-                "ik3pol",
-                "ip",
-                "sk",
-                "costerm",
+                "imax_2ph_med",
                 "fuses",
                 "last_fuses",
                 "last_fuses_id",
@@ -244,7 +206,7 @@ case class ScCassandra (
         )
     }
 
-    def OK (result: ScResult): Option[(String, Option[Boolean])] =
+    def isOK (result: ScResult): Option[(String, Option[Boolean])] =
     {
         if ((null == result.container) || ("" == result.container) || (null == result.branches))
             None
@@ -269,7 +231,7 @@ case class ScCassandra (
 
     def storeFuseSummaryTable (results: RDD[ScResult]): Unit =
     {
-        val evaluation = results.flatMap(OK)
+        val evaluation = results.flatMap(isOK)
         val summary: RDD[(String, (Boolean, Int, Int, Int))] = evaluation.groupByKey.mapValues(summarize)
         val rdd = summary.map(x => (options.id, x._1, x._2._1, x._2._2, x._2._3, x._2._4))
         rdd.saveToCassandra(
@@ -294,9 +256,7 @@ case class ScCassandra (
         if (schema.make(keyspace = options.keyspace, replication = options.replication))
         {
             val run = storeRun
-            log.info(s"short circuit results run $run")
             storeShortcircuitTable(results)
-            storeNullungsbedingungTable(results)
             storeFuseSummaryTable(results)
             log.info(s"stored short circuit results ${options.id} run $run")
             (options.id, run)

@@ -72,14 +72,22 @@ create table if not exists cimapplication.shortcircuit (
     errors text,
     trafo text,
     prev text,
-    r double,
-    x double,
-    r0 double,
-    x0 double,
-    ik double,
-    ik3pol double,
-    ip double,
-    sk double,
+    low_r double,
+    low_x double,
+    low_r0 double,
+    low_x0 double,
+    low_ik double,
+    low_ik3pol double,
+    low_ip double,
+    low_sk double,
+    high_r double,
+    high_x double,
+    high_r0 double,
+    high_x0 double,
+    high_ik double,
+    high_ik3pol double,
+    high_ip double,
+    high_sk double,
     costerm double,
     imax_3ph_low double,
     imax_1ph_low double,
@@ -87,55 +95,6 @@ create table if not exists cimapplication.shortcircuit (
     imax_3ph_med double,
     imax_1ph_med double,
     imax_2ph_med double,
-    primary key (id, node, equipment, terminal)
-) with clustering order by (node asc, equipment asc, terminal asc) and comment = '
-Table of maximum fault level values.
-The short circuit powers, currents and impedances at low temperature (highest current, lowest impedance).
-    id           - the short circuit run identifier, UUID or user specified
-    node         - CIM ConnectivityNode mRID
-    equipment    - CIM ConductingEquipment mRID
-    terminal     - CIM Terminal sequence number referring to the node and equipment
-    container    - CIM EquipmentContainer mRID the equipment resides in
-    errors       - comma separated list of error and warning messages encountered in processing
-    trafo        - CIM PowerTransformer supplying the node
-    prev         - previous (on path from trafo to node) CIM ConnectivityNode mRID
-    r            - aggregate positive sequence resistance from the trafo (primary) to this node (Ω)
-    x            - aggregate positive sequence reactance from the trafo (primary) to this node (Ω)
-    r0           - aggregate zero sequence resistance from the trafo (primary) to this node (Ω)
-    x0           - aggregate zero sequence reactance from the trafo (primary) to this node (Ω)
-    ik           - one phase bolted short circuit current (A)
-    ik3pol       - three phase bolted short circuit current (A)
-    ip           - maximum aperiodic short-circuit current according to IEC 60909-0 (A)
-    sk           - short-circuit power at the point of common coupling (VA)
-    costerm      - cos(Ψ-φ) value used in calculating imax values (dimensionless)
-    imax_3ph_low - maximum inrush current (3 phase) for repetition_rate<0.01/min (A)
-    imax_1ph_low - maximum inrush current (1 phase, line to neutral) for repetition_rate<0.01/min (A)
-    imax_2ph_low - maximum inrush current (line to line) for repetition_rate<0.01/min (A)
-    imax_3ph_med - maximum inrush current (3 phase) for 0.01 ≤ repetition_rate < 0.1 /min (A)
-    imax_1ph_med - maximum inrush current (1 phase, line to neutral) for 0.01 ≤ repetition_rate < 0.1 /min (A)
-    imax_2ph_med - maximum inrush current (1 phase, line to line) for 0.01 ≤ repetition_rate < 0.1 /min (A)
-';
-
-create index if not exists sc_equipment_index on cimapplication.shortcircuit (equipment);
-
-create table if not exists cimapplication.nullungsbedingung (
-    id text,
-    node text,
-    equipment text,
-    terminal int,
-    container text,
-    errors text,
-    trafo text,
-    prev text,
-    r double,
-    x double,
-    r0 double,
-    x0 double,
-    ik double,
-    ik3pol double,
-    ip double,
-    sk double,
-    costerm double,
     fuses text,
     last_fuses text,
     last_fuses_id text,
@@ -144,8 +103,10 @@ create table if not exists cimapplication.nullungsbedingung (
     fuseok boolean,
     primary key (id, node, equipment, terminal)
 ) with clustering order by (node asc, equipment asc, terminal asc) and comment = '
-Table of minimum fault level values.
-The short circuit powers, currents and impedances at high temperature (lowest current, highest impedance).
+Table of fault level values.
+The short circuit powers, currents and impedances at
+low temperature (highest current, lowest impedance) labeled low_XXX and
+high temperature (lowest current, highest impedance) labeled high_XXX.
     id            - the short circuit run identifier, UUID or user specified
     node          - CIM ConnectivityNode mRID
     equipment     - CIM ConductingEquipment mRID
@@ -154,15 +115,29 @@ The short circuit powers, currents and impedances at high temperature (lowest cu
     errors        - comma separated list of error and warning messages encountered in processing
     trafo         - CIM PowerTransformer supplying the node
     prev          - previous (on path from trafo to node) CIM ConnectivityNode mRID
-    r             - aggregate positive sequence resistance from the trafo (primary) to this node (Ω)
-    x             - aggregate positive sequence reactance from the trafo (primary) to this node (Ω)
-    r0            - aggregate zero sequence resistance from the trafo (primary) to this node (Ω)
-    x0            - aggregate zero sequence reactance from the trafo (primary) to this node (Ω)
-    ik            - one phase bolted short circuit current (A)
-    ik3pol        - three phase bolted short circuit current (A)
-    ip            - maximum aperiodic short-circuit current according to IEC 60909-0 (A)
-    sk            - short-circuit power at the point of common coupling (VA)
+    low_r         - aggregate positive sequence resistance from the trafo (primary) to this node at low temperature (Ω)
+    low_x         - aggregate positive sequence reactance from the trafo (primary) to this node at low temperature (Ω)
+    low_r0        - aggregate zero sequence resistance from the trafo (primary) to this node at low temperature (Ω)
+    low_x0        - aggregate zero sequence reactance from the trafo (primary) to this node at low temperature (Ω)
+    low_ik        - one phase bolted short circuit current at low temperature (A)
+    low_ik3pol    - three phase bolted short circuit current at low temperature (A)
+    low_ip        - maximum aperiodic short-circuit current according to IEC 60909-0 at low temperature (A)
+    low_sk        - short-circuit power at the point of common coupling at low temperature (VA)
+    high_r        - aggregate positive sequence resistance from the trafo (primary) to this node at high temperature (Ω)
+    high_x        - aggregate positive sequence reactance from the trafo (primary) to this node at high temperature (Ω)
+    high_r0       - aggregate zero sequence resistance from the trafo (primary) to this node at high temperature (Ω)
+    high_x0       - aggregate zero sequence reactance from the trafo (primary) to this node at high temperature (Ω)
+    high_ik       - one phase bolted short circuit current at high temperature (A)
+    high_ik3pol   - three phase bolted short circuit current at high temperature (A)
+    high_ip       - maximum aperiodic short-circuit current according to IEC 60909-0 at high temperature (A)
+    high_sk       - short-circuit power at the point of common coupling at high temperature (VA)
     costerm       - cos(Ψ-φ) value used in calculating imax values (dimensionless)
+    imax_3ph_low  - maximum inrush current (3 phase) for repetition_rate<0.01/min (A)
+    imax_1ph_low  - maximum inrush current (1 phase, line to neutral) for repetition_rate<0.01/min (A)
+    imax_2ph_low  - maximum inrush current (line to line) for repetition_rate<0.01/min (A)
+    imax_3ph_med  - maximum inrush current (3 phase) for 0.01 ≤ repetition_rate < 0.1 /min (A)
+    imax_1ph_med  - maximum inrush current (1 phase, line to neutral) for 0.01 ≤ repetition_rate < 0.1 /min (A)
+    imax_2ph_med  - maximum inrush current (1 phase, line to line) for 0.01 ≤ repetition_rate < 0.1 /min (A)
     fuses         - fuse values from the source (primary of feeding transformer) to this node (A)
     last_fuses    - fuse(s) connected directly to the node (A)
     last_fuses_id - mRID of fuse(s) connected directly to the node (A)
@@ -171,7 +146,7 @@ The short circuit powers, currents and impedances at high temperature (lowest cu
     fuseok        - evaluation of whether the fuse(s) has(have) appropriate value(s) (true) or not (false)
 ';
 
-create index if not exists nu_equipment_index on cimapplication.nullungsbedingung (equipment);
+create index if not exists sc_equipment_index on cimapplication.shortcircuit (equipment);
 
 create table if not exists cimapplication.fusesummary (
     id text,
