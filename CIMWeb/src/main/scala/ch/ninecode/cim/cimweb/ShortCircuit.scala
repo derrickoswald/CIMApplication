@@ -6,22 +6,25 @@ import java.util.logging.Logger
 
 import javax.ejb.Stateless
 import javax.json.Json
+import javax.json.JsonArray
 import javax.json.JsonException
 import javax.json.JsonObject
+import javax.json.JsonValue
 import javax.ws.rs.BadRequestException
 import javax.ws.rs.POST
 import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
+import scala.collection.JavaConverters.mapAsScalaMapConverter
 
 import ch.ninecode.cim.connector.CIMConnection
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMMappedRecord
-import ch.ninecode.sc.Amp
 import ch.ninecode.sc.FuseData
 import ch.ninecode.sc.FuseTable
 import ch.ninecode.sc.ShortCircuitOptions
+import ch.ninecode.sc.ShortCircuitOptionsParser
 import ch.ninecode.sc.ShortCircuitOutputType
 import ch.ninecode.util.Complex
 
@@ -48,131 +51,42 @@ class ShortCircuit extends RESTful
             if (Complex(0.0) == z) default else z
         }
 
+    /**
+     * Either convert the JSON object into a FuseData object, or a concatenated error string.
+     *
+     * @param json the object to convert
+     * @return either the FuseData object or concatenated error strings
+     */
+    def parseFuseTables (json: JsonObject): Either[String, FuseData] =
+    {
+        val MEMBERNAME = "fuse_table"
+
+        if (json.containsKey(MEMBERNAME))
+        {
+            val parser = new ShortCircuitOptionsParser (ShortCircuitOptions())
+            json.get(MEMBERNAME) match
+            {
+                case obj: JsonObject =>
+                    val list = obj.asScala.map
+                    {
+                        case (standard: String, table: JsonArray) =>
+                            parser.parseFuseTable(table).flatMap(breakpoints => Right(FuseTable(standard, breakpoints)))
+                        case (_, x: JsonValue) =>
+                            Left(s"""expected JSON array type, got "${parser.typeString(x)}" for fuse mapping table""")
+                    }.toList
+                    parser.gatherFuseTables(list)
+                case x: Any =>
+                    Left(s"""JSON member "$MEMBERNAME" is not a JSON object (type "${parser.typeString(x)}") for fuse mapping table""")
+            }
+        }
+        else
+            Left(s"$MEMBERNAME missing for fuse mapping table")
+    }
+
     def parseOptions (json: JsonObject): ShortCircuitOptions =
     {
-        val table = json.getInt("fuse_table", 1)
-        val fuse_table: FuseData = table match
-        {
-            case 2 =>
-                FuseData(
-                    Array(
-                        FuseTable(
-                            "",
-                            Array(
-                                Amp(0, 0), // failsafe fallback for currents less than 28A
-                                Amp(28, 10),
-                                Amp(40, 16),
-                                Amp(55, 20),
-                                Amp(70, 25),
-                                Amp(93, 32),
-                                Amp(120, 40),
-                                Amp(160, 50),
-                                Amp(190, 63),
-                                Amp(230, 80),
-                                Amp(305, 100),
-                                Amp(380, 125),
-                                Amp(490, 160),
-                                Amp(690, 200),
-                                Amp(820, 250),
-                                Amp(1150, 315),
-                                Amp(1350, 400),
-                                Amp(1900, 500),
-                                Amp(2500, 630)
-                            )
-                        )
-                    )
-                )
-            case 3 =>
-                FuseData(
-                    Array(
-                        FuseTable(
-                            "DIN",
-                            Array(
-                                Amp(0, 0), // failsafe fallback for currents less than 65A
-                                Amp(65, 25),
-                                Amp(105, 40),
-                                Amp(140, 50),
-                                Amp(180, 63),
-                                Amp(240, 80),
-                                Amp(320, 100),
-                                Amp(380, 125),
-                                Amp(500, 160),
-                                Amp(650, 200),
-                                Amp(800, 250),
-                                Amp(1050, 315),
-                                Amp(1300, 400),
-                                Amp(1750, 500),
-                                Amp(2400, 630)
-                            )
-                        ),
-                        FuseTable(
-                            "SEV",
-                            Array(
-                                Amp(0, 0), // failsafe fallback for currents less than 200A
-                                Amp(200, 60),
-                                Amp(250, 75),
-                                Amp(300, 100),
-                                Amp(340, 125),
-                                Amp(500, 150),
-                                Amp(600, 200),
-                                Amp(720, 250),
-                                Amp(850, 300),
-                                Amp(1150, 400)
-                            )
-                        )
-                    )
-                )
-            case 4 =>
-                FuseData(
-                    Array(
-                        FuseTable(
-                            "",
-                            Array(
-                                Amp(0, 6), // failsafe fallback for currents less than 65A
-                                Amp(65, 25),
-                                Amp(105, 35),
-                                Amp(140, 50),
-                                Amp(180, 50),
-                                Amp(240, 63),
-                                Amp(320, 100),
-                                Amp(380, 100),
-                                Amp(500, 160),
-                                Amp(650, 160),
-                                Amp(800, 200),
-                                Amp(1050, 250),
-                                Amp(1300, 400),
-                                Amp(1750, 400),
-                                Amp(2400, 500)
-                            )
-                        )
-                    )
-                )
-            case _ =>
-                FuseData(
-                    Array(
-                        FuseTable(
-                            "DIN",
-                            Array(
-                                Amp(0, 0), // failsafe fallback for currents less than 65A
-                                Amp(65, 25),
-                                Amp(105, 40),
-                                Amp(140, 50),
-                                Amp(180, 63),
-                                Amp(240, 80),
-                                Amp(320, 100),
-                                Amp(380, 125),
-                                Amp(500, 160),
-                                Amp(650, 200),
-                                Amp(800, 250),
-                                Amp(1050, 315),
-                                Amp(1300, 400),
-                                Amp(1750, 500),
-                                Amp(2400, 630)
-                            )
-                        )
-                    )
-                )
-        }
+        val table = parseFuseTables (json.getJsonObject("fuse_table"))
+        val fuse_table = table.getOrElse(FuseData(Array(FuseTable.default)))
         ShortCircuitOptions(
             id = json.getString("id", ""),
             verbose = json.getBoolean("verbose", false),
@@ -190,7 +104,7 @@ class ShortCircuit extends RESTful
             cmin = getDouble(json, "cmin", 0.9),
             worstcasepf = json.getBoolean("worstcasepf", if (!json.containsKey("cosphi") || json.isNull("cosphi") || getDouble(json, "cosphi", 0.5).isNaN) true else false),
             cosphi = getDouble(json, "cosphi", 0.5),
-            fuse_table = fuse_table, // ToDo: editable fuse table
+            fuse_table = fuse_table,
             messagemax = json.getInt("messagemax", 5),
             batchsize = getLong(json, "batchsize", 10000),
             trafos = json.getString("trafos", ""),

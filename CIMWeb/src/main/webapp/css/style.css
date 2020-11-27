@@ -185,3 +185,13 @@ footer.page-footer {
 {
     background-color: #f2f2f2;
 }
+
+.analysis-table tr th
+{
+    text-align: center;
+}
+
+.analysis-table tr td
+{
+    text-align: right;
+}

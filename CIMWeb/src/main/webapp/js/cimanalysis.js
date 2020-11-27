@@ -15,6 +15,113 @@ define
      */
     function (util, mustache, cim, cimmap, cimquery, cimcassandra, CIMStatus, AnalysisTheme)
     {
+        /**
+         * Fuse breakpoint tables.
+         * - Standard: bkw,ckw,ews
+         * - Custom 1: ebl
+         * - Custom 2: ekz
+         * - Custom 3: sak
+         * @memberOf module:cimanalysis
+         */
+        let FuseTables =
+        {
+            "Standard":
+            {
+                "DIN": [
+                    { "ik":0.0, "rating": 0.0 },
+                    { "ik":65.0, "rating": 25.0 },
+                    { "ik":105.0, "rating": 40.0 },
+                    { "ik":140.0, "rating": 50.0 },
+                    { "ik":180.0, "rating": 63.0 },
+                    { "ik":240.0, "rating": 80.0 },
+                    { "ik":320.0, "rating": 100.0 },
+                    { "ik":380.0, "rating": 125.0 },
+                    { "ik":500.0, "rating": 160.0 },
+                    { "ik":650.0, "rating": 200.0 },
+                    { "ik":800.0, "rating": 250.0 },
+                    { "ik":1050.0, "rating": 315.0 },
+                    { "ik":1300.0, "rating": 400.0 },
+                    { "ik":1750.0, "rating": 500.0 },
+                    { "ik":2400.0, "rating": 630.0 }
+                ]
+            },
+            "Custom 1":
+            {
+                "DIN": [
+                    { "ik":0.0, "rating": 6.0 },
+                    { "ik":65.0, "rating": 25.0 },
+                    { "ik":105.0, "rating": 35.0 },
+                    { "ik":140.0, "rating": 50.0 },
+                    { "ik":180.0, "rating": 50.0 },
+                    { "ik":240.0, "rating": 63.0 },
+                    { "ik":320.0, "rating": 100.0 },
+                    { "ik":380.0, "rating": 100.0 },
+                    { "ik":500.0, "rating": 160.0 },
+                    { "ik":650.0, "rating": 160.0 },
+                    { "ik":800.0, "rating": 200.0 },
+                    { "ik":1050.0, "rating": 250.0 },
+                    { "ik":1300.0, "rating": 400.0 },
+                    { "ik":1750.0, "rating": 400.0 },
+                    { "ik":2400.0, "rating": 500.0 }
+                ]
+            },
+            "Custom 2":
+            {
+                "DIN": [
+                    { "ik":0.0, "rating": 0.0 },
+                    { "ik":28.0, "rating": 10.0 },
+                    { "ik":40.0, "rating": 16.0 },
+                    { "ik":55.0, "rating": 20.0 },
+                    { "ik":70.0, "rating": 25.0 },
+                    { "ik":93.0, "rating": 32.0 },
+                    { "ik":120.0, "rating": 40.0 },
+                    { "ik":160.0, "rating": 50.0 },
+                    { "ik":190.0, "rating": 63.0 },
+                    { "ik":230.0, "rating": 80.0 },
+                    { "ik":305.0, "rating": 100.0 },
+                    { "ik":380.0, "rating": 125.0 },
+                    { "ik":490.0, "rating": 160.0 },
+                    { "ik":690.0, "rating": 200.0 },
+                    { "ik":820.0, "rating": 250.0 },
+                    { "ik":1150.0, "rating": 315.0 },
+                    { "ik":1350.0, "rating": 400.0 },
+                    { "ik":1900.0, "rating": 500.0 },
+                    { "ik":2500.0, "rating": 630.0 }
+                ]
+            },
+            "Custom 3":
+            {
+                "DIN": [
+                    { "ik":0.0, "rating": 0.0 },
+                    { "ik":65.0, "rating": 25.0 },
+                    { "ik":105.0, "rating": 40.0 },
+                    { "ik":140.0, "rating": 50.0 },
+                    { "ik":180.0, "rating": 63.0 },
+                    { "ik":240.0, "rating": 80.0 },
+                    { "ik":320.0, "rating": 100.0 },
+                    { "ik":380.0, "rating": 125.0 },
+                    { "ik":500.0, "rating": 160.0 },
+                    { "ik":650.0, "rating": 200.0 },
+                    { "ik":800.0, "rating": 250.0 },
+                    { "ik":1050.0, "rating": 315.0 },
+                    { "ik":1300.0, "rating": 400.0 },
+                    { "ik":1750.0, "rating": 500.0 },
+                    { "ik":2400.0, "rating": 630.0 }
+                ],
+                "SEV": [
+                    { "ik":0.0, "rating": 0.0 },
+                    { "ik":200.0, "rating": 60.0 },
+                    { "ik":250.0, "rating": 75.0 },
+                    { "ik":300.0, "rating": 100.0 },
+                    { "ik":340.0, "rating": 125.0 },
+                    { "ik":500.0, "rating": 150.0 },
+                    { "ik":600.0, "rating": 200.0 },
+                    { "ik":720.0, "rating": 250.0 },
+                    { "ik":850.0, "rating": 300.0 },
+                    { "ik":1150.0, "rating": 400.0 }
+                ]
+            }
+        };
         let TheAnalysis;
         let KeySpaces = [];
 
@@ -92,7 +199,7 @@ define
                         high_temperature: Number (document.getElementById ("thigh").value),
                         cmax: Number (document.getElementById ("cmax").value),
                         cmin: Number (document.getElementById ("cmin").value),
-                        fuse_table: Number (document.getElementById ("fuse_table").value), // ToDo: editable fuse table
+                        fuse_table: getFuseTable (), // ToDo: editable fuse table
                         messagemax: 5,
                         batchsize: 10000,
                         trafos: "",
@@ -203,6 +310,106 @@ define
                 analyze (id).then (select).then (successCallback, failureCallback);
             else
                 analyze (id).then (successCallback, failureCallback);
+        }
+
+        function getFuseTables ()
+        {
+            const ret = [];
+            for (let property in FuseTables)
+                if (FuseTables.hasOwnProperty (property))
+                    ret.push (property);
+            return (ret);
+        }
+
+        function getFuseTable ()
+        {
+            return (FuseTables[document.getElementById ("fuse_table").value]);
+        }
+
+        function render_fuse_tables ()
+        {
+            const fuse_table_template =
+`
+{{#fusetables}}
+<a class="dropdown-item" href="#">{{.}}</a>
+{{/fusetables}}
+`;
+            const element = document.getElementById ("fuse_table");
+            const fuse_table = document.getElementById ("fuse_table_select");
+            fuse_table.innerHTML = mustache.render (fuse_table_template, { fusetables: getFuseTables () });
+            for (let j = 0; j < fuse_table.children.length; j++)
+                fuse_table.children.item (j).onclick = (event) =>
+                {
+                    event.preventDefault ();
+                    element.value = event.target.innerHTML;
+                };
+        }
+
+        function fuse_table_modal (table)
+        {
+            const fuse_table_modal_template =
+`<div id="fuse_table_modal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fa fa-power-off"></i> Fuse Table</h2>
+                <button id="close_progress_modal" class="close" type="button" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="fuse_table_modal_body" class="modal-body">
+                <table class='analysis-table'>
+                    <tr>
+                        <th>Fuse class</th><th>Up to I<sub>sc</sub> (A)</th><th>Recommended<br> Fuse Rating (A)</th>
+                    </tr>
+                    {{#DIN}}
+                        <tr>
+                            <td>DIN</td><td>{{ik}}</td><td>{{rating}}</td>
+                        </tr>
+                    {{/DIN}}
+                    {{#SEV}}
+                        <tr>
+                            <td>SEV</td><td>{{ik}}</td><td>{{rating}}</td>
+                        </tr>
+                    {{/SEV}}
+               </table>
+            </div>
+        </div>
+    </div>
+</div>
+`;
+            const modal = mustache.render (fuse_table_modal_template, table);
+            const element = document.createElement("div");
+            element.innerHTML = modal;
+            if (document.getElementById ("fuse_table_modal"))
+                document.getElementById ("fuse_table_modal").remove ();
+            document.body.appendChild(element.children[0]);
+            $("#fuse_table_modal").modal ("show");
+        }
+
+        function show_fuse_table_info (event)
+        {
+            event.preventDefault();
+            fuse_table_modal (getFuseTable ());
+        }
+
+        function render_keyspaces ()
+        {
+            const keyspaces_template =
+`
+{{#keyspaces}}
+<a class="dropdown-item" href="#">{{.}}</a>
+{{/keyspaces}}
+`;
+            const element = document.getElementById ("shortcircuit_keyspace");
+            const keyspace = document.getElementById ("shortcircuit_keyspace_select");
+            keyspace.innerHTML = mustache.render (keyspaces_template, { keyspaces: getKeySpaces () });
+            for (let j = 0; j < keyspace.children.length; j++)
+                keyspace.children.item (j).onclick = (event) =>
+                {
+                    event.preventDefault ();
+                    element.value = event.target.innerHTML;
+                };
         }
 
         /**
@@ -320,18 +527,20 @@ define
           <label class='col-sm-2 col-form-label' for='fuse_table'>Fuse table</label>
           <div class="col form-group">
               <div class="input-group">
-                  <input id="fuse_table" type="text" class="form-control" aria-describedby="fuse_tableHelp" value="1">
+                  <div class="input-group-prepend">
+                    <button id="fuse_table_info" class="btn btn-outline-secondary" type="button">&#x1F6C8;</button>
+                  </div>
+                  <input id="fuse_table" type="text" class="form-control" aria-describedby="fuse_tableHelp" value="Standard">
                   <div class="input-group-append">
                     <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Fuse table</button>
                     <div id="fuse_table_select" class="dropdown-menu">
-                      <a class="dropdown-item" href="#">Customer 1</a>
-                      <a class="dropdown-item" href="#">Customer 2</a>
-                      <a class="dropdown-item" href="#">Customer 3</a>
-                      <a class="dropdown-item" href="#">Customer 4</a>
+                      <a class="dropdown-item" href="#">One</a>
+                      <a class="dropdown-item" href="#">Two</a>
+                      <a class="dropdown-item" href="#">Three</a>
                     </div>
                   </div>
               </div>
-            <small id='fuse_tableHelp' class='form-text text-muted'>Recommended I<sub>k</sub>:fuse rating breakpoint table, e.g. Customer 1: 105&#8594;40A, 140&#8594;50A &#8230; or Customer 2: 120&#8594;40A, 160&#8594;50A &#8230;.</small>
+            <small id='fuse_tableHelp' class='form-text text-muted'>Recommended I<sub>sc</sub>:fuse rating breakpoint table, e.g. I<sub>sc</sub><65A&#8594;25A, I<sub>sc</sub><105A&#8594;40A, I<sub>sc</sub><140A&#8594;50A, etc.</small>
           </div>
         </div>
         <h4>Output</h4>
@@ -373,11 +582,8 @@ define
 `;
 
             document.getElementById ("analysis").innerHTML = mustache.render (analysis_template);
-            const contents = getKeySpaces ().map (keyspace => `<a class="dropdown-item" href="#">${keyspace}</a>`).join ("\n");
-            const keyspace = document.getElementById ("shortcircuit_keyspace_select");
-            keyspace.innerHTML = contents;
-            for (var j = 0; j < keyspace.children.length; j++)
-                keyspace.children.item (j).onclick = (event) => { event.preventDefault (); const element = document.getElementById ("shortcircuit_keyspace"); element.value = event.target.innerHTML; element.onchange (); };
+            render_fuse_tables ();
+            document.getElementById ("fuse_table_info").onclick = show_fuse_table_info;
             document.getElementById ("do_analysis").onclick = do_analysis;
         }
 
@@ -389,7 +595,8 @@ define
          */
         function initialize ()
         {
-            cimcassandra.getKeyspaces ().then (setKeySpaces.bind(this)).then (render.bind (this));
+            render ();
+            cimcassandra.getKeyspaces ().then (setKeySpaces.bind (this)).then (render_keyspaces.bind (this));
         }
 
         return (
