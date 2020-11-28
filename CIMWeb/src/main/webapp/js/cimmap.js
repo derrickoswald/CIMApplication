@@ -1306,9 +1306,31 @@ define
         }
 
         /**
+         * @summary Update the page.
+         * @description Called if the page is already initialized and the page is again being shown.
+         * @function focus
+         * @memberOf module:cimmap
+         */
+        function focus ()
+        {
+        }
+
+        /**
+         * @summary Close down the page.
+         * @description Called if the page is being hidden.
+         * @function blur
+         * @memberOf module:cimmap
+         */
+        function blur ()
+        {
+        }
+
+        /**
          * @summary Shut down the map.
          * @description Clean up and close the map.
          * @param {object} event - <em>not used</em>
+         * @function terminate
+         * @memberOf module:cimmap
          */
         function terminate (event)
         {
@@ -1359,6 +1381,8 @@ define
                     pop_listeners: pop_listeners,
                     peek_listeners: peek_listeners,
                     initialize: initialize,
+                    focus: focus,
+                    blur: blur,
                     terminate: terminate
                 }
             );

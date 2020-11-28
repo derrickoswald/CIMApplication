@@ -82,6 +82,17 @@ requirejs
                 var next = get_hash (event.newURL);
                 if ("" === next)
                     next = "files"; // default tab
+
+                if (initialized[prev])
+                    switch (prev)
+                    {
+                        case "files": cimfiles.blur (event); break;
+                        case "map": cimmap.blur (event); break;
+                        case "ingest": cimingest.blur (event); break;
+                        case "analysis": cimanalysis.blur (event); break;
+                        case "simulate": cimsimulate.blur (event); break;
+                        case "query": cimquery.blur (event); break;
+                    }
                 hide (prev);
                 show (next);
 
@@ -115,6 +126,15 @@ requirejs
                         case "query": cimquery.initialize (event); break;
                     }
                     initialized[next] = true;
+                }
+                switch (next)
+                {
+                    case "files": cimfiles.focus (event); break;
+                    case "map": cimmap.focus (event); break;
+                    case "ingest": cimingest.focus (event); break;
+                    case "analysis": cimanalysis.focus (event); break;
+                    case "simulate": cimsimulate.focus (event); break;
+                    case "query": cimquery.focus (event); break;
                 }
             };
 

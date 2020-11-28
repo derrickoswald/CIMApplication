@@ -753,9 +753,31 @@ define
             do_fetch (LAST_DIRECTORY);
         }
 
+        /**
+         * @summary Update the page.
+         * @description Called if the page is already initialized and the page is again being shown.
+         * @function focus
+         * @memberOf module:cimfiles
+         */
+        function focus ()
+        {
+        }
+
+        /**
+         * @summary Close down the page.
+         * @description Called if the page is being hidden.
+         * @function blur
+         * @memberOf module:cimfiles
+         */
+        function blur ()
+        {
+        }
+
         return (
             {
                 initialize: initialize,
+                focus: focus,
+                blur: blur,
                 get: get,
                 fetch: fetch,
                 put: put,

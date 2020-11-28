@@ -208,7 +208,7 @@ define
                         calculate_public_lighting: false,
                         output: "Cassandra",
                         keyspace: document.getElementById ("shortcircuit_keyspace").value,
-                        replication: 1
+                        replication: Number (document.getElementById ("shortcircuit_cassandra_replication").value)
                     };
                     const pf = document.getElementById ("motor_power_factor").value;
                     if (("" === pf) || isNaN (Number (pf)))
@@ -271,10 +271,7 @@ define
         {
             const id = "ShortCircuit" + getRandomInt (1e9);
             const status = new CIMStatus ("progress_modal", "progress", id);
-            // flip to the map while analysing
             const to_map = document.getElementById ("analysis_to_map").checked;
-            if (to_map)
-                window.location.hash = "map";
 
             function successCallback (data)
             {
@@ -285,6 +282,7 @@ define
                     const theme = new AnalysisTheme (TheAnalysis.records);
                     cimmap.get_themer ().removeTheme (theme);
                     cimmap.get_themer ().addTheme (theme, true);
+                    window.location.hash = "map";
                 }
                 else
                     document.getElementById ("analysis_results").innerHTML = "<pre>" + JSON.stringify (data, null, 4) + "</pre>";
@@ -428,63 +426,92 @@ define
     <div class='col-12' style='margin-top: 40px;'>
       <form id='analysis_form' role='form' style='width: 100%'>
         <h3>Short Circuit</h3>
+        <h4>Output</h4>
         <div class='form-group row'>
-          <label class='col-sm-2 col-form-label' for='network_power_max'>Network power max</label>
-          <div class='col-sm-10'>
-            <input id='network_power_max' class='form-control' type='text' name='network_power_max' aria-describedby='network_power_maxHelp' value='200.0e6'>
-            <small id='network_power_maxHelp' class='form-text text-muted'>Default maximum supply network available short circuit power, to be used if no equivalent injection is found (VA).</small>
-          </div>
+            <label class='col-sm-2 col-form-label' for='shortcircuit_keyspace'>Cassandra keyspace</label>
+            <div class='col-sm-4 form-group'>
+              <div class="input-group">
+                  <input id="shortcircuit_keyspace" type="text" class="form-control" aria-describedby="shortcircuitKeyspaceHelp" value="cimapplication">
+                  <div class="input-group-append">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Keyspace</button>
+                    <div id="shortcircuit_keyspace_select" class="dropdown-menu">
+                      <a class="dropdown-item" href="#">One</a>
+                      <a class="dropdown-item" href="#">Two</a>
+                      <a class="dropdown-item" href="#">Three</a>
+                    </div>
+                  </div>
+              </div>
+              <small id="shortcircuitKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used for output (tables <em>shortcircuit_run</em>, <em>shortcircuit</em>, <em>fusesummary</em>).</small>
+            </div>
+            <label class='col-sm-2 col-form-label' for='cassandra_replication'>Cassandra replication</label>
+            <div class='col-sm-4'>
+                <input id='shortcircuit_cassandra_replication' class='form-control' type='text' name='shortcircuit_cassandra_replication' aria-describedby='shortcircuit_cassandra_replicationHelp' value='1'>
+                <small id='shortcircuit_cassandra_replicationHelp' class='form-text text-muted'>Cassandra keyspace replication.<br>Used only if creating the keyspace.</small>
+            </div>
         </div>
+        <h4>Network Defaults</h4>
         <div class='form-group row'>
+          <div class='col-sm-2'>
+            <label class='col-form-label' for='network_power_max'>Network power max</label>
+            <small class='form-text text-muted'>Used if no equivalent injection is found.</small>
+          </div>
+          <div class='col-sm-2'>
+            <input id='network_power_max' class='form-control' type='text' name='network_power_max' aria-describedby='network_power_maxHelp' value='200.0e6'>
+            <small id='network_power_maxHelp' class='form-text text-muted'>Maximum supply network short circuit power (VA).</small>
+          </div>
           <label class='col-sm-2 col-form-label' for='network_resistance_max'>Network resistance max</label>
-          <div class='col-sm-4'>
+          <div class='col-sm-2'>
             <input id='network_resistance_max' class='form-control' type='text' name='network_resistance_max' aria-describedby='network_resistance_maxHelp' value='0.437785783'>
-            <small id='network_resistance_maxHelp' class='form-text text-muted'>Default maximum supply network short circuit resistance, to be used if no equivalent injection is found (Ω).</small>
+            <small id='network_resistance_maxHelp' class='form-text text-muted'>Maximum supply network short circuit resistance (Ω).</small>
           </div>
           <label class='col-sm-2 col-form-label' for='network_reactance_max'>Network reactance max</label>
-          <div class='col-sm-4'>
+          <div class='col-sm-2'>
             <input id='network_reactance_max' class='form-control' type='text' name='network_reactance_max' aria-describedby='network_reactance_maxHelp' value='-1.202806555'>
-            <small id='network_reactance_maxHelp' class='form-text text-muted'>Default maximum supply network short circuit reactance, to be used if no equivalent injection is found (Ω).</small>
+            <small id='network_reactance_maxHelp' class='form-text text-muted'>Maximum supply network short circuit reactance (Ω).</small>
           </div>
         </div>
         <div class='form-group row'>
-          <label class='col-sm-2 col-form-label' for='network_power_min'>Network power min</label>
-          <div class='col-sm-10'>
+          <div class='col-sm-2'>
+            <label class='col-form-label' for='network_power_min'>Network power min</label>
+            <small class='form-text text-muted'>Used if no equivalent injection is found.</small>
+          </div>
+          <div class='col-sm-2'>
             <input id='network_power_min' class='form-control' type='text' name='network_power_min' aria-describedby='network_power_minHelp' value='100.0e6'>
-            <small id='network_power_minHelp' class='form-text text-muted'>Default minimum supply network available short circuit power, to be used if no equivalent injection is found (VA).</small>
+            <small id='network_power_minHelp' class='form-text text-muted'>Minimum supply network short circuit power (VA).</small>
           </div>
-        </div>
-        <div class='form-group row'>
           <label class='col-sm-2 col-form-label' for='network_resistance_min'>Network resistance min</label>
-          <div class='col-sm-4'>
+          <div class='col-sm-2'>
             <input id='network_resistance_min' class='form-control' type='text' name='network_resistance_min' aria-describedby='network_resistance_minHelp' value='0.437785783'>
-            <small id='network_resistance_minHelp' class='form-text text-muted'>Default minimum supply network short circuit resistance, to be used if no equivalent injection is found (Ω).</small>
+            <small id='network_resistance_minHelp' class='form-text text-muted'>Minimum supply network short circuit resistance (Ω).</small>
           </div>
           <label class='col-sm-2 col-form-label' for='network_reactance_min'>Network reactance min</label>
-          <div class='col-sm-4'>
+          <div class='col-sm-2'>
             <input id='network_reactance_min' class='form-control' type='text' name='network_reactance_min' aria-describedby='network_reactance_minHelp' value='-1.202806555'>
-            <small id='network_reactance_minHelp' class='form-text text-muted'>Default minimum supply network short circuit reactance, to be used if no equivalent injection is found (Ω).</small>
+            <small id='network_reactance_minHelp' class='form-text text-muted'>Minimum supply network short circuit reactance (Ω).</small>
           </div>
         </div>
+        <h4>Transformer Defaults</h4>
         <div class='form-group row'>
-          <label class='col-sm-2 col-form-label' for='transformer_power'>Transformer power</label>
-          <div class='col-sm-10'>
+          <div class='col-sm-2'>
+            <label class='col-form-label' for='transformer_power'>Transformer power</label>
+            <small class='form-text text-muted'>Used if not specified.</small>
+          </div>
+          <div class='col-sm-2'>
             <input id='transformer_power' class='form-control' type='text' name='transformer_power' aria-describedby='transformer_powerHelp' value='630000'>
-            <small id='transformer_powerHelp' class='form-text text-muted'>Default transformer rated power, to be used if it wasn't specified for a transformer (VA).</small>
+            <small id='transformer_powerHelp' class='form-text text-muted'>Rated power (VA).</small>
           </div>
-        </div>
-        <div class='form-group row'>
           <label class='col-sm-2 col-form-label' for='transformer_resistance'>Transformer resistance</label>
-          <div class='col-sm-4'>
+          <div class='col-sm-2'>
             <input id='transformer_resistance' class='form-control' type='text' name='transformer_resistance' aria-describedby='transformer_resistanceHelp' value='0.005899999998374999'>
-            <small id='transformer_resistanceHelp' class='form-text text-muted'>Default transformer characteristic resistance, to be used if it wasn't specified for a transformer (Ω).</small>
+            <small id='transfsormer_resistanceHelp' class='form-text text-muted'>Characteristic R (Ω).</small>
           </div>
           <label class='col-sm-2 col-form-label' for='transformer_reactance'>Transformer reactance</label>
-          <div class='col-sm-4'>
+          <div class='col-sm-2'>
             <input id='transformer_reactance' class='form-control' type='text' name='transformer_reactance' aria-describedby='transformer_reactanceHelp' value='0.039562482211875'>
-            <small id='transformer_reactanceHelp' class='form-text text-muted'>Default transformer characteristic reactance, to be used if it wasn't specified for a transformer (Ω).</small>
+            <small id='transformer_reactanceHelp' class='form-text text-muted'>Characteristic X (Ω).</small>
           </div>
         </div>
+        <h4>Temperatures</h4>
         <div class='form-group row'>
           <label class='col-sm-2 col-form-label' for='tbase'>Base temperature</label>
           <div class='col-sm-2'>
@@ -494,30 +521,28 @@ define
           <label class='col-sm-1 col-form-label' for='tlow'>T<sub>Low</sub></label>
           <div class='col-sm-3'>
             <input id='tlow' class='form-control' type='text' name='tlow' aria-describedby='tlowHelp' value='60.0'>
-            <small id='tlowHelp' class='form-text text-muted'>Low temperature (minimum impedances, maximum fault level) for calculations used for rating equipment (°C).</small>
+            <small id='tlowHelp' class='form-text text-muted'>Low temperature (minimum Z, maximum I) for rating equipment (°C).</small>
           </div>
           <label class='col-sm-1 col-form-label' for='thigh'>T<sub>High</sub></label>
           <div class='col-sm-3'>
             <input id='thigh' class='form-control' type='text' name='thigh' aria-describedby='thighHelp' value='90.0'>
-            <small id='thighHelp' class='form-text text-muted'>High temperature (maximum impedances, minimum fault level) for calculations used for protections settings (°C).</small>
+            <small id='thighHelp' class='form-text text-muted'>High temperature (maximum Z, minimum I) for protections settings (°C).</small>
           </div>
         </div>
+        <h4>Factors</h4>
         <div class='form-group row'>
           <label class='col-sm-2 col-form-label' for='cmax'>C<sub>max</sub></label>
-          <div class='col-sm-4'>
-            <input id='cmax' class='form-control' type='text' name='cmax' aria-describedby='cmaxHelp' value='1.0'>
+          <div class='col-sm-2'>
+            <input id='cmax' class='form-control' type='text' name='cmax' aria-describedby='cmaxHelp' value='1.05'>
             <small id='cmaxHelp' class='form-text text-muted'>Voltage factor for maximum fault level (used for rating equipment), IEC60909 specifies 1.05 for voltages < 1kV, 1.1 for voltages > 1kV (dimensionless).</small>
           </div>
           <label class='col-sm-2 col-form-label' for='cmin'>C<sub>min</sub></label>
-          <div class='col-sm-4'>
-            <input id='cmin' class='form-control' type='text' name='cmin' aria-describedby='cminHelp' value='0.9'>
+          <div class='col-sm-2'>
+            <input id='cmin' class='form-control' type='text' name='cmin' aria-describedby='cminHelp' value='0.95'>
             <small id='cminHelp' class='form-text text-muted'>Voltage factor for minimum fault level (used for protections settings), IEC60909 specifies 0.95 for voltages < 1kV, 1.0 for voltages > 1kV (dimensionless).</small>
           </div>
-        </div>
-        <h4>Maximum Starting Current</h4>
-        <div class='form-group row'>
           <label class='col-sm-2 col-form-label' for='motor_power_factor'>Motor power factor</label>
-          <div class='col-sm-10'>
+          <div class='col-sm-2'>
             <input id='motor_power_factor' class='form-control' type='text' name='motor_power_factor' aria-describedby='motor_power_factorHelp' value=''>
             <small id='motor_power_factorHelp' class='form-text text-muted'>Power factor of motor load at startup, e.g cos(60°)=0.5, if not specified worst-case is assumed (dimensionless).</small>
           </div>
@@ -543,24 +568,6 @@ define
             <small id='fuse_tableHelp' class='form-text text-muted'>Recommended I<sub>sc</sub>:fuse rating breakpoint table, e.g. I<sub>sc</sub><65A&#8594;25A, I<sub>sc</sub><105A&#8594;40A, I<sub>sc</sub><140A&#8594;50A, etc.</small>
           </div>
         </div>
-        <h4>Output</h4>
-        <div class='form-group row'>
-          <label class='col-sm-2 col-form-label' for='shortcircuit_keyspace'>Cassandra keyspace</label>
-          <div class="col form-group">
-              <div class="input-group">
-                  <input id="shortcircuit_keyspace" type="text" class="form-control" aria-describedby="shortcircuitKeyspaceHelp" value="cimapplication">
-                  <div class="input-group-append">
-                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Keyspace</button>
-                    <div id="shortcircuit_keyspace_select" class="dropdown-menu">
-                      <a class="dropdown-item" href="#">One</a>
-                      <a class="dropdown-item" href="#">Two</a>
-                      <a class="dropdown-item" href="#">Three</a>
-                    </div>
-                  </div>
-              </div>
-            <small id="shortcircuitKeyspaceHelp" class="form-text text-muted">Enter the Cassandra keyspace to be used for output (tables <em>shortcircuit</em>, <em>nullungsbedingung</em>, etc.).</small>
-          </div>
-        </div>
         <div class="form-row">
           <div class="col form-group">
             <label for="analysis_to_map">View on map</label>
@@ -572,6 +579,7 @@ define
         </div>
         <div class='form-group'>
           <button id='do_analysis' type='button' class='btn btn-primary'>Execute</button>
+          <div id="analysis_warning" class="alert alert-warning" role="alert" style="display: none"></div>
         </div>
       </form>
       <div id='analysis_results'>
@@ -596,12 +604,69 @@ define
         function initialize ()
         {
             render ();
+        }
+
+        /**
+         * @summary Update the page.
+         * @description Called if the page is already initialized and the page is again being shown.
+         * @function focus
+         * @memberOf module:cimanalysis
+         */
+        function focus ()
+        {
+            // update keyspace list
             cimcassandra.getKeyspaces ().then (setKeySpaces.bind (this)).then (render_keyspaces.bind (this));
+
+            // update Execute button
+            const button = document.getElementById ("do_analysis");
+            const warning = document.getElementById ("analysis_warning");
+            const info = cimmap.get_loaded ();
+            if (null != info)
+            {
+                if (!info.options["ch.ninecode.cim.do_topo"] && !info.options["ch.ninecode.cim.do_topo_islands"])
+                {
+                    warning.innerHTML = "loaded CIM file was not topologically processed";
+                    warning.style.display = "block";
+                    button.disabled = true;
+                }
+                else
+                {
+                    if (!(info.options["ch.ninecode.cim.force_retain_fuses"] === "ForceTrue"))
+                    {
+                        warning.innerHTML = "Fuses may not be processed since force_retain_fuses=ForceTrue was not specified";
+                        warning.style.display = "block";
+                    }
+                    else
+                    {
+                        warning.innerHTML = "";
+                        warning.style.display = "none";
+                    }
+                    button.disabled = false;
+                }
+            }
+            else
+            {
+                warning.innerHTML = "no CIM file is loaded";
+                warning.style.display = "block";
+                button.disabled = true;
+            }
+        }
+
+        /**
+         * @summary Close down the page.
+         * @description Called if the page is being hidden.
+         * @function blur
+         * @memberOf module:cimanalysis
+         */
+        function blur ()
+        {
         }
 
         return (
             {
-                initialize: initialize
+                initialize: initialize,
+                focus: focus,
+                blur: blur
             }
         );
     }

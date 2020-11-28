@@ -1837,17 +1837,41 @@ truncate table cimapplication.responsibility_by_day;
          * @summary Render the simulations page.
          * @description Uses mustache to create HTML DOM elements that display the simulation options.
          * @function initialize
+         * @memberOf module:cimsimulate
+
          */
         function initialize ()
         {
             setReplication ().then (cimcassandra.getKeyspaces ()).then (setKeySpaces.bind(this)).then (render.bind (this));
         }
 
+        /**
+         * @summary Update the page.
+         * @description Called if the page is already initialized and the page is again being shown.
+         * @function focus
+         * @memberOf module:cimsimulate
+         */
+        function focus ()
+        {
+        }
+
+        /**
+         * @summary Close down the page.
+         * @description Called if the page is being hidden.
+         * @function blur
+         * @memberOf module:cimsimulate
+         */
+        function blur ()
+        {
+        }
+
         return (
             {
                 getKeySpaces: getKeySpaces,
                 setKeySpaces: setKeySpaces,
-                initialize: initialize
+                initialize: initialize,
+                focus: focus,
+                blur: blur
             }
         );
     }

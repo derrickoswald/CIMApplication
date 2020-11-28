@@ -657,9 +657,31 @@ define
             document.getElementById ("do_ingest").onclick = do_ingest;
         }
 
+        /**
+         * @summary Update the page.
+         * @description Called if the page is already initialized and the page is again being shown.
+         * @function focus
+         * @memberOf module:cimingest
+         */
+        function focus ()
+        {
+        }
+
+        /**
+         * @summary Close down the page.
+         * @description Called if the page is being hidden.
+         * @function blur
+         * @memberOf module:cimingest
+         */
+        function blur ()
+        {
+        }
+
         return (
             {
-                initialize: initialize
+                initialize: initialize,
+                focus: focus,
+                blur: blur
             }
         );
     }

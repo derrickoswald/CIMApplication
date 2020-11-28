@@ -117,6 +117,7 @@ define
          * @summary Render the query page.
          * @description Uses mustache to create HTML DOM elements that comprise the query form.
          * @function initialize
+         * @memberOf module:cimquery
          */
         function initialize ()
         {
@@ -194,10 +195,32 @@ define
             document.getElementById ("do_query").onclick = do_query;
         }
 
+        /**
+         * @summary Update the page.
+         * @description Called if the page is already initialized and the page is again being shown.
+         * @function focus
+         * @memberOf module:cimquery
+         */
+        function focus ()
+        {
+        }
+
+        /**
+         * @summary Close down the page.
+         * @description Called if the page is being hidden.
+         * @function blur
+         * @memberOf module:cimquery
+         */
+        function blur ()
+        {
+        }
+
         return (
             {
+                queryPromise: queryPromise,
                 initialize: initialize,
-                queryPromise: queryPromise
+                focus: focus,
+                blur: blur
             }
         );
     }
