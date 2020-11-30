@@ -3,6 +3,8 @@ package ch.ninecode.sim
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.util.CIMAble
 import ch.ninecode.util.CIMReaderOptions
+import ch.ninecode.util.CassandraOptions
+import ch.ninecode.util.Cassandraable
 import ch.ninecode.util.MainOptions
 import ch.ninecode.util.Mainable
 import ch.ninecode.util.SparkOptions
@@ -14,9 +16,8 @@ import ch.ninecode.util.Sparkable
  * @param main_options          main() program options
  * @param spark_options         Spark session options
  * @param cim_options           CIMReader options
+ * @param cassandra_options     Cassandra options
  * @param verbose               If <code>true</code>, emit progress messages.
- * @param host                  Cassandra connection host.
- * @param port                  Cassandra connection port.
  * @param workdir               Working directory for executors.
  * @param three_phase           If <code>true</code>, simulate in three phase flag.
  * @param fake_three_phase      If <code>true</code>, convert single phase meter readings into three phase.
@@ -34,9 +35,8 @@ case class SimulationOptions
     var cim_options: CIMReaderOptions = CIMReaderOptions(
         topology = true,
         topology_options = CIMTopologyOptions(identify_islands = true)),
+    var cassandra_options: CassandraOptions = CassandraOptions(),
     verbose: Boolean = false,
-    host: String = "localhost",
-    port: Int = 9042,
     workdir: String = "simulation/",
     three_phase: Boolean = false,
     fake_three_phase: Boolean = false,
@@ -45,4 +45,4 @@ case class SimulationOptions
     postprocessonly: Boolean = false,
     cable_impedance_limit: Double = 5.0,
     simulation: Seq[String] = Seq()
-) extends Mainable with Sparkable with CIMAble
+) extends Mainable with Sparkable with CIMAble with Cassandraable

@@ -7,6 +7,8 @@ import javax.json.JsonObjectBuilder
 
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceTrue
+import ch.ninecode.util.Cassandraable
+import ch.ninecode.util.CassandraOptions
 import ch.ninecode.util.CIMAble
 import ch.ninecode.util.CIMReaderOptions
 import ch.ninecode.util.Complex
@@ -21,6 +23,7 @@ import ch.ninecode.util.Sparkable
  * @param main_options                        main() program options
  * @param spark_options                       Spark session options
  * @param cim_options                         CIMReader options
+ * @param cassandra_options                   Cassandra options
  * @param id                                  run id on input, primary key for database on output
  * @param verbose                             flag to output progress and interesting values
  * @param description                         text describing this program execution
@@ -46,6 +49,12 @@ import ch.ninecode.util.Sparkable
  * @param cable_impedance_limit               cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with too high impedance values
  * @param workdir                             shared directory (HDFS or NFS share) for intermediate results
  * @param calculate_public_lighting           whether to consider public lighting in the shortcircuit calculations
+ * @param output                              type of output, SQLite or Cassandra
+ * @param outputfile                          SQLite output file name
+ * @param host                                Cassandra connection host (listen_address or seed in cassandra.yaml)
+ * @param port                                Cassandra connection port
+ * @param keyspace                            target Cassandra keyspace
+ * @param replication                         keyspace replication if the Cassandra keyspace needs creation
  */
 case class ShortCircuitOptions
 (
@@ -56,6 +65,7 @@ case class ShortCircuitOptions
         topology_options = CIMTopologyOptions(
             identify_islands = true,
             force_retain_fuses = ForceTrue)),
+    var cassandra_options: CassandraOptions = CassandraOptions(),
     id: String = "",
     verbose: Boolean = true,
     description: String = "",
@@ -87,7 +97,7 @@ case class ShortCircuitOptions
     port: Int = 9042,
     keyspace: String = "cimapplication",
     replication: Int = 1
-) extends Mainable with Sparkable with CIMAble
+) extends Mainable with Sparkable with CIMAble with Cassandraable
 {
     def derive_work_dir (files: Seq[String]): String =
     {

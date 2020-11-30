@@ -1,12 +1,17 @@
 package ch.ninecode.on
 
 import ch.ninecode.util.CIMReaderOptionsParser
+import ch.ninecode.util.MainOptionsParser
+import ch.ninecode.util.SparkOptionsParser
 
 /**
  * Parser for command line operation.
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-class OneOfNOptionsParser (options: OneOfNOptions) extends CIMReaderOptionsParser[OneOfNOptions](options)
+class OneOfNOptionsParser (options: OneOfNOptions)
+    extends MainOptionsParser[OneOfNOptions](options)
+    with SparkOptionsParser[OneOfNOptions]
+    with CIMReaderOptionsParser[OneOfNOptions]
 {
     val default: OneOfNOptions = OneOfNOptions()
 

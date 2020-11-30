@@ -1,12 +1,17 @@
 package ch.ninecode.np
 
 import ch.ninecode.util.CIMReaderOptionsParser
+import ch.ninecode.util.MainOptionsParser
+import ch.ninecode.util.SparkOptionsParser
 
 /**
  * Generic parser for command line operation.
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-class NetworkParametersOptionsParser (options: NetworkParametersOptions) extends CIMReaderOptionsParser[NetworkParametersOptions](options)
+class NetworkParametersOptionsParser (options: NetworkParametersOptions)
+    extends MainOptionsParser[NetworkParametersOptions](options)
+    with SparkOptionsParser[NetworkParametersOptions]
+    with CIMReaderOptionsParser[NetworkParametersOptions]
 {
     opt[Unit]("verbose")
         .action((_, c) => c.copy(verbose = true))

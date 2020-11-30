@@ -548,7 +548,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         val numSimulations = simulations.count().toInt
         log.info(s"""performing $numSimulations GridLAB-D simulation${plural(numSimulations)}""")
         val runner = SimulationRunner(
-            options.host, job.output_keyspace, options.workdir,
+            job.output_keyspace, options.workdir,
             options.three_phase, options.fake_three_phase,
             job.cim_temperature, job.simulation_temperature, job.swing_voltage_factor,
             options.keep, options.verbose)

@@ -1,9 +1,14 @@
 package ch.ninecode.mfi
 
 import ch.ninecode.util.CIMReaderOptionsParser
+import ch.ninecode.util.MainOptionsParser
+import ch.ninecode.util.SparkOptionsParser
 
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-class EinspeiseleistungOptionsParser (options: EinspeiseleistungOptions) extends CIMReaderOptionsParser[EinspeiseleistungOptions](options)
+class EinspeiseleistungOptionsParser (options: EinspeiseleistungOptions)
+    extends MainOptionsParser[EinspeiseleistungOptions](options)
+    with SparkOptionsParser[EinspeiseleistungOptions]
+    with CIMReaderOptionsParser[EinspeiseleistungOptions]
 {
     opt[String]("checkpoint")
         .valueName("<dir>")

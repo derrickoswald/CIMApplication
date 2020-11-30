@@ -1,5 +1,7 @@
 package ch.ninecode.ingest
 
+import ch.ninecode.util.CassandraOptions
+import ch.ninecode.util.Cassandraable
 import ch.ninecode.util.MainOptions
 import ch.ninecode.util.Mainable
 import ch.ninecode.util.SparkOptions
@@ -8,9 +10,10 @@ import ch.ninecode.util.Sparkable
 /**
  * Ingest meter readings options.
  *
+ * @param main_options          main() program options
+ * @param spark_options         Spark session options
+ * @param cassandra_options     Cassandra options
  * @param verbose    If <code>true</code>, emit progress messages.
- * @param host       Cassandra connection host.
- * @param port       Cassandra connection port.
  * @param workdir    Working directory for unzipping and copying if nocopy is <code>false</code>.
  * @param ingestions File to ingest.
  */
@@ -18,12 +21,11 @@ case class IngestOptions
 (
     var main_options: MainOptions = MainOptions(),
     var spark_options: SparkOptions = SparkOptions(),
+    var cassandra_options: CassandraOptions = CassandraOptions(),
     verbose: Boolean = false,
-    host: String = "localhost",
-    port: Int = 9042,
     workdir: String = s"${IngestOptions.cwd}/work/",
     ingestions: Seq[String] = Seq()
-) extends Mainable with Sparkable
+) extends Mainable with Sparkable with Cassandraable
 
 object IngestOptions
 {

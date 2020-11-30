@@ -31,7 +31,6 @@ import ch.ninecode.util.ThreePhaseComplexDataElement
  *  - execute gridlabd (2:41)
  *  - store each Recorder .csv file in Cassandra (3:30)
  *
- * @param cassandra              a Cassandra seed node name
  * @param keyspace               the keyspace to store the results (the keyspace for reading is set by the Cassandra query in the player)
  * @param workdir                the directory to create the .glm and location of /input_data and /output_data directories
  * @param three_phase            if <code>true</code> simulate in three phase
@@ -43,7 +42,6 @@ import ch.ninecode.util.ThreePhaseComplexDataElement
  * @param verbose                when <code>true</code> set the log level for this class as INFO
  */
 case class SimulationRunner (
-    cassandra: String,
     keyspace: String,
     workdir: String,
     three_phase: Boolean,

@@ -4,6 +4,9 @@ import scopt.OptionParser
 
 /**
  * Parser for command line operation of standard programs.
+ *
+ * @param default object that provides default values
+ * @tparam T T class type required for parsed values
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
 class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](default.main_options.application)
@@ -11,6 +14,13 @@ class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](defa
     var unittest = false
     var helpout = false
     var versionout = false
+
+    /**
+     * Return the object that has defaults.
+     *
+     * @return the default object
+     */
+    def getDefault: T = default
 
     override def terminate (state: Either[String, Unit]): Unit =
     {

@@ -14,13 +14,20 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.util.CIMReaderOptionsParser
+import ch.ninecode.util.CassandraOptionsParser
 import ch.ninecode.util.Complex
+import ch.ninecode.util.MainOptionsParser
+import ch.ninecode.util.SparkOptionsParser
 
 /**
  * Parser for command line operation.
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements", "org.wartremover.warts.Throw"))
-class ShortCircuitOptionsParser (default: ShortCircuitOptions) extends CIMReaderOptionsParser[ShortCircuitOptions](default)
+class ShortCircuitOptionsParser (default: ShortCircuitOptions)
+    extends MainOptionsParser[ShortCircuitOptions](default)
+    with SparkOptionsParser[ShortCircuitOptions]
+    with CIMReaderOptionsParser[ShortCircuitOptions]
+    with CassandraOptionsParser[ShortCircuitOptions]
 {
     val log: Logger = LoggerFactory.getLogger(getClass)
 
@@ -167,26 +174,6 @@ class ShortCircuitOptionsParser (default: ShortCircuitOptions) extends CIMReader
         .valueName("<file>")
         .action((x, c) => c.copy(outputfile = x))
         .text(s"name of the SQLite database results file [${default.outputfile}]")
-
-    opt[String]("host")
-        .valueName("Cassandra")
-        .action((x, c) =>
-            c.copy(
-                host = x,
-                spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.host" -> x))
-            )
-        )
-        .text(s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${default.host}]")
-
-    opt[Int]("port")
-        .valueName("<port_number>")
-        .action((x, c) =>
-            c.copy(
-                port = x,
-                spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.port" -> x.toString))
-            )
-        )
-        .text(s"Cassandra connection port [${default.port}]")
 
     opt[String]("keyspace")
         .action((x, c) => c.copy(keyspace = x))

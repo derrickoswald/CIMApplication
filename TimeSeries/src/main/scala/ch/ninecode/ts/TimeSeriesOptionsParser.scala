@@ -6,6 +6,8 @@ import java.util.TimeZone
 
 import org.apache.spark.storage.StorageLevel
 
+import ch.ninecode.util.CassandraOptionsParser
+import ch.ninecode.util.MainOptionsParser
 import ch.ninecode.util.SparkOptionsParser
 
 object LogLevels extends Enumeration
@@ -21,7 +23,10 @@ object Operations extends Enumeration
 }
 
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-class TimeSeriesOptionsParser (options: TimeSeriesOptions) extends SparkOptionsParser[TimeSeriesOptions](options)
+class TimeSeriesOptionsParser (options: TimeSeriesOptions)
+    extends MainOptionsParser[TimeSeriesOptions](options)
+    with SparkOptionsParser[TimeSeriesOptions]
+    with CassandraOptionsParser[TimeSeriesOptions]
 {
     implicit val storageRead: scopt.Read[StorageLevel] = scopt.Read.reads(
         s =>
@@ -126,32 +131,6 @@ class TimeSeriesOptionsParser (options: TimeSeriesOptions) extends SparkOptionsP
         .valueName("<enum>")
         .action((x, c) => c.copy(storage = x))
         .text(s"storage level for RDD serialization, one of ${storageLevels.mkString(",")} [${options.storageAsString}]")
-
-    opt[String]("host")
-        .valueName("<cassandra>")
-        .action(
-            (x, c) =>
-            {
-                c.copy(
-                    host = x,
-                    spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.host" -> x))
-                )
-            }
-        )
-        .text(s"Cassandra connection host (listen_address or seed in cassandra.yaml) [${options.host}]")
-
-    opt[Int]("port")
-        .valueName("<port_number>")
-        .action(
-            (x, c) =>
-            {
-                c.copy(
-                    port = x,
-                    spark_options = c.spark_options.copy(options = c.spark_options.options + ("spark.cassandra.connection.port" -> x.toString))
-                )
-            }
-        )
-        .text(s"Cassandra connection port [${options.port}]")
 
     opt[String]("keyspace")
         .action((x, c) => c.copy(keyspace = x))

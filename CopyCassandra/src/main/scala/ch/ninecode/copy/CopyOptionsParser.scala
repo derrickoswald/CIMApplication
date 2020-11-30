@@ -1,9 +1,12 @@
 package ch.ninecode.copy
 
+import ch.ninecode.util.MainOptionsParser
 import ch.ninecode.util.SparkOptionsParser
 
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-class CopyOptionsParser (options: CopyOptions) extends SparkOptionsParser[CopyOptions](options)
+class CopyOptionsParser (options: CopyOptions)
+    extends MainOptionsParser[CopyOptions](options)
+    with SparkOptionsParser[CopyOptions]
 {
     opt[String]("source_host").valueName("Cassandra")
         .action((x, c) => c.copy(source_host = x))

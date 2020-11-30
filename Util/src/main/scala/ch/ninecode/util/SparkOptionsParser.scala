@@ -4,14 +4,16 @@ import org.apache.log4j.Level
 
 /**
  * Parser for command line operation of programs using Spark.
+ *
+ * @tparam T T class type required for parsed values
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends MainOptionsParser[T](default)
+trait SparkOptionsParser[T <: Mainable with Sparkable] extends MainOptionsParser[T]
 {
     val COMMA = ","
     val EQUAL = "="
 
-    implicit val logRead: scopt.Read[Level] = scopt.Read.reads(Level.toLevel(_, default.spark_options.log))
+    implicit val logRead: scopt.Read[Level] = scopt.Read.reads(Level.toLevel(_, getDefault.spark_options.log))
 
     val logLevels = List(
         "OFF",
@@ -30,44 +32,44 @@ class SparkOptionsParser[T <: Mainable with Sparkable] (default: T) extends Main
         .valueName("<master_url>")
         .action((x, c) =>
         {
-            c.spark_options = c.spark_options.copy(master = x);
+            c.spark_options = c.spark_options.copy(master = x)
             c
         })
-        .text(s"local[*], spark://host:port/, mesos://host:port or yarn [${default.spark_options.master}]")
+        .text(s"local[*], spark://host:port/, mesos://host:port or yarn [${getDefault.spark_options.master}]")
 
     opt[Map[String, String]]("spark_options")
         .valueName("<map>")
         .action((x, c) =>
         {
-            c.spark_options = c.spark_options.copy(options = x);
+            c.spark_options = c.spark_options.copy(options = x)
             c
         })
-        .text(s"Spark options [${default.spark_options.options.map(x => s"${x._1}$EQUAL${x._2}").mkString(COMMA)}]")
+        .text(s"Spark options [${getDefault.spark_options.options.map(x => s"${x._1}$EQUAL${x._2}").mkString(COMMA)}]")
 
     opt[Level]("log")
         .valueName("<enum>")
         .action((x, c) =>
         {
-            c.spark_options = c.spark_options.copy(log = x);
+            c.spark_options = c.spark_options.copy(log = x)
             c
         })
-        .text(s"log level, one of ${logLevels.mkString(",")} [${default.spark_options.log}]")
+        .text(s"log level, one of ${logLevels.mkString(",")} [${getDefault.spark_options.log}]")
 
     opt[Array[String]]("jars")
         .valueName("<list>")
         .action((x, c) =>
         {
-            c.spark_options = c.spark_options.copy(jars = x);
+            c.spark_options = c.spark_options.copy(jars = x)
             c
         })
-        .text(s"names of jars to send to Spark [${default.spark_options.jars.mkString(COMMA)}]")
+        .text(s"names of jars to send to Spark [${getDefault.spark_options.jars.mkString(COMMA)}]")
 
     opt[String]("checkpoint")
         .valueName("<dir>")
         .action((x, c) =>
         {
-            c.spark_options = c.spark_options.copy(checkpoint = x);
+            c.spark_options = c.spark_options.copy(checkpoint = x)
             c
         })
-        .text(s"checkpoint directory on HDFS, e.g. hdfs://... [${default.spark_options.checkpoint}]")
+        .text(s"checkpoint directory on HDFS, e.g. hdfs://... [${getDefault.spark_options.checkpoint}]")
 }

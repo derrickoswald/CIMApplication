@@ -1,12 +1,17 @@
 package ch.ninecode.lv
 
 import ch.ninecode.util.CIMReaderOptionsParser
+import ch.ninecode.util.MainOptionsParser
+import ch.ninecode.util.SparkOptionsParser
 
 /**
  * Parser for command line operation.
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-class LowVoltageOptionsParser (options: LowVoltageOptions) extends CIMReaderOptionsParser[LowVoltageOptions](options)
+class LowVoltageOptionsParser (options: LowVoltageOptions)
+    extends MainOptionsParser[LowVoltageOptions](options)
+    with SparkOptionsParser[LowVoltageOptions]
+    with CIMReaderOptionsParser[LowVoltageOptions]
 {
     opt[Unit]("verbose")
         .action((_, c) => c.copy(verbose = true))
