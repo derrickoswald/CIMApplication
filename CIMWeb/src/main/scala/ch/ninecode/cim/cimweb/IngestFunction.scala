@@ -16,7 +16,6 @@ import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.ingest.IngestOptions
 import ch.ninecode.util.MainOptions
-import ch.ninecode.util.SparkOptions
 
 /**
  * Ingest smart meter data.
@@ -83,19 +82,8 @@ case class IngestFunction (job: String) extends CIMWebFunction
         }
         else
             "Ingest"
-        val temp = IngestOptions()
-        // since these are set when the Spark instance is created, they cannot affect the Ingest run, but include them anyway
-        val host = spark.sparkContext.getConf.get("spark.cassandra.connection.host", "localhost")
-        val port = spark.sparkContext.getConf.get("spark.cassandra.connection.port", "9042")
         val options = IngestOptions(
-            spark_options = SparkOptions(
-                master = spark.sparkContext.master,
-                options = temp.spark_options.options + (
-                    "spark.cassandra.connection.host" -> host,
-                    "spark.cassandra.connection.port" -> port)),
             verbose = true,
-            host = host,
-            port = port.toInt,
             workdir = "/work/",
             ingestions = Seq(job)
         )
@@ -106,8 +94,6 @@ case class IngestFunction (job: String) extends CIMWebFunction
         spark.sparkContext.setJobGroup(null, null)
         val result = Json.createObjectBuilder
             .add("verbose", options.verbose)
-            .add("host", options.host)
-            .add("port", options.port)
             .add("workdir", options.workdir)
             .add("ingestions", Json.createObjectBuilder(json))
         RESTfulJSONResult(OK, "ingest successful", result.build).getJSON

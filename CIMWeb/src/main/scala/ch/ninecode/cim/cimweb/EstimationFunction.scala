@@ -42,8 +42,7 @@ case class EstimationFunction (options: SimulationOptions) extends CIMWebFunctio
      */
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
-        val cassandra = spark.sparkContext.getConf.get("spark.cassandra.connection.host", options.host)
-        val sim = Simulation(spark, options.copy(host = cassandra))
+        val sim = Simulation(spark, options)
         val runs = sim.run()
 
         def plural: String = if (runs.size > 1) "s" else ""
