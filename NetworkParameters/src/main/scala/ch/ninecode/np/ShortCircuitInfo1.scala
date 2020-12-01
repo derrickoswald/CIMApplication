@@ -73,21 +73,22 @@ case class ShortCircuitInfo1 (
         val customSchema = StructType(
             Array
             (
-                StructField("id", StringType),
-                StructField("Fehlerort", StringType),
-                StructField("Un", DoubleType),
-                StructField("Ikw...RST.", DoubleType),
-                StructField("Sk..RST.", DoubleType),
-                StructField("Beschreibung..SAP.Nr..", StringType),
-                StructField("Abgang", StringType),
-                StructField("NIS.ID", StringType),
-                StructField("NIS.Name", StringType)
+                StructField("id", StringType, nullable = false),
+                StructField("Fehlerort", StringType, nullable = false),
+                StructField("Un", DoubleType, nullable = false),
+                StructField("Ikw...RST.", DoubleType, nullable = false),
+                StructField("Sk..RST.", DoubleType, nullable = false),
+                StructField("Beschreibung..SAP.Nr..", StringType, nullable = false),
+                StructField("Abgang", StringType, nullable = false),
+                StructField("NIS.ID", StringType, nullable = false),
+                StructField("NIS.Name", StringType, nullable = false)
             )
         )
 
         val df = session.sqlContext.read
             .format("csv")
             .option("header", "true")
+            .option("mode","FAILFAST")
             .schema(customSchema)
             .csv(csv)
 

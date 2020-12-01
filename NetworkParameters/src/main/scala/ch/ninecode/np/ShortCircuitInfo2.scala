@@ -76,14 +76,14 @@ case class ShortCircuitInfo2 (
         val customSchema1 = StructType(
             Array
             (
-                StructField("nis_number", StringType),
-                StructField("Name_Netzeinspeisung", StringType),
-                StructField("Name_Station", StringType),
-                StructField("Gemeinde_Station", StringType),
+                StructField("nis_number", StringType,nullable = false),
+                StructField("Name_Netzeinspeisung", StringType,nullable = false),
+                StructField("Name_Station", StringType,nullable = false),
+                StructField("Gemeinde_Station", StringType,nullable = false),
                 StructField("article_id", StringType),
                 StructField("Type", StringType),
                 StructField("kf_neplan_typ", StringType),
-                StructField("nominal_voltage", DoubleType),
+                StructField("nominal_voltage", DoubleType,nullable = false),
                 StructField("max_connections", IntegerType)
             )
         )
@@ -93,6 +93,7 @@ case class ShortCircuitInfo2 (
             .option("header", "true")
             .option("sep", ";")
             .option("encoding", "UTF-8")
+            .option("mode","FAILFAST")
             .schema(customSchema1)
             .csv(csv1)
 
@@ -109,21 +110,21 @@ case class ShortCircuitInfo2 (
                 StructField("Q betr_MVAr", DoubleType),
                 StructField("Slack-Anteil_%", DoubleType),
                 StructField("Fernregelung", BooleanType),
-                StructField("Sk\"max_MVA", DoubleType),
-                StructField("Sk\"min_MVA", DoubleType),
+                StructField("Sk\"max_MVA", DoubleType, nullable = false),
+                StructField("Sk\"min_MVA", DoubleType, nullable = false),
                 StructField("Ik\"max_kA", DoubleType),
                 StructField("Ik\"min_kA", DoubleType),
                 StructField("Ik'max_kA", DoubleType),
                 StructField("Ik'min_kA", DoubleType),
                 StructField("Ik\" gem. IEC", DoubleType),
                 StructField("Ebetr", DoubleType),
-                StructField("Z(0)/Z(1) max", DoubleType),
+                StructField("Z(0)/Z(1) max", DoubleType, nullable = false),
                 StructField("Z(0)/Z(1) min", DoubleType),
                 StructField("R(1)/X(1) max", DoubleType),
                 StructField("R(1)/X(1) min", DoubleType),
-                StructField("Ikw max", DoubleType),
-                StructField("Ikw min", DoubleType),
-                StructField("R(0)/X(0) max", DoubleType),
+                StructField("Ikw max", DoubleType, nullable = false),
+                StructField("Ikw min", DoubleType, nullable = false),
+                StructField("R(0)/X(0) max", DoubleType, nullable = false),
                 StructField("R(0)/X(0) min", DoubleType),
                 StructField("C1_mF", DoubleType),
                 StructField("c0", DoubleType),
@@ -154,6 +155,7 @@ case class ShortCircuitInfo2 (
             .option("header", "true")
             .option("sep", ";")
             .option("encoding", "UTF-8")
+            .option("mode","FAILFAST")
             .schema(customSchema2)
             .csv(csv2)
 
