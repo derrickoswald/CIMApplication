@@ -63,16 +63,16 @@ case class ShortCircuitInfo3 (
         val customSchema = StructType (
             Array
             (
-                StructField ("OBJEKT", StringType),
-                StructField ("KS-LEISTUNG MS-NETZ SK", DoubleType),
-                StructField ("R-X-VERHAELTNIS", DoubleType),
-                StructField ("SR_TYP_IN_KVA", DoubleType),
-                StructField ("UR1_NENNSPANNUNG1", DoubleType),
-                StructField ("UR2_NENNSPANNUNG1", DoubleType),
-                StructField ("URR1_KURZSCHLUSSVERLUSTE_IN_W", DoubleType),
-                StructField ("URR1_KURZSCHLUSSVERLUSTE_IN_PR", DoubleType),
-                StructField ("UKR1_KURZSCHLUSSSPANNUNG_IN_PR", DoubleType),
-                StructField ("EIGENTUEMER", StringType)
+                StructField("OBJEKT", StringType, nullable = false),
+                StructField("KS-LEISTUNG MS-NETZ SK", DoubleType, nullable = false),
+                StructField("R-X-VERHAELTNIS", DoubleType, nullable = false),
+                StructField("SR_TYP_IN_KVA", DoubleType),
+                StructField("UR1_NENNSPANNUNG1", DoubleType, nullable = false),
+                StructField("UR2_NENNSPANNUNG1", DoubleType),
+                StructField("URR1_KURZSCHLUSSVERLUSTE_IN_W", DoubleType),
+                StructField("URR1_KURZSCHLUSSVERLUSTE_IN_PR", DoubleType),
+                StructField("UKR1_KURZSCHLUSSSPANNUNG_IN_PR", DoubleType),
+                StructField("EIGENTUEMER", StringType)
             )
         )
 
