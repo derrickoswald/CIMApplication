@@ -73,7 +73,7 @@ class CopySuiteIT extends TestUtil
         assumeTrue(s"""keyspace "$SOURCE_KEYSPACE" doesn't exist in $SOURCE_HOST:9042""", 1 == exists.size)
 
         main(Array("--unittest",
-            "--master", "local[*]",
+            "--master", "local[2]",
             "--source_host", SOURCE_HOST,
             "--source_port", "9042",
             "--source_keyspace", SOURCE_KEYSPACE,

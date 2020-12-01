@@ -200,6 +200,9 @@ storage_port: ${cassandra.storagePort}
 native_transport_port: ${cassandra.nativeTransportPort}
 enable_user_defined_functions: true
 enable_scripted_user_defined_functions: true
+read_request_timeout_in_ms: 1200000
+range_request_timeout_in_ms: 1200000
+write_request_timeout_in_ms: 1200000
                     </yaml>
                 </configuration>
                 <dependencies>

@@ -6,7 +6,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector.CassandraRow
-import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import com.datastax.spark.connector.rdd.ReadConf
@@ -64,7 +63,7 @@ case class Copy (session: SparkSession, options: CopyOptions)
 
             for (table <- target_tables if source_tables.contains(table))
             {
-                val (data, columns) =
+                val data =
                 {
                     // sets source as default connection for everything in this code block
                     implicit val c: CassandraConnector = source
@@ -72,14 +71,14 @@ case class Copy (session: SparkSession, options: CopyOptions)
                     val rdd: CassandraTableScanRDD[CassandraRow] = session.sparkContext.cassandraTable(options.source_keyspace, table)
                     val cols = rdd.columnNames.selectFrom(rdd.tableDef)
                     log.info(s"table $table columns ${cols.map(_.columnName).mkString(",")}")
-                    (rdd, SomeColumns(cols: _*))
+                    rdd
                 }
 
                 {
                     // sets target as the default connection for everything in this code block
                     implicit val c: CassandraConnector = target
                     val configuration = WriteConf.fromSparkConf(session.sparkContext.getConf).copy(consistencyLevel = ConsistencyLevel.ANY)
-                    data.saveToCassandra(options.target_keyspace, table, columns, configuration)
+                    data.saveToCassandra(keyspaceName = options.target_keyspace, tableName = table, writeConf = configuration)
                     log.info(s"table $table copied")
                 }
             }
