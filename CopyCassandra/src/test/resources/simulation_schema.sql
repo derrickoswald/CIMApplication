@@ -310,7 +310,7 @@ Describes each run of the Simulate code.
     name - the user supplied name of the simulation
     description - the user supplied description of the simulation
     cim - the CIM file(s) used to run the simulation
-    cimreaderoptions - options used to read in the CIM file(s), see https://github.com/derrickoswald/CIMReader#reader-api
+    cimreaderoptions - options used to read in the CIM file(s), see https://github.com/derrickoswald/CIMSpark/tree/master/CIMReader#reader-api
     run_time - the time at which the simulation was executed
     start_time - the simulation start time in GMT
     end_time - the simulation end time in GMT

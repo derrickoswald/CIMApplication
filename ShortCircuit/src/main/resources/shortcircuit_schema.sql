@@ -44,7 +44,7 @@ Describes each run of the ShortCircuit code.
     run                                  - the short circuit run number, distinguishes executions with the same id
     description                          - the user supplied description of the short circuit analysis
     cim                                  - the CIM file(s) used to run the short circuit analysis
-    cimreaderoptions                     - options used to read in the CIM file(s), see https://github.com/derrickoswald/CIMReader#reader-api
+    cimreaderoptions                     - options used to read in the CIM file(s), see https://github.com/derrickoswald/CIMSpark/tree/master/CIMReader#reader-api
     run_time                             - the time at which the short circuit program was executed
     max_default_short_circuit_power      - maximum available short circuit network power (at transformer primary) [EquivalentInjection missing] (VA)
     max_default_short_circuit_resistance - maximum network short circuit resistance [EquivalentInjection missing] (Ω)
