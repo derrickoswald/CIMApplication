@@ -89,6 +89,7 @@ case class ShortCircuitInfo3 (
         val df = session.sqlContext.read
             .format("csv")
             .option("header", "true")
+            .option("comment", ";") // to skip second line with units
             .option("sep", ";")
             .option("encoding", "UTF-8")
             .option("mode", "FAILFAST")
