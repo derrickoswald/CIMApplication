@@ -39,13 +39,16 @@ case class IngestFunction (job: String) extends CIMWebFunction
     def readJSON (json: String): Option[JsonObject] =
     {
         try
+        {
             try
-            Json.createReader(new StringReader(json)).readObject match
             {
-                case obj: JsonObject => Some(obj)
-                case _ =>
-                    Logger.getLogger(getClass.getName).log(Level.SEVERE, """not a JsonObject""")
-                    None
+                Json.createReader(new StringReader(json)).readObject match
+                {
+                    case obj: JsonObject => Some(obj)
+                    case _ =>
+                        Logger.getLogger(getClass.getName).log(Level.SEVERE, """not a JsonObject""")
+                        None
+                }
             }
             catch
             {
@@ -53,6 +56,7 @@ case class IngestFunction (job: String) extends CIMWebFunction
                     Logger.getLogger(getClass.getName).log(Level.SEVERE, """unparseable as JSON""", je)
                     None
             }
+        }
         catch
         {
             case e: Exception =>

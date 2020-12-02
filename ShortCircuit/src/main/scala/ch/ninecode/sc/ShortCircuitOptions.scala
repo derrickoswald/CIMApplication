@@ -51,8 +51,6 @@ import ch.ninecode.util.Sparkable
  * @param calculate_public_lighting           whether to consider public lighting in the shortcircuit calculations
  * @param output                              type of output, SQLite or Cassandra
  * @param outputfile                          SQLite output file name
- * @param host                                Cassandra connection host (listen_address or seed in cassandra.yaml)
- * @param port                                Cassandra connection port
  * @param keyspace                            target Cassandra keyspace
  * @param replication                         keyspace replication if the Cassandra keyspace needs creation
  */
@@ -93,8 +91,6 @@ case class ShortCircuitOptions
     calculate_public_lighting: Boolean = false,
     output: ShortCircuitOutputType.Value = ShortCircuitOutputType.SQLite,
     outputfile: String = "results/shortcircuit.db",
-    host: String = "localhost",
-    port: Int = 9042,
     keyspace: String = "cimapplication",
     replication: Int = 1
 ) extends Mainable with Sparkable with CIMAble with Cassandraable

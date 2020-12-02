@@ -35,30 +35,19 @@ case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFun
     @SuppressWarnings(Array("org.wartremover.warts.Null"))
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
-        // since these are set when the Spark instance is created, they cannot affect the ShortCircuit run, but include them anyway
-        val host = spark.sparkContext.getConf.get("spark.cassandra.connection.host", "localhost")
-        val port = spark.sparkContext.getConf.get("spark.cassandra.connection.port", "9042")
-        val opt = options.copy (
-            spark_options = SparkOptions(
-                master = spark.sparkContext.master,
-                options = options.spark_options.options + (
-                    "spark.cassandra.connection.host" -> host,
-                    "spark.cassandra.connection.port" -> port)),
-            host = host,
-            port = port.toInt)
-        val group = if ("" == opt.id) "ShortCircuit" else opt.id
-        val sc = ch.ninecode.sc.ShortCircuit(spark, StorageLevel.MEMORY_AND_DISK_SER, opt)
+        val group = if ("" == options.id) "ShortCircuit" else options.id
+        val sc = ch.ninecode.sc.ShortCircuit(spark, StorageLevel.MEMORY_AND_DISK_SER, options)
         spark.sparkContext.setJobGroup(group, "short circuit calculation")
         val results = sc.run()
         spark.sparkContext.setJobDescription("short circuit result storage")
-        val (id: String, run: Int) = opt.output match
+        val (id: String, run: Int) = options.output match
         {
             case ShortCircuitOutputType.SQLite =>
-                val db = Database(opt)
+                val db = Database(options)
                 val id = db.store(results)
                 (id.toString, 0)
             case ShortCircuitOutputType.Cassandra =>
-                val cassandra = ScCassandra(spark, opt.copy(id = java.util.UUID.randomUUID.toString))
+                val cassandra = ScCassandra(spark, options.copy(id = java.util.UUID.randomUUID.toString))
                 cassandra.store(results)
         }
         spark.sparkContext.setJobGroup(null, null)

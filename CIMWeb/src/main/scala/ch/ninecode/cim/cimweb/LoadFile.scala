@@ -97,7 +97,7 @@ class LoadFile extends RESTful
         // based on the type execute load
         if (files(0).endsWith(".rdf") || files(0).endsWith(".xml"))
         {
-            // see https://github.com/derrickoswald/CIMReader#reader-api
+            // see https://github.com/derrickoswald/CIMSpark/tree/master/CIMReader#reader-api
             val options: Map[String, String] = path.getMatrixParameters.asScala.flatMap (
                 param =>
                 {

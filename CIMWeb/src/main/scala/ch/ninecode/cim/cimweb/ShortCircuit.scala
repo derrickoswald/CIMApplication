@@ -113,10 +113,8 @@ class ShortCircuit extends RESTful
             calculate_public_lighting = json.getBoolean("calculate_public_lighting", false),
             output = ShortCircuitOutputType.Cassandra,
             outputfile = "results/shortcircuit.db", // not used because of the above output type
-            host = "localhost",
-            port = 9042,
-            keyspace = "cimapplication",
-            replication = 1
+            keyspace = json.getString("keyspace", "cimapplication"),
+            replication = json.getInt("replication", 1)
         )
     }
 
