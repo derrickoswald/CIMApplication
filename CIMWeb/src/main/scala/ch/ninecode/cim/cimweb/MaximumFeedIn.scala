@@ -4,7 +4,6 @@ import java.util.logging.Logger
 
 import javax.ejb.Stateless
 import javax.json.JsonObject
-import javax.resource.ResourceException
 import javax.ws.rs.POST
 import javax.ws.rs.Path
 import javax.ws.rs.Produces

@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
-import ch.ninecode.ingest.IngestOptions
 import ch.ninecode.mfi.EinspeiseleistungOptions
 import ch.ninecode.mfi.MaximumFeedInOutputType
 import ch.ninecode.util.Complex

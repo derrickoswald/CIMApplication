@@ -13,7 +13,6 @@ import ch.ninecode.sc.ScCassandra
 import ch.ninecode.sc.ShortCircuitOptions
 import ch.ninecode.sc.ShortCircuitOutputType
 import ch.ninecode.util.Complex
-import ch.ninecode.util.SparkOptions
 
 case class ShortCircuitFunction (options: ShortCircuitOptions) extends CIMWebFunction
 {
