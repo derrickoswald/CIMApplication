@@ -30,6 +30,7 @@ class ApplicationConfig extends Application
             classOf[FileOperations],
             classOf[Ingest],
             classOf[LoadFile],
+            classOf[MaximumFeedIn],
             classOf[Ping],
             classOf[Pong],
             classOf[Query],

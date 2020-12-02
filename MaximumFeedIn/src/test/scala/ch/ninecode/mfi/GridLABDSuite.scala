@@ -49,7 +49,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             val maxSimulation = getMaxSimulation(options.outputfile)
             val query =
                 "select trafo, house, maximum, reason, details from results where " +
-                    s"(simulation = ${maxSimulation} or simulation = ${maxSimulation} - 1)" +
+                    s"(simulation = $maxSimulation or simulation = $maxSimulation - 1)" +
                     "and house like 'USR%' order by house, simulation"
             val result = querySQLite(options.outputfile, query)
 
@@ -82,7 +82,7 @@ class GridLABDSuite extends MFITestBase with BeforeAndAfter
             val maxSimulation = getMaxSimulation(options.outputfile)
             val query =
                 "select trafo, house, maximum, reason, details from results where " +
-                    s"(simulation = ${maxSimulation} or simulation = ${maxSimulation} - 1) " +
+                    s"(simulation = $maxSimulation or simulation = $maxSimulation - 1) " +
                     "and house like 'USR%' and trafo like 'TX0002'"
             val result = querySQLite(options.outputfile, query)
 

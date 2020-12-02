@@ -390,7 +390,7 @@ object Database
      * @param outputfile The name of the output database file.
      * @return The list of mRID for EnergyConsumer objects needing to be recalculated.
      */
-    def fetchHousesWithDifferentEEA (simulation: Int, reference: Int, delta: Double, outputfile: String): Array[String] =
+    def fetchHousesWithDifferentEEA (simulation: String, reference: Int, delta: Double, outputfile: String): Array[String] =
     {
         val ret = new ArrayBuffer[String]()
 
@@ -409,7 +409,7 @@ object Database
                 {
                     connection =>
                         val statement = connection.prepareStatement("select distinct(current.house) from (select * from results where simulation = ?) current, (select * from results where simulation = ?) reference where current.house = reference.house and ((current.eea != reference.eea) or (abs(current.maximum - reference.maximum) > ?))")
-                        statement.setInt(1, simulation)
+                        statement.setInt(1, simulation.toInt)
                         statement.setInt(2, reference)
                         statement.setDouble(3, delta)
                         val resultset = statement.executeQuery()

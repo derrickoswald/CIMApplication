@@ -499,7 +499,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             log.info(s"solve and analyse: ${(analyse - export2) / 1e9} seconds ${ret.count} results")
 
             val b4_db = System.nanoTime()
-            val id = Database.store("Einspeiseleistung", options.outputfile)(ret.collect)
+            val id = options.output match
+            {
+                case MaximumFeedInOutputType.SQLite =>
+                    Database.store("Einspeiseleistung", options.outputfile)(ret.collect).toString
+                case MaximumFeedInOutputType.Cassandra =>
+                    MaximumFeedInCassandra (session, options).store("Einspeiseleistung")(ret)._1
+            }
             val dbsave = System.nanoTime()
             log.info(s"database save: ${(dbsave - b4_db) / 1e9} seconds simulation id=$id")
 

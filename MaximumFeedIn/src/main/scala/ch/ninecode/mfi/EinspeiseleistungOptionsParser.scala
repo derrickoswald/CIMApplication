@@ -1,6 +1,7 @@
 package ch.ninecode.mfi
 
 import ch.ninecode.util.CIMReaderOptionsParser
+import ch.ninecode.util.CassandraOptionsParser
 import ch.ninecode.util.MainOptionsParser
 import ch.ninecode.util.SparkOptionsParser
 
@@ -9,11 +10,19 @@ class EinspeiseleistungOptionsParser (options: EinspeiseleistungOptions)
     extends MainOptionsParser[EinspeiseleistungOptions](options)
     with SparkOptionsParser[EinspeiseleistungOptions]
     with CIMReaderOptionsParser[EinspeiseleistungOptions]
+    with CassandraOptionsParser[EinspeiseleistungOptions]
 {
+    implicit val FormatsRead: scopt.Read[MaximumFeedInOutputType.Value] = scopt.Read.reads(MaximumFeedInOutputType.withName)
+
     opt[String]("checkpoint")
         .valueName("<dir>")
         .action((x, c) => c.copy(checkpoint_dir = x))
         .text(s"checkpoint directory on HDFS, e.g. hdfs://... [${options.checkpoint_dir}]")
+
+    opt[String]("id")
+        .valueName("<text>")
+        .action((x, c) => c.copy(id = x))
+        .text(s"unique id for this analysis (not used for SQLite output) [${options.id}]")
 
     opt[Unit]("verbose")
         .action((_, c) => c.copy(verbose = true))
@@ -92,11 +101,6 @@ class EinspeiseleistungOptionsParser (options: EinspeiseleistungOptions)
         .action((x, c) => c.copy(workdir = x))
         .text(s"shared directory (HDFS or NFS share) with scheme (hdfs:// or file:/) for work files [${options.workdir}]")
 
-    opt[String]("outputfile")
-        .valueName("<file>")
-        .action((x, c) => c.copy(outputfile = x))
-        .text(s"name of the SQLite database results file [${options.outputfile}]")
-
     opt[Double]("tbase")
         .valueName("<value>")
         .action((x, c) => c.copy(base_temperature = x))
@@ -106,6 +110,23 @@ class EinspeiseleistungOptionsParser (options: EinspeiseleistungOptions)
         .valueName("<value>")
         .action((x, c) => c.copy(sim_temperature = x))
         .text(s"simulation temperature for feedin (°C) [${options.sim_temperature}]")
+
+    opt[MaximumFeedInOutputType.Value]("output")
+        .action((x, c) => c.copy(output = x))
+        .text(s"type of output, one of ${MaximumFeedInOutputType.values.iterator.mkString(",")} [${options.output}]")
+
+    opt[String]("outputfile")
+        .valueName("<file>")
+        .action((x, c) => c.copy(outputfile = x))
+        .text(s"name of the SQLite database results file [${options.outputfile}]")
+
+    opt[String]("keyspace")
+        .action((x, c) => c.copy(keyspace = x))
+        .text(s"target Cassandra keyspace [${options.keyspace}]")
+
+    opt[Int]("replication")
+        .action((x, c) => c.copy(replication = x))
+        .text(s"keyspace replication if the Cassandra keyspace needs creation [${options.replication}]")
 
     note(
         """

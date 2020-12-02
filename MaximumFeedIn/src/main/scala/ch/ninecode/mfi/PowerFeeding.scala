@@ -354,7 +354,13 @@ class PowerFeeding (session: SparkSession, storage_level: StorageLevel = Storage
             .persist(storage_level)
 
         val b4_db = System.nanoTime()
-        val simulation = Database.store_precalculation("Threshold Precalculation", options.outputfile)(has.filter(_.mrid != null))
+        val simulation = options.output match
+        {
+            case MaximumFeedInOutputType.SQLite =>
+                Database.store_precalculation("Threshold Precalculation", options.outputfile)(has.filter(_.mrid != null)).toString
+            case MaximumFeedInOutputType.Cassandra =>
+                MaximumFeedInCassandra (session, options).store_precalculation("Threshold Precalculation")(has.filter(_.mrid != null))._1
+        }
         val dbsave = System.nanoTime()
         log.info(s"database save: ${(dbsave - b4_db) / 1e9} seconds simulation id=$simulation")
 
