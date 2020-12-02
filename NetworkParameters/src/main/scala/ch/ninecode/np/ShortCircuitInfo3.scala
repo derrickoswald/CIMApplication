@@ -81,7 +81,7 @@ case class ShortCircuitInfo3 (
             .option ("header", "true")
             .option ("sep", ";")
             .option ("encoding", "UTF-8")
-            .option ("mode", "DROPMALFORMED") // remove units in second row
+            .option ("mode", "FAILFAST")
             .schema (customSchema)
             .csv (csv)
 
