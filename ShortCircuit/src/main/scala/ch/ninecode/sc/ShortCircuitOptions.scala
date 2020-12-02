@@ -164,8 +164,6 @@ case class ShortCircuitOptions
             .add("calculate_public_lighting", calculate_public_lighting)
             .add("output", output.toString)
             .add("outputfile", outputfile)
-            .add("host", host)
-            .add("port", port)
             .add("keyspace", keyspace)
             .add("replication", replication)
     }
