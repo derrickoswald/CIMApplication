@@ -146,6 +146,21 @@ define
                 return (Math.floor (Math.random () * Math.floor (max)));
             }
 
+            updateResults (data)
+            {
+                if (document.getElementById ("maximumfeedin_to_map").checked)
+                {
+                    this.TheAnalysis.records = data;
+                    const theme = new MaximumFeedInTheme ();
+                    theme.setAnalysis (this.TheAnalysis.records);
+                    cimmap.get_themer ().removeTheme (theme);
+                    cimmap.get_themer ().addTheme (theme, true);
+                    window.location.hash = "map";
+                }
+                else
+                    document.getElementById ("maximumfeedin_results").innerHTML = "<pre>" + JSON.stringify (data, null, 4) + "</pre>";
+            }
+
             /**
              * @summary Execute maximum feed-in calculation.
              * @description Perform a maximum PV power calculation on loaded CIM data.
@@ -156,21 +171,11 @@ define
             {
                 const id = "MaximumFeedIn" + this.getRandomInt (1e9);
                 const status = new CIMStatus (id);
-                const to_map = document.getElementById ("maximumfeedin_to_map").checked;
 
                 let successCallback = (data) =>
                 {
                     status.stop();
-                    if (to_map)
-                    {
-                        this.TheAnalysis.records = data;
-                        const theme = new MaximumFeedInTheme (this.TheAnalysis.records);
-                        cimmap.get_themer ().removeTheme (theme);
-                        cimmap.get_themer ().addTheme (theme, true);
-                        window.location.hash = "map";
-                    }
-                    else
-                        document.getElementById ("maximumfeedin_results").innerHTML = "<pre>" + JSON.stringify (data, null, 4) + "</pre>";
+                    this.updateResults (data);
                 };
 
                 let failureCallback = (message) =>
@@ -189,10 +194,28 @@ define
                 };
 
                 status.start ();
-                if (to_map)
+                if (document.getElementById ("maximumfeedin_to_map").checked)
                     this.analyze (id).then (select).then (successCallback, failureCallback);
                 else
                     this.analyze (id).then (successCallback, failureCallback);
+            }
+
+            jsonify (data)
+            {
+                return (JSON.stringify (data, null, 4))
+            }
+
+            do_show ()
+            {
+                const id = document.getElementById ("maximumfeedin_id").value;
+                const keyspace = document.getElementById ("maximumfeedin_keyspace").value;
+
+                cimquery.queryPromise (
+                        {
+                            cassandra: true,
+                            sql: `select house,maximum,trafo,feeder,reason,details from ${keyspace}.maximumfeedin where id='${id}'`
+                        }
+                ).then (this.updateResults.bind (this));
             }
 
             render_keyspaces ()
@@ -211,7 +234,44 @@ define
                     {
                         event.preventDefault ();
                         element.value = event.target.innerHTML;
+                        element.onchange ();
                     };
+            }
+
+            set_keyspace (event)
+            {
+                const keyspace = document.getElementById ("maximumfeedin_keyspace").value;
+                let successCallback = (data) =>
+                {
+                    // ToDo: what about run?
+                    const template =
+`
+    {{#analyses}}
+        <option value="{{id}}">{{description}} {{timestamp}} ({{run}})</option>
+    {{/analyses}}
+`;
+                    function timestamp ()
+                    {
+                        const date = new Date (this.run_time);
+                        return (date.toString ());
+                    }
+                    document.getElementById ("maximumfeedin_id").innerHTML = mustache.render
+                    (
+                        template,
+                        {
+                            analyses: data,
+                            timestamp: timestamp
+                        }
+                    );
+                };
+
+                cimquery.queryPromise
+                (
+                    {
+                        cassandra: true,
+                        sql: `select id,run_time,run,description from ${keyspace}.maximumfeedin_run`
+                    }
+                ).then (successCallback);
             }
 
             /**
@@ -327,6 +387,15 @@ define
           <button id='do_maximumfeedin' type='button' class='btn btn-primary'>Execute</button>
           <div id="maximumfeedin_warning" class="alert alert-warning" role="alert" style="display: none"></div>
         </div>
+        <div class="form-group">
+          <label for="maximumfeedin_id">Prior Analysis</label>
+          <select id="maximumfeedin_id" class="form-control custom-select" aria-describedby="maximumfeedinIDHelp">
+          </select>
+          <small id="maximumfeedinIDHelp" class="form-text text-muted">Select the analysis to view on the map.</small>
+        </div>
+        <div class="form-group">
+          <button id="show_maximumfeedin" name="show_maximumfeedin" type="button" class="btn btn-primary">Show analysis</button>
+        </div>
       </form>
       <div id='maximumfeedin_results'>
       </div>
@@ -337,6 +406,8 @@ define
 
                 this.target.innerHTML = mustache.render (maximumfeedin_template);
                 document.getElementById ("do_maximumfeedin").onclick = this.do_maximumfeedin.bind (this);
+                document.getElementById ("maximumfeedin_keyspace").onchange = this.set_keyspace.bind (this);
+                document.getElementById ("show_maximumfeedin").onclick = this.do_show.bind (this);
             }
 
             /**
@@ -359,8 +430,12 @@ define
                 // update keyspace list
                 cimcassandra.getKeyspaces ().then (this.setKeySpaces.bind (this)).then (this.render_keyspaces.bind (this));
 
+                // update previous analyses choices
+                this.set_keyspace ();
+
                 // update Execute button
-                const button = document.getElementById ("do_maximumfeedin");
+                const do_button = document.getElementById ("do_maximumfeedin");
+                const show_button = document.getElementById ("show_maximumfeedin");
                 const warning = document.getElementById ("maximumfeedin_warning");
                 const info = cimmap.get_loaded ();
                 if (null != info)
@@ -369,7 +444,8 @@ define
                     {
                         warning.innerHTML = "loaded CIM file was not topologically processed";
                         warning.style.display = "block";
-                        button.disabled = true;
+                        do_button.disabled = true;
+                        show_button.disabled = true;
                     }
                     else
                     {
@@ -388,14 +464,15 @@ define
                             warning.innerHTML = "";
                             warning.style.display = "none";
                         }
-                        button.disabled = false;
+                        do_button.disabled = false;
+                        show_button.disabled = false;
                     }
                 }
                 else
                 {
                     warning.innerHTML = "no CIM file is loaded";
                     warning.style.display = "block";
-                    button.disabled = true;
+                    do_button.disabled = true;
                 }
             }
 

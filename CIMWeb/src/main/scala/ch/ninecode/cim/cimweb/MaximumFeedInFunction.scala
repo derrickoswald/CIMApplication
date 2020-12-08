@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
 import ch.ninecode.gl.GLMGenerator
+import ch.ninecode.mfi.Einspeiseleistung
 import ch.ninecode.mfi.EinspeiseleistungOptions
 import ch.ninecode.mfi.MaximumFeedInOutputType
 import ch.ninecode.net.LoadFlowNode
@@ -29,6 +30,7 @@ case class MaximumFeedInFunction (job: String) extends CIMWebFunction
 {
     jars = Array(
         jarForObject(this),
+        jarForClass(classOf[Einspeiseleistung]),
         jarForObject(new GLMGenerator()), // GridLAB-D.jar
         jarForObject(new LoadFlowNode("", 0.0)), // Net.jar
         jarForObject(Complex(0.0, 0.0)), // Util.jar

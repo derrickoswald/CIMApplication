@@ -16,10 +16,9 @@ define
     {
         class MaximumFeedInTheme extends DefaultTheme
         {
-            constructor (maximumfeedin)
+            constructor ()
             {
                 super ();
-                this._maximumfeedin = maximumfeedin;
                 this._popup = new mapboxgl.Popup (
                     {
                         closeButton: false,
@@ -39,9 +38,20 @@ define
                             description: "<span style='width: 15px; height: 15px; background: rgb(255, 0, 0);'>&nbsp;&nbsp;&nbsp;</span> Feed-In NOT OK",
                             checked: true,
                             color: "rgb(255, 0, 0)"
+                        },
+                        {
+                            id: "unknown",
+                            description: "<span style='width: 15px; height: 15px; background: rgb(128, 128, 128);'>&nbsp;&nbsp;&nbsp;</span> Status unknown",
+                            checked: true,
+                            color: "rgb(128, 128, 128)"
                         }
                     ];
 
+            }
+
+            setAnalysis (maximumfeedin)
+            {
+                this._maximumfeedin = maximumfeedin;
             }
 
             getName ()
@@ -113,7 +123,7 @@ define
                     if ("string" == typeof (mfi))
                         mfi = JSON.parse (mfi);
                     ret =
-                        "<strong>" + mfi.house + " (" + mfi.trafo + ":" + mfi.feeder + ")</strong>" +
+                        "<strong>" + mfi.house + " (" + mfi.trafo + ((mfi.feeder) ? ":" + mfi.feeder : "") + ")</strong>" +
                         "<p>" +
                         "<div>Maximum = " + mfi.maximum + "W</div>" +
                         "<div>Reason = " + mfi.reason + "</div>" +

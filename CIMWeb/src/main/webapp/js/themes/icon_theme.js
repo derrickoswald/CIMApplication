@@ -118,7 +118,7 @@ define
             {
                 if ((null != this._TheMap) && this._TheMap.getSource ("cim lines") && this._TheMap.getSource ("cim points"))
                 {
-                    const colors = this._items.filter (function (item) { return (item.checked); }).map (function (item) { return (item.color); });
+                    const colors = this.getItems ().filter (function (item) { return (item.checked); }).map (function (item) { return (item.color); });
                     colors.unshift ("in", "color");
                     this._TheMap.setFilter ("lines", colors);
                     this._TheMap.setFilter ("circle", colors);
