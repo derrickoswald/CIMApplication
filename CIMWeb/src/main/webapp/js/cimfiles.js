@@ -6,14 +6,14 @@
  */
 define
 (
-    ["util", "mustache", "cim", "cimmap"],
+    ["util", "mustache", "cim", "cimmap", "cimstatus"],
     /**
      * @summary Functions to manage CIM files on HDFS.
      * @name cimfiles
      * @exports cimfiles
      * @version 1.0
      */
-    function (util, mustache, cim, cimmap)
+    function (util, mustache, cim, cimmap, CIMStatus)
     {
         let LAST_DIRECTORY = "/";
 
@@ -648,6 +648,11 @@ define
             return (document.getElementById ("inferSchema").checked);
         }
 
+        function getRandomInt (max)
+        {
+            return (Math.floor (Math.random () * Math.floor (max)));
+        }
+
         /**
          * @summary Read the file contents in Spark.
          * @description Trigger CIMReader to read in the file.
@@ -723,10 +728,14 @@ define
             if (inferSchema ())
                 path += ";inferSchema=true";
 
-            const url = util.home () + "cim/load" + path;
+            const id = "Load" + getRandomInt (1e9);
+            const status = new CIMStatus (id);
+            const url = util.home () + "cim/load" + path + ";id=" + id;
+            status.start();
             util.makeRequest ("GET", url).then (
                 (xmlhttp) =>
                 {
+                    status.stop();
                     const resp = JSON.parse (xmlhttp.responseText);
                     if (resp.status === "OK")
                     {
@@ -737,7 +746,8 @@ define
                     }
                     else
                         alert (resp.message);
-                }
+                },
+                () => { status.stop(); }
             );
          }
 

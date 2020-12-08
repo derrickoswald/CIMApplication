@@ -16,7 +16,9 @@ import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
 
 import javax.ws.rs.core.PathSegment
+import javax.ws.rs.core.Response
 
+import ch.ninecode.cim.connector.CIMConnection
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMMappedRecord
 
@@ -30,58 +32,49 @@ class LoadFile extends RESTful
     lazy val LOGGER_NAME: String = getClass.getName
     lazy val _Logger: Logger = Logger.getLogger(LOGGER_NAME)
 
-    def load (ret: RESTfulJSONResult, function: CIMWebFunction): Unit =
+    def load (function: CIMWebFunction) (connection: CIMConnection): Response =
     {
-        getConnection(ret) match
+        try
         {
-            case Some(connection) =>
-                try
-                {
-                    val (spec, input) = getFunctionInput(function)
-                    val interaction = connection.createInteraction
-                    val output = interaction.execute(spec, input)
-                    output match
+            val (spec, input) = getFunctionInput(function)
+            val interaction = connection.createInteraction
+            val output = interaction.execute(spec, input)
+            output match
+            {
+                case record: CIMMappedRecord =>
+                    record.get(CIMFunction.RESULT) match
                     {
-                        case record: CIMMappedRecord =>
-                            record.get(CIMFunction.RESULT) match
+                        case json: JsonObject =>
+                            val error = "error"
+                            if (json.containsKey(error))
                             {
-                                case json: JsonObject =>
-                                    ret.setResult(json)
-                                    // if not found use Response.Status.NOT_FOUND
-                                    if (json.containsKey("error"))
-                                    {
-                                        ret.status = RESTfulJSONResult.FAIL
-                                        ret.message = json.getString("error")
-                                        val result = Json.createObjectBuilder
-                                        for (key <- json.keySet.asScala)
-                                            if (key != "error")
-                                                result.add(key, json.get(key))
-                                        ret.setResult(result.build)
-                                    }
-                                    else
-                                        ret.message = ""
-                                case _ =>
-                                    ret.setResultException(new ResourceException("LoadFileFunction result is not a JsonObject"), "unhandled result")
+                                val result = Json.createObjectBuilder
+                                for (key <- json.keySet.asScala)
+                                    if (key != error)
+                                        result.add(key, json.get(key))
+                                val ret = RESTfulJSONResult(
+                                    RESTfulJSONResult.FAIL,
+                                    json.getString(error),
+                                    result.build)
+                                Response.serverError().entity (ret.toString).build
+                            }
+                            else
+                            {
+                                val ret = new RESTfulJSONResult
+                                ret.setResult (json)
+                                Response.ok(ret.toString, MediaType.APPLICATION_JSON).build
                             }
                         case _ =>
-                            ret.setResultException(new ResourceException("LoadFileFunction interaction result is not a MappedRecord"), "unhandled interaction result")
+                            Response.serverError().entity (s"load function result is not a JsonObject").build
                     }
-                }
-                catch
-                {
-                    case resourceexception: ResourceException =>
-                        ret.setResultException(resourceexception, "ResourceException on interaction")
-                }
-                finally
-                    try
-                    connection.close()
-                    catch
-                    {
-                        case resourceexception: ResourceException =>
-                            ret.setResultException(resourceexception, "ResourceException on close")
-                    }
-            case None =>
-                ret.setResultException(new ResourceException("no Spark connection"), "could not get Connection")
+                case _ =>
+                    Response.serverError().entity("interaction result is not a MappedRecord").build
+            }
+        }
+        catch
+        {
+            case resourceexception: ResourceException =>
+                Response.serverError().entity(s"ResourceException on interaction: ${resourceexception.getMessage}").build
         }
     }
 
@@ -90,9 +83,8 @@ class LoadFile extends RESTful
     @Produces(Array(MediaType.APPLICATION_JSON))
     def getFile (
         @PathParam("path") path: PathSegment,
-    ): String =
+    ): Response =
     {
-        val ret = new RESTfulJSONResult
         val files = path.getPath.split(',').map(f => if (f.startsWith("/")) f else s"/$f")
         // based on the type execute load
         if (files(0).endsWith(".rdf") || files(0).endsWith(".xml"))
@@ -103,13 +95,14 @@ class LoadFile extends RESTful
                 {
                     param._1 match
                     {
+                        case "id" =>           param._2.asScala.map (x => (                    param._1  , x))
                         case "StorageLevel" => param._2.asScala.map (x => (                    param._1  , x))
                         case _ =>              param._2.asScala.map (x => (s"ch.ninecode.cim.${param._1}", x))
                     }
                 }
             ).toMap
             _Logger.info(s"load CIM ${files.mkString(",")} ${options.toString}")
-            load(ret, LoadCIMFileFunction(files, Some(options)))
+            withConnection(load(LoadCIMFileFunction(files, Some(options))))
         }
         else
             if (files(0).endsWith(".csv"))
@@ -118,13 +111,10 @@ class LoadFile extends RESTful
                 val options: Map[String, String] = path.getMatrixParameters.asScala.flatMap (
                     param => param._2.asScala.map (x => (param._1, x))).toMap
                 _Logger.info(s"load CSV ${files.mkString(",")} ${options.toString}")
-                load(ret, LoadCSVFileFunction(files, options))
+                withConnection(load (LoadCSVFileFunction(files, options)))
             }
             else
-            {
-                ret.setResultException(new ResourceException(s"unrecognized file format (${files(0)})"), "ResourceException on input")
-            }
+                Response.serverError().entity(s"unrecognized file format (${files(0)})").build
 
-        ret.toString
     }
 }

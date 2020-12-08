@@ -2,7 +2,6 @@ package ch.ninecode.cim.cimweb
 
 import javax.json.Json
 import javax.json.JsonStructure
-
 import org.apache.hadoop.fs.Path
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
@@ -53,6 +52,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Option[Iterable[(
     }
 
     // load the file
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     override def executeJSON (spark: SparkSession): JsonStructure =
     {
         // form the response
@@ -63,7 +63,7 @@ case class LoadCIMFileFunction (paths: Array[String], options: Option[Iterable[(
                 val prefix = hdfs.getUri.toString
                 val files = paths.map(s =>
                 {
-                    val file = if (s.startsWith("/")) s else s"/$s";
+                    val file = if (s.startsWith("/")) s else s"/$s"
                     new Path(prefix, file).toString
                 })
                 val filelist = files.foldLeft(Json.createArrayBuilder)((b, f) => b.add(f))
@@ -90,9 +90,16 @@ case class LoadCIMFileFunction (paths: Array[String], options: Option[Iterable[(
                     ).toIterable
                 )(identity)
 
-                val reader_options = Map[String, String]("path" -> files.mkString(",")) ++ op
+                val id = op.find(x => x._1 == "id") match
+                {
+                    case Some(value) => value._2
+                    case None => "Load"
+                }
+                val reader_options = Map[String, String]("path" -> files.mkString(",")) ++ op.filter(x => x._1 != "id")
+                spark.sparkContext.setJobGroup(id, "load CIM data")
                 val elements = spark.read.format("ch.ninecode.cim").options(reader_options).load(files: _*)
                 val count = elements.count
+                spark.sparkContext.setJobGroup(null, null)
 
                 // echo options to the response
                 val opts = Json.createObjectBuilder
