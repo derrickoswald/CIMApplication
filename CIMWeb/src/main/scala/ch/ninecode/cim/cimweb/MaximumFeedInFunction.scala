@@ -14,10 +14,11 @@ import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
+import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.mfi.EinspeiseleistungOptions
 import ch.ninecode.mfi.MaximumFeedInOutputType
+import ch.ninecode.net.LoadFlowNode
 import ch.ninecode.util.Complex
-import ch.ninecode.util.MainOptions
 
 /**
  * Calculate maximum PV power feed-in at each node.
@@ -28,14 +29,16 @@ case class MaximumFeedInFunction (job: String) extends CIMWebFunction
 {
     jars = Array(
         jarForObject(this),
-        jarForObject(EinspeiseleistungOptions()), // MaximumFeedIn.jar
-        jarForObject(MainOptions()), // Util.jar
+        jarForObject(new GLMGenerator()), // GridLAB-D.jar
+        jarForObject(new LoadFlowNode("", 0.0)), // Net.jar
+        jarForObject(Complex(0.0, 0.0)), // Util.jar
+        jarForClass(classOf[javax.json.JsonStructure]), // javaee-api <JSON implementation>.jar
         jarForObject(com.datastax.oss.driver.api.core.ConsistencyLevel.ANY), // spark-cassandra-connector.jar
         jarForObject(com.datastax.oss.driver.shaded.guava.common.collect.ImmutableListMultimap.of[String,String]()), // com/datastax/oss/driver/shaded/guava/common/collect/
         jarForObject(new com.datastax.oss.protocol.internal.util.Flags ()), // com.datastax.oss.protocol.internal.util.collection.NullAllowingImmutableMap
         jarForClass (classOf[org.reactivestreams.Publisher[_]]), // org/reactivestreams/Publisher
-        jarForObject(com.typesafe.config.ConfigMemorySize.ofBytes(0)), // com/typesafe/config/ConfigMergeable
-        jarForClass(classOf[javax.json.JsonStructure])) // javaee-api <JSON implementation>.jar
+        jarForObject(com.typesafe.config.ConfigMemorySize.ofBytes(0))) // com/typesafe/config/ConfigMergeable
+
     override def getReturnType: Return = Return.JSON
 
     def getLong (json: JsonObject, name: String, default: Long): Long =
@@ -57,10 +60,10 @@ case class MaximumFeedInFunction (job: String) extends CIMWebFunction
     def parseOptions (json: JsonObject): EinspeiseleistungOptions =
     {
         EinspeiseleistungOptions (
-            workdir = "/work/",
+            workdir = json.getString("workdir", ""),
             verbose = json.getBoolean("verbose", false),
             three = json.getBoolean("three", false),
-            precalculation = json.getBoolean("precaucluation", false),
+            precalculation = json.getBoolean("precalculation", false),
             trafos = json.getString("trafos", ""),
             export_only = json.getBoolean("export_only", false),
             all = json.getBoolean("all", false),
@@ -133,15 +136,17 @@ case class MaximumFeedInFunction (job: String) extends CIMWebFunction
         }
         else
             "MaximumFeedIn"
-        val options = parseOptions(json)
+        val options = parseOptions(json).copy(id = java.util.UUID.randomUUID.toString) // generate a new id
         val mfi = new ch.ninecode.mfi.Einspeiseleistung(spark, options)
         spark.sparkContext.setJobGroup(id, "compute maximum PV feed-in")
         val count = mfi.run()
         LoggerFactory.getLogger(getClass).info("computed")
         spark.sparkContext.setJobGroup(null, null)
         val result = Json.createObjectBuilder
-            .add("parameters", json)
-            .add("result", count)
+            .add("parameters", options.asJSON)
+            .add("transformers", count)
+            .add ("id", options.id)
+            .add ("run", 1) // always 1 for a new id
         RESTfulJSONResult(OK, "maximum feed in successful", result.build).getJSON
     }
 

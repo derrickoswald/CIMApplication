@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <artifactId>CIMApplication</artifactId>
         <groupId>ch.ninecode.cim</groupId>
+        <relativePath>../pom.xml</relativePath>
         <version>2.12-3.0.1-3.0.4</version>
     </parent>
     <artifactId>MaximumFeedIn</artifactId>
@@ -62,6 +64,13 @@
         </dependency>
 
         <dependency>
+            <groupId>com.github.scopt</groupId>
+            <artifactId>scopt_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.scopt}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${version.dependency.scalalibrary}</version>
@@ -97,10 +106,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.scopt</groupId>
-            <artifactId>scopt_${version.dependency.scala}</artifactId>
-            <version>${version.dependency.scopt}</version>
-            <scope>compile</scope>
+            <groupId>org.glassfish</groupId>
+            <artifactId>javax.json</artifactId>
+            <version>${version.dependency.json}</version>
         </dependency>
 
         <dependency>
@@ -229,7 +237,8 @@
                         </goals>
                         <phase>generate-test-resources</phase>
                         <configuration>
-                            <source>jmxPort = ${localCassandra} ? 7199 : ${cassandra.jmxPort};
+                            <source>
+                                jmxPort = ${localCassandra} ? 7199 : ${cassandra.jmxPort};
                                 rpcPort = ${localCassandra} ? 9160 : ${cassandra.rpcPort};
                                 storagePort = ${localCassandra} ? 7000 : ${cassandra.storagePort};
                                 nativeTransportPort = ${localCassandra} ? 9042 : ${cassandra.nativeTransportPort};</source>
@@ -300,14 +309,14 @@ enable_scripted_user_defined_functions: true
                     </execution>
                 </executions>
             </plugin>
-            <!-- assemblies for stand-alone programs -->
+            <!-- assembly for stand-alone program -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>${version.dependency.maven-assembly-plugin}</version>
                 <executions>
                     <execution>
-                        <id>make-one_of_n-assembly</id>
+                        <id>make-maximum-feed-in-assembly</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
@@ -321,6 +330,7 @@ enable_scripted_user_defined_functions: true
                                 <manifest>
                                     <mainClass>ch.ninecode.mfi.MaximumFeedIn</mainClass>
                                 </manifest>
+                                <addMavenDescriptor>false</addMavenDescriptor>
                             </archive>
                         </configuration>
                     </execution>
@@ -346,4 +356,3 @@ enable_scripted_user_defined_functions: true
     </build>
 
 </project>
-

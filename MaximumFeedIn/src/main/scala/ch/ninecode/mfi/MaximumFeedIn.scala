@@ -25,6 +25,7 @@ object MaximumFeedIn extends CIMInitializer[EinspeiseleistungOptions] with Main
                 if (options.verbose)
                     LogManager.getLogger(getClass).setLevel(Level.INFO)
                 val session: SparkSession = createSession(options)
+                readCIM(session, options)
                 time("execution: %s seconds")
                 {
                     val eins = Einspeiseleistung(session, options)

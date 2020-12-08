@@ -568,17 +568,26 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         def island (td: TransformerData): String = td.node1.TopologicalIsland
 
         // get the distribution transformers
-        val transformer_data: RDD[TransformerData] = new Transformers(session, storage_level).getTransformers()
+        val transformer_data: RDD[TransformerData] = Transformers(session, storage_level).getTransformers()
         if (log.isDebugEnabled)
             transformer_data.map(_.asString).collect.foreach(log.debug)
 
-        val subtransmission_trafos: Array[TransformerData] = transformer_data.filter(
-            trafo =>
-            {
-                trafo.voltages.exists(v => (v._2 <= 1000.0) && (v._2 > 400.0)) || // ToDo: don't hard code these voltage values
-                    (trafo.v0 == trafo.v1)
-            }
-        ).collect
+        def isSubtransmissionVoltage (v: (String, Double)): Boolean =
+        {
+            (v._2 <= 1000.0) && (v._2 > 400.0) // ToDo: don't hard code these voltage values
+        }
+
+        def isSubtransmission (trafo: TransformerData): Boolean =
+        {
+            trafo.voltages.exists(isSubtransmissionVoltage) || (trafo.v0 == trafo.v1) // or voltage regulator
+        }
+
+        val subtransmission_trafos: Array[TransformerData] = transformer_data.filter(isSubtransmission).collect
+
+        def isLowVoltage (td: TransformerData): Boolean =
+        {
+            (td.v0 > 1000.0) && (td.v1 == 400.0) // ToDo: don't hard code these voltage values
+        }
 
         // determine the set of transformers to work on
         val transformers: RDD[TransformerIsland] = trafos match
@@ -588,7 +597,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 selected.groupBy(island).values.map(TransformerIsland.apply)
             case None =>
                 // do all low voltage power transformers
-                val niederspannug = transformer_data.filter(td => (td.v0 > 1000.0) && (td.v1 == 400.0)).distinct // ToDo: don't hard code these voltage values
+                val niederspannug = transformer_data.filter(isLowVoltage).distinct
                 niederspannug.groupBy(island).values.map(TransformerIsland.apply)
         }
         transformers.persist(storage_level).name = "Transformers"
@@ -622,17 +631,6 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     def run (): Long =
     {
         val start = System.nanoTime()
-
-        // read the file
-        val elements = session
-            .read
-            .format("ch.ninecode.cim")
-            .options(options.cim_options.toMap)
-            .load(options.cim_options.files: _*)
-            .count
-        log.info(s"$elements elements")
-        val read = System.nanoTime()
-        log.info(s"read: ${(read - start) / 1e9} seconds")
 
         val (transformers, subtransmission_trafos) = initializeTransformers()
         val precalc_results = preCalculation(transformers)
@@ -668,7 +666,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             trafo_list.foreach(trafo => log.debug(s"$trafo.island_name ${trafo.power_rating / 1000.0}kVA"))
 
         val precalc = System.nanoTime()
-        log.info(s"precalculation: ${(precalc - read) / 1e9} seconds")
+        log.info(s"precalculation: ${(precalc - start) / 1e9} seconds")
 
         // do gridlab simulation if not just pre-calculation
         if (!options.precalculation)

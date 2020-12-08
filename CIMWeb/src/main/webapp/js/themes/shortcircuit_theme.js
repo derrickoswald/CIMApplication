@@ -1,5 +1,5 @@
 /**
- * Analysis theme.
+ * Short Circuit theme.
  */
 "use strict";
 
@@ -7,19 +7,19 @@ define
 (
     ["mustache", "./default_theme"],
     /**
-     * @summary Theme on analysis output.
-     * @description Theme class to add popups to conducting equipment with analysis results.
-     * @exports analysis_theme
+     * @summary Theme on short circuit output.
+     * @description Theme class to add popups to conducting equipment with short circuit results.
+     * @exports shortcircuit_theme
      * @version 1.0
      */
     function (mustache, DefaultTheme)
     {
-        class AnalysisTheme extends DefaultTheme
+        class ShortCircuitTheme extends DefaultTheme
         {
-            constructor (analysis)
+            constructor (shortcircuit)
             {
                 super ();
-                this._analysis = analysis;
+                this._shortcircuit = shortcircuit;
                 this._popup = new mapboxgl.Popup (
                     {
                         closeButton: false,
@@ -58,12 +58,12 @@ define
 
             getName ()
             {
-                return ("AnalysisTheme");
+                return ("ShortCircuitTheme");
             }
 
             getTitle ()
             {
-                return ("Analysis results");
+                return ("Short Circuit results");
             }
 
             getDescription ()
@@ -80,26 +80,26 @@ define
             }
 
             /**
-             * Add analysis information.
+             * Add short circuit information.
              * @param {Object} data - the hash table object of CIM classes by class name
              * @param {Object} options - options for processing
              */
             process_spatial_objects_again (data, options)
             {
                 const equipment = data.ConductingEquipment;
-                for (let i = 0; i < this._analysis.length; i++)
+                for (let i = 0; i < this._shortcircuit.length; i++)
                 {
-                    const anal = this._analysis[i];
+                    const anal = this._shortcircuit[i];
                     const id = anal["equipment"];
                     const object = equipment[id];
                     if (object)
-                        object["analysis"] = anal;
+                        object["shortcircuit"] = anal;
                 }
                 for (let id in equipment)
                     if (equipment.hasOwnProperty(id))
                     {
                         let color = "rgb(128, 128, 128)";
-                        const anal = equipment[id].analysis;
+                        const anal = equipment[id].shortcircuit;
                         if ("undefined" != typeof (anal))
                         {
                             if (anal.errors && anal.errors.find (x => x.startsWith ("FATAL")))
@@ -163,19 +163,19 @@ define
                 return (bool ? "<span style='color: #00ff00'>&#x2713;</span>" : "<span style='color: #ff0000'>&#x2717;</span>");
             }
 
-            fuses (analysis)
+            fuses (sc)
             {
                 let ret = "";
-                if (analysis.fuses)
-                    ret = "<div>Fuses = " + analysis.fuses + " recommended: " + analysis.fusemax + "A " + this.glyph (analysis.fuseok) + "</div>"
+                if (sc.fuses)
+                    ret = "<div>Fuses = " + sc.fuses + " recommended: " + sc.fusemax + "A " + this.glyph (sc.fuseok) + "</div>"
                 return (ret);
             }
 
-            errors (analysis)
+            errors (sc)
             {
                 let ret = "";
-                if (analysis.errors)
-                    analysis.errors.forEach (function (error) { ret = ret + "<div style='color: " + (error.startsWith ("FATAL") ? "red" : "orange") + ";'>" + error + "</div>"; });
+                if (sc.errors)
+                    sc.errors.forEach (function (error) { ret = ret + "<div style='color: " + (error.startsWith ("FATAL") ? "red" : "orange") + ";'>" + error + "</div>"; });
                 return (ret);
             }
 
@@ -183,35 +183,35 @@ define
             {
                 let ret = "";
 
-                // check for analysis results
-                let analysis = cimobject.analysis;
-                if (analysis)
+                // check for short circuit results
+                let sc = cimobject.shortcircuit;
+                if (sc)
                 {
                     // not sure why, but the object is serialized as JSON when it comes from MapBox
-                    if ("string" == typeof (analysis))
-                        analysis = JSON.parse (analysis);
+                    if ("string" == typeof (sc))
+                        sc = JSON.parse (sc);
                     ret =
-                        "<strong>" + analysis.equipment + " (" + analysis.trafo + ")</strong>" +
+                        "<strong>" + sc.equipment + " (" + sc.trafo + ")</strong>" +
                         "<p>" +
-                        "<div>S<sub>k</sub> = " + this.mvalue (analysis.low_sk) + "VA</div>" +
-                        "<div>Z<sub>11</sub> = " + this.impedance (analysis.low_r, analysis.low_x) + " Z<sub>00</sub> = " + this.impedance (analysis.low_r0, analysis.low_x0) + "</div>" +
-                        "<div>I<sub>p</sub> = " + this.dvalue (analysis.low_ip) + "A</div>" +
+                        "<div>S<sub>sc</sub> = " + this.mvalue (sc.low_sk) + "VA</div>" +
+                        "<div>Z<sub>11</sub> = " + this.impedance (sc.low_r, sc.low_x) + " Z<sub>00</sub> = " + this.impedance (sc.low_r0, sc.low_x0) + "</div>" +
+                        "<div>I<sub>p</sub> = " + this.dvalue (sc.low_ip) + "A</div>" +
                         "<table class='analysis-table'>" +
                         "  <tr>" +
                         "    <th></th><th>3&#x0278; (A)</th><th>1&#x0278; (A)</th><th>2&#x0278;<sub>L-L</sub> (A)</th>" +
                         "  </tr>" +
                         "  <tr>" +
-                        "    <th>I<sub>sc</sub></th><td>" + this.dvalue (analysis.low_ik3pol) + "</td><td>" + this.dvalue (analysis.low_ik) + "</td><td></td>" +
+                        "    <th>I<sub>sc</sub></th><td>" + this.dvalue (sc.low_ik3pol) + "</td><td>" + this.dvalue (sc.low_ik) + "</td><td></td>" +
                         "  </tr>" +
                         "  <tr>" +
-                        "    <th>I<sub>max</sub> @6%</th><td>" + this.dvalue (analysis.imax_3ph_low) + "</td><td>" + this.dvalue (analysis.imax_1ph_low) + "</td><td>" + this.dvalue (analysis.imax_2ph_low) + "</td>" +
+                        "    <th>I<sub>max</sub> @6%</th><td>" + this.dvalue (sc.imax_3ph_low) + "</td><td>" + this.dvalue (sc.imax_1ph_low) + "</td><td>" + this.dvalue (sc.imax_2ph_low) + "</td>" +
                         "  </tr>" +
                         "  <tr>" +
-                        "    <th>I<sub>max</sub> @3%</th><td>" + this.dvalue (analysis.imax_3ph_med) + "</td><td>" + this.dvalue (analysis.imax_1ph_med) + "</td><td>" + this.dvalue (analysis.imax_2ph_med) + "</td>" +
+                        "    <th>I<sub>max</sub> @3%</th><td>" + this.dvalue (sc.imax_3ph_med) + "</td><td>" + this.dvalue (sc.imax_1ph_med) + "</td><td>" + this.dvalue (sc.imax_2ph_med) + "</td>" +
                         "  </tr>" +
                         "</table>" +
-                        this.fuses (analysis) +
-                        this.errors (analysis) +
+                        this.fuses (sc) +
+                        this.errors (sc) +
                         "</p>";
                 }
 
@@ -277,6 +277,6 @@ define
             }
         }
 
-        return (AnalysisTheme);
+        return (ShortCircuitTheme);
     }
 );

@@ -31,19 +31,41 @@ class Island (
     implicit val session: SparkSession = spark
     implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
+    /**
+     * Construct the name of the (ganged) transformer.
+     *
+     * @return The name of this transformer
+     */
+    def getTransformerId (transformer: TransformerData): String =
+    {
+        transformer.nodes.map(_.id).mkString("_")
+    }
+
     // get the edges we understand
     lazy val lines: RDD[LineData] = Lines(session, storage_level).getLines() // line filter
     lazy val switches: RDD[SwitchData] = Switches(session, storage_level).getSwitches
     lazy val transformers: RDD[TransformerSet] = Transformers(session, storage_level).getTransformers() // transformer filter, substation filter
         // legacy naming: TransformerData should be TransformerDetails, TransformerSet should be TransformerData
-        .groupBy(transformer => transformer.nodes.map(_.id).mkString("_"))
+        .groupBy(getTransformerId)
         .values
         .map(trafos => TransformerSet(trafos.toArray)) // default_power_rating, default_impedance
+
+    /**
+     * Get the list of node ids.
+     *
+     * @param set the transformer set to operate on
+     * @return the node ids
+     */
+    def getTransformerNodes (set: TransformerSet): Seq[String] =
+    {
+        set.transformers(0).nodes.map(_.id)
+    }
 
     // we only need the TopologicalNode that have associated edges we care about
     lazy val line_nodes: RDD[node_id] = lines.flatMap(x => List(x.node0, x.node1))
     lazy val switch_nodes: RDD[node_id] = switches.flatMap(x => List(x.node0, x.node1))
-    lazy val transformer_nodes: RDD[node_id] = transformers.flatMap(x => x.transformers(0).nodes.map(_.id))
+    lazy val transformer_nodes: RDD[node_id] = transformers.flatMap(getTransformerNodes)
+
     lazy val all_nodes: RDD[(node_id, node_id)] = session.sparkContext
         .union(line_nodes, switch_nodes, transformer_nodes)
         .distinct

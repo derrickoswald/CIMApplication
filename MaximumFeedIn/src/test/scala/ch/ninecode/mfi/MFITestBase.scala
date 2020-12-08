@@ -34,6 +34,17 @@ class MFITestBase extends TestUtil
 
     def runMFI (session: SparkSession, options: EinspeiseleistungOptions): Unit =
     {
+        // read the file
+        val start = System.nanoTime()
+        val elements = session
+            .read
+            .format("ch.ninecode.cim")
+            .options(options.cim_options.toMap)
+            .load(options.cim_options.files: _*)
+            .count
+        info(s"$elements elements")
+        val read = System.nanoTime()
+        info(s"read: ${(read - start) / 1e9} seconds")
         val begin = System.nanoTime()
         val eins = Einspeiseleistung(session, options)
         val count = eins.run()

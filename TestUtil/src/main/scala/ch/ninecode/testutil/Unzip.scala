@@ -119,7 +119,7 @@ trait Unzip extends Using
          * Extracts a zip entry (file entry).
          *
          * @param zip  The Zip input stream for the file.
-         * @param path The path to extract he file to.
+         * @param path The path to extract the file to.
          * @throws IOException If there is a problem with the zip extraction
          */
         @throws[IOException]

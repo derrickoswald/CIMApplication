@@ -128,7 +128,7 @@ define
                                 ).then (
                                         (result) =>
                                         {
-                                            resolve (result.map (x => x.keyspace_name).filter (
+                                            const keyspaces = result.map (x => x.keyspace_name).filter (
                                                     x =>
                                                     {
                                                         switch (x)
@@ -143,8 +143,8 @@ define
                                                                 return (true);
                                                         }
                                                     }
-                                                    )
-                                            );
+                                                    );
+                                            resolve (keyspaces);
                                         }
                                 )
                             }

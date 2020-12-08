@@ -960,12 +960,12 @@ truncate table cimapplication.responsibility_by_day;
         // accessors
         function getName ()
         {
-            return ((null != TheSimulation) ? TheSimulation.name : "");
+            return ((null != TheSimulation.name) ? TheSimulation.name : "");
         }
 
         function getDescription ()
         {
-            return ((null != TheSimulation) ? TheSimulation.description : "");
+            return ((null != TheSimulation.description) ? TheSimulation.description : "");
         }
 
         function collect_it_all ()
@@ -1512,14 +1512,14 @@ truncate table cimapplication.responsibility_by_day;
             );
             document.getElementById ("input_keyspace").onchange = set_input_keyspace;
             document.getElementById ("output_keyspace").onchange = set_output_keyspace;
-            const contents = this.getKeySpaces ().map (keyspace => `<a class="dropdown-item" href="#">${keyspace}</a>`).join ("\n");
+            const contents = getKeySpaces ().map (keyspace => `<a class="dropdown-item" href="#">${keyspace}</a>`).join ("\n");
             const in_key = document.getElementById ("input_keyspace_select");
             in_key.innerHTML = contents;
-            for (var i = 0; i < in_key.children.length; i++)
+            for (let i = 0; i < in_key.children.length; i++)
                 in_key.children.item (i).onclick = (event) => { event.preventDefault (); const element = document.getElementById ("input_keyspace"); element.value = event.target.innerHTML; element.onchange (); };
             const out_key = document.getElementById ("output_keyspace_select");
             out_key.innerHTML = contents;
-            for (var j = 0; j < out_key.children.length; j++)
+            for (let j = 0; j < out_key.children.length; j++)
                 out_key.children.item (j).onclick = (event) => { event.preventDefault (); const element = document.getElementById ("output_keyspace"); element.value = event.target.innerHTML; element.onchange (); };
 
             // see https://wireddots.com/products/datetimepicker
@@ -1842,7 +1842,7 @@ truncate table cimapplication.responsibility_by_day;
          */
         function initialize ()
         {
-            setReplication ().then (cimcassandra.getKeyspaces ()).then (setKeySpaces.bind(this)).then (render.bind (this));
+            setReplication ().then (cimcassandra.getKeyspaces).then (x => setKeySpaces (x)).then (render);
         }
 
         /**

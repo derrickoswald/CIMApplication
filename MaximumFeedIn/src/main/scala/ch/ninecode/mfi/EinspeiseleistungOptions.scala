@@ -2,6 +2,9 @@ package ch.ninecode.mfi
 
 import java.net.URI
 
+import javax.json.Json
+import javax.json.JsonObjectBuilder
+
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceTrue
 import ch.ninecode.util.CIMAble
@@ -107,4 +110,39 @@ case class EinspeiseleistungOptions
      * Get user specified directory or generate a working directory matching the files.
      */
     def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir(cim_options.files)
+
+    /**
+     * JSON representation of the options.
+     *
+     * @return a JSON object with the parameters as properties
+     */
+    def asJSON: JsonObjectBuilder =
+    {
+        Json.createObjectBuilder
+            .add("id", id)
+            .add("checkpoint_dir", checkpoint_dir)
+            .add("workdir", workdir)
+            .add("verbose", verbose)
+            .add("three", three)
+            .add("precalculation", precalculation)
+            .add("trafos", trafos)
+            .add("export_only", export_only)
+            .add("all", all)
+            .add("erase", erase)
+            .add("simulation", simulation)
+            .add("reference", reference)
+            .add("delta", delta)
+            .add("precalc_factor", precalc_factor)
+            .add("cosphi", cosphi)
+            .add("voltage_threshold", voltage_threshold)
+            .add("voltage_threshold2", voltage_threshold2)
+            .add("ignore_other", ignore_other)
+            .add("cable_impedance_limit", cable_impedance_limit)
+            .add("base_temperature", base_temperature)
+            .add("sim_temperature", sim_temperature)
+            .add("output", output.toString)
+            .add("outputfile", outputfile)
+            .add("keyspace", keyspace)
+            .add("replication", replication)
+    }
 }

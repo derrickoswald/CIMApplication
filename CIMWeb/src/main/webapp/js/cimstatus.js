@@ -73,7 +73,7 @@ define
                 }
 
                 /**
-                 * Render the chooser field set.
+                 * Render the status modal dialog.
                  */
                 render (result)
                 {

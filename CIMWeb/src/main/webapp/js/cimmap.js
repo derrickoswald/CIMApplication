@@ -206,7 +206,7 @@ define
         /**
          * Get the theming object for access to themes.
          * @return {Object} The object handling theming.
-         * @return {{ removeTheme : function(Object), addTheme : function(Object, [Boolean]) }} The current theme object.
+         * @return {{ removeTheme : function(Object), addTheme : function(Object, Boolean) }} The current theme object.
          */
         function get_themer ()
         {

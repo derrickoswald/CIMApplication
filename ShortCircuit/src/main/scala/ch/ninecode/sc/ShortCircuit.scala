@@ -67,7 +67,7 @@ import ch.ninecode.util.Util
  *                      used to persist and serialize the objects
  * @param options       options for short-circuit processing
  */
-case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions) extends CIMRDD with Graphable with Serializable
+case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions) extends CIMRDD with Graphable
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger(getClass)
