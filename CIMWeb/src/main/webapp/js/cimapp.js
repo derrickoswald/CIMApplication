@@ -74,9 +74,14 @@ define
          */
         function initialize ()
         {
+            const main = document.getElementById ("main");
+            main.innerHTML = "<h1>Initializing Spark connection...</h1>";
+            main.style.display = "block";
             pong (true).then (
                 function (result)
                 {
+                    main.innerHTML = "";
+                    main.style.display = "none";
                     if ("localhost" !== result.properties["SparkConnectionFactory.ServerName"])
                     {
                         const namenode = result.environment.NAMENODE;
@@ -92,6 +97,7 @@ define
                 function (error)
                 {
                     document.getElementById ("spark_master").style.display = "none";
+                    main.innerHTML = JSON.stringify(error, null, 4);
                 }
             );
         }

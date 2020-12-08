@@ -155,7 +155,7 @@ define
             do_maximumfeedin (event)
             {
                 const id = "MaximumFeedIn" + this.getRandomInt (1e9);
-                const status = new CIMStatus ("progress_modal", "progress", id);
+                const status = new CIMStatus (id);
                 const to_map = document.getElementById ("maximumfeedin_to_map").checked;
 
                 let successCallback = (data) =>

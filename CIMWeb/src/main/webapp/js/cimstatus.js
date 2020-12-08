@@ -24,43 +24,64 @@ define
              */
             class Status
             {
-                constructor (modal, target, group)
+                constructor (group)
                 {
-                    /**
-                     * DOM element attribute name of modal dialog.
-                     */
-                    this.modal = modal;
-
-                    /**
-                     * DOM element attribute name that holds progress elements.
-                     */
-                    this.target = target;
-
                     /**
                      * Spark job id group, if any.
                      */
                     this.group = group;
 
                     /**
+                     * DOM element attribute name of modal dialog.
+                     */
+                    this.modal = "progress_modal";
+
+                    /**
+                     * DOM element attribute name that holds progress elements.
+                     */
+                    this.target = "progress";
+
+                    /**
+                     * Progress dialog modal template.
+                     * @type {string}
+                     */
+                    this.modal_template =
+`
+    <div id="${this.modal}" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fa fa-server"></i> Status</h2>
+                    <button id="close_progress_modal" class="close" type="button" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div id="${this.target}" class="modal-body">
+                </div>
+            </div>
+        </div>
+    </div>
+`;
+
+                    /**
                      * Mustache template to generate the progress DOM elements.
                      */
                     this.template =
-                        `<ol>
-                            {{#jobs}}
-                            <li value="{{id}}">{{status}}
-                                <ol>
-                                    {{#stages}}
-                                    <li value="{{id}}">
-                                        <div>{{name}}</div>
-                                        <div>@{{datetime}} #{{attempt}}</div>
-                                        <div>{{percent}}</div>
-                                    </li>
-                                    {{/stages}}
-                                </ol>
-                            </li>
-                            {{/jobs}}
-                        </ol>
-                        `;
+`
+<ol>
+    {{#jobs}}
+    <li value="{{id}}">{{status}}
+        <ol>
+            {{#stages}}
+            <li value="{{id}}">
+                <div>{{justName}} @{{datetime}} #{{attempt}} {{percent}}</div>
+            </li>
+            {{/stages}}
+        </ol>
+    </li>
+    {{/jobs}}
+</ol>
+`;
 
                     this.set ("");
                 }
@@ -85,6 +106,14 @@ define
                     };
                     const datetimeformat = new Intl.DateTimeFormat("default", options);
 
+                    function justName ()
+                    {
+                        const name = this.name;
+                        const index = name.indexOf (" ");
+                        const word = (index > 0) ? name.substring (0, index) : name;
+                        return (word);
+                    }
+
                     function datetime ()
                     {
                         return (datetimeformat.format(new Date (this.time)));
@@ -104,6 +133,7 @@ define
                             this.template,
                             {
                                 jobs: jobs,
+                                justName: justName,
                                 datetime: datetime,
                                 percent: percent
                             }
@@ -115,10 +145,7 @@ define
                 {
                     const modal = document.getElementById (this.modal);
                     if ((null == modal) || modal.hidden)
-                    {
-                        window.clearInterval (this.intervalID);
-                        this.set ("");
-                    }
+                        this.stop ();
                     else
                     {
                         const url = util.home () + "cim/status" + (this.group ? ";group=" + this.group : "");
@@ -130,6 +157,11 @@ define
 
                 start ()
                 {
+                    const element = document.createElement("div");
+                    element.innerHTML = this.modal_template;
+                    if (document.getElementById (this.modal))
+                        document.getElementById (this.modal).remove ();
+                    document.body.appendChild(element.children[0]);
                     const modal = document.getElementById (this.modal);
                     if (null != modal)
                     {
@@ -145,6 +177,7 @@ define
                     {
                         window.clearInterval (this.intervalID);
                         $(`#${this.modal}`).modal ("hide");
+                        modal.remove ();
                     }
                 }
             }

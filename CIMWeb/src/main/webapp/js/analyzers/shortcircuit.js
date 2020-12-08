@@ -279,7 +279,7 @@ define
             do_shortcircuit (event)
             {
                 const id = "ShortCircuit" + this.getRandomInt (1e9);
-                const status = new CIMStatus ("progress_modal", "progress", id);
+                const status = new CIMStatus (id);
                 const to_map = document.getElementById ("shortcircuit_to_map").checked;
 
                 let successCallback = (data) =>
@@ -360,7 +360,7 @@ define
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fa fa-power-off"></i> Fuse Table</h2>
-                <button id="close_progress_modal" class="close" type="button" data-dismiss="modal" aria-label="Close">
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>

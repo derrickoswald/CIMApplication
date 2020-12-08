@@ -474,7 +474,7 @@ define
         function do_ingest (event)
         {
             const id = "Ingest" + getRandomInt (1e9);
-            const status = new CIMStatus ("progress_modal", "progress", id);
+            const status = new CIMStatus (id);
             function successCallback (data)
             {
                 status.stop();
