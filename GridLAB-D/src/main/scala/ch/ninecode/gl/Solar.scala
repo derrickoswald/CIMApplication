@@ -17,7 +17,7 @@ import ch.ninecode.model.Terminal
  *
  * @param node       ConnectivityNode or TopologicalNode MRID.
  * @param solar      SolarGeneratingUnit object attached to the node.
- * @param connection TODO
+ * @param connection connection into the topology (ConductingEquipment which Terminal can reference)
  */
 case class PV
 (
