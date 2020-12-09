@@ -17,8 +17,8 @@ elif [[ $1 == openliberty ]]; then
     publishplus="--publish 4848:4848"
     shift
 else
-    Container="tomee"
-    publishplus=""
+    Container="openliberty"
+    publishplus="--publish 4848:4848"
 fi
 if [[ $# -eq 0 ]] ; then
     master=localhost

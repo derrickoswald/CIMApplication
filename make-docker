@@ -17,8 +17,8 @@ elif [[ $1 == openliberty ]]; then
     Tag="openliberty"
     shift
 else
-    AppServer="TomEE"
-    Tag="tomee"
+    AppServer="OpenLiberty"
+    Tag="openliberty"
 fi
 
 set -x
