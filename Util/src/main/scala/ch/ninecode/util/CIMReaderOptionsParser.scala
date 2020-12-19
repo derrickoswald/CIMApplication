@@ -52,15 +52,6 @@ trait CIMReaderOptionsParser[T <: CIMAble with Mainable] extends MainOptionsPars
         "OFF_HEAP"
     )
 
-    opt[Map[String, String]]("cim_options")
-        .valueName("<map>")
-        .action((x, c) =>
-        {
-            c.cim_options = CIMReaderOptions(x, Some(c.cim_options))
-            c
-        })
-        .text(s"CIM options [${getDefault.cim_options.options.map(x => s"${x._1}=${x._2}").mkString(",")}]")
-
     val children = List(
         opt[Unit]("identify_islands")
             .action((_, c) =>

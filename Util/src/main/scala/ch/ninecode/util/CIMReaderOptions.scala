@@ -8,7 +8,6 @@ import ch.ninecode.cim.State
 /**
  * Options for the CIMReader.
  *
- * @param options          map equivalent of the following options
  * @param topology         <code>true</true> if topology processing is enabled
  * @param topology_options topology processing options
  * @param about            <code>true</true> if rdf:about processing is enabled
@@ -23,7 +22,6 @@ import ch.ninecode.cim.State
  * @param files            the CIM RDF files to be read
  */
 case class CIMReaderOptions (
-    options: Map[String, String] = Map(),
     topology: Boolean = false,
     topology_options: CIMTopologyOptions = CIMTopologyOptions(),
     about: Boolean = false,
@@ -191,7 +189,6 @@ object CIMReaderOptions
         )
 
         CIMReaderOptions(
-            options = src,
             topology = hasTopoOption || asBoolean(src.get("ch.ninecode.cim.do_topo"), o.topology),
             topology_options = topology_options,
             about = src.get("ch.ninecode.cim.do_about").map(parseBoolean(_, o.about)).getOrElse(o.about),

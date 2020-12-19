@@ -1349,7 +1349,7 @@ object ShortCircuit extends CIMInitializer[ShortCircuitOptions] with Main
             val default = ShortCircuitOptions(
                 main_options = MainOptions(application_name, application_version),
                 spark_options = SparkOptions(jars = jars, kryo = kryo),
-                cim_options = temp.cim_options.copy(options = temp.cim_options.toMap)
+                cim_options = temp.cim_options
             )
 
             // parse the command line arguments

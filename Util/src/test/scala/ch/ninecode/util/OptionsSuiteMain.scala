@@ -59,11 +59,10 @@ trait OptionsSuiteMain extends CIMInitializer[OptionsSuiteOptions] with Main wit
             // initialize the default options
             // val topology_options = CIMTopologyOptions (identify_islands = true)
             // val rop = CIMReaderOptions (topology = true, topology_options = topology_options)
-            val rop = CIMReaderOptions()
             val default = OptionsSuiteOptions(
                 main_options = MainOptions(application_name, application_version),
                 spark_options = SparkOptions(jars = jars),
-                cim_options = rop.copy(options = rop.toMap)
+                cim_options = CIMReaderOptions()
             )
 
             // parse the command line arguments

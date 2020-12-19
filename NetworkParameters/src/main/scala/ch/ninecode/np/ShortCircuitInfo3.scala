@@ -474,7 +474,7 @@ object ShortCircuitInfo3 extends CIMInitializer[NetworkParametersOptions] with M
             val default = NetworkParametersOptions(
                 main_options = MainOptions(s"Customer3_NetworkParameters", application_version),
                 spark_options = SparkOptions(jars = jars, kryo = kryo),
-                cim_options = temp.cim_options.copy(options = temp.cim_options.toMap),
+                cim_options = temp.cim_options,
                 available_power_csv = "20181002_Transformatoren.csv"
             )
 

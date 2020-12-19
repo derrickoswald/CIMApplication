@@ -72,7 +72,7 @@ object MaximumFeedIn extends CIMInitializer[EinspeiseleistungOptions] with Main
             val default = EinspeiseleistungOptions(
                 main_options = MainOptions(application_name, application_version),
                 spark_options = SparkOptions(jars = jars, kryo = kryo),
-                cim_options = temp.cim_options.copy(options = temp.cim_options.toMap)
+                cim_options = temp.cim_options
             )
 
             // parse the command line arguments
