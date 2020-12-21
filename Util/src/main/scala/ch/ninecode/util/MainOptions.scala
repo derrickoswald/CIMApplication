@@ -15,3 +15,10 @@ case class MainOptions
     valid: Boolean = true,
     unittest: Boolean = false,
 )
+{
+    def toJSON: String = MainOptions.toJSON(this)
+}
+object MainOptions extends JSON[MainOptions]
+{
+    def schemaResourceName: String = "MainOptionsSchema.json"
+}

@@ -98,7 +98,7 @@ trait SparkInitializer[T <: Mainable with Sparkable]
 
             // make a Spark session
             val session = SparkSession.builder().config(configuration).getOrCreate()
-            session.sparkContext.setLogLevel(options.spark_options.logAsString)
+            session.sparkContext.setLogLevel(options.spark_options.log.toString)
             if ("" != options.spark_options.checkpoint)
                 session.sparkContext.setCheckpointDir(options.spark_options.checkpoint)
             val version = session.version

@@ -194,7 +194,7 @@ trait CIMReaderOptionsParser[T <: CIMAble with Mainable] extends MainOptionsPars
                 c
             }
         )
-        .text(s"storage level for RDD serialization, one of ${storageLevels.mkString(",")} [${getDefault.cim_options.storageAsString}]")
+        .text(s"storage level for RDD serialization, one of ${storageLevels.mkString(",")} [${CIMReaderOptions.storageAsString(getDefault.cim_options.storage)}]")
 
     val cim_files: OptionDef[String, T] = arg[String]("<CIM> <CIM> ...")
         .optional()

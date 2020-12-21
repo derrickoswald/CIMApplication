@@ -46,6 +46,18 @@
         </dependency>
 
         <dependency>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-jackson_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.json4s}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>${version.dependency.json-schema-validator}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${version.dependency.scalalibrary}</version>
@@ -123,7 +135,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>ComplexSuite.txt</filereports>
-                    <suites>ch.ninecode.util.ComplexSuite,ch.ninecode.util.OptionsSuite</suites>
+                    <suites>ch.ninecode.util.ComplexSuite,ch.ninecode.util.OptionsSuite,ch.ninecode.util.JSONSuite</suites>
                 </configuration>
                 <executions>
                     <execution>

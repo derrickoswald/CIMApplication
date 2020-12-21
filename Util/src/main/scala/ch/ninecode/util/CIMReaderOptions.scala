@@ -1,21 +1,26 @@
 package ch.ninecode.util
 
 import org.apache.spark.storage.StorageLevel
+import org.json4s.Formats
+import org.json4s.JsonAST.JString
 
 import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.cim.ForceFalse
+import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.State
+import ch.ninecode.cim.Unforced
 
 /**
  * Options for the CIMReader.
  *
- * @param topology         <code>true</true> if topology processing is enabled
+ * @param topology         <code>true</code> if topology processing is enabled
  * @param topology_options topology processing options
- * @param about            <code>true</true> if rdf:about processing is enabled
- * @param normalize        <code>true</true> if normalizytion processing is enabled
- * @param dedup            <code>true</true> if deduplication processing is enabled
- * @param edges            <code>true</true> if edge creation processing is enabled
- * @param join             <code>true</true> if ServiceLocation merging is enabled
- * @param debug            <code>true</true> if debug message logging is enabled
+ * @param about            <code>true</code> if rdf:about processing is enabled
+ * @param normalize        <code>true</code> if normalization processing is enabled
+ * @param dedup            <code>true</code> if deduplication processing is enabled
+ * @param edges            <code>true</code> if edge creation processing is enabled
+ * @param join             <code>true</code> if ServiceLocation merging is enabled
+ * @param debug            <code>true</code> if debug message logging is enabled
  * @param splitsize        the file split size (determined the number of partitions) in bytes
  * @param cache            the cache directory that will be created or used
  * @param storage          the RDD storage level
@@ -36,31 +41,6 @@ case class CIMReaderOptions (
     files: Seq[String] = Seq()
 )
 {
-    /**
-     * Convert storage level to a string.
-     *
-     * @return a String that would generate level from StorageLevel.fromString
-     */
-    def storageAsString: String =
-    {
-        storage match
-        {
-            case StorageLevel.NONE => "NONE"
-            case StorageLevel.DISK_ONLY => "DISK_ONLY"
-            case StorageLevel.DISK_ONLY_2 => "DISK_ONLY_2"
-            case StorageLevel.MEMORY_ONLY => "MEMORY_ONLY"
-            case StorageLevel.MEMORY_ONLY_2 => "MEMORY_ONLY_2"
-            case StorageLevel.MEMORY_ONLY_SER => "MEMORY_ONLY_SER"
-            case StorageLevel.MEMORY_ONLY_SER_2 => "MEMORY_ONLY_SER_2"
-            case StorageLevel.MEMORY_AND_DISK => "MEMORY_AND_DISK"
-            case StorageLevel.MEMORY_AND_DISK_2 => "MEMORY_AND_DISK_2"
-            case StorageLevel.MEMORY_AND_DISK_SER => "MEMORY_AND_DISK_SER"
-            case StorageLevel.MEMORY_AND_DISK_SER_2 => "MEMORY_AND_DISK_SER_2"
-            case StorageLevel.OFF_HEAP => "OFF_HEAP"
-            case _ => ""
-        }
-    }
-
     /**
      * Create an equivalent CIMRelation parameters map from the options.
      *
@@ -84,17 +64,87 @@ case class CIMReaderOptions (
             "ch.ninecode.cim.debug" -> debug.toString,
             "ch.ninecode.cim.split_maxsize" -> splitsize.toString,
             "ch.ninecode.cim.cache" -> cache,
-            "StorageLevel" -> storageAsString,
+            "StorageLevel" -> CIMReaderOptions.storageAsString (storage),
             "path" -> files.mkString(",")
         )
     }
-}
 
-/**
- * Alternate constructor from a Map[String,String].
- */
-object CIMReaderOptions
+    def toJSON: String = CIMReaderOptions.toJSON(this)
+}
+object CIMReaderOptions extends JSON[CIMReaderOptions]
 {
+    def schemaResourceName: String = "CIMReaderOptionsSchema.json"
+
+    def stateAsString (state: State): String =
+        state match
+        {
+            case ForceTrue => "ForceTrue"
+            case ForceFalse => "ForceFalse"
+            case Unforced => "Unforced"
+        }
+
+    class StateSerializer extends JSONCustomSerializer[State](
+        (format: Formats) =>
+            (
+                {
+                    case JString(s) => CIMTopologyOptions.parseState(s)
+                },
+                {
+                    case x: State => JString(stateAsString (x))
+                }
+            )
+    )
+
+    /**
+     * Convert storage level to a string.
+     *
+     * @return a String that would generate level from StorageLevel.fromString
+     */
+    def storageAsString (storage: StorageLevel): String =
+    {
+        storage match
+        {
+            case StorageLevel.NONE => "NONE"
+            case StorageLevel.DISK_ONLY => "DISK_ONLY"
+            case StorageLevel.DISK_ONLY_2 => "DISK_ONLY_2"
+            case StorageLevel.MEMORY_ONLY => "MEMORY_ONLY"
+            case StorageLevel.MEMORY_ONLY_2 => "MEMORY_ONLY_2"
+            case StorageLevel.MEMORY_ONLY_SER => "MEMORY_ONLY_SER"
+            case StorageLevel.MEMORY_ONLY_SER_2 => "MEMORY_ONLY_SER_2"
+            case StorageLevel.MEMORY_AND_DISK => "MEMORY_AND_DISK"
+            case StorageLevel.MEMORY_AND_DISK_2 => "MEMORY_AND_DISK_2"
+            case StorageLevel.MEMORY_AND_DISK_SER => "MEMORY_AND_DISK_SER"
+            case StorageLevel.MEMORY_AND_DISK_SER_2 => "MEMORY_AND_DISK_SER_2"
+            case StorageLevel.OFF_HEAP => "OFF_HEAP"
+            case _ => ""
+        }
+    }
+
+    class StorageLevelSerializer extends JSONCustomSerializer[StorageLevel](
+        (format: Formats) =>
+            (
+                {
+                    case JString(s) => StorageLevel.fromString (s)
+                },
+                {
+                    case x: StorageLevel => JString(storageAsString (x))
+                }
+            )
+    )
+
+    lazy val Custom = List(new StateSerializer, new StorageLevelSerializer)
+
+    override def fromJSON (json: String, serializers: Seq[JSONCustomSerializer[_]])
+        (implicit m: Manifest[CIMReaderOptions]): Either[String, CIMReaderOptions] =
+    {
+        super.fromJSON(json, serializers ++ Custom)
+    }
+
+    override def toJSON (options: CIMReaderOptions, serializers: Seq[JSONCustomSerializer[_]] = List()): String =
+    {
+        super.toJSON (options, serializers ++ Custom)
+    }
+
     def parseBoolean (text: String, default: Boolean = false): Boolean =
     {
         try

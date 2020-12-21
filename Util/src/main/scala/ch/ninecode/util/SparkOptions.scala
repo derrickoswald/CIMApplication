@@ -1,6 +1,8 @@
 package ch.ninecode.util
 
 import org.apache.log4j.Level
+import org.json4s.Formats
+import org.json4s.JsonAST.JString
 
 /**
  * Options for Spark context.
@@ -28,24 +30,56 @@ case class SparkOptions (
     checkpoint: String = ""
 )
 {
-    /**
-     * Convert log level to a string.
-     *
-     * @return a String that would generate log from Level.toLevel
-     */
-    def logAsString: String =
+    def toJSON: String = SparkOptions.toJSON(this)
+}
+object SparkOptions extends JSON[SparkOptions]
+{
+
+    def schemaResourceName: String = "SparkOptionsSchema.json"
+
+    class LevelSerializer extends JSONCustomSerializer[Level](
+        (format: Formats) =>
+            (
+                {
+                    case JString(s) => Level.toLevel(s)
+                },
+                {
+                    case x: Level => JString(x.toString)
+                }
+            )
+    )
+
+    class ClassSerializer extends JSONCustomSerializer[Class[_]](
+        (format: Formats) =>
+            (
+                {
+                    case JString(s) if ClassSerializer.test(s) => Class.forName (s)
+                },
+                {
+                    case x: Class[_] => JString(x.getName)
+                }
+            )
+    )
     {
-        log match
-        {
-            case Level.OFF => "OFF"
-            case Level.FATAL => "FATAL"
-            case Level.ERROR => "ERROR"
-            case Level.WARN => "WARN"
-            case Level.INFO => "INFO"
-            case Level.DEBUG => "DEBUG"
-            case Level.TRACE => "TRACE"
-            case Level.ALL => "ALL"
-            case _ => ""
-        }
+        override def errors: String = ClassSerializer.errors
+    }
+    object ClassSerializer
+    {
+        var errors: String = ""
+        def test(s: String): Boolean = try { Class.forName (s) != null } catch { case t: Throwable => errors = t.toString; false }
+    }
+
+    lazy val Custom = List(new LevelSerializer, new ClassSerializer)
+
+    override def fromJSON (json: String, serializers: Seq[JSONCustomSerializer[_]])
+        (implicit m: Manifest[SparkOptions]): Either[String, SparkOptions] =
+    {
+        ClassSerializer.errors = ""
+        super.fromJSON(json, serializers ++ Custom)
+    }
+
+    override def toJSON (options: SparkOptions, serializers: Seq[JSONCustomSerializer[_]] = List()): String =
+    {
+        super.toJSON (options, serializers ++ Custom)
     }
 }

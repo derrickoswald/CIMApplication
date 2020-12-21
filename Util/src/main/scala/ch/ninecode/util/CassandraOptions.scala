@@ -10,4 +10,10 @@ case class CassandraOptions (
     host: String = "localhost",
     port: Int = 9042
 )
-
+{
+    def toJSON: String = CassandraOptions.toJSON(this)
+}
+object CassandraOptions extends JSON[CassandraOptions]
+{
+    def schemaResourceName: String = "CassandraOptionsSchema.json"
+}

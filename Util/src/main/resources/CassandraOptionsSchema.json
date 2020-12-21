@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://github.com/derrickoswald/CIMApplication/cassandra-options",
+    "description": "Options for Cassandra.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "host": {
+            "default": "localhost",
+            "type": "string",
+            "description": "Cassandra connection host (listen_address or seed in cassandra.yaml)"
+        },
+        "port": {
+            "default": 9042,
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cassandra connection port"
+        }
+    }
+}

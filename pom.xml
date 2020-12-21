@@ -100,6 +100,8 @@
         <version.dependency.netty-all>4.1.42.Final</version.dependency.netty-all>
         <version.dependency.bigdl>0.9.1</version.dependency.bigdl>
         <version.dependency.joda-time>2.10.6</version.dependency.joda-time>
+        <version.dependency.json4s>3.6.9</version.dependency.json4s>
+        <version.dependency.json-schema-validator>1.0.45</version.dependency.json-schema-validator>
 
         <!-- test versions -->
         <version.dependency.junit>4.13</version.dependency.junit>
@@ -200,7 +202,7 @@
                         <arg>-unchecked</arg>
                         <arg>-Ywarn-dead-code</arg>
                         <arg>-Ywarn-unused:_,-explicits</arg>
-                        <arg>-Xlint:_</arg>
+                        <arg>-Xlint:_,-missing-interpolator</arg>
                         <arg>-Xfatal-warnings</arg>
                         <arg>-target:jvm-1.8</arg>
                         <!-- see https://github.com/wartremover/wartremover/blob/704113034f9d2829aa8d577ac4f059c2136c6781/core/src/main/scala/wartremover/warts/Unsafe.scala -->

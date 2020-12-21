@@ -1,0 +1,133 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://github.com/derrickoswald/CIMApplication/cimreader-options",
+    "description": "Options for the CIMReader.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "topology": {
+            "default": false,
+            "type": "boolean",
+            "description": "true if topology processing is enabled"
+        },
+        "topology_options": {
+            "default": {
+                "identify_islands": false,
+                "force_retain_switches": "Unforced",
+                "force_retain_fuses": "Unforced",
+                "force_switch_separate_islands": "Unforced",
+                "force_fuse_separate_islands": "Unforced",
+                "default_switch_open_state": false,
+                "debug": false,
+                "storage": "MEMORY_AND_DISK_SER"
+            },
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "identify_islands": {
+                    "default": false,
+                    "type": "boolean",
+                    "description": "when true, topological islands are identified in addition to topological nodes"
+                },
+                "force_retain_switches": {
+                    "default": "Unforced",
+                    "type": "string",
+                    "description": "keep Switch and subclasses as two topological node elements irregardless of the retained attribute, or the open and normalOpen attributes",
+                    "pattern": "^ForceTrue$|^ForceFalse$|^Unforced$"
+                },
+                "force_retain_fuses": {
+                    "default": "Unforced",
+                    "type": "string",
+                    "description": "keep Fuse, ProtectedSwitch and subclasses as two topological node elements irregardless of the retained attribute, or the open and normalOpen attributes",
+                    "pattern": "^ForceTrue$|^ForceFalse$|^Unforced$"
+                },
+                "force_switch_separate_islands": {
+                    "default": "Unforced",
+                    "type": "string",
+                    "description": "extends the retain attribute to TopologicalIsland processing for Switch derived objects, except for Fuse and ProtectedSwitch objects",
+                    "pattern": "^ForceTrue$|^ForceFalse$|^Unforced$"
+                },
+                "force_fuse_separate_islands": {
+                    "default": "Unforced",
+                    "type": "string",
+                    "description": "similar functionality as force_switch_separate_islands, but for Fuse objects",
+                    "pattern": "^ForceTrue$|^ForceFalse$|^Unforced$"
+                },
+                "default_switch_open_state": {
+                    "default": false,
+                    "type": "boolean",
+                    "description": "open state for a Switch that has neither an open attribute, nor a normalOpen attribute"
+                },
+                "debug": {
+                    "default": false,
+                    "type": "boolean",
+                    "description": "if true additional tests are performed during topology processing"
+                },
+                "storage": {
+                    "default": "MEMORY_AND_DISK_SER",
+                    "type": "string",
+                    "description": "the storage level for new and replaced CIM RDD",
+                    "pattern": "^NONE$|^DISK_ONLY$|^DISK_ONLY_2$|^MEMORY_ONLY$|^MEMORY_ONLY_2$|^MEMORY_ONLY_SER$|^MEMORY_ONLY_SER_2$|^MEMORY_AND_DISK$|^MEMORY_AND_DISK_2$|^MEMORY_AND_DISK_SER$|^MEMORY_AND_DISK_SER_2$|^OFF_HEAP$"
+                }
+            },
+            "description": "topology processing options"
+        },
+        "join": {
+            "default": false,
+            "type": "boolean",
+            "description": "true if ServiceLocation merging is enabled"
+        },
+        "normalize": {
+            "default": false,
+            "type": "boolean",
+            "description": "true if normalization processing is enabled"
+        },
+        "files": {
+            "default": [
+
+            ],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "the CIM RDF files to be read"
+        },
+        "cache": {
+            "default": "",
+            "type": "string",
+            "description": "the cache directory that will be created or used"
+        },
+        "debug": {
+            "default": false,
+            "type": "boolean",
+            "description": "true if debug message logging is enabled"
+        },
+        "dedup": {
+            "default": false,
+            "type": "boolean",
+            "description": "true if deduplication processing is enabled"
+        },
+        "edges": {
+            "default": false,
+            "type": "boolean",
+            "description": "true if edge creation processing is enabled"
+        },
+        "about": {
+            "default": false,
+            "type": "boolean",
+            "description": "true if rdf:about processing is enabled"
+        },
+        "splitsize": {
+            "default": 67108864,
+            "type": "number",
+            "description": "the file split size (determined the number of partitions) in bytes",
+            "minimum": 1048576
+        },
+        "storage": {
+            "default": "MEMORY_AND_DISK_SER",
+            "type": "string",
+            "description": "the RDD storage level",
+            "pattern": "^NONE$|^DISK_ONLY$|^DISK_ONLY_2$|^MEMORY_ONLY$|^MEMORY_ONLY_2$|^MEMORY_ONLY_SER$|^MEMORY_ONLY_SER_2$|^MEMORY_AND_DISK$|^MEMORY_AND_DISK_2$|^MEMORY_AND_DISK_SER$|^MEMORY_AND_DISK_SER_2$|^OFF_HEAP$"
+        }
+    }
+}
