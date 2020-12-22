@@ -1,1 +1,62 @@
-../Util/src/main/resources/SparkOptionsSchema.json
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json",
+    "description": "Options for Spark context.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "master": {
+            "default": "local[*]",
+            "type": "string",
+            "description": "Spark master"
+        },
+        "options": {
+            "default": {
+                "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
+                "spark.sql.catalog.casscatalog": "com.datastax.spark.connector.datasource.CassandraCatalog",
+                "spark.kryo.registrator": "ch.ninecode.cim.CIMRegistrator",
+                "spark.graphx.pregel.checkpointInterval": "8",
+                "spark.ui.showConsoleProgress": "false",
+                "spark.sql.debug.maxToStringFields": "250"
+            },
+            "type": "object",
+            "patternProperties": {
+                "^.*$": {
+                    "type": "string"
+                }
+            },
+            "description": "Spark options"
+        },
+        "log": {
+            "default": "OFF",
+            "type": "string",
+            "description": "logging level",
+            "pattern": "^ALL$|^DEBUG$|^INFO$|^WARN$|^ERROR$|^FATAL$|^OFF$|^TRACE$"
+        },
+        "jars": {
+            "default": [
+
+            ],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "set of jar names to pass to executors"
+        },
+        "kryo": {
+            "default": [
+
+            ],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "set of classes to register with Kryo"
+        },
+        "checkpoint": {
+            "default": "",
+            "type": "string",
+            "description": "checkpoint directory"
+        }
+    }
+}

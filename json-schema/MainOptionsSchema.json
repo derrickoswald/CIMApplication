@@ -1,1 +1,31 @@
-../Util/src/main/resources/MainOptionsSchema.json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MainOptionsSchema.json",
+  "description": "Standard main program options.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "application": {
+      "default": "SparkApplication",
+      "type": "string",
+      "description": "the name of the program"
+    },
+    "version": {
+      "default": "2.12-3.0.1-3.0.5",
+      "type": "string",
+      "description": "the version of the program (format: <scala>-<spark>-<program>)",
+      "pattern": "^.+-.+-.+$"
+    },
+    "valid": {
+      "default": true,
+      "type": "boolean",
+      "description": "<code>false</code> if either help or version requested (i.e. don't proceed with execution)"
+    },
+    "unittest": {
+      "default": false,
+      "type": "boolean",
+      "description": "if <code>true</code>, don't call sys.exit()"
+    }
+  }
+}
+
