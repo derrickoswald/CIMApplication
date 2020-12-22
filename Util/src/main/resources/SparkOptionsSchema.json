@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://github.com/derrickoswald/CIMApplication/spark-options",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json",
     "description": "Options for Spark context.",
     "type": "object",
     "additionalProperties": false,

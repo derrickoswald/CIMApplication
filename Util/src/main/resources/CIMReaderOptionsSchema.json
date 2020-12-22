@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "$id": "https://github.com/derrickoswald/CIMApplication/cimreader-options",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CIMReaderOptionsSchema.json",
     "description": "Options for the CIMReader.",
     "type": "object",
     "additionalProperties": false,
