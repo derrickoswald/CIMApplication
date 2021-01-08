@@ -90,4 +90,10 @@ class MFITestBase extends TestUtil
         assert(result.getString("Reason") == reason, s"reason for $house")
         assert(result.getString("Details").startsWith(details), s"details for $house")
     }
+
+    def checkFeeder (result: CachedRowSetImpl, feeder: String): Unit =
+    {
+        val house = result.getString("House")
+        assert(result.getString("Feeder") == feeder, s"reason for $house")
+    }
 }
