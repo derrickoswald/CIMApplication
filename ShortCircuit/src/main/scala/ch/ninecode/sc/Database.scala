@@ -217,6 +217,8 @@ case class Database (options: ShortCircuitOptions) extends Serializable
                   |    last_fuses_id text,                   -- mRID of fuse(s) connected directly to the node (A)
                   |    iksplit text,                         -- short circuit current(s) (A)
                   |    fusemax text,                         -- maximum recommended fuse value(s) for the calculated fault current(s) (A)
+                  |    fusemaxDIN text,                      -- maximum recommended DIN fuse value(s) for the calculated fault current(s) (A)
+                  |    fusemaxSEV text,                      -- maximum recommended SEV fuse value(s) for the calculated fault current(s) (A)
                   |    fuseok boolean,                       -- evaluation of whether the fuse(s) has(have) appropriate value(s) (true) or not (false)
                   |    fuse_standard text                    -- The standard of the last fuse (DIN | SEV)
                   |)""".stripMargin)
@@ -256,7 +258,7 @@ case class Database (options: ShortCircuitOptions) extends Serializable
         // insert the results
         val sqlShortcircuit = "insert into shortcircuit (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, costerm, imax_3ph_low, imax_1ph_low, imax_2ph_low, imax_3ph_med, imax_1ph_med, imax_2ph_med) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         val insertShortcircuit = connection.prepareStatement(sqlShortcircuit)
-        val sqlNullungsbedingung = "insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, last_fuses_id, iksplit, fusemax, fuseok, fuse_standard) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        val sqlNullungsbedingung = "insert into nullungsbedingung (id, run, node, equipment, terminal, container, errors, trafo, prev, r, x, r0, x0, ik, ik3pol, ip, sk, fuses, last_fuses, last_fuses_id, iksplit, fusemax, fusemaxDIN, fusemaxSEV, fuseok, fuse_standard) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         val insertNullungsbedingung = connection.prepareStatement(sqlNullungsbedingung)
         val zipped: RDD[(ScResult, Long)] = records.zipWithIndex
         var index = 0L
