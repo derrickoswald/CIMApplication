@@ -726,6 +726,80 @@ class FDataSuite extends AnyFunSuite
         assert(!result.lastFuseHasMissingValues(branch2), "last fuses have no missing values")
     }
 
+    test("Fuse type: Simple Branch")
+    {
+        val branch1 = SimpleBranch("a", "b", 4.0, "TEI141", "", Some(-1.0), "DIN")
+        val branch2 = SimpleBranch("c", "d", 4.0, "TEI141", "", Some(40.0), "SEV")
+
+        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, branch1)
+        val result2 = result1.copy(branches = branch2)
+        assert(result1.lastFuseStandard == "DIN", "simple branch 1 has DIN fuse")
+        assert(result2.lastFuseStandard == "SEV", "simple branch 2 has SEV fuse")
+    }
+
+    test("Fuse type: Series Branch")
+    {
+        val branch1 =
+            SeriesBranch("a", "z", 0.0,
+                Seq(
+                    SimpleBranch("d", "e", 0.0, "TEI134", "", Some(1323.8), "SEV"),
+                    SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), "DIN")
+                )
+            )
+
+        val branch2 =
+            SeriesBranch("a", "z", 0.0,
+                Seq(
+                    SimpleBranch("d", "e", 0.0, "TEI134", "", Some(1323.8), "DIN"),
+                    SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), "SEV")
+                )
+            )
+
+        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, branch1)
+        val result2 = result1.copy(branches = branch2)
+        assert(result1.lastFuseStandard == "DIN", "last simple branch 1 has DIN fuse")
+        assert(result2.lastFuseStandard == "SEV", "simple branch 2 has SEV fuse")
+    }
+
+    test("Fuse type: Parallel Branch")
+    {
+        val branch1 =
+            ParallelBranch("c", "d", 0.0,
+                List(
+                    SeriesBranch("a", "z", 0.0,
+                        Seq(
+                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(288282.0), "SEV"),
+                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(73737.3), "DIN"))),
+                    SeriesBranch("a", "z", 0.0,
+                        Seq(
+                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(288282.0), "SEV"),
+                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(-1.0), "DIN")))
+                )
+            )
+
+        val branch2 =
+            ParallelBranch("c", "d", 0.0,
+                List(
+                    SeriesBranch("a", "z", 0.0,
+                        Seq(
+                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(288282.0), "DIN"),
+                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(73737.3), "DIN"))),
+                    SeriesBranch("a", "z", 0.0,
+                        Seq(
+                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(288282.0), "DIN"),
+                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(-1.0), "SEV")))
+                )
+            )
+
+        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, branch1)
+        val result2 = result1.copy(branches = branch2)
+        assert(result1.lastFuseStandard == "DIN,DIN", "last simple branch 1 has DIN fuse")
+        assert(result2.lastFuseStandard == "DIN,SEV", "simple branch 2 has SEV fuse")
+    }
+
     test("Parallel rating")
     {
         val z1 = Impedanzen(Complex(1.20, 0.02), Complex(4.80, 0.13), Complex(1.30, 0.02), Complex(5.20, 0.13))
