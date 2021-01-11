@@ -346,6 +346,7 @@ case class Database (options: ShortCircuitOptions) extends Serializable
                 insert.setNull(23, Types.BOOLEAN)
             else
                 insert.setBoolean(23, result.fuseOK(options))
+            insert.setString(24, result.lastFuseStandard)
         }
         val _ = insert.executeUpdate()
     }

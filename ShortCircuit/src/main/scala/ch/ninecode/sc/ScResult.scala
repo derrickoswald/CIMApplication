@@ -105,6 +105,19 @@ case class ScResult
         s
     }
 
+    def lastFuseStandard: String =
+    {
+        val s = if (null == branches)
+            ""
+        else
+            branches.justFuses match
+            {
+                case Some(branch) => branch.lastFuses.map(std).mkString(",")
+                case None => ""
+            }
+        s
+    }
+
     def lastFusesId: String =
     {
         val s = if (null == branches)
