@@ -345,10 +345,10 @@ case class Database (options: ShortCircuitOptions) extends Serializable
             insert.setString(21, result.iksplitString)
             insert.setString(22, result.fuseMax(options))
             if (result.lastFuseHasMissingValues)
-                insert.setNull(23, Types.BOOLEAN)
+                insert.setNull(25, Types.BOOLEAN)
             else
-                insert.setBoolean(23, result.fuseOK(options))
-            insert.setString(24, result.lastFuseStandard)
+                insert.setBoolean(25, result.fuseOK(options))
+            insert.setString(26, result.lastFuseStandard)
         }
         val _ = insert.executeUpdate()
     }
