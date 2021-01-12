@@ -344,6 +344,7 @@ case class Database (options: ShortCircuitOptions) extends Serializable
             insert.setString(20, result.lastFusesId)
             insert.setString(21, result.iksplitString)
             insert.setString(22, result.fuseMax(options))
+            insert.setString(23, result.fuseMaxStandard(options, "DIN"))
             if (result.lastFuseHasMissingValues)
                 insert.setNull(25, Types.BOOLEAN)
             else
