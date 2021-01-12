@@ -800,6 +800,30 @@ class FDataSuite extends AnyFunSuite
         assert(result2.lastFuseStandard == "DIN,SEV", "simple branch 2 has SEV fuse")
     }
 
+    test("Max Fuse: Simple Branch (DIN and SEV)")
+    {
+        val branch1 = SimpleBranch("a", "b", 390.0, "TEI141", "", Some(-1.0), "DIN")
+
+        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 390.0, 0.0, 0.0, 0.0, branch1)
+        assert(result1.fuseMaxStandard(options_table3, "DIN") == "125", "simple branch has DIN fuse with 125")
+        assert(result1.fuseMaxStandard(options_table3, "SEV") == "125", "simple branch has SEV fuse with 125")
+
+        val branch2 = SimpleBranch("a", "b", 150.0, "TEI141", "", Some(-1.0), "DIN")
+
+        val result2 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 150.0, 0.0, 0.0, 0.0, branch2)
+        assert(result2.fuseMaxStandard(options_table3, "DIN") == "50", "simple branch has DIN fuse with 50")
+        assert(result2.fuseMaxStandard(options_table3, "SEV") == "0", "simple branch has SEV fuse with 0")
+
+        val branch3 = SimpleBranch("a", "b", 220.0, "TEI141", "", Some(1.0), "DIN")
+
+        val result3 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 220.0, 0.0, 0.0, 0.0, branch3)
+        assert(result3.fuseMaxStandard(options_table3, "DIN") == "63", "simple branch has DIN fuse with 63")
+        assert(result3.fuseMaxStandard(options_table3, "SEV") == "60", "simple branch has SEV fuse with 60")
+    }
+
     test("Parallel rating")
     {
         val z1 = Impedanzen(Complex(1.20, 0.02), Complex(4.80, 0.13), Complex(1.30, 0.02), Complex(5.20, 0.13))
