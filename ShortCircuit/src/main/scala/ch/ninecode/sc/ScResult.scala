@@ -163,47 +163,40 @@ case class ScResult
 
     }
 
-    def fuses (ik: Double, options: ShortCircuitOptions, branches: Branch): String =
+    def fuses (ik: Double, options: ShortCircuitOptions, branches: Branch, standard: Option[String] = None): String =
     {
         if (ik.isNaN || (null == branches))
-            options.fuse_table.fuse(Double.NaN, std(branches)).toInt.toString
-        else
-            branches.ratios.map(x => (x._1 * Math.abs(ik), x._2)).map(x => options.fuse_table.fuse(x._1, std(x._2)).toInt).mkString(",")
+        {
+            val fuseType = standard match {
+                case Some(std) => std
+                case None => std(branches)
+            }
+            options.fuse_table.fuse(Double.NaN, fuseType).toInt.toString
+        } else
+        {
+            def getFuseFromBranch (x: (Double, Branch)): Int = {
+                val fuseType = standard match {
+                    case Some(std) => std
+                    case None => std(branches)
+                }
+                options.fuse_table.fuse(x._1, fuseType).toInt
+            }
+            val ikSplitPerBranch = branches.ratios.map(x => (x._1 * Math.abs(ik), x._2))
+            ikSplitPerBranch.map(getFuseFromBranch).mkString(",")
+        }
     }
 
-    def fusesStandard (ik: Double, options: ShortCircuitOptions, branches: Branch, standard: String): String =
-    {
-        if (ik.isNaN || (null == branches))
-            options.fuse_table.fuse(Double.NaN, standard).toInt.toString
-        else
-            branches.ratios.map(x => (x._1 * Math.abs(ik), x._2)).map(x => options.fuse_table.fuse(x._1, standard).toInt).mkString(",")
-    }
-
-
-    def fuseMax (options: ShortCircuitOptions): String =
+    def fuseMax (options: ShortCircuitOptions, standard: Option[String] = None): String =
     {
         if (null == branches)
             ""
         else
             branches.justFuses match
             {
-                case Some(branch) => fuses(high_ik, options, branch)
+                case Some(branch) => fuses(high_ik, options, branch, standard)
                 case None => ""
             }
     }
-
-    def fuseMaxStandard (options: ShortCircuitOptions, standard: String): String =
-    {
-        if (null == branches)
-            ""
-        else
-            branches.justFuses match
-            {
-                case Some(branch) => fusesStandard(high_ik, options, branch,standard)
-                case None => ""
-            }
-    }
-
 
     def lastFuseHasMissingValues (branches: Branch): Boolean =
     {

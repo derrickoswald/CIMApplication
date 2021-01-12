@@ -806,22 +806,22 @@ class FDataSuite extends AnyFunSuite
 
         val result1 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 390.0, 0.0, 0.0, 0.0, branch1)
-        assert(result1.fuseMaxStandard(options_table3, "DIN") == "125", "simple branch has DIN fuse with 125")
-        assert(result1.fuseMaxStandard(options_table3, "SEV") == "125", "simple branch has SEV fuse with 125")
+        assert(result1.fuseMax(options_table3, Some("DIN")) == "125", "simple branch has DIN fuse with 125")
+        assert(result1.fuseMax(options_table3, Some("SEV")) == "125", "simple branch has SEV fuse with 125")
 
         val branch2 = SimpleBranch("a", "b", 150.0, "TEI141", "", Some(-1.0), "DIN")
 
         val result2 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 150.0, 0.0, 0.0, 0.0, branch2)
-        assert(result2.fuseMaxStandard(options_table3, "DIN") == "50", "simple branch has DIN fuse with 50")
-        assert(result2.fuseMaxStandard(options_table3, "SEV") == "0", "simple branch has SEV fuse with 0")
+        assert(result2.fuseMax(options_table3, Some("DIN")) == "50", "simple branch has DIN fuse with 50")
+        assert(result2.fuseMax(options_table3, Some("SEV")) == "0", "simple branch has SEV fuse with 0")
 
         val branch3 = SimpleBranch("a", "b", 220.0, "TEI141", "", Some(1.0), "DIN")
 
         val result3 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 220.0, 0.0, 0.0, 0.0, branch3)
-        assert(result3.fuseMaxStandard(options_table3, "DIN") == "63", "simple branch has DIN fuse with 63")
-        assert(result3.fuseMaxStandard(options_table3, "SEV") == "60", "simple branch has SEV fuse with 60")
+        assert(result3.fuseMax(options_table3, Some("DIN")) == "63", "simple branch has DIN fuse with 63")
+        assert(result3.fuseMax(options_table3, Some("SEV")) == "60", "simple branch has SEV fuse with 60")
     }
 
     test("Parallel rating")
