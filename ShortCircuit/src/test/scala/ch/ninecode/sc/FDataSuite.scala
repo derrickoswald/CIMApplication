@@ -107,22 +107,22 @@ class FDataSuite extends AnyFunSuite
 
     test("Fuse+")
     {
-        assert(options_table1.fuse_table.fuse(650.001, "") == 200.0, "expected 200A")
+        assert(options_table1.fuse_table.fuse(650.001, "DIN") == 200.0, "expected 200A")
     }
 
     test("Fuse-")
     {
-        assert(options_table1.fuse_table.fuse(649.99, "") == 160.0, "expected 160A")
+        assert(options_table1.fuse_table.fuse(649.99, "DIN") == 160.0, "expected 160A")
     }
 
     test("FuseSmall")
     {
-        assert(options_table1.fuse_table.fuse(25.0, "") == 0.0, "expected 0A")
+        assert(options_table1.fuse_table.fuse(25.0, "DIN") == 0.0, "expected 0A")
     }
 
     test("FuseZero")
     {
-        assert(options_table1.fuse_table.fuse(0.0, "") == 0.0, "expected 0A")
+        assert(options_table1.fuse_table.fuse(0.0, "DIN") == 0.0, "expected 0A")
     }
 
     test("FuseOK")
@@ -132,13 +132,13 @@ class FDataSuite extends AnyFunSuite
                 Seq[Branch](
                     ParallelBranch("c", "d", 0.0,
                         List(
-                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(400.0), ""),
-                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(400.0), ""))),
+                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(400.0), "DIN"),
+                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(400.0), "DIN"))),
                     ParallelBranch("d", "e", 0.0,
                         List(
-                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(125.0), ""),
-                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), ""))),
-                    SimpleBranch("e", "f", 4.0, "TEI141", "", Some(40.0), "")))
+                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(125.0), "DIN"),
+                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), "DIN"))),
+                    SimpleBranch("e", "f", 4.0, "TEI141", "", Some(40.0), "DIN")))
         assert(branch.asFuse == "([400,400],[125,100],40)", "fuse string")
         assert(branch.asId == "([TEI124,TEI123],[TEI134,TEI135],TEI141)", "id string")
         assert(branch.checkFuses(123.456, options_table1)._1, "expected OK")
@@ -151,13 +151,13 @@ class FDataSuite extends AnyFunSuite
                 Seq[Branch](
                     ParallelBranch("c", "d", 0.0,
                         List(
-                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(400.0), ""),
-                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(400.0), ""))),
+                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(400.0), "DIN"),
+                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(400.0), "DIN"))),
                     ParallelBranch("d", "e", 0.0,
                         List(
-                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(125.0), ""),
-                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), ""))),
-                    SimpleBranch("e", "f", 0.0, "TEI141", "", Some(40.0), "")))
+                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(125.0), "DIN"),
+                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), "DIN"))),
+                    SimpleBranch("e", "f", 0.0, "TEI141", "", Some(40.0), "DIN")))
         assert(branch.asFuse == "([400,400],[125,100],40)", "fuse string")
         assert(branch.asId == "([TEI124,TEI123],[TEI134,TEI135],TEI141)", "id string")
         assert(branch.checkFuses(123.456, options_table1)._1, "expected OK")
@@ -170,16 +170,16 @@ class FDataSuite extends AnyFunSuite
                 Seq(
                     ParallelBranch("c", "d", 0.0,
                         List(
-                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(400.0), ""),
-                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(400.0), ""))),
+                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(400.0), "DIN"),
+                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(400.0), "DIN"))),
                     ParallelBranch("d", "e", 0.0,
                         List(
-                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(125.0), ""),
-                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), ""))),
+                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(125.0), "DIN"),
+                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), "DIN"))),
                     ParallelBranch("e", "f", 0.0,
                         List(
-                            SimpleBranch("d", "e", 2.0, "TEI141", "", Some(40.0), ""),
-                            SimpleBranch("d", "e", 2.0, "TEI142", "", Some(40.0), "")))))
+                            SimpleBranch("d", "e", 2.0, "TEI141", "", Some(40.0), "DIN"),
+                            SimpleBranch("d", "e", 2.0, "TEI142", "", Some(40.0), "DIN")))))
         assert(branch.asFuse == "([400,400],[125,100],[40,40])", "fuse string")
         assert(branch.asId == "([TEI124,TEI123],[TEI134,TEI135],[TEI141,TEI142])", "id string")
         assert(branch.checkFuses(246.912, options_table1)._1, "expected OK")
@@ -190,8 +190,8 @@ class FDataSuite extends AnyFunSuite
         val branch =
             ParallelBranch("c", "d", 0.0,
                 List(
-                    SimpleBranch("c", "d", 2.0, "TEI141", "", Some(40.0), ""),
-                    SimpleBranch("c", "d", 2.0, "TEI142", "", Some(40.0), "")))
+                    SimpleBranch("c", "d", 2.0, "TEI141", "", Some(40.0), "DIN"),
+                    SimpleBranch("c", "d", 2.0, "TEI142", "", Some(40.0), "DIN")))
         assert(branch.asFuse == "[40,40]", "fuse string")
         assert(branch.asId == "[TEI141,TEI142]", "id string")
         assert(branch.checkFuses(211.0, options_table1)._1, "expected OK")
@@ -204,16 +204,16 @@ class FDataSuite extends AnyFunSuite
                 Seq(
                     ParallelBranch("c", "d", 0.0,
                         List(
-                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(288282.0), ""),
-                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(73737.3), ""))),
+                            SimpleBranch("c", "d", 0.0, "TEI124", "", Some(288282.0), "DIN"),
+                            SimpleBranch("c", "d", 0.0, "TEI123", "", Some(73737.3), "DIN"))),
                     ParallelBranch("d", "e", 0.0,
                         List(
-                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(1323.8), ""),
-                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), ""))),
+                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(1323.8), "DIN"),
+                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(100.0), "DIN"))),
                     ParallelBranch("e", "f", 0.0,
                         List(
-                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(40.0), ""),
-                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(40.0), "")))))
+                            SimpleBranch("d", "e", 0.0, "TEI134", "", Some(40.0), "DIN"),
+                            SimpleBranch("d", "e", 0.0, "TEI135", "", Some(40.0), "DIN")))))
         assert(branch.checkFuses(246.912, options_table1)._1, "expected OK")
     }
 
@@ -277,11 +277,11 @@ class FDataSuite extends AnyFunSuite
         val branch =
             ParallelBranch("a", "z", 10.0,
                 List[Branch](
-                    SimpleBranch("a", "z", 6.0, "TEI11", "", Some(50.0), ""),
+                    SimpleBranch("a", "z", 6.0, "TEI11", "", Some(50.0), "DIN"),
                     SeriesBranch("a", "z", 4.0,
                         Seq(
-                            SimpleBranch("a", "z", 4.0, "TEI21", "", Some(50.0), ""),
-                            SimpleBranch("a", "z", 4.0, "TEI21", "", Some(40.0), "")
+                            SimpleBranch("a", "z", 4.0, "TEI21", "", Some(50.0), "DIN"),
+                            SimpleBranch("a", "z", 4.0, "TEI21", "", Some(40.0), "DIN")
                         )
                     )
                 )
@@ -831,11 +831,11 @@ class FDataSuite extends AnyFunSuite
         val branch =
             ParallelBranch("a", "z", 10.0,
                 List[Branch](
-                    SimpleBranch("a", "z", 6.0, "TEI11", "", Some(50.0), "", z2),
+                    SimpleBranch("a", "z", 6.0, "TEI11", "", Some(50.0), "DIN", z2),
                     SeriesBranch("a", "z", 4.0,
                         Seq(
-                            SimpleBranch("a", "z", 4.0, "TEI21", "", Some(50.0), "", z1),
-                            SimpleBranch("a", "z", 4.0, "TEI22", "", Some(40.0), "", z1)
+                            SimpleBranch("a", "z", 4.0, "TEI21", "", Some(50.0), "DIN", z1),
+                            SimpleBranch("a", "z", 4.0, "TEI22", "", Some(40.0), "DIN", z1)
                         )
                     )
                 )
@@ -887,11 +887,11 @@ class FDataSuite extends AnyFunSuite
                 Seq[Branch](
                     ParallelBranch("a", "z", 10.0,
                         List[Branch](
-                            SimpleBranch("a", "z", 6.0, "TEI11", "", Some(50.0), "", z2),
+                            SimpleBranch("a", "z", 6.0, "TEI11", "", Some(50.0), "DIN", z2),
                             SeriesBranch("a", "z", 4.0,
                                 Seq(
-                                    SimpleBranch("a", "z", 4.0, "TEI21", "", Some(50.0), "", z1),
-                                    SimpleBranch("a", "z", 4.0, "TEI22", "", Some(40.0), "", z1)
+                                    SimpleBranch("a", "z", 4.0, "TEI21", "", Some(50.0), "DIN", z1),
+                                    SimpleBranch("a", "z", 4.0, "TEI22", "", Some(40.0), "DIN", z1)
                                 )
                             )
                         )
@@ -956,11 +956,11 @@ class FDataSuite extends AnyFunSuite
                 Seq[Branch](
                     ParallelBranch("a", "z", 10.0,
                         List[Branch](
-                            SimpleBranch("a", "z", 5.0, "TEI11", "", Some(50.0), "", z2),
+                            SimpleBranch("a", "z", 5.0, "TEI11", "", Some(50.0), "DIN", z2),
                             SeriesBranch("a", "z", 5.0,
                                 Seq(
-                                    SimpleBranch("a", "z", 5.0, "TEI21", "", Some(100.0), "", z1),
-                                    SimpleBranch("a", "z", 5.0, "TEI22", "", Some(100.0), "", z1)
+                                    SimpleBranch("a", "z", 5.0, "TEI21", "", Some(100.0), "DIN", z1),
+                                    SimpleBranch("a", "z", 5.0, "TEI22", "", Some(100.0), "DIN", z1)
                                 )
                             )
                         )
