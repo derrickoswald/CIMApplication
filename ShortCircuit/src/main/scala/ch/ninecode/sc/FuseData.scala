@@ -27,8 +27,7 @@ case class FuseData (
             {
                 case Some(table) =>
                     table.Table.filter(_.Ik <= Math.abs(ik)).last.Rating
-                case None =>
-                    Tables(0).Table.filter(_.Ik <= Math.abs(ik)).last.Rating
+                case None => Double.NaN
             }
         }
     }

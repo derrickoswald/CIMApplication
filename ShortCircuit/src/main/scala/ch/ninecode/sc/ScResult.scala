@@ -148,6 +148,16 @@ case class ScResult
         branch match
         {
             case simple: SimpleBranch => simple.standard
+            case series: SeriesBranch => series.lastFuses.lastOption match
+            {
+                case Some(last) =>
+                    last match
+                    {
+                        case branch1: SimpleBranch => branch1.standard
+                        case _ => ""
+                    }
+                case _ => ""
+            }
             case _ => ""
         }
 
