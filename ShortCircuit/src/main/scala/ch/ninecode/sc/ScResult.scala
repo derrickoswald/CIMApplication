@@ -177,7 +177,7 @@ case class ScResult
             def getFuseFromBranch (x: (Double, Branch)): Int = {
                 val fuseType = standard match {
                     case Some(std) => std
-                    case None => std(branches)
+                    case None => std(x._2)
                 }
                 options.fuse_table.fuse(x._1, fuseType).toInt
             }
