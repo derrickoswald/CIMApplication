@@ -11,7 +11,7 @@ class FDataSuite extends AnyFunSuite
         fuse_table = FuseData(
             Array(
                 FuseTable(
-                    "",
+                    "DIN",
                     Array(
                         Amp(0, 0), // failsafe fallback for currents less than 28A
                         Amp(28, 10),
@@ -82,7 +82,7 @@ class FDataSuite extends AnyFunSuite
         fuse_table = FuseData(
             Array(
                 FuseTable(
-                    "",
+                    "DIN",
                     Array(
                         Amp(0, 6), // failsafe fallback for currents less than 65A
                         Amp(65, 25),
@@ -822,6 +822,22 @@ class FDataSuite extends AnyFunSuite
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 220.0, 0.0, 0.0, 0.0, branch3)
         assert(result3.fuseMax(options_table3, Some("DIN")) == "63", "simple branch has DIN fuse with 63")
         assert(result3.fuseMax(options_table3, Some("SEV")) == "60", "simple branch has SEV fuse with 60")
+    }
+
+    test("Max Fuse: use DIN as default if nothing has been defined") {
+        val branch1 = SeriesBranch("BUS0004_topo", "FUS0057_node_2_topo", 0.0,
+            Seq(
+                SimpleBranch("BUS0004_topo", "FUS0032_node_2_topo", 0.0, "FUS0032", "FUS0032", Some(125.0), ""),
+                SimpleBranch("BUS0007_topo", "FUS0057_node_2_topo", 0.0, "FUS0057", "FUS0057", Some(100.0), "")
+            )
+        )
+        val result1 = ScResult("USR0023_topo","USR0023",400.0,1, "",List(),"TX0002",Complex(0.0053,0.0168),
+            "FUS0057_node_2_topo",0.013775603901670673,0.01664061754139094,0.03328393451039017,0.018086960653563765,
+            7689.812433403841,10690.326566474603,16657.192643207654,7406475.505054943,1.0,641.4195939884762,
+            320.7097969942381,555.4856628791207,320.7097969942381,160.35489849711905,277.74283143956035,
+            0.015006393156075075,0.015618231970695817,0.036178824287327084,0.018086960653563765,7443.770187655024,
+            10662.447953257199,16208.032458448206,7387160.635240101, branch1)
+        assert(result1.fuseOK(options_table3), "fuse should be OK")
     }
 
     test("Parallel rating")

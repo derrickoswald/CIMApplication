@@ -145,7 +145,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
         }
     }
 
-    def asString: String = s"$mRID$ratingString"
+    def asString: String = s"$mRID$ratingString[$standard]"
 
     def asFuse: String = rating.getOrElse(0.0).toInt.toString
 

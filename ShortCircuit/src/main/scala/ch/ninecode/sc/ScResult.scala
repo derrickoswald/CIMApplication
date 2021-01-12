@@ -77,7 +77,7 @@ case class ScResult
 )
 {
     def csv (options: ShortCircuitOptions): String =
-        s"$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString(",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm;$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;${fuseMax(options)};${fuseOK(options)}"
+        s"""$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString(",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm;$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;${fuseMax(options,Some("DIN"))};${fuseMax(options,Some("SEV"))};${fuseOK(options)}"""
 
     def fuseString: String =
     {
@@ -150,12 +150,7 @@ case class ScResult
             case simple: SimpleBranch => simple.standard
             case series: SeriesBranch => series.lastFuses.lastOption match
             {
-                case Some(last) =>
-                    last match
-                    {
-                        case branch1: SimpleBranch => branch1.standard
-                        case _ => ""
-                    }
+                case Some(last) => std(last)
                 case _ => ""
             }
             case _ => ""
@@ -274,5 +269,5 @@ case class ScResult
 
 object ScResult
 {
-    val csv_header: String = "node;equipment;terminal;container;errors;transformer;low_ik;low_ik3pol;low_ip;low_r;low_x;low_r0;low_x0;low_sk;costerm;imax_3ph_low;imax_1ph_low;imax_2ph_low;imax_3ph_med;imax_1ph_med;imax_2ph_med;high_r;high_x;high_r0;high_x0;high_ik;high_ik3pol;high_ip;high_sk;fuses;last_fuses;iksplit;fusemax;fuseOK"
+    val csv_header: String = "node;equipment;terminal;container;errors;transformer;low_ik;low_ik3pol;low_ip;low_r;low_x;low_r0;low_x0;low_sk;costerm;imax_3ph_low;imax_1ph_low;imax_2ph_low;imax_3ph_med;imax_1ph_med;imax_2ph_med;high_r;high_x;high_r0;high_x0;high_ik;high_ik3pol;high_ip;high_sk;fuses;last_fuses;iksplit;fusemaxDIN;fusemaxSEV;fuseOK"
 }

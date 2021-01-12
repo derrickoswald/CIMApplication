@@ -19,11 +19,15 @@ case class FuseData (
      */
     def fuse (ik: Double, standard: String): Double =
     {
+        val _std = standard match {
+            case "SEV" => "SEV"
+            case _ => "DIN"
+        }
         if (ik.isNaN)
             Tables(0).Table.last.Rating
         else
         {
-            Tables.find(_.Standard == standard) match
+            Tables.find(_.Standard == _std) match
             {
                 case Some(table) =>
                     table.Table.filter(_.Ik <= Math.abs(ik)).last.Rating
