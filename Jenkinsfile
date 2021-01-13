@@ -8,7 +8,9 @@ pipeline {
     stages {
         stage ('Build') {
             steps {
-                sh 'mvn -B -DskipTests clean install'
+                withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                    sh 'mvn -B -DskipTests clean install'
+                }
             }
         }
         // sh 'mvn test -pl GridLAB-D, Ingest, MaximumFeedIn,MSCONSReader,Net,NetworkParameters,ShortCircuit,Simulation,TestUtil,Util'
@@ -16,52 +18,72 @@ pipeline {
             parallel{
                 stage("Test GridLAB-D") {
                     steps {
-                        sh 'mvn test -pl GridLAB-D'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl GridLAB-D'
+                        }
                     }
                 }
                 stage("Test Ingest") {
                     steps {
-                        sh 'mvn test -pl Ingest'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl Ingest'
+                        }
                     }
                 }
                 stage("Test MaximumFeedIn") {
                     steps {
-                        sh 'mvn test -pl MaximumFeedIn'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl MaximumFeedIn'
+                        }
                     }
                 }
                 stage("Test MSCONSReader") {
                     steps {
-                        sh 'mvn test -pl MSCONSReader'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl MSCONSReader'
+                        }
                     }
                 }
                 stage("Test Net") {
                     steps {
-                        sh 'mvn test -pl Net'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl Net'
+                        }
                     }
                 }
                 stage("Test NetworkParameters") {
                     steps {
-                        sh 'mvn test -pl NetworkParameters'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl NetworkParameters'
+                        }
                     }
                 }
                 stage("Test ShortCircuit") {
                     steps {
-                        sh 'mvn test -pl ShortCircuit'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl ShortCircuit'
+                        }
                     }
                 }
                 stage("Test Simulation") {
                     steps {
-                        sh 'mvn test -pl Simulation'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl Simulation'
+                        }
                     }
                 }
                 stage("Test TestUtil") {
                     steps {
-                        sh 'mvn test -pl TestUtil'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl TestUtil'
+                        }
                     }
                 }
                 stage("Test Util") {
                     steps {
-                        sh 'mvn test -pl Util'
+                        withMaven(maven: 'maven', mavenLocalRepo: '/na-jenkins/'+BRANCH_NAME) {
+                            sh 'mvn test -pl Util'
+                        }
                     }
                 }
             }
