@@ -22,7 +22,9 @@ pipeline {
     stages {
         stage ('Build') {
             when {
-                expression params.BUILD
+                expression {
+                    return params.BUILD
+                }
             }
             steps {
                 withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -35,7 +37,9 @@ pipeline {
             parallel{
                 stage("Test GridLAB-D") {
                     when {
-                        expression params.GridLAB
+                        expression {
+                            return params.GridLAB
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -45,7 +49,9 @@ pipeline {
                 }
                 stage("Test Ingest") {
                     when {
-                        expression params.Ingest
+                        expression {
+                            return params.Ingest
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -55,7 +61,9 @@ pipeline {
                 }
                 stage("Test MaximumFeedIn") {
                     when {
-                        expression params.MaximumFeedIn
+                        expression {
+                            return params.MaximumFeedIn
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -65,7 +73,9 @@ pipeline {
                 }
                 stage("Test MSCONSReader") {
                     when {
-                        expression params.MSCONSReader
+                        expression {
+                            return params.MSCONSReader
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -75,7 +85,9 @@ pipeline {
                 }
                 stage("Test Net") {
                     when {
-                        expression params.Net
+                        expression {
+                            return params.Net
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -85,7 +97,9 @@ pipeline {
                 }
                 stage("Test NetworkParameters") {
                     when {
-                        expression params.NetworkParameters
+                        expression {
+                            return params.NetworkParameters
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -95,7 +109,7 @@ pipeline {
                 }
                 stage("Test ShortCircuit") {
                     when {
-                        expression params.ShortCircuit
+                        expression {return params.ShortCircuit}
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -105,7 +119,7 @@ pipeline {
                 }
                 stage("Test Simulation") {
                     when {
-                        expression params.Simulation
+                        expression {return params.Simulation}
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -115,7 +129,7 @@ pipeline {
                 }
                 stage("Test TestUtil") {
                     when {
-                        expression params.TestUtil
+                        expression {return params.TestUtil}
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
@@ -125,7 +139,7 @@ pipeline {
                 }
                 stage("Test Util") {
                     when {
-                        expression params.Util
+                        expression {return params.Util}
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
