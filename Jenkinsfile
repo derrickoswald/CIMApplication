@@ -31,6 +31,11 @@ pipeline {
                     sh 'mvn -B -DskipTests clean install'
                 }
             }
+            post {
+                always {
+                    archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                }
+            }
         }
         // sh 'mvn test -pl GridLAB-D, Ingest, MaximumFeedIn,MSCONSReader,Net,NetworkParameters,ShortCircuit,Simulation,TestUtil,Util'
         stage('Test') {
@@ -46,6 +51,11 @@ pipeline {
                             sh 'mvn test -pl GridLAB-D'
                         }
                     }
+                    post {
+                        always {
+                            junit 'GridLAB-D/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
                 stage("Test Ingest") {
                     when {
@@ -56,6 +66,11 @@ pipeline {
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl Ingest'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'Ingest/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -70,6 +85,11 @@ pipeline {
                             sh 'mvn test -pl MaximumFeedIn'
                         }
                     }
+                    post {
+                        always {
+                            junit 'MaximumFeedIn/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
                 stage("Test MSCONSReader") {
                     when {
@@ -80,6 +100,11 @@ pipeline {
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl MSCONSReader'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'MSCONSReader/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -94,6 +119,11 @@ pipeline {
                             sh 'mvn test -pl Net'
                         }
                     }
+                    post {
+                        always {
+                            junit 'Net/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
                 stage("Test NetworkParameters") {
                     when {
@@ -106,59 +136,81 @@ pipeline {
                             sh 'mvn test -pl NetworkParameters'
                         }
                     }
+                    post {
+                        always {
+                            junit 'NetworkParameters/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
                 stage("Test ShortCircuit") {
                     when {
-                        expression {return params.ShortCircuit}
+                        expression {
+                            return params.ShortCircuit
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl ShortCircuit'
                         }
                     }
+                    post {
+                        always {
+                            junit 'ShortCircuit/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
                 stage("Test Simulation") {
                     when {
-                        expression {return params.Simulation}
+                        expression {
+                            return params.Simulation
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl Simulation'
                         }
                     }
+                    post {
+                        always {
+                            junit 'Simulation/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
                 stage("Test TestUtil") {
                     when {
-                        expression {return params.TestUtil}
+                        expression {
+                            return params.TestUtil
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl TestUtil'
                         }
                     }
+                    post {
+                        always {
+                            junit 'TestUtil/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
                 stage("Test Util") {
                     when {
-                        expression {return params.Util}
+                        expression {
+                            return params.Util
+                        }
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl Util'
                         }
                     }
+                    post {
+                        always {
+                            junit 'Util/target/surefire-reports/*.xml'
+                        }
+                    }
                 }
             }
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
-                }
-            }
-        }
-    }
-    post {
-        always {
-            archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
-            junit '**/target/surefire-reports/*.xml'
         }
     }
 }
