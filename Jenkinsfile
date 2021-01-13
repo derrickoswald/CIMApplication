@@ -5,8 +5,25 @@ pipeline {
     tools {
         maven 'maven'
     }
+    parameters {
+    // GridLAB-D, Ingest, MaximumFeedIn,MSCONSReader,Net,NetworkParameters,ShortCircuit,Simulation,TestUtil,Util
+        booleanParam defaultValue: true, description: 'Build', name: 'BUILD'
+        booleanParam defaultValue: true, description: 'GridLAB-D', name: 'GridLAB'
+        booleanParam defaultValue: true, description: 'Ingest', name: 'Ingest'
+        booleanParam defaultValue: true, description: 'MaximumFeedIn', name: 'MaximumFeedIn'
+        booleanParam defaultValue: true, description: 'MSCONSReader', name: 'MSCONSReader'
+        booleanParam defaultValue: true, description: 'Net', name: 'Net'
+        booleanParam defaultValue: true, description: 'NetworkParameters', name: 'NetworkParameters'
+        booleanParam defaultValue: true, description: 'ShortCircuit', name: 'ShortCircuit'
+        booleanParam defaultValue: true, description: 'Simulation', name: 'Simulation'
+        booleanParam defaultValue: true, description: 'TestUtil', name: 'TestUtil'
+        booleanParam defaultValue: true, description: 'Util', name: 'Util'
+    }
     stages {
         stage ('Build') {
+            when {
+                expression params.BUILD
+            }
             steps {
                 withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                     sh 'mvn -B -DskipTests clean install'
@@ -17,6 +34,9 @@ pipeline {
         stage('Test') {
             parallel{
                 stage("Test GridLAB-D") {
+                    when {
+                        expression params.GridLAB
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl GridLAB-D'
@@ -24,6 +44,9 @@ pipeline {
                     }
                 }
                 stage("Test Ingest") {
+                    when {
+                        expression params.Ingest
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl Ingest'
@@ -31,6 +54,9 @@ pipeline {
                     }
                 }
                 stage("Test MaximumFeedIn") {
+                    when {
+                        expression params.MaximumFeedIn
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl MaximumFeedIn'
@@ -38,6 +64,9 @@ pipeline {
                     }
                 }
                 stage("Test MSCONSReader") {
+                    when {
+                        expression params.MSCONSReader
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl MSCONSReader'
@@ -45,6 +74,9 @@ pipeline {
                     }
                 }
                 stage("Test Net") {
+                    when {
+                        expression params.Net
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl Net'
@@ -52,6 +84,9 @@ pipeline {
                     }
                 }
                 stage("Test NetworkParameters") {
+                    when {
+                        expression params.NetworkParameters
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl NetworkParameters'
@@ -59,6 +94,9 @@ pipeline {
                     }
                 }
                 stage("Test ShortCircuit") {
+                    when {
+                        expression params.ShortCircuit
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl ShortCircuit'
@@ -66,6 +104,9 @@ pipeline {
                     }
                 }
                 stage("Test Simulation") {
+                    when {
+                        expression params.Simulation
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl Simulation'
@@ -73,6 +114,9 @@ pipeline {
                     }
                 }
                 stage("Test TestUtil") {
+                    when {
+                        expression params.TestUtil
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl TestUtil'
@@ -80,6 +124,9 @@ pipeline {
                     }
                 }
                 stage("Test Util") {
+                    when {
+                        expression params.Util
+                    }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
                             sh 'mvn test -pl Util'
