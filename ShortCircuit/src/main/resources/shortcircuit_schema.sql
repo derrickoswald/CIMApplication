@@ -100,6 +100,8 @@ create table if not exists cimapplication.shortcircuit (
     last_fuses_id text,
     iksplit text,
     fusemax text,
+    fusemaxDIN text,
+    fusemaxSEV text,
     fuseok boolean,
     primary key (id, node, equipment, terminal)
 ) with clustering order by (node asc, equipment asc, terminal asc) and comment = '
@@ -143,6 +145,8 @@ high temperature (lowest current, highest impedance) labeled high_XXX.
     last_fuses_id - mRID of fuse(s) connected directly to the node (A)
     iksplit       - short circuit current(s) (A)
     fusemax       - maximum recommended fuse value(s) for the calculated fault current(s) (A)
+    fusemaxDIN    - maximum recommended DIN fuse value(s) for the calculated fault current(s) (A)
+    fusemaxSEV    - maximum recommended SEV fuse value(s) for the calculated fault current(s) (A)
     fuseok        - evaluation of whether the fuse(s) has(have) appropriate value(s) (true) or not (false)
 ';
 
