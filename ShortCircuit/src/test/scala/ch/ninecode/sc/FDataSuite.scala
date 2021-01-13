@@ -838,6 +838,9 @@ class FDataSuite extends AnyFunSuite
             0.015006393156075075,0.015618231970695817,0.036178824287327084,0.018086960653563765,7443.770187655024,
             10662.447953257199,16208.032458448206,7387160.635240101, branch1)
         assert(result1.fuseOK(options_table3), "fuse should be OK")
+        assert(result1.fuseMax(options_table3) == "630", "check fusemax")
+        assert(result1.fuseMax(options_table3, Some("DIN")) == "630", "check fusemaxDIN")
+        assert(result1.fuseMax(options_table3, Some("SEV")) == "400", "check fusemaxSEV")
     }
 
     test("Parallel rating")
