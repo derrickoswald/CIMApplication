@@ -187,11 +187,6 @@ pipeline {
                             sh 'mvn test -pl TestUtil'
                         }
                     }
-                    post {
-                        always {
-                            junit 'TestUtil/target/surefire-reports/*.xml'
-                        }
-                    }
                 }
                 stage("Test Util") {
                     when {
