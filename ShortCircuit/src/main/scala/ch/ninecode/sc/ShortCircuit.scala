@@ -306,8 +306,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         ScResult(node.id_seq, equipment, node.voltage, terminal, container,
             if (null == node.errors) List() else node.errors.map(_.toString),
-            node.source_id, node.source_impedance, node.id_prev,
-            node.impedance.impedanz_low.re, node.impedance.impedanz_low.im, node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
+            node.source_id, node.id_prev, node.impedance.impedanz_low.re, node.impedance.impedanz_low.im,
+            node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
             low.ik, low.ik3pol, low.ip, low.sk, costerm,
             low.imax_3ph_low, low.imax_1ph_low, low.imax_2ph_low, low.imax_3ph_med, low.imax_1ph_med, low.imax_2ph_med,
             node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
@@ -993,12 +993,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 else
                     null
             val problems = edges.foldLeft(errors)((errors, edge) => edge.hasIssues(errors, options))
-            ScNode(id_seq = node.id_seq, voltage = node.voltage, source_id = trafo.transformer.transformer_name, source_impedance = trafo.transformer.total_impedance._1, id_prev = "self", impedance = trafo.lv_impedance(node.voltage), errors = problems)
+            ScNode(id_seq = node.id_seq, voltage = node.voltage, source_id = trafo.transformer.transformer_name, id_prev = "self", impedance = trafo.lv_impedance(node.voltage), errors = problems)
         }
 
         val starting_trafos_with_edges = starting_nodes.keyBy(_.nsPin).join(initial.edges.flatMap(both_ends).groupByKey)
             .setName("starting_trafos_with_edges")
-        val initial_with_starting_nodes = initial.joinVertices(starting_trafos_with_edges)(add_starting_trafo).persist(storage_level)
+        val initial_with_starting_nodes: Graph[ScNode, ScEdge] = initial.joinVertices(starting_trafos_with_edges)(add_starting_trafo).persist(storage_level)
         setName(initial_with_starting_nodes.edges, "initial_with_starting_nodes edges")
         setName(initial_with_starting_nodes.vertices, "initial_with_starting_nodes vertices")
 
@@ -1123,13 +1123,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                 case Some(original) => // node with existing trace result
                                     val z = if (null == branches) ztrafo else branches.z(ztrafo)
                                     calculate_short_circuit((
-                                        ScNode(original.node, v, original.tx, original.tx_impedance, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
+                                        ScNode(original.node, v, original.tx, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
                                         original.terminal, original.equipment, original.container
                                     ))
                                 case None => // node without existing trace result
                                     val errors = List(ScError(fatal = false, invalid = false, "computed by load-flow"))
                                     calculate_short_circuit((
-                                        ScNode(id_seq = node, voltage = v, source_id = transformer, source_impedance = Complex(0), impedance = ztrafo, errors = errors),
+                                        ScNode(id_seq = node, voltage = v, source_id = transformer, impedance = ztrafo, errors = errors),
                                         1, equipment, ""
                                     ))
                             }
@@ -1191,7 +1191,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     .map(TransformerIsland.apply)
         setName(transformers, "transformers")
 
-        val starting_nodes = transformers.flatMap(trafo_mapping).setName("starting_nodes")
+        val starting_nodes: RDD[StartingTrafos] = transformers.flatMap(trafo_mapping).setName("starting_nodes")
         log.info("%s starting transformers".format(starting_nodes.count))
 
         val traced_results: RDD[ScResult] = calculateTraceResults(starting_nodes).setName("traced_results")
