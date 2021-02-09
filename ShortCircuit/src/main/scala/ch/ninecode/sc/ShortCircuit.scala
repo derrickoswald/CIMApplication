@@ -1126,7 +1126,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         else
         {
             log.info("TopologicalIsland elements not found, cannot use GridLAB-D to fix radial network errors")
-            None.asInstanceOf[RDD[ch.ninecode.sc.ScResult]]
+            spark.sparkContext.emptyRDD[ScResult]
         }
     }
 
@@ -1142,13 +1142,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val cleaned_trace_results: RDD[(String, ScResult)] = traced_results.keyBy(_.node)
             .subtractByKey(cleaned_results.keyBy(_.node))
 
-        val gridlab_results: RDD[ScResult] = run_gridlab(transformers, cleaned_trace_results)
+        val gridlab_results: RDD[ScResult] = run_gridlab(transformers, cleaned_trace_results.map(_._2))
         val reduced_trace_results: RDD[ScResult] = cleaned_trace_results.subtractByKey(gridlab_results.keyBy(_.node)).values
 
         spark.sparkContext.union(reduced_trace_results, cleaned_results, gridlab_results)
     }
 
-    private def run_gridlab (transformers: RDD[TransformerIsland], cleaned_trace_results: RDD[(String, ScResult)]) =
+    private def run_gridlab (transformers: RDD[TransformerIsland], cleaned_trace_results: RDD[ScResult]) =
     {
         // find transformers where there are non-radial networks and fix them
         def need_load_flow (error: String): Boolean =
@@ -1156,7 +1156,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 error.startsWith("INVALID: 3 transformer windings") ||
                 error.startsWith("INVALID: low voltage")
 
-        val problem_trafos: Array[String] = cleaned_trace_results.values
+        val problem_trafos: Array[String] = cleaned_trace_results
             .filter(result => result.errors.exists(need_load_flow))
             .map(_.tx)
             .distinct
