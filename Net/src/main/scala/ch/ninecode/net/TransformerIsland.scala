@@ -48,7 +48,7 @@ object TransformerIsland
     def apply (transformers: Iterable[TransformerData]): TransformerIsland =
     {
         val sets = transformers
-            .groupBy(t => s"${t.node1}")
+            .groupBy(t => s"${t.node1.TopologicalIsland}")
             .map(set => TransformerSet(set._2.toArray))
             .toArray
         TransformerIsland(sets)
