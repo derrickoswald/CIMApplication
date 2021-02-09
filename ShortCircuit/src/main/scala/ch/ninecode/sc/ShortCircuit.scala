@@ -1142,6 +1142,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val cleaned_trace_results: RDD[(String, ScResult)] = traced_results.keyBy(_.node)
             .subtractByKey(cleaned_results.keyBy(_.node))
 
+        val gridlab_results: RDD[ScResult] = run_gridlab(transformers, cleaned_trace_results)
+        val reduced_trace_results: RDD[ScResult] = cleaned_trace_results.subtractByKey(gridlab_results.keyBy(_.node)).values
+
+        spark.sparkContext.union(reduced_trace_results, cleaned_results, gridlab_results)
+    }
+
+    private def run_gridlab (transformers: RDD[TransformerIsland], cleaned_trace_results: RDD[(String, ScResult)]) =
+    {
         // find transformers where there are non-radial networks and fix them
         def need_load_flow (error: String): Boolean =
             error.startsWith("FATAL: non-radial network detected") ||
@@ -1155,17 +1163,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             .collect()
 
         val gridlab_islands: RDD[TransformerIsland] = transformers.filter(trafoisland =>
-            {
-                val meshedNetwork = trafoisland.transformers.length > 1
-                val errors = problem_trafos.contains(trafoisland.transformers.head.transformer_name)
-                meshedNetwork || errors
-            })
+        {
+            val meshedNetwork = trafoisland.transformers.length > 1
+            val errors = problem_trafos.contains(trafoisland.transformers.head.transformer_name)
+            meshedNetwork || errors
+        })
 
-        val gridlab_results: RDD[ScResult] = fix(gridlab_islands, cleaned_results).setName("fixed_results")
-
-        val reduced_trace_results: RDD[ScResult] = cleaned_trace_results.subtractByKey(gridlab_results.keyBy(_.node)).values
-
-        spark.sparkContext.union(reduced_trace_results, cleaned_results, gridlab_results)
+        val gridlab_results: RDD[ScResult] = fix(gridlab_islands, cleaned_trace_results).setName("fixed_results")
+        gridlab_results
     }
 
     private def clean_results (traced_results: RDD[ScResult]): RDD[ScResult] =
