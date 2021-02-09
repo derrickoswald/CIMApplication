@@ -1043,7 +1043,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
     // execute GridLAB-D to approximate the impedances and replace the error records
     @SuppressWarnings(Array("org.wartremover.warts.Throw", "org.wartremover.warts.AsInstanceOf"))
-    def fix (problem_transformers: RDD[TransformerIsland], original_results: RDD[ScResult], subtransmission_trafos: Array[TransformerData]): RDD[ScResult] =
+    def fix (problem_transformers: RDD[TransformerIsland], original_results: RDD[ScResult]): RDD[ScResult] =
     {
         val n = problem_transformers.count
         log.info(s"""performing load-flow for $n non-radial network${if (n > 1) "s" else ""}""")
@@ -1243,15 +1243,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val fixed_results: RDD[ScResult] =
             if (0 != problem_islands.count)
             {
-                def subtransmission (trafo: TransformerData): Boolean =
-                {
-                    trafo.voltages.exists(v => (v._2 <= 1000.0) && (v._2 > 400.0)) || // ToDo: don't hard code these voltage values
-                        trafo.ends.length > 2 ||
-                        (options.calculate_public_lighting && trafo.voltages.exists(v => v._2 == 230.0))
-                }
-
-                val subtransmission_trafos = transformer_data.filter(subtransmission).setName("subtransmission_trafos").collect
-                fix(problem_islands, cleaned_results, subtransmission_trafos).setName("fixed_results")
+                fix(problem_islands, cleaned_results).setName("fixed_results")
             } else
                 cleaned_results
 
