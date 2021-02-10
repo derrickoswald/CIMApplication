@@ -368,10 +368,10 @@ class BranchImpedanceSuite extends AnyFunSuite
         val mrid = "test"
         val trafo_nodes = List("t1", "t2").toArray
         val impedance =  Impedanzen(
-            Complex(5.0, 5.0),
-            Complex(2.5, 2.5),
-            Complex(6.0, 6.0),
-            Complex(3.5, 3.5))
+            Complex(9.0, 9.0),
+            Complex(4.5, 4.5),
+            Complex(11.0, 11.0),
+            Complex(6.5, 6.5))
 
         val reduced_branch: Array[Branch] = new ScBranches().reduce(branches, trafo_nodes, mrid).toArray
         val branch = reduced_branch.head
