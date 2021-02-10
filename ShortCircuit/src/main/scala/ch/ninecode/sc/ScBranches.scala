@@ -126,21 +126,45 @@ class ScBranches
      * @return the reduced network with one pair of parallel elements converted to a parallel branch
      */
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def reduce_parallel (network: Iterable[Branch]): (Boolean, Iterable[Branch]) = // (reduced?, network)
+    def reduce_parallel (network: Iterable[Branch], trafo_nodes: Array[String]): (Boolean, Iterable[Branch]) = // (reduced?, network)
     {
+        def has_trafo_end (branch_end: String, x_end: String, trafo_nodes: Array[String]) =
+        {
+            trafo_nodes.contains(branch_end) && trafo_nodes.contains(x_end)
+        }
+
+        def trafo_parallel_condtion (branch: Branch, x: Branch, trafo_nodes: Array[String]): Boolean = {
+            (has_trafo_end(branch.from, x.from, trafo_nodes) && branch.hasSameTo(x)) ||
+                (has_trafo_end(branch.to, x.to, trafo_nodes) && branch.hasSameFrom(x))
+        }
+
+        def parallel_branches_filter (branch: Branch): Branch => Boolean =
+        {
+            x => (branch.isParallelTo(x) || trafo_parallel_condtion(branch, x, trafo_nodes)) && (branch != x)
+        }
+
         // check for parallel elements
         val parallel = for
             {
             branch <- network
-            buddies = network.filter(x => ((branch.from == x.from) && (branch.to == x.to)) && (branch != x))
+            buddies = network.filter(parallel_branches_filter(branch))
             if buddies.nonEmpty
         }
             yield buddies ++ Seq(branch)
         parallel match
         {
             case set :: _ =>
+                if (set.tail.forall(x => set.head.isParallelTo(x)))
                 // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-                (true, Seq(set.head.add_in_parallel(set.tail)) ++ network.filter(x => !set.toSeq.contains(x)))
+                    (true, Seq(set.head.add_in_parallel(set.tail)) ++ network.filter(x => !set.toSeq.contains(x)))
+                else
+                {
+                    val head = set.head
+                    val tail = set.tail
+                    val from = (Iterable[String](head.from) ++ tail.map(_.from)).toList.sorted.mkString("_")
+                    val trafo_parallel_branch = Seq(Branch(from, head.to, head.current + tail.map(_.current).sum, head.iter ++ tail.flatMap(x => x.iter)))
+                    (true, trafo_parallel_branch ++ network.filter(x => !set.toSeq.contains(x)))
+                }
             case _ =>
                 (false, network)
         }
@@ -158,7 +182,7 @@ class ScBranches
             done = !modified
             if (done)
             {
-                val (modified, net) = reduce_parallel(network)
+                val (modified, net) = reduce_parallel(network, trafo_nodes)
                 network = net
                 done = !modified
                 // check that all branches start from the transformer

@@ -596,8 +596,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // finding the first is not sufficient
         val twig: Option[Branch] = branches.find(
             branch =>
-                ((experiment.mrid == branch.to) && lvnodes.contains(branch.from)) ||
-                    ((experiment.mrid == branch.from) && lvnodes.contains(branch.to))
+            {
+                val lvnodes_string = lvnodes.toList.sorted.mkString("_")
+                ((experiment.mrid == branch.to) && (lvnodes_string == branch.from)) ||
+                    ((experiment.mrid == branch.from) && (lvnodes_string == branch.to))
+            }
         )
 
         // compute the impedance from start to end

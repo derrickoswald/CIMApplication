@@ -109,6 +109,18 @@ abstract class Branch (val from: String, val to: String, val current: Double)
      *         and either the remaining network with the change, or the original network if there would be no change
      */
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch])
+
+    def hasSameFrom (other: Branch): Boolean = {
+        from == other.from
+    }
+
+    def hasSameTo (other: Branch): Boolean = {
+        to == other.to
+    }
+
+    def isParallelTo(other:Branch): Boolean = {
+        this.hasSameFrom(other) && this.hasSameTo(other)
+    }
 }
 
 /**
