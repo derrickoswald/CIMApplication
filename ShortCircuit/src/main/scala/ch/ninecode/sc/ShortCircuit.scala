@@ -306,8 +306,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
         ScResult(node.id_seq, equipment, node.voltage, terminal, container,
             if (null == node.errors) List() else node.errors.map(_.toString),
-            node.source_id, node.source_impedance, node.id_prev,
-            node.impedance.impedanz_low.re, node.impedance.impedanz_low.im, node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
+            node.source_id, node.id_prev, node.impedance.impedanz_low.re, node.impedance.impedanz_low.im,
+            node.impedance.null_impedanz_low.re, node.impedance.null_impedanz_low.im,
             low.ik, low.ik3pol, low.ip, low.sk, costerm,
             low.imax_3ph_low, low.imax_1ph_low, low.imax_2ph_low, low.imax_3ph_med, low.imax_1ph_med, low.imax_2ph_med,
             node.impedance.impedanz_high.re, node.impedance.impedanz_high.im, node.impedance.null_impedanz_high.re, node.impedance.null_impedanz_high.im,
@@ -459,140 +459,6 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         files.map(extract_trafo).flatMapValues(read)
     }
 
-    /**
-     * Reduce series connected elements.
-     *
-     * @param network     the current network to be reduced
-     * @param trafo_nodes the list of starting trafo nodes
-     * @return the reduced network with one pair of series elements converted to a series branch
-     */
-    def reduce_series (network: Iterable[Branch], trafo_nodes: Array[String], mrid: String): (Boolean, Iterable[Branch]) = // (reduced?, network)
-    {
-        // check for series elements, eliminate making a series connection across the house or trafo
-        val prepend =
-            for
-                {
-                branch <- network
-                house = branch.from == mrid
-                if !house
-                trafo = trafo_nodes.contains(branch.from)
-                if !trafo
-                buddies = network.filter(x => (branch.from == x.to) || (branch.from == x.from && branch != x))
-                if buddies.size == 1
-                buddy :: _ = buddies
-            }
-                yield (branch, buddy)
-
-        val append =
-            for
-                {
-                branch <- network
-                house = branch.to == mrid
-                if !house
-                trafo = trafo_nodes.contains(branch.to)
-                if !trafo
-                buddies = network.filter(x => (branch.to == x.from) || (branch.to == x.to && branch != x))
-                if buddies.size == 1
-                buddy :: _ = buddies
-            }
-                yield (branch, buddy)
-
-        val series = prepend ++ append
-
-        series match
-        {
-            case (branch, buddy) :: _ =>
-                // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-                val rest = network.filter(x => branch != x && buddy != x)
-                val new_series = if (buddy.to == branch.from)
-                    buddy.add_in_series(branch)
-                else
-                    if (branch.to == buddy.from)
-                        branch.add_in_series(buddy)
-                    else
-                    // choose the simplest element to reverse
-                        branch match
-                        {
-                            case _: SimpleBranch =>
-                                buddy.add_in_series(branch.reverse)
-                            case _: TransformerBranch =>
-                                buddy.add_in_series(branch.reverse)
-                            case _ =>
-                                buddy.reverse.add_in_series(branch)
-                        }
-                (true, Seq(new_series) ++ rest)
-            case _ =>
-                (false, network)
-        }
-    }
-
-    /**
-     * Reduce parallel connected elements.
-     *
-     * @param network the current network to be reduced
-     * @return the reduced network with one pair of parallel elements converted to a parallel branch
-     */
-    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def reduce_parallel (network: Iterable[Branch]): (Boolean, Iterable[Branch]) = // (reduced?, network)
-    {
-        // check for parallel elements
-        val parallel = for
-            {
-            branch <- network
-            buddies = network.filter(x => ((branch.from == x.from) && (branch.to == x.to)) && (branch != x))
-            if buddies.nonEmpty
-        }
-            yield buddies ++ Seq(branch)
-        parallel match
-        {
-            case set :: _ =>
-                // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-                (true, Seq(set.head.add_in_parallel(set.tail)) ++ network.filter(x => !set.toSeq.contains(x)))
-            case _ =>
-                (false, network)
-        }
-    }
-
-    def reduce (branches: Iterable[Branch], trafo_nodes: Array[String], mrid: String): Iterable[Branch] =
-    {
-        // step by step reduce the network to a single branch through series and parallel reductions
-        var done = false
-        var network: Iterable[Branch] = branches
-        do
-        {
-            val (modified, net) = reduce_series(network, trafo_nodes, mrid)
-            network = net
-            done = !modified
-            if (done)
-            {
-                val (modified, net) = reduce_parallel(network)
-                network = net
-                done = !modified
-                // check that all branches start from the transformer
-                if (done)
-                    if (!network.forall(x => trafo_nodes.contains(x.from)))
-                    {
-                        val max = network.map(_.current).foldLeft(Double.MinValue)((x: Double, y: Double) => if (x > y) x else y)
-                        val significant = max * 0.01 // 1% of the maximum current
-                        val filtered = network.filter(x =>
-                            (x.current > significant)
-                                || trafo_nodes.contains(x.from)
-                                || trafo_nodes.contains(x.to)
-                                || (x.from == mrid)
-                                || (x.to == mrid))
-                        if (filtered.size < network.size)
-                        {
-                            done = false
-                            network = filtered
-                        }
-                    }
-            }
-        }
-        while (!done)
-
-        network
-    }
-
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def makeCableBranch (cable: GLMLineEdge, voltage1: ThreePhaseComplexDataElement, voltage2: ThreePhaseComplexDataElement, v1: Double, v2: Double): List[Branch] =
     {
@@ -724,47 +590,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             }
         )
 
-        def connectedTo (branch: Branch, edges: Iterable[Branch]): Boolean =
-        {
-            edges.exists(edge => edge != branch && (branch.to == edge.to || branch.to == edge.from))
-        }
+        val branches = new ScBranches().reduce_branches(graph_edges, lvnodes, experiment)
 
-        def connectedFrom (branch: Branch, edges: Iterable[Branch]): Boolean =
-        {
-            edges.exists(edge => edge != branch && (branch.from == edge.to || branch.from == edge.from))
-        }
-
-        // eliminate branches in the tree than only have one end connected - except for the starting and ending node
-        def no_stubs (edges: Iterable[Branch], start: Array[String], end: String)(branch: Branch): Boolean =
-        {
-            val to = connectedTo(branch, edges)
-            val from = connectedFrom(branch, edges)
-            val connected = to && from
-            val into = start.contains(branch.to)
-            val infrom = start.contains(branch.from)
-
-            connected ||
-                (end == branch.to && (infrom || from)) ||
-                (end == branch.from && (into || to)) ||
-                (infrom && to) ||
-                (into && from)
-        }
-
-        // reduce the tree to (hopefully) one branch spanning from start to end
-        var family = graph_edges
-        var count = family.size
-        do
-        {
-            count = family.size
-            family = family.filter(no_stubs(family, lvnodes, experiment.mrid))
-        }
-        while (count != family.size)
-        val branches = reduce(family, lvnodes, experiment.mrid)
-        // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers - finding the first is not sufficient
-        val twig = branches.find(
+        // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers
+        // finding the first is not sufficient
+        val twig: Option[Branch] = branches.find(
             branch =>
-                ((experiment.mrid == branch.to) && lvnodes.contains(branch.from)) ||
-                    ((experiment.mrid == branch.from) && lvnodes.contains(branch.to))
+            {
+                val lvnodes_string = lvnodes.toList.sorted.mkString("_")
+                ((experiment.mrid == branch.to) && (lvnodes_string == branch.from)) ||
+                    ((experiment.mrid == branch.from) && (lvnodes_string == branch.to))
+            }
         )
 
         // compute the impedance from start to end
@@ -941,42 +777,40 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.Null"))
-    def zero (list: RDD[(String, String)], results: RDD[ScResult]): RDD[ScResult] =
+    private def zero (list: RDD[(String, String)], results: RDD[ScResult]): RDD[ScResult] =
     {
-        results.keyBy(_.tx).leftOuterJoin(list).values.map
+        results.keyBy(_.tx).join(list).values.map((result: (ScResult, String)) =>
         {
-            case (result: ScResult, None) => result
-            case (result: ScResult, Some(error)) =>
-                result.copy(
-                    errors = List(error),
-                    low_r = 0.0,
-                    low_x = 0.0,
-                    low_r0 = 0.0,
-                    low_x0 = 0.0,
-                    low_ik = 0.0,
-                    low_ik3pol = 0.0,
-                    low_ip = 0.0,
-                    low_sk = 0.0,
-                    imax_3ph_low = 0.0,
-                    imax_1ph_low = 0.0,
-                    imax_2ph_low = 0.0,
-                    imax_3ph_med = 0.0,
-                    imax_1ph_med = 0.0,
-                    imax_2ph_med = 0.0,
-                    high_r = 0.0,
-                    high_x = 0.0,
-                    high_r0 = 0.0,
-                    high_x0 = 0.0,
-                    high_ik = 0.0,
-                    high_ik3pol = 0.0,
-                    high_ip = 0.0,
-                    high_sk = 0.0,
-                    branches = null)
-        }
+            result._1.copy(
+                errors = List(result._2),
+                low_r = 0.0,
+                low_x = 0.0,
+                low_r0 = 0.0,
+                low_x0 = 0.0,
+                low_ik = 0.0,
+                low_ik3pol = 0.0,
+                low_ip = 0.0,
+                low_sk = 0.0,
+                imax_3ph_low = 0.0,
+                imax_1ph_low = 0.0,
+                imax_2ph_low = 0.0,
+                imax_3ph_med = 0.0,
+                imax_1ph_med = 0.0,
+                imax_2ph_med = 0.0,
+                high_r = 0.0,
+                high_x = 0.0,
+                high_r0 = 0.0,
+                high_x0 = 0.0,
+                high_ik = 0.0,
+                high_ik3pol = 0.0,
+                high_ip = 0.0,
+                high_sk = 0.0,
+                branches = null)
+        })
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.Null"))
-    def calculateTraceResults (starting_nodes: RDD[StartingTrafos]): RDD[ScResult] =
+    def calculateTraceResults (transformers: RDD[TransformerIsland]): RDD[ScResult] =
     {
         // create the initial Graph with ScNode vertices
         val initial = get_inital_graph()
@@ -993,12 +827,13 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 else
                     null
             val problems = edges.foldLeft(errors)((errors, edge) => edge.hasIssues(errors, options))
-            ScNode(id_seq = node.id_seq, voltage = node.voltage, source_id = trafo.transformer.transformer_name, source_impedance = trafo.transformer.total_impedance._1, id_prev = "self", impedance = trafo.lv_impedance(node.voltage), errors = problems)
+            ScNode(id_seq = node.id_seq, voltage = node.voltage, source_id = trafo.transformer.transformer_name, id_prev = "self", impedance = trafo.lv_impedance(node.voltage), errors = problems)
         }
 
+        val starting_nodes: RDD[StartingTrafos] = transformers.flatMap(trafo_mapping).setName("starting_nodes")
         val starting_trafos_with_edges = starting_nodes.keyBy(_.nsPin).join(initial.edges.flatMap(both_ends).groupByKey)
             .setName("starting_trafos_with_edges")
-        val initial_with_starting_nodes = initial.joinVertices(starting_trafos_with_edges)(add_starting_trafo).persist(storage_level)
+        val initial_with_starting_nodes: Graph[ScNode, ScEdge] = initial.joinVertices(starting_trafos_with_edges)(add_starting_trafo).persist(storage_level)
         setName(initial_with_starting_nodes.edges, "initial_with_starting_nodes edges")
         setName(initial_with_starting_nodes.vertices, "initial_with_starting_nodes vertices")
 
@@ -1043,7 +878,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
     // execute GridLAB-D to approximate the impedances and replace the error records
     @SuppressWarnings(Array("org.wartremover.warts.Throw", "org.wartremover.warts.AsInstanceOf"))
-    def fix (problem_transformers: RDD[TransformerIsland], original_results: RDD[ScResult], subtransmission_trafos: Array[TransformerData]): RDD[ScResult] =
+    def fix (problem_transformers: RDD[TransformerIsland], original_results: RDD[ScResult]): RDD[ScResult] =
     {
         val n = problem_transformers.count
         log.info(s"""performing load-flow for $n non-radial network${if (n > 1) "s" else ""}""")
@@ -1111,44 +946,23 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             // map to the type returned by the trace, use the existing value where possible
             val original_keyed = original_results.keyBy(x => s"${x.tx}_${x.node}")
             // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
-            results.keyBy(x => s"${x._1}_${x._2}").fullOuterJoin(original_keyed).values.map(
-                x =>
+            results.keyBy(x => s"${x._1}_${x._2}").join(original_keyed).values.map(
+                (x: ((String, String, String, Double, Impedanzen, Branch), ScResult)) =>
                 {
-                    val (computed, existing) = x
-                    computed match
-                    {
-                        case Some((transformer, node, equipment, v, ztrafo, branches)) =>
-                            existing match
-                            {
-                                case Some(original) => // node with existing trace result
-                                    val z = if (null == branches) ztrafo else branches.z(ztrafo)
-                                    calculate_short_circuit((
-                                        ScNode(original.node, v, original.tx, original.tx_impedance, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
-                                        original.terminal, original.equipment, original.container
-                                    ))
-                                case None => // node without existing trace result
-                                    val errors = List(ScError(fatal = false, invalid = false, "computed by load-flow"))
-                                    calculate_short_circuit((
-                                        ScNode(id_seq = node, voltage = v, source_id = transformer, source_impedance = Complex(0), impedance = ztrafo, errors = errors),
-                                        1, equipment, ""
-                                    ))
-                            }
-                        case None =>
-                            existing match
-                            {
-                                case Some(original) =>
-                                    original // only existing trace result
-                                case None =>
-                                    throw new IllegalArgumentException("full outer join can't possibly have neither left nor right")
-                            }
-                    }
-                }
-            ).persist(storage_level)
+                    // TODO: remove not used parameter ...@_
+                    val (transformer@_, node@_, equipment@_, v, ztrafo, branches) = x._1
+                    val original = x._2
+                    val z = if (null == branches) ztrafo else branches.z(ztrafo)
+                    calculate_short_circuit((
+                        ScNode(original.node, v, original.tx, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
+                        original.terminal, original.equipment, original.container
+                    ))
+                }).persist(storage_level)
         }
         else
         {
             log.info("TopologicalIsland elements not found, cannot use GridLAB-D to fix radial network errors")
-            original_results
+            spark.sparkContext.emptyRDD[ScResult]
         }
     }
 
@@ -1157,6 +971,65 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     {
         assert(null != getOrElse[TopologicalNode], "no topology")
 
+        val transformers: RDD[TransformerIsland] = get_starting_transformers
+        val traced_results: RDD[ScResult] = calculateTraceResults(transformers).setName("traced_results")
+        val cleaned_results: RDD[ScResult] = clean_results(traced_results)
+
+        val cleaned_trace_results: RDD[(String, ScResult)] = traced_results.keyBy(_.node)
+            .subtractByKey(cleaned_results.keyBy(_.node))
+
+        val gridlab_results: RDD[ScResult] = run_gridlab(transformers, cleaned_trace_results.map(_._2))
+        val reduced_trace_results: RDD[ScResult] = cleaned_trace_results.subtractByKey(gridlab_results.keyBy(_.node)).values
+
+        spark.sparkContext.union(reduced_trace_results, cleaned_results, gridlab_results)
+    }
+
+    private def run_gridlab (transformers: RDD[TransformerIsland], cleaned_trace_results: RDD[ScResult]) =
+    {
+        // find transformers where there are non-radial networks and fix them
+        def need_load_flow (error: String): Boolean =
+            error.startsWith("FATAL: non-radial network detected") ||
+                error.startsWith("INVALID: 3 transformer windings") ||
+                error.startsWith("INVALID: low voltage")
+
+        val problem_trafos: Array[String] = cleaned_trace_results
+            .filter(result => result.errors.exists(need_load_flow))
+            .map(_.tx)
+            .distinct
+            .collect()
+
+        val gridlab_islands: RDD[TransformerIsland] = transformers.filter(trafoisland =>
+        {
+            val meshedNetwork = trafoisland.transformers.length > 1
+            val errors = problem_trafos.contains(trafoisland.transformers.head.transformer_name)
+            meshedNetwork || errors
+        })
+
+        val gridlab_results: RDD[ScResult] = fix(gridlab_islands, cleaned_trace_results).setName("fixed_results")
+        gridlab_results
+    }
+
+    private def clean_results (traced_results: RDD[ScResult]): RDD[ScResult] =
+    {
+        def other_error (s: String): Boolean =
+            !(s.startsWith("FATAL: non-radial network detected") ||
+                s.startsWith("INVALID: 3 transformer windings") || // ToDo: Remove when 3W transformer test for SC is available
+                s.startsWith("INVALID: low voltage")) &&
+                s.startsWith("INVALID")
+
+        val verboten_trafos: RDD[(String, String)] = traced_results
+            .filter(result => result.errors.exists(other_error))
+            .flatMap(result => result.errors.filter(other_error).map(err => (result.tx, err)))
+            .distinct
+            .persist(storage_level)
+            .setName("verboten_trafos")
+
+        // ensure that each element of a transformer service area has an error and 0.0 for all current/fuse values
+        zero(verboten_trafos, traced_results).setName("cleaned_results")
+    }
+
+    private def get_starting_transformers: RDD[TransformerIsland] =
+    {
         val transformer_data: RDD[TransformerData] = Transformers(
             spark,
             storage_level,
@@ -1190,72 +1063,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     .values
                     .map(TransformerIsland.apply)
         setName(transformers, "transformers")
+        log.info("%s starting transformers".format(transformers.count))
 
-        val starting_nodes = transformers.flatMap(trafo_mapping).setName("starting_nodes")
-        log.info("%s starting transformers".format(starting_nodes.count))
-
-        val traced_results: RDD[ScResult] = calculateTraceResults(starting_nodes).setName("traced_results")
-
-        // find transformers where there are non-radial networks and fix them
-        def need_load_flow (error: String): Boolean =
-            error.startsWith("FATAL: non-radial network detected") ||
-                error.startsWith("INVALID: 3 transformer windings") ||
-                error.startsWith("INVALID: low voltage")
-
-        val problem_trafos = traced_results
-            .filter(result => result.errors.exists(need_load_flow))
-            .map(_.tx)
-            .distinct
-            .map(set => (set, set))
-            .persist(storage_level)
-            .setName("problem_trafos")
-
-        // but not the ones that have another error
-        def other_error (s: String): Boolean =
-            !(s.startsWith("FATAL: non-radial network detected") ||
-                s.startsWith("INVALID: 3 transformer windings") || // ToDo: Remove when 3W transformer test for SC is available
-                s.startsWith("INVALID: low voltage")) &&
-                s.startsWith("INVALID")
-
-        val verboten_trafos = traced_results
-            .filter(result => result.errors.exists(other_error))
-            .flatMap(result => result.errors.filter(other_error).map(err => (result.tx, err)))
-            .distinct
-            .persist(storage_level)
-            .setName("verboten_trafos")
-
-        val sets_by_island = transformers.flatMap(island => island.transformers.map(set => (set.transformer_name, island)))
-
-        val problem_islands = problem_trafos
-            .subtractByKey(verboten_trafos)
-            .join(sets_by_island)
-            .map(_._2._2)
-            .distinct
-            .setName("problem_islands")
-
-        // ensure that each element of a transformer service area has an error and 0.0 for all current/fuse values
-        val cleaned_results: RDD[ScResult] =
-            if (0 != verboten_trafos.count)
-                zero(verboten_trafos, traced_results).setName("cleaned_results")
-            else
-                traced_results
-
-        val fixed_results: RDD[ScResult] =
-            if (0 != problem_islands.count)
-            {
-                def subtransmission (trafo: TransformerData): Boolean =
-                {
-                    trafo.voltages.exists(v => (v._2 <= 1000.0) && (v._2 > 400.0)) || // ToDo: don't hard code these voltage values
-                        trafo.ends.length > 2 ||
-                        (options.calculate_public_lighting && trafo.voltages.exists(v => v._2 == 230.0))
-                }
-
-                val subtransmission_trafos = transformer_data.filter(subtransmission).setName("subtransmission_trafos").collect
-                fix(problem_islands, cleaned_results, subtransmission_trafos).setName("fixed_results")
-            } else
-                cleaned_results
-
-        fixed_results
+        transformers
     }
 }
 
@@ -1360,6 +1170,7 @@ object ShortCircuit extends CIMInitializer[ShortCircuitOptions] with Main
                     if (options.verbose)
                     {
                         org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ShortCircuit").setLevel(org.apache.log4j.Level.INFO)
+                        org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ScBranches").setLevel(org.apache.log4j.Level.INFO)
                         org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.Database").setLevel(org.apache.log4j.Level.INFO)
                     }
                     execute(options)

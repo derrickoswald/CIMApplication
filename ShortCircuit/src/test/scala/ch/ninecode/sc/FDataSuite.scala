@@ -648,7 +648,7 @@ class FDataSuite extends AnyFunSuite
         val branch1 = SimpleBranch("a", "b", 4.0, "TEI141", "", Some(-1.0), "")
         val branch2 = SimpleBranch("c", "d", 4.0, "TEI141", "", Some(40.0), "")
 
-        val result = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        val result = ScResult("", "", 0.0, 1, "", Nil, "", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, branch1)
         assert(result.lastFuseHasMissingValues(branch1), "has missing values (-1.0)")
         assert(!result.lastFuseHasMissingValues(branch2), "has no missing values (40.0)")
@@ -684,7 +684,7 @@ class FDataSuite extends AnyFunSuite
                 )
             )
 
-        val result = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        val result = ScResult("", "", 0.0, 1, "", Nil, "", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, branch1)
         assert(!result.lastFuseHasMissingValues(branch1), "has missing values (-1.0)")
         assert(result.lastFuseHasMissingValues(branch2), "has no missing values")
@@ -720,7 +720,7 @@ class FDataSuite extends AnyFunSuite
                 )
             )
 
-        val result = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        val result = ScResult("", "", 0.0, 1, "", Nil, "", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, branch1)
         assert(result.lastFuseHasMissingValues(branch1), "last fuses have at last one missing value (-1.0)")
         assert(!result.lastFuseHasMissingValues(branch2), "last fuses have no missing values")
@@ -731,7 +731,7 @@ class FDataSuite extends AnyFunSuite
         val branch1 = SimpleBranch("a", "b", 4.0, "TEI141", "", Some(-1.0), "DIN")
         val branch2 = SimpleBranch("c", "d", 4.0, "TEI141", "", Some(40.0), "SEV")
 
-        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, branch1)
         val result2 = result1.copy(branches = branch2)
         assert(result1.lastFuseStandard == "DIN", "simple branch 1 has DIN fuse")
@@ -756,7 +756,7 @@ class FDataSuite extends AnyFunSuite
                 )
             )
 
-        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, branch1)
         val result2 = result1.copy(branches = branch2)
         assert(result1.lastFuseStandard == "DIN", "last simple branch 1 has DIN fuse")
@@ -793,7 +793,7 @@ class FDataSuite extends AnyFunSuite
                 )
             )
 
-        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, branch1)
         val result2 = result1.copy(branches = branch2)
         assert(result1.lastFuseStandard == "DIN,DIN", "last simple branch 1 has DIN fuse")
@@ -804,21 +804,21 @@ class FDataSuite extends AnyFunSuite
     {
         val branch1 = SimpleBranch("a", "b", 390.0, "TEI141", "", Some(-1.0), "DIN")
 
-        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        val result1 = ScResult("", "", 0.0, 1, "", Nil, "", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 390.0, 0.0, 0.0, 0.0, branch1)
         assert(result1.fuseMax(options_table3, Some("DIN")) == "125", "simple branch has DIN fuse with 125")
         assert(result1.fuseMax(options_table3, Some("SEV")) == "125", "simple branch has SEV fuse with 125")
 
         val branch2 = SimpleBranch("a", "b", 150.0, "TEI141", "", Some(-1.0), "DIN")
 
-        val result2 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        val result2 = ScResult("", "", 0.0, 1, "", Nil, "", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 150.0, 0.0, 0.0, 0.0, branch2)
         assert(result2.fuseMax(options_table3, Some("DIN")) == "50", "simple branch has DIN fuse with 50")
         assert(result2.fuseMax(options_table3, Some("SEV")) == "0", "simple branch has SEV fuse with 0")
 
         val branch3 = SimpleBranch("a", "b", 220.0, "TEI141", "", Some(1.0), "DIN")
 
-        val result3 = ScResult("", "", 0.0, 1, "", Nil, "", Complex(0), "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        val result3 = ScResult("", "", 0.0, 1, "", Nil, "", "", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 220.0, 0.0, 0.0, 0.0, branch3)
         assert(result3.fuseMax(options_table3, Some("DIN")) == "63", "simple branch has DIN fuse with 63")
         assert(result3.fuseMax(options_table3, Some("SEV")) == "60", "simple branch has SEV fuse with 60")
@@ -831,7 +831,7 @@ class FDataSuite extends AnyFunSuite
                 SimpleBranch("BUS0007_topo", "FUS0057_node_2_topo", 0.0, "FUS0057", "FUS0057", Some(100.0), "")
             )
         )
-        val result1 = ScResult("USR0023_topo","USR0023",400.0,1, "",List(),"TX0002",Complex(0.0053,0.0168),
+        val result1 = ScResult("USR0023_topo","USR0023",400.0,1, "",List(),"TX0002",
             "FUS0057_node_2_topo",0.013775603901670673,0.01664061754139094,0.03328393451039017,0.018086960653563765,
             7689.812433403841,10690.326566474603,16657.192643207654,7406475.505054943,1.0,641.4195939884762,
             320.7097969942381,555.4856628791207,320.7097969942381,160.35489849711905,277.74283143956035,
@@ -874,7 +874,6 @@ class FDataSuite extends AnyFunSuite
             container = "",
             errors = List(),
             tx = "TRAXXX",
-            tx_impedance = Complex(0),
             prev = "previous",
             costerm = 1.0,
             low_r = z_total.impedanz_low.re,
@@ -933,7 +932,6 @@ class FDataSuite extends AnyFunSuite
             container = "",
             errors = List(),
             tx = "TRAXXX",
-            tx_impedance = Complex(0),
             prev = "previous",
             costerm = 1.0,
             low_r = z_total.impedanz_low.re,
@@ -1002,7 +1000,6 @@ class FDataSuite extends AnyFunSuite
             container = "",
             errors = List(),
             tx = "TRAXXX",
-            tx_impedance = Complex(0),
             prev = "previous",
             costerm = 1.0,
             low_r = z_total.impedanz_low.re,

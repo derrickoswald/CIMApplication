@@ -12,7 +12,6 @@ import ch.ninecode.util.Complex
  * @param container    container for equipment
  * @param errors       errors encountered in processing
  * @param tx           the feeding transformer
- * @param tx_impedance the feeding transformer equivalent impedance at the secondary (Ω)
  * @param prev         the previous node
  * @param low_r        minimum aggregate positive sequence resistance from the source (primary of feeding transformer) to this node (Ω)
  * @param low_x        minimum aggregate positive sequence reactance from the source (primary of feeding transformer) to this node (Ω)
@@ -48,7 +47,6 @@ case class ScResult
     container: String,
     errors: List[String],
     tx: String,
-    tx_impedance: Complex,
     prev: String,
     low_r: Double,
     low_x: Double,

@@ -1,6 +1,5 @@
 package ch.ninecode.sc
 
-import ch.ninecode.util.Complex
 import ch.ninecode.util.Graphable
 
 /**
@@ -9,7 +8,6 @@ import ch.ninecode.util.Graphable
  * @param id_seq           the node mRID
  * @param voltage          the node voltage
  * @param source_id        the feeding transformer
- * @param source_impedance the feeding transformer impedance at the secondary (Ω)
  * @param id_prev          the previous node
  * @param impedance        the impedance of the transformer secondary supplying this node
  * @param branches         the network encountered on the path from the source to this node
@@ -20,7 +18,6 @@ case class ScNode (
     id_seq: String = "",
     voltage: Double = 0.0,
     source_id: String = null,
-    source_impedance: Complex = null,
     id_prev: String = null,
     impedance: Impedanzen = null,
     branches: Branch = null,
