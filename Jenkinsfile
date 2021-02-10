@@ -33,7 +33,14 @@ pipeline {
             }
             post {
                 always {
-                    archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                    List<String> artifactsList = [
+                            "MaximumFeedIn/target/MaximumFeedIn-*-jar-with-dependencies.jar",
+                            "ShortCircuit/target/ShortCircuit-*-jar-with-dependencies.jar",
+                            "NetworkParameters/target/Customer?_NetworkParameters-*-jar-with-dependencies.jar",
+                            "Ingest/target/Ingest-*-jar-with-dependencies.jar",
+                            "Simulation/target/Simulation-*-jar-with-dependencies.jar",
+                    ]
+                    archiveArtifacts artifacts: artifactsList.join(","), fingerprint: true
                 }
             }
         }
