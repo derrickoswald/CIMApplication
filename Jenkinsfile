@@ -33,7 +33,7 @@ pipeline {
             }
             post {
                 always {
-                    List<String> artifactsList = [
+                    artifactsList = [
                             "MaximumFeedIn/target/MaximumFeedIn-*-jar-with-dependencies.jar",
                             "ShortCircuit/target/ShortCircuit-*-jar-with-dependencies.jar",
                             "NetworkParameters/target/Customer?_NetworkParameters-*-jar-with-dependencies.jar",
