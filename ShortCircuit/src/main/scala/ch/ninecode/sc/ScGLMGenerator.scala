@@ -83,64 +83,18 @@ case class ScGLMGenerator
         val voltage = node.nominal_voltage
         val phase = if (one_phase) "AN" else "ABCN"
         val nodename = node.id
-        val _z = node match
-        {
-            case swing: ShortCircuitSwingNode =>
-                val set = swing.set
-                if (isMax)
-                    set.network_short_circuit_impedance_max
-                else
-                    set.network_short_circuit_impedance_min
-            case _ =>
-                Complex(0.0)
-        }
-        val z = _z / 1000.0 // per length impedance is per meter now
+        val z: Complex = get_per_meter_Z_for(node)
 
         // if the network short circuit impedance isn't 0Ω, we have to invent a cable
         if (z != Complex(0))
         {
-            val swing =
-                """
-                  |        object meter
-                  |        {
-                  |            name "N5";
-                  |            phases %s;
-                  |            bustype SWING;
-                  |            nominal_voltage %sV;
-                  |            voltage_A %s;
-                  |        };
-                  |""".stripMargin.format(phase, voltage, voltage)
-            val mrid = s"_generated_N5_${node.id}"
-            val id = IdentifiedObject(Element = BasicElement(mRID = mrid), mRID = mrid)
-            val l = ACLineSegment(Conductor = Conductor(ConductingEquipment = ConductingEquipment(Equipment = Equipment(PowerSystemResource = PowerSystemResource(id)))))
-            val t1 = Terminal(TopologicalNode = "N5")
-            val t2 = Terminal(TopologicalNode = node.id)
-            implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails()
-            val line = GLMLineEdge(LineData(Iterable(LineDetails(l, t1, t2, None, None))))
-            val config = line.make_line_configuration("N5_configuration", Sequences(Complex(z.re, z.im), Complex(0.0)), false, this)
-            val cable =
-                """
-                  |        object overhead_line
-                  |        {
-                  |            name "HV";
-                  |            phases %s;
-                  |            from "N5";
-                  |            to "%s";
-                  |            length 1000m;
-                  |            configuration "N5_configuration";
-                  |        };
-                  |""".stripMargin.format(phase, nodename)
+            val network_level = "N5"
+            val network_level_config_name = network_level + "_configuration"
 
-            val meter =
-                """
-                  |        object meter
-                  |        {
-                  |            name "%s";
-                  |            phases %s;
-                  |            bustype PQ;
-                  |            nominal_voltage %sV;
-                  |        };
-                  |""".stripMargin.format(nodename, phase, voltage)
+            val swing = swing_meter_glm(network_level, voltage, phase)
+            val config = generate_glm_configs(node, z, network_level, network_level_config_name)
+            val cable = overhead_line_glm(phase, network_level, nodename, network_level_config_name)
+            val meter = object_meter_glm(voltage, phase, nodename)
 
             swing +
                 config +
@@ -158,6 +112,80 @@ case class ScGLMGenerator
               |            voltage_A %s;
               |        };
               |""".stripMargin.format(nodename, phase, voltage, voltage)
+    }
+
+    private def generate_glm_configs (node: GLMNode, z: Complex, N5_name: String, N5_config_name: String) =
+    {
+        val mrid = s"_generated_${N5_name}_${node.id}"
+        val id = IdentifiedObject(Element = BasicElement(mRID = mrid), mRID = mrid)
+        val equipment = Equipment(PowerSystemResource = PowerSystemResource(id))
+        val conducting_equipment = ConductingEquipment(Equipment = equipment)
+        val l = ACLineSegment(Conductor = Conductor(ConductingEquipment = conducting_equipment))
+        val t1 = Terminal(TopologicalNode = N5_name)
+        val t2 = Terminal(TopologicalNode = node.id)
+        implicit val static_line_details: LineDetails.StaticLineDetails = LineDetails.StaticLineDetails()
+        val line = GLMLineEdge(LineData(Iterable(LineDetails(l, t1, t2, None, None))))
+        val config = line.make_line_configuration(N5_config_name, Sequences(Complex(z.re, z.im), Complex(0.0)), false, this)
+        config
+    }
+
+    private def object_meter_glm (voltage: Double, phase: String, nodename: String) =
+    {
+        """
+          |        object meter
+          |        {
+          |            name "%s";
+          |            phases %s;
+          |            bustype PQ;
+          |            nominal_voltage %sV;
+          |        };
+          |""".stripMargin.format(nodename, phase, voltage)
+    }
+
+    private def overhead_line_glm (phase: String, from: String, to: String, configuration: String): String =
+    {
+        s"""
+           |        object overhead_line
+           |        {
+           |            name "%s";
+           |            phases %s;
+           |            from "%s";
+           |            to "%s";
+           |            length 1000m;
+           |            configuration "%s";
+           |        };
+           |""".stripMargin.format("HV", phase, from, to, configuration)
+    }
+
+    private def swing_meter_glm (name:String, voltage: Double, phase: String) =
+    {
+        s"""
+           |        object meter
+           |        {
+           |            name %s;
+           |            phases %s;
+           |            bustype SWING;
+           |            nominal_voltage %sV;
+           |            voltage_A %s;
+           |        };
+           |""".stripMargin.format(name, phase, voltage, voltage)
+    }
+
+    private def get_per_meter_Z_for (node: GLMNode) =
+    {
+        val _z = node match
+        {
+            case swing: ShortCircuitSwingNode =>
+                val set = swing.set
+                if (isMax)
+                    set.network_short_circuit_impedance_max
+                else
+                    set.network_short_circuit_impedance_min
+            case _ =>
+                Complex(0.0)
+        }
+        // per length impedance is per meter now
+        _z / 1000.0
     }
 
     /**

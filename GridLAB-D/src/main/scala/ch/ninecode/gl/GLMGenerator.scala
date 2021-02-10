@@ -367,7 +367,21 @@ class GLMGenerator
         val l_strings = getACLineSegmentConfigurations(edges)
 
         // emit the swing node
-        val o_strings = swing_nodes.map(emit_slack)
+        val o_strings = if (swing_nodes.size > 1) {
+            val test_strings = swing_nodes.groupBy(x => x.id)
+            test_strings.keys.map ((id) => {
+                print(id)
+                test_strings.get(id) match {
+                    case Some(swing_nodes_on_same_bus) => swing_nodes_on_same_bus.headOption match {
+                        case Some(first) => emit_slack(first)
+                        case None => ""
+                    }
+                    case None => ""
+                }
+            })
+        } else {
+            swing_nodes.map(emit_slack)
+        }
 
         // get the node strings
         val swing_ids = swing_nodes.map(_.id).toSet
