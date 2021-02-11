@@ -970,18 +970,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def run (): RDD[ScResult] =
     {
         assert(null != getOrElse[TopologicalNode], "no topology")
-
         val transformers: RDD[TransformerIsland] = get_starting_transformers
         val traced_results: RDD[ScResult] = calculateTraceResults(transformers).setName("traced_results")
-        val cleaned_results: RDD[ScResult] = clean_results(traced_results)
-
-        val cleaned_trace_results: RDD[(String, ScResult)] = traced_results.keyBy(_.node)
-            .subtractByKey(cleaned_results.keyBy(_.node))
-
-        val gridlab_results: RDD[ScResult] = run_gridlab(transformers, cleaned_trace_results.map(_._2))
-        val reduced_trace_results: RDD[ScResult] = cleaned_trace_results.subtractByKey(gridlab_results.keyBy(_.node)).values
-
-        spark.sparkContext.union(reduced_trace_results, cleaned_results, gridlab_results)
+        val non_computable_results: RDD[ScResult] = clean_results(traced_results)
+        val computable_results: RDD[(String, ScResult)] = traced_results.keyBy(_.node)
+            .subtractByKey(non_computable_results.keyBy(_.node))
+        val gridlab_results: RDD[ScResult] = run_gridlab(transformers, computable_results.map(_._2))
+        val reduced_trace_results: RDD[ScResult] = computable_results.subtractByKey(gridlab_results.keyBy(_.node)).values
+        spark.sparkContext.union(reduced_trace_results, non_computable_results, gridlab_results)
     }
 
     private def run_gridlab (transformers: RDD[TransformerIsland], cleaned_trace_results: RDD[ScResult]) =
