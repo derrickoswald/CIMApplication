@@ -944,18 +944,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             val results = remedial(simulations, options.low_temperature, isMax = true).persist(storage_level)
             log.info("""ran %s experiments""".format(results.count()))
             // map to the type returned by the trace, use the existing value where possible
-            val original_keyed = original_results.keyBy(x => s"${x.tx}_${x.node}")
+            val original_keyed = original_results.keyBy(_.node)
             // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
-            results.keyBy(x => s"${x._1}_${x._2}").join(original_keyed).values.map(
+            results.keyBy(_._2).join(original_keyed).values.map(
                 (x: ((String, String, String, Double, Impedanzen, Branch), ScResult)) =>
                 {
-                    // TODO: remove not used parameter ...@_
-                    val (transformer@_, node@_, equipment@_, v, ztrafo, branches) = x._1
+                    val (transformer, node, equipment, v, ztrafo, branches) = x._1
                     val original = x._2
                     val z = if (null == branches) ztrafo else branches.z(ztrafo)
                     calculate_short_circuit((
-                        ScNode(original.node, v, original.tx, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
-                        original.terminal, original.equipment, original.container
+                        ScNode(node, v, transformer, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
+                        original.terminal, equipment, original.container
                     ))
                 }).persist(storage_level)
         }

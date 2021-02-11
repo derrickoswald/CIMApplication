@@ -370,7 +370,6 @@ class GLMGenerator
         val o_strings = if (swing_nodes.size > 1) {
             val test_strings = swing_nodes.groupBy(x => x.id)
             test_strings.keys.map ((id) => {
-                print(id)
                 test_strings.get(id) match {
                     case Some(swing_nodes_on_same_bus) => swing_nodes_on_same_bus.headOption match {
                         case Some(first) => emit_slack(first)
