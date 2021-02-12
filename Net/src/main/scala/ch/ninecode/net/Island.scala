@@ -241,7 +241,7 @@ class Island (
     {
         // the mapping between island and identifier (transformer service area, feeder)
         val islands_identifiers: RDD[(island_id, identifier)] = identifiers_islands.map(_.swap).distinct.groupByKey.map(x => {
-            (x._1, x._2.mkString("_"))
+            (x._1, x._2.toArray.sorted.mkString("_"))
         })
 
         // get all the Terminal with
