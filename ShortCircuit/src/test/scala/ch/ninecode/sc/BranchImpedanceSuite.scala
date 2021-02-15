@@ -289,4 +289,105 @@ class BranchImpedanceSuite extends AnyFunSuite
             Complex(9.75, 9.75)), "expected series z1=17Ω z0=9.75Ω"
         )
     }
+
+    test("MeshedNetwork simple")
+    {
+        val mrid = "has"
+        val trafo_nodes = List("t1", "t2").toArray
+
+        val branches = Iterable(
+            SimpleBranch(trafo_nodes(0), "m", 1.0, trafo_nodes(0) + "-m", trafo_nodes(0) + "-m", None, "DIN", Impedanzen(
+                Complex(2.0, 2.0),
+                Complex(1.0, 1.0),
+                Complex(2.0, 2.0),
+                Complex(1.0, 1.0))
+            ),
+            SimpleBranch(trafo_nodes(1), "m", 1.0, trafo_nodes(1) + "-m", trafo_nodes(1) + "-m", None, "DIN", Impedanzen(
+                Complex(2.0, 2.0),
+                Complex(1.0, 1.0),
+                Complex(2.0, 2.0),
+                Complex(1.0, 1.0))
+            ),
+            SimpleBranch("m", mrid, 1.0, "m-" + mrid, "m-" + mrid, None, "DIN", Impedanzen(
+                Complex(4.0, 4.0),
+                Complex(2.0, 2.0),
+                Complex(5.0, 5.0),
+                Complex(3.0, 3.0))),
+        )
+
+        val impedance = Impedanzen(
+            Complex(5.0, 5.0),
+            Complex(2.5, 2.5),
+            Complex(6.0, 6.0),
+            Complex(3.5, 3.5))
+
+        val reduced_branch: Array[Branch] = new ScBranches().reduce(branches, trafo_nodes, mrid).toArray
+        val branch = reduced_branch.head
+        val from = trafo_nodes.mkString("_")
+
+        assert(reduced_branch.length == 1, "should be reduced to one branch")
+        branch match
+        {
+            case series: SeriesBranch =>
+            {
+                assert(series.from == from, s"branch should start at the 2 trafos $from")
+                assert(series.to == mrid, s"branch should end at $mrid")
+                assert(series.z(Impedanzen()) == impedance, s"impedance should be $impedance")
+            }
+            case _ => assert(false, "should be series branch")
+        }
+    }
+
+    test("MeshedNetwork")
+    {
+        val mrid = "has"
+        val trafo_nodes = List("t1", "t2").toArray
+
+        val branches = Iterable(
+            SimpleBranch(trafo_nodes(0), "m", 1.0, trafo_nodes(0) + "-m", trafo_nodes(0) + "-m", None, "DIN", Impedanzen(
+                Complex(2.0, 2.0),
+                Complex(1.0, 1.0),
+                Complex(2.0, 2.0),
+                Complex(1.0, 1.0))
+            ),
+            SimpleBranch(trafo_nodes(1), "m", 1.0, trafo_nodes(1) + "-m", trafo_nodes(1) + "-m", None, "DIN", Impedanzen(
+                Complex(2.0, 2.0),
+                Complex(1.0, 1.0),
+                Complex(2.0, 2.0),
+                Complex(1.0, 1.0))
+            ),
+            SimpleBranch("m", "o", 1.0, "m-o", "m-o", None, "DIN", Impedanzen(
+                Complex(4.0, 4.0),
+                Complex(2.0, 2.0),
+                Complex(5.0, 5.0),
+                Complex(3.0, 3.0))),
+            SimpleBranch("o", mrid, 1.0, "o-" + mrid, "o-" + mrid, None, "DIN", Impedanzen(
+                Complex(4.0, 4.0),
+                Complex(2.0, 2.0),
+                Complex(5.0, 5.0),
+                Complex(3.0, 3.0)))
+        )
+
+        val impedance = Impedanzen(
+            Complex(9.0, 9.0),
+            Complex(4.5, 4.5),
+            Complex(11.0, 11.0),
+            Complex(6.5, 6.5))
+
+        val reduced_branch: Array[Branch] = new ScBranches().reduce(branches, trafo_nodes, mrid).toArray
+        val branch = reduced_branch.head
+        val from = trafo_nodes.mkString("_")
+
+        assert(reduced_branch.length == 1, "should be reduced to one branch")
+        branch match
+        {
+            case series: SeriesBranch =>
+            {
+                assert(series.from == from, s"branch should start at the 2 trafos $from")
+                assert(series.to == mrid, s"branch should end at $mrid")
+                assert(series.z(Impedanzen()) == impedance, s"impedance should be $impedance")
+            }
+            case _ => assert(false, "should be series branch")
+        }
+    }
 }

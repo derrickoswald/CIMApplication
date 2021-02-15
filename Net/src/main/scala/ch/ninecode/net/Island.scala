@@ -83,17 +83,16 @@ class Island (
     def terminals_plus (islands_identifiers: RDD[(island_id, identifier)]): RDD[TerminalPlus] =
     {
         val voltages = Voltages(session).getVoltages
-        islands_identifiers
-            .join(
-                getOrElse[Terminal]
-                    .keyBy(terminal => terminal.TopologicalNode)
-                    .join(getOrElse[TopologicalNode].keyBy(_.id))
-                    .values
-                    .keyBy(_._1.ConductingEquipment)
-                    .join(getOrElse[Element].keyBy(_.id))
-                    .values
-                    .keyBy(_._1._2.TopologicalIsland)
-            )
+        val topological_islands = getOrElse[Terminal]
+            .keyBy(terminal => terminal.TopologicalNode)
+            .join(getOrElse[TopologicalNode].keyBy(_.id))
+            .values
+            .keyBy(_._1.ConductingEquipment)
+            .join(getOrElse[Element].keyBy(_.id))
+            .values
+            .keyBy(_._1._2.TopologicalIsland)
+
+        islands_identifiers.join(topological_islands)
             .values
             .map(
                 x =>
@@ -241,7 +240,9 @@ class Island (
     def queryNetwork (identifiers_islands: IslandMap): (Nodes, Edges) =
     {
         // the mapping between island and identifier (transformer service area, feeder)
-        val islands_identifiers: RDD[(island_id, identifier)] = identifiers_islands.map(_.swap).distinct
+        val islands_identifiers: RDD[(island_id, identifier)] = identifiers_islands.map(_.swap).distinct.groupByKey.map(x => {
+            (x._1, x._2.toArray.sorted.mkString("_"))
+        })
 
         // get all the Terminal with
         // - the identifier (transformer service area, feeder) it belongs to

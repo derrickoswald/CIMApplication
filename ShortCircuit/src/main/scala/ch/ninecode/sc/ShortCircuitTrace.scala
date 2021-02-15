@@ -42,7 +42,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
             val errors = ScError.combine_errors(v.errors, message.errors, options.messagemax)
             val z = if ((null != message.ref) && (null != message.edge)) message.ref + message.edge else v.impedance
             val branches = if (null != message.fuses) message.fuses else v.branches
-            v.copy(source_id = message.source_id, source_impedance = message.source_impedance, id_prev = message.previous_node, impedance = z, branches = branches, errors = errors)
+            v.copy(source_id = message.source_id, id_prev = message.previous_node, impedance = z, branches = branches, errors = errors)
         }
     }
 
@@ -102,8 +102,8 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                             if (!src.fatalErrors && !dst.fatalErrors)
                             // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                                 Iterator(
-                                    (triplet.dstId, ScMessage(source_id = dst.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = src.id_seq, errors = List(error))),
-                                    (triplet.srcId, ScMessage(source_id = src.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = dst.id_seq, errors = List(error)))
+                                    (triplet.dstId, ScMessage(source_id = dst.source_id, fuses = src.branches, previous_node = src.id_seq, errors = List(error))),
+                                    (triplet.srcId, ScMessage(source_id = src.source_id, fuses = src.branches, previous_node = dst.id_seq, errors = List(error)))
                                 )
                             else
                                 Iterator.empty
@@ -121,8 +121,8 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                             if (!src.fatalErrors && !dst.fatalErrors)
                             // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                                 Iterator(
-                                    (triplet.dstId, ScMessage(source_id = dst.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = src.id_seq, errors = List(error))),
-                                    (triplet.srcId, ScMessage(source_id = src.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = dst.id_seq, errors = List(error)))
+                                    (triplet.dstId, ScMessage(source_id = dst.source_id, fuses = src.branches, previous_node = src.id_seq, errors = List(error))),
+                                    (triplet.srcId, ScMessage(source_id = src.source_id, fuses = src.branches, previous_node = dst.id_seq, errors = List(error)))
                                 )
                             else
                                 Iterator.empty
@@ -138,8 +138,8 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                             if (!src.fatalErrors && !dst.fatalErrors)
                             // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                                 Iterator(
-                                    (triplet.dstId, ScMessage(source_id = dst.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = src.id_seq, errors = List(error))),
-                                    (triplet.srcId, ScMessage(source_id = src.source_id, source_impedance = dst.source_impedance, fuses = src.branches, previous_node = dst.id_seq, errors = List(error)))
+                                    (triplet.dstId, ScMessage(source_id = dst.source_id, fuses = src.branches, previous_node = src.id_seq, errors = List(error))),
+                                    (triplet.srcId, ScMessage(source_id = src.source_id, fuses = src.branches, previous_node = dst.id_seq, errors = List(error)))
                                 )
                             else
                                 Iterator.empty
@@ -163,7 +163,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         val to = triplet.attr.impedanceTo(triplet.dstAttr.id_seq)
                         val branches = triplet.attr.fusesTo(triplet.srcAttr.branches)
                         val errors = triplet.attr.hasIssues(triplet.srcAttr.errors, options)
-                        val message = ScMessage(triplet.srcAttr.source_id, triplet.srcAttr.source_impedance, from, to, branches, triplet.srcAttr.id_seq, errors)
+                        val message = ScMessage(triplet.srcAttr.source_id, from, to, branches, triplet.srcAttr.id_seq, errors)
                         if (log.isDebugEnabled)
                             log.debug("%s <-- %s".format(triplet.dstAttr.id_seq, message.asString))
                         Iterator((triplet.dstId, message))
@@ -178,7 +178,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                             val to = triplet.attr.impedanceTo(triplet.srcAttr.id_seq)
                             val branches = triplet.attr.fusesTo(triplet.dstAttr.branches)
                             val errors = triplet.attr.hasIssues(triplet.dstAttr.errors, options)
-                            val message = ScMessage(triplet.dstAttr.source_id, triplet.dstAttr.source_impedance, from, to, branches, triplet.dstAttr.id_seq, errors)
+                            val message = ScMessage(triplet.dstAttr.source_id, from, to, branches, triplet.dstAttr.id_seq, errors)
                             if (log.isDebugEnabled)
                                 log.debug("%s <-- %s".format(triplet.srcAttr.id_seq, message.asString))
                             Iterator((triplet.srcId, message))
