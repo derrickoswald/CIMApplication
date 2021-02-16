@@ -70,7 +70,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
             // Convert to parallel branch if both branches have the same previous node
             val parallel_branch =
             {
-                if (a.previous_node == a.fuses.from && a.previous_node == b.fuses.from)
+                if (a.fuses != null && b.fuses != null && a.previous_node == a.fuses.from && a.previous_node == b.fuses.from)
                     ParallelBranch (a.fuses.from, a.fuses.to, 0.0, List(a.fuses, b.fuses))
                 else
                     a.fuses
