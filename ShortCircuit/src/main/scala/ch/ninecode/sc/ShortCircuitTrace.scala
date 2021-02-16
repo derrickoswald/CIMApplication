@@ -67,10 +67,18 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         a.edge
                     else
                         b.edge
+            // Convert to parallel branch if both branches have the same previous node
+            val parallel_branch =
+            {
+                if (a.previous_node == a.fuses.from && a.previous_node == b.fuses.from)
+                    ParallelBranch (a.fuses.from, a.fuses.to, 0.0, List(a.fuses, b.fuses))
+                else
+                    a.fuses
+            }
             val warning = ScError(fatal = false, invalid = false, s"reinforcement detected from ${a.previous_node}")
             val error1 = ScError.combine_errors(b.errors, List(warning), options.messagemax)
             val errors = ScError.combine_errors(a.errors, error1, options.messagemax)
-            a.copy(edge = parallel, errors = errors)
+            a.copy(edge = parallel, errors = errors, fuses = parallel_branch)
         }
     }
 
@@ -161,7 +169,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                     {
                         val from = triplet.attr.impedanceFrom(triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
                         val to = triplet.attr.impedanceTo(triplet.dstAttr.id_seq)
-                        val branches = triplet.attr.fusesTo(triplet.srcAttr.branches)
+                        val branches = triplet.attr.fusesTo(triplet.srcAttr.branches, triplet.srcAttr.id_seq)
                         val errors = triplet.attr.hasIssues(triplet.srcAttr.errors, options)
                         val message = ScMessage(triplet.srcAttr.source_id, from, to, branches, triplet.srcAttr.id_seq, errors)
                         if (log.isDebugEnabled)
@@ -176,7 +184,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         {
                             val from = triplet.attr.impedanceFrom(triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
                             val to = triplet.attr.impedanceTo(triplet.srcAttr.id_seq)
-                            val branches = triplet.attr.fusesTo(triplet.dstAttr.branches)
+                            val branches = triplet.attr.fusesTo(triplet.dstAttr.branches, triplet.dstAttr.id_seq)
                             val errors = triplet.attr.hasIssues(triplet.dstAttr.errors, options)
                             val message = ScMessage(triplet.dstAttr.source_id, from, to, branches, triplet.dstAttr.id_seq, errors)
                             if (log.isDebugEnabled)
