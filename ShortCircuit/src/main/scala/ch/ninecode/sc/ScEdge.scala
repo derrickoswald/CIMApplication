@@ -232,12 +232,13 @@ case class ScEdge
     /**
      * Compute the list of fuse values as accumulated from the reference
      *
-     * @param ref fuse network of the node at one end of the edge
+     * @param prev_branch fuse network of the node at one end of the edge
      * @return network of fuses at the other end of the edge
      */
     @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-    def fusesTo (ref: Branch, prev_node: String): Branch =
+    def fusesTo (prev_branch: Branch, prev_node: String): Branch =
     {
+        val current_edge = element
         // Make sure the previous node is always "from"
         val (from, to) =
         {
@@ -246,34 +247,36 @@ case class ScEdge
             else
                 (id_cn_2, id_cn_1)
         }
-        element match
+        current_edge match
         {
             case fuse: Fuse =>
                 val std = standard.getOrElse("")
                 val next = SimpleBranch(from, to, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some(fuse.Switch.ratedCurrent), std)
-                if (null == ref)
+                if (null == prev_branch)
                     next
                 else
-                    ref match
+                    prev_branch match
                     {
-                        case sim: SimpleBranch => SeriesBranch(sim.from, to, 0.0, Seq(ref, next))
+                        case sim: SimpleBranch => SeriesBranch(sim.from, to, 0.0, Seq(prev_branch, next))
                         case ser: SeriesBranch => SeriesBranch(ser.from, to, 0.0, ser.series ++ Seq(next))
-                        case _ => throw new IllegalArgumentException(s"unknown class for ref (${ref.getClass.toString})")
+                        case par: ParallelBranch => SeriesBranch(par.from, to, 0.0, Seq(prev_branch, next))
+                        case _ =>  throw new IllegalArgumentException(s"unknown class for ref (${prev_branch.getClass.toString})")
                     }
             case breaker: Breaker =>
                 val std = standard.getOrElse("")
                 val next = SimpleBranch(from, to, 0.0, breaker.id, breaker.ProtectedSwitch.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some(breaker.ProtectedSwitch.Switch.ratedCurrent), std)
-                if (null == ref)
+                if (null == prev_branch)
                     next
                 else
-                    ref match
+                    prev_branch match
                     {
-                        case sim: SimpleBranch => SeriesBranch(sim.from, to, 0.0, Seq(ref, next))
+                        case sim: SimpleBranch => SeriesBranch(sim.from, to, 0.0, Seq(prev_branch, next))
                         case ser: SeriesBranch => SeriesBranch(ser.from, to, 0.0, ser.series ++ Seq(next))
-                        case _ => throw new IllegalArgumentException(s"unknown class for ref (${ref.getClass.toString})")
+                        case par: ParallelBranch => SeriesBranch(par.from, to, 0.0, Seq(prev_branch, next))
+                        case _ => throw new IllegalArgumentException(s"unknown class for ref (${prev_branch.getClass.toString})")
                     }
             case _ =>
-                ref
+                prev_branch
         }
     }
 }
