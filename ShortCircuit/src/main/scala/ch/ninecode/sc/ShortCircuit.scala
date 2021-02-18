@@ -847,10 +847,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         persist(result, "scresult")
 
         log.info("computing results")
+        val result_keyed = result.keyBy(_.id_seq)
+        val terminals_keyed = getOrElse[Terminal].keyBy(_.TopologicalNode)
         // join results with terminals to get equipment
-        val d = result.keyBy(_.id_seq).join(getOrElse[Terminal].keyBy(_.TopologicalNode)).values.setName("d")
+        val result_joined_terminals = result_keyed.join(terminals_keyed).values.setName("result_joined_terminals")
+        val result_joined_terminals_keyed = result_joined_terminals.keyBy(_._2.ConductingEquipment)
+        val conducting_equipment_keyed = getOrElse[ConductingEquipment].keyBy(_.id)
         // join with equipment to get containers
-        val e = d.keyBy(_._2.ConductingEquipment).join(getOrElse[ConductingEquipment].keyBy(_.id)).map(x => (x._2._1._1, x._2._1._2, x._2._2)).setName("e")
+        val e = result_joined_terminals_keyed.join(conducting_equipment_keyed).map(x => (x._2._1._1, x._2._1._2, x._2._2)).setName("e")
         val f = e.keyBy(_._3.Equipment.EquipmentContainer).leftOuterJoin(getOrElse[Element].keyBy(_.id)).map(x => (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2)).setName("f")
 
         // resolve to top level containers
@@ -944,9 +948,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             val results = remedial(simulations, options.low_temperature, isMax = true).persist(storage_level)
             log.info("""ran %s experiments""".format(results.count()))
             // map to the type returned by the trace, use the existing value where possible
-            val original_keyed = original_results.keyBy(_.node)
+            val original_keyed = original_results.keyBy(x => {
+                s"${x.node}_${x.equipment}"
+            })
+            val results_keyed = results.keyBy(x => {
+                s"${x._2}_${x._3}"
+            })
             // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
-            results.keyBy(_._2).join(original_keyed).values.map(
+            results_keyed.join(original_keyed).values.map(
                 (x: ((String, String, String, Double, Impedanzen, Branch), ScResult)) =>
                 {
                     val (transformer, node, equipment, v, ztrafo, branches) = x._1
@@ -972,10 +981,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val transformers: RDD[TransformerIsland] = get_starting_transformers
         val traced_results: RDD[ScResult] = calculateTraceResults(transformers).setName("traced_results")
         val non_computable_results: RDD[ScResult] = clean_results(traced_results)
-        val computable_results: RDD[(String, ScResult)] = traced_results.keyBy(_.node)
-            .subtractByKey(non_computable_results.keyBy(_.node))
+        val traced_results_keyed = traced_results.keyBy(_.node)
+        val non_computable_results_keyed = non_computable_results.keyBy(_.node)
+        val computable_results: RDD[(String, ScResult)] = traced_results_keyed.subtractByKey(non_computable_results_keyed)
         val gridlab_results: RDD[ScResult] = run_gridlab(transformers, computable_results.map(_._2))
-        val reduced_trace_results: RDD[ScResult] = computable_results.subtractByKey(gridlab_results.keyBy(_.node)).values
+        val gridlab_results_keyed = gridlab_results.keyBy(_.node)
+        val reduced_trace_results: RDD[ScResult] = computable_results.subtractByKey(gridlab_results_keyed).values
         spark.sparkContext.union(reduced_trace_results, non_computable_results, gridlab_results)
     }
 
