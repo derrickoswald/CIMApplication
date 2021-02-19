@@ -949,21 +949,21 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             log.info("""ran %s experiments""".format(results.count()))
             // map to the type returned by the trace, use the existing value where possible
             val original_keyed = original_results.keyBy(x => {
-                s"${x.node}_${x.equipment}"
+                s"${x.node}"
             })
             val results_keyed = results.keyBy(x => {
-                s"${x._2}_${x._3}"
+                s"${x._2}"
             })
             // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
             results_keyed.join(original_keyed).values.map(
                 (x: ((String, String, String, Double, Impedanzen, Branch), ScResult)) =>
                 {
-                    val (transformer, node, equipment, v, ztrafo, branches) = x._1
+                    val (transformer, node, equipment@_, v, ztrafo, branches) = x._1
                     val original = x._2
                     val z = if (null == branches) ztrafo else branches.z(ztrafo)
                     calculate_short_circuit((
                         ScNode(node, v, transformer, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
-                        original.terminal, equipment, original.container
+                        original.terminal, original.equipment, original.container
                     ))
                 }).persist(storage_level)
         }
