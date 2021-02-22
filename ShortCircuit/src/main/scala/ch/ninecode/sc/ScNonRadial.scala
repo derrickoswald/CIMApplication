@@ -53,13 +53,13 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             meshedNetwork || errors
         })
 
-        val gridlab_results: RDD[(String, String, String, Double, Impedanzen, Branch)] = fix(gridlab_islands, cleaned_trace_results).setName("fixed_results")
+        val gridlab_results: RDD[(String, String, String, Double, Impedanzen, Branch)] = fix(gridlab_islands).setName("fixed_results")
         gridlab_results
     }
 
     // execute GridLAB-D to approximate the impedances and replace the error records
     @SuppressWarnings(Array("org.wartremover.warts.Throw", "org.wartremover.warts.AsInstanceOf"))
-    def fix (problem_transformers: RDD[TransformerIsland], original_results: RDD[ScResult]): RDD[(String, String, String, Double, Impedanzen, Branch)] =
+    def fix (problem_transformers: RDD[TransformerIsland]): RDD[(String, String, String, Double, Impedanzen, Branch)] =
     {
         val n = problem_transformers.count
         log.info(s"""performing load-flow for $n non-radial network${if (n > 1) "s" else ""}""")
