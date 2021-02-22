@@ -19,6 +19,7 @@ import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
+import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.sc.ScEdge.resistanceAt
@@ -294,7 +295,14 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         val experiment: ScExperiment = exp._1._2
         val edges: Iterable[GLMEdge] = exp._1._1.edges
         val data: Iterable[ThreePhaseComplexDataElement] = exp._2
-        val lvnodes: Array[String] = trafokreis.island.transformers.flatMap(x => for (node <- x.transformers(0).nodes.tail) yield node.id)
+        val trafo_lv_nodes: Array[Array[String]] = trafokreis.island.transformers.map(x => {
+            val trafos: Array[TransformerData] = x.transformers
+            val nodes = trafos(0).nodes
+            for (node <- nodes.tail)
+                yield node.id
+        })
+        val flatten_trafo_lv_nodes: Array[String] = trafo_lv_nodes.flatten
+
 
         // get directed edges hi→lo voltage = Branch from→to
         val graph_edges: Iterable[Branch] = edges.flatMap(
@@ -311,7 +319,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                                 x match
                                 {
                                     case switch: GLMSwitchEdge =>
-                                        makeSwitchBranch(switch, lvnodes, experiment.mrid, v1, v2)
+                                        makeSwitchBranch(switch, flatten_trafo_lv_nodes, experiment.mrid, v1, v2)
                                     case cable: GLMLineEdge =>
                                         makeCableBranch(cable, voltage1, voltage2, v1, v2)
                                     case transformer: GLMTransformerEdge =>
@@ -332,16 +340,31 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             }
         )
 
-        val branches = new ScBranches().reduce_branches(graph_edges, lvnodes, experiment)
+        val branches = new ScBranches().reduce_branches(graph_edges, flatten_trafo_lv_nodes, experiment)
+
 
         // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers
         // finding the first is not sufficient
         val twig: Option[Branch] = branches.find(
             branch =>
             {
-                val lvnodes_string = lvnodes.toList.sorted.mkString("_")
-                ((experiment.mrid == branch.to) && (lvnodes_string == branch.from)) ||
-                    ((experiment.mrid == branch.from) && (lvnodes_string == branch.to))
+                val isThreeWindingTrafo = trafo_lv_nodes.filter(_.length > 1)
+                if (isThreeWindingTrafo.nonEmpty)
+                {
+                    if (trafo_lv_nodes.length > 1) {
+                        log.error(s"meshed 3-windig-trafos detected (not supported) for ${experiment.mrid}")
+                        false
+                    } else {
+                        val lvnodes = trafo_lv_nodes.head
+                        ((experiment.mrid == branch.to) && lvnodes.contains(branch.from)) ||
+                            ((experiment.mrid == branch.from) && lvnodes.contains(branch.to))
+                    }
+                } else
+                {
+                    val lvnodes_string = flatten_trafo_lv_nodes.toList.sorted.mkString("_")
+                    ((experiment.mrid == branch.to) && (lvnodes_string == branch.from)) ||
+                        ((experiment.mrid == branch.from) && (lvnodes_string == branch.to))
+                }
             }
         )
 
@@ -355,18 +378,18 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 val v = experiment.voltage / _branch.voltageRatio
                 (_branch, tx.lv_impedance(v))
             case _ =>
-                val b: Branch = if (lvnodes.contains(experiment.mrid))
+                val b: Branch = if (flatten_trafo_lv_nodes.contains(experiment.mrid))
                     SimpleBranch(experiment.mrid, experiment.mrid, 0.0, experiment.mrid, "", None, "")
                 else
                 {
-                    val lv = lvnodes.mkString(",")
+                    val lv = flatten_trafo_lv_nodes.mkString(",")
                     val trace = branches.map(_.asString).mkString("\n")
                     log.error(s"complex branch network from $lv to ${experiment.mrid}\n$trace")
                     // get the total current to the energy consumer
                     val directs = branches.filter(experiment.mrid == _.to)
                     val sum = directs.map(_.current).sum
                     // generate a fake impedance
-                    ComplexBranch(lvnodes.mkString(","), experiment.mrid, sum, branches.toArray)
+                    ComplexBranch(flatten_trafo_lv_nodes.mkString(","), experiment.mrid, sum, branches.toArray)
                 }
                 (b, tx.lv_impedance(experiment.voltage))
         }
