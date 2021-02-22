@@ -416,14 +416,15 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         setName(graph.vertices, "graph vertices")
 
         // get the visited nodes with their data
-        val result = graph.vertices.filter(null != _._2.impedance).values
+        val result: RDD[ScNode] = graph.vertices.filter(null != _._2.impedance).values
         persist(result, "scresult")
 
         log.info("computing results")
         val result_keyed = result.keyBy(_.id_seq)
-        val terminals_keyed = getOrElse[Terminal].keyBy(_.TopologicalNode)
+        val terminals_keyed: RDD[(String, Terminal)] = getOrElse[Terminal].distinct.keyBy(_.TopologicalNode)
+
         // join results with terminals to get equipment
-        val result_joined_terminals = result_keyed.join(terminals_keyed).values.setName("result_joined_terminals")
+        val result_joined_terminals: RDD[(ScNode, Terminal)] = result_keyed.join(terminals_keyed).values.setName("result_joined_terminals")
         val result_joined_terminals_keyed = result_joined_terminals.keyBy(_._2.ConductingEquipment)
         val conducting_equipment_keyed = getOrElse[ConductingEquipment].keyBy(_.id)
         // join with equipment to get containers
@@ -447,7 +448,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             }
         }
 
-        val g: RDD[(ScNode, Int, String, String)] = f.map(station_fn)
+        val g: RDD[(ScNode, Int, String, String)] = f.map(station_fn).distinct
 
         // compute results
         g.map(calculate_short_circuit).persist(storage_level)
