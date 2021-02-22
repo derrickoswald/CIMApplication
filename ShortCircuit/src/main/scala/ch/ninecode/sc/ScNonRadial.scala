@@ -35,13 +35,10 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
     type Trafo = String
     type Mrid = String
-    type EquipmentMrid = String
-    type Voltage = Double
 
     def run_loadflow (
         transformers: RDD[TransformerIsland],
-        cleaned_trace_results: RDD[ScResult]
-    ): RDD[(Trafo, Mrid, EquipmentMrid, Voltage, Impedanzen, Branch)] =
+        cleaned_trace_results: RDD[ScResult]): RDD[(Trafo, Mrid, Impedanzen, Branch)] =
     {
         // find transformers where there are non-radial networks and fix them
         def need_load_flow (error: String): Boolean =
@@ -62,15 +59,14 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             meshedNetwork || errors
         })
 
-        val gridlab_results: RDD[(Trafo, Mrid, EquipmentMrid, Voltage, Impedanzen, Branch)] =
+        val gridlab_results: RDD[(Trafo, Mrid, Impedanzen, Branch)] =
             fix(gridlab_islands).setName("fixed_results")
         gridlab_results
     }
 
     // execute GridLAB-D to approximate the impedances and replace the error records
     @SuppressWarnings(Array("org.wartremover.warts.Throw", "org.wartremover.warts.AsInstanceOf"))
-    def fix (problem_transformers: RDD[TransformerIsland]
-    ): RDD[(Trafo, Mrid, EquipmentMrid, Voltage, Impedanzen, Branch)] =
+    def fix (problem_transformers: RDD[TransformerIsland]): RDD[(Trafo, Mrid, Impedanzen, Branch)] =
     {
         val n = problem_transformers.count
         log.info(s"""performing load-flow for $n non-radial network${if (n > 1) "s" else ""}""")
@@ -133,7 +129,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 .persist(storage_level)
 
             // perform remedial simulations produces (trafoid, nodeid, equipment, voltage, trafo.Z, Branch)
-            val results: RDD[(Trafo, Mrid, EquipmentMrid, Voltage, Impedanzen, Branch)] =
+            val results: RDD[(Trafo, Mrid, Impedanzen, Branch)] =
                 remedial(simulations, options.low_temperature, isMax = true).persist(storage_level)
             log.info("""ran %s experiments""".format(results.count()))
 
@@ -142,7 +138,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         else
         {
             log.info("TopologicalIsland elements not found, cannot use GridLAB-D to fix radial network errors")
-            spark.sparkContext.emptyRDD[(Trafo, Mrid, EquipmentMrid, Voltage, Impedanzen, Branch)]
+            spark.sparkContext.emptyRDD[(Trafo, Mrid, Impedanzen, Branch)]
         }
     }
 
@@ -161,8 +157,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         gridlabd: GridLABD,
         one_phase: Boolean,
         isMax: Boolean,
-        simulations: RDD[SimulationTransformerServiceArea]
-    ): RDD[(Trafo, Mrid, EquipmentMrid, Voltage, Impedanzen, Branch)] =
+        simulations: RDD[SimulationTransformerServiceArea]): RDD[(Trafo, Mrid, Impedanzen, Branch)] =
     {
         val b4_solve = System.nanoTime()
         val trafos = simulations.map(_.island.island_name)
@@ -198,7 +193,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             .values
             .setName("exp")
 
-        val z: RDD[(Trafo, Mrid, EquipmentMrid, Voltage, Impedanzen, Branch)] = exp
+        val z: RDD[(Trafo, Mrid, Impedanzen, Branch)] = exp
             .map(evaluate)
             .setName("z")
 
@@ -221,8 +216,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
     def remedial (
         simulations: RDD[SimulationTransformerServiceArea],
         temperature: Double,
-        isMax: Boolean
-    ): RDD[(Trafo, Mrid, EquipmentMrid, Voltage, Impedanzen, Branch)] =
+        isMax: Boolean): RDD[(Trafo, Mrid, Impedanzen, Branch)] =
     {
         // for dates without time zones, the timezone of the machine is used:
         //    date +%Z
@@ -305,7 +299,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
      * @param exp all the data, the simulation and specific experiment plus all the voltage readings
      * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, secondary impedance of the source transformer and an equivalent circuit
      */
-    def evaluate (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (Trafo, Mrid, EquipmentMrid, Voltage, Impedanzen, Branch) =
+    def evaluate (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (Trafo, Mrid, Impedanzen, Branch) =
     {
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
         val experiment: ScExperiment = exp._1._2
@@ -412,7 +406,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 }
                 (b, tx.lv_impedance(experiment.voltage))
         }
-        (experiment.trafo, experiment.mrid, experiment.equipment, experiment.voltage, impedance, path)
+        (experiment.trafo, experiment.mrid, impedance, path)
     }
 
 

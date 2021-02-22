@@ -505,7 +505,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     def calculate_nonradial (transformers: RDD[TransformerIsland], cleaned_trace_results: RDD[ScResult]): RDD[ScResult] =
     {
         val scNonRadial = ScNonRadial(session, storage_level, options)
-        val gridlab_results: RDD[(String, String, String, Double, Impedanzen, Branch)] = scNonRadial.run_loadflow(transformers, cleaned_trace_results)
+        val gridlab_results: RDD[(String, String, Impedanzen, Branch)] = scNonRadial.run_loadflow(transformers, cleaned_trace_results)
 
         // map to the type returned by the trace, use the existing value where possible
         val original_keyed = cleaned_trace_results.keyBy(_.node)
@@ -514,11 +514,11 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
         results_keyed.join(original_keyed).values.map(x =>
         {
-            val (transformer, node, equipment@_, v, ztrafo, branches) = x._1
+            val (transformer, node, ztrafo, branches) = x._1
             val original = x._2
             val z = if (null == branches) ztrafo else branches.z(ztrafo)
             calculate_short_circuit((
-                ScNode(node, v, transformer, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
+                ScNode(node, original.voltage, transformer, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
                 original.terminal, original.equipment, original.container
             ))
         }).persist(storage_level)
