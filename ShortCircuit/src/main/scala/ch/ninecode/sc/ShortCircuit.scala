@@ -471,17 +471,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val cond_equip_with_elements = conducting_equipment.leftOuterJoin(elements)
 
         val container_per_cond_equipment: RDD[(CondEquipmentID, Container)] = cond_equip_with_elements.values.map(x =>
+        {
+            val (conducting_equipment, element_option) = x
+            val equipment_id = conducting_equipment.id
+            element_option match
             {
-                val (conducting_equipment, element_option) = x
-                val equipment_id = conducting_equipment.id
-                element_option match
-                {
-                    case Some(station: Substation) => (equipment_id, station.id)
-                    case Some(bay: Bay) => (equipment_id, bay.Substation)
-                    case Some(level: VoltageLevel) => (equipment_id, level.Substation)
-                    case _ => (equipment_id, "")
-                }
-            })
+                case Some(station: Substation) => (equipment_id, station.id)
+                case Some(bay: Bay) => (equipment_id, bay.Substation)
+                case Some(level: VoltageLevel) => (equipment_id, level.Substation)
+                case _ => (equipment_id, "")
+            }
+        })
 
         container_per_cond_equipment
     }
@@ -508,26 +508,20 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val gridlab_results: RDD[(String, String, String, Double, Impedanzen, Branch)] = scNonRadial.run_loadflow(transformers, cleaned_trace_results)
 
         // map to the type returned by the trace, use the existing value where possible
-        val original_keyed = cleaned_trace_results.keyBy(x =>
-        {
-            s"${x.node}"
-        })
-        val results_keyed = gridlab_results.keyBy(x =>
-        {
-            s"${x._2}"
-        })
+        val original_keyed = cleaned_trace_results.keyBy(_.node)
+        val results_keyed = gridlab_results.keyBy(_._2)
+
         // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
-        results_keyed.join(original_keyed).values.map(
-            (x: ((String, String, String, Double, Impedanzen, Branch), ScResult)) =>
-            {
-                val (transformer, node, equipment@_, v, ztrafo, branches) = x._1
-                val original = x._2
-                val z = if (null == branches) ztrafo else branches.z(ztrafo)
-                calculate_short_circuit((
-                    ScNode(node, v, transformer, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
-                    original.terminal, original.equipment, original.container
-                ))
-            }).persist(storage_level)
+        results_keyed.join(original_keyed).values.map(x =>
+        {
+            val (transformer, node, equipment@_, v, ztrafo, branches) = x._1
+            val original = x._2
+            val z = if (null == branches) ztrafo else branches.z(ztrafo)
+            calculate_short_circuit((
+                ScNode(node, v, transformer, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
+                original.terminal, original.equipment, original.container
+            ))
+        }).persist(storage_level)
     }
 
     private def clean_results (traced_results: RDD[ScResult]): RDD[ScResult] =
