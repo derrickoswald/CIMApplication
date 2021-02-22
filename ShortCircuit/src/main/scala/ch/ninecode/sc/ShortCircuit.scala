@@ -62,6 +62,10 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
     val default_node: ScNode = ScNode()
 
+    type Container = String
+    type CondEquipmentID = String
+    type TerminalID = Int
+
     def edge_operator (voltages: Map[String, Double])(arg: (Element, Iterable[(Terminal, Option[End])], Option[String])): List[ScEdge] =
     {
         val (element, t_it, standard) = arg
@@ -382,8 +386,27 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         })
     }
 
-    @SuppressWarnings(Array("org.wartremover.warts.Null"))
     def calculateTraceResults (transformers: RDD[TransformerIsland]): RDD[ScResult] =
+    {
+        val initial_with_starting_nodes: Graph[ScNode, ScEdge] = initial_graph_with_starting_nodes(transformers)
+
+        val sct = ShortCircuitTrace(session, options)
+        val graph = sct.trace(initial_with_starting_nodes)
+        setName(graph.edges, "graph edges")
+        setName(graph.vertices, "graph vertices")
+
+        // get the visited nodes with their data
+        val result: RDD[ScNode] = graph.vertices.filter(null != _._2.impedance).values
+        persist(result, "scresult")
+
+        val g: RDD[(ScNode, Int, String, String)] = pass_trace_result_to_all_nodes(result)
+
+        log.info("computing results")
+        g.map(calculate_short_circuit).persist(storage_level)
+    }
+
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
+    private def initial_graph_with_starting_nodes (transformers: RDD[TransformerIsland]): Graph[ScNode, ScEdge] =
     {
         // create the initial Graph with ScNode vertices
         val initial = get_inital_graph()
@@ -406,52 +429,61 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val starting_nodes: RDD[StartingTrafos] = transformers.flatMap(trafo_mapping).setName("starting_nodes")
         val starting_trafos_with_edges = starting_nodes.keyBy(_.nsPin).join(initial.edges.flatMap(both_ends).groupByKey)
             .setName("starting_trafos_with_edges")
+
         val initial_with_starting_nodes: Graph[ScNode, ScEdge] = initial.joinVertices(starting_trafos_with_edges)(add_starting_trafo).persist(storage_level)
         setName(initial_with_starting_nodes.edges, "initial_with_starting_nodes edges")
         setName(initial_with_starting_nodes.vertices, "initial_with_starting_nodes vertices")
 
-        val sct = ShortCircuitTrace(session, options)
-        val graph = sct.trace(initial_with_starting_nodes)
-        setName(graph.edges, "graph edges")
-        setName(graph.vertices, "graph vertices")
+        initial_with_starting_nodes
+    }
 
-        // get the visited nodes with their data
-        val result: RDD[ScNode] = graph.vertices.filter(null != _._2.impedance).values
-        persist(result, "scresult")
-
-        log.info("computing results")
+    private def pass_trace_result_to_all_nodes (result: RDD[ScNode]): RDD[(ScNode, TerminalID, CondEquipmentID, Container)] =
+    {
         val result_keyed = result.keyBy(_.id_seq)
         val terminals_keyed: RDD[(String, Terminal)] = getOrElse[Terminal].distinct.keyBy(_.TopologicalNode)
+        val result_per_terminals: RDD[(ScNode, Terminal)] = result_keyed.join(terminals_keyed).values.setName("result_per_terminals")
 
-        // join results with terminals to get equipment
-        val result_joined_terminals: RDD[(ScNode, Terminal)] = result_keyed.join(terminals_keyed).values.setName("result_joined_terminals")
-        val result_joined_terminals_keyed = result_joined_terminals.keyBy(_._2.ConductingEquipment)
-        val conducting_equipment_keyed = getOrElse[ConductingEquipment].keyBy(_.id)
-        // join with equipment to get containers
-        val e = result_joined_terminals_keyed.join(conducting_equipment_keyed).map(x => (x._2._1._1, x._2._1._2, x._2._2)).setName("e")
-        val f = e.keyBy(_._3.Equipment.EquipmentContainer).leftOuterJoin(getOrElse[Element].keyBy(_.id)).map(x => (x._2._1._1, x._2._1._2, x._2._1._3, x._2._2)).setName("f")
+        val container_per_cond_equipment: RDD[(CondEquipmentID, Container)] = get_container_per_equipment
 
+        val results_with_container: RDD[(ScNode, TerminalID, CondEquipmentID, Container)] =
+            result_per_terminals.keyBy(_._2.ConductingEquipment)
+                .join(container_per_cond_equipment)
+                .map(
+                    (x: (CondEquipmentID, ((ScNode, Terminal), Container))) =>
+                    {
+                        val scNode: ScNode = x._2._1._1
+                        val container: Container = x._2._2
+                        val cond_equip_id: CondEquipmentID = x._1
+                        val terminal = x._2._1._2
+                        val terminal_id: TerminalID = terminal.ACDCTerminal.sequenceNumber
+                        (scNode, terminal_id, cond_equip_id, container)
+                    })
+
+        results_with_container.distinct()
+    }
+
+    private def get_container_per_equipment: RDD[(CondEquipmentID, Container)] =
+    {
         // resolve to top level containers
         // the equipment container for a transformer could be a Station or a Bay or VoltageLevel ... the last two of which have a reference to their station
-        def station_fn (arg: (ScNode, Terminal, ConductingEquipment, Option[Any])): (ScNode, Int, String, String) =
-        {
-            val node = arg._1
-            val terminal = arg._2
-            val equipment = arg._3
-            val container = arg._4
-            container match
+        val conducting_equipment = getOrElse[ConductingEquipment].keyBy(_.Equipment.EquipmentContainer)
+        val elements = getOrElse[Element].keyBy(_.id)
+        val cond_equip_with_elements = conducting_equipment.leftOuterJoin(elements)
+
+        val container_per_cond_equipment: RDD[(CondEquipmentID, Container)] = cond_equip_with_elements.values.map(x =>
             {
-                case Some(station: Substation) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, station.id)
-                case Some(bay: Bay) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, bay.Substation)
-                case Some(level: VoltageLevel) => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, level.Substation)
-                case _ => (node, terminal.ACDCTerminal.sequenceNumber, equipment.id, "")
-            }
-        }
+                val (conducting_equipment, element_option) = x
+                val equipment_id = conducting_equipment.id
+                element_option match
+                {
+                    case Some(station: Substation) => (equipment_id, station.id)
+                    case Some(bay: Bay) => (equipment_id, bay.Substation)
+                    case Some(level: VoltageLevel) => (equipment_id, level.Substation)
+                    case _ => (equipment_id, "")
+                }
+            })
 
-        val g: RDD[(ScNode, Int, String, String)] = f.map(station_fn).distinct
-
-        // compute results
-        g.map(calculate_short_circuit).persist(storage_level)
+        container_per_cond_equipment
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
