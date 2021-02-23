@@ -23,6 +23,7 @@ import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.sc.ScEdge.resistanceAt
+import ch.ninecode.sc.ScNonRadial.need_load_flow
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 
@@ -41,11 +42,6 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         cleaned_trace_results: RDD[ScResult]): RDD[(Trafo, Mrid, Impedanzen, Branch)] =
     {
         // find transformers where there are non-radial networks and fix them
-        def need_load_flow (error: String): Boolean =
-            error.startsWith("FATAL: non-radial network detected") ||
-                error.startsWith("INVALID: 3 transformer windings") ||
-                error.startsWith("INVALID: low voltage")
-
         val problem_trafos: Array[String] = cleaned_trace_results
             .filter(result => result.errors.exists(need_load_flow))
             .map(_.tx)
@@ -59,8 +55,15 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             meshedNetwork || errors
         })
 
-        val gridlab_results: RDD[(Trafo, Mrid, Impedanzen, Branch)] =
+        val n = gridlab_islands.count
+        val gridlab_results: RDD[(Trafo, Mrid, Impedanzen, Branch)] = if (n > 0)
+        {
+            log.info(s"""performing load-flow for $n non-radial network${if (n > 1) "s" else ""}""")
             fix(gridlab_islands).setName("fixed_results")
+        } else {
+            log.info("No islands to calculate with GridLAB-D")
+            spark.sparkContext.emptyRDD[(Trafo, Mrid, Impedanzen, Branch)]
+        }
         gridlab_results
     }
 
@@ -68,9 +71,6 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
     @SuppressWarnings(Array("org.wartremover.warts.Throw", "org.wartremover.warts.AsInstanceOf"))
     def fix (problem_transformers: RDD[TransformerIsland]): RDD[(Trafo, Mrid, Impedanzen, Branch)] =
     {
-        val n = problem_transformers.count
-        log.info(s"""performing load-flow for $n non-radial network${if (n > 1) "s" else ""}""")
-
         // transformer area calculations
         val tsa = TransformerServiceArea(session, storage_level, calculate_public_lighting = options.calculate_public_lighting)
         val trafos_islands: RDD[(identifier, island_id)] = tsa.getTransformerServiceAreas.map(_.swap).setName("trafos_islands") // (trafosetid, islandid)
@@ -589,4 +589,12 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         }
     }
 
+}
+
+object ScNonRadial {
+    def need_load_flow (error: String): Boolean = {
+        error.startsWith("FATAL: non-radial network detected") ||
+            error.startsWith("INVALID: 3 transformer windings") ||
+            error.startsWith("INVALID: low voltage")
+    }
 }

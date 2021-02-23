@@ -388,7 +388,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
     def calculateTraceResults (transformers: RDD[TransformerIsland]): RDD[ScResult] =
     {
-        val initial_with_starting_nodes: Graph[ScNode, ScEdge] = initial_graph_with_starting_nodes(transformers)
+        // create the initial Graph with ScNode vertices
+        val initial = get_inital_graph()
+        val initial_with_starting_nodes: Graph[ScNode, ScEdge] = add_starting_nodes(initial, transformers)
 
         val sct = ShortCircuitTrace(session, options)
         val graph = sct.trace(initial_with_starting_nodes)
@@ -406,11 +408,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.Null"))
-    private def initial_graph_with_starting_nodes (transformers: RDD[TransformerIsland]): Graph[ScNode, ScEdge] =
+    private def add_starting_nodes (initial: Graph[ScNode, ScEdge], transformers: RDD[TransformerIsland]): Graph[ScNode, ScEdge] =
     {
-        // create the initial Graph with ScNode vertices
-        val initial = get_inital_graph()
-
         def both_ends (edge: Edge[ScEdge]): Iterable[(VertexId, ScEdge)] = List((edge.srcId, edge.attr), (edge.dstId, edge.attr))
 
         def add_starting_trafo (vid: VertexId, node: ScNode, attached: (StartingTrafos, Iterable[ScEdge])): ScNode =
@@ -422,8 +421,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                     List(ScError(fatal = false, invalid = false, s"transformer has no impedance value, using default ${options.default_transformer_impedance}"))
                 else
                     null
+
             val problems = edges.foldLeft(errors)((errors, edge) => edge.hasIssues(errors, options))
-            ScNode(id_seq = node.id_seq, voltage = node.voltage, source_id = trafo.transformer.transformer_name, id_prev = "self", impedance = trafo.lv_impedance(node.voltage), errors = problems)
+
+            ScNode(
+                id_seq = node.id_seq,
+                voltage = node.voltage,
+                source_id = trafo.transformer.transformer_name,
+                id_prev = "self",
+                impedance = trafo.lv_impedance(node.voltage),
+                errors = problems
+            )
         }
 
         val starting_nodes: RDD[StartingTrafos] = transformers.flatMap(trafo_mapping).setName("starting_nodes")
@@ -442,11 +450,12 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val result_keyed = result.keyBy(_.id_seq)
         val terminals_keyed: RDD[(String, Terminal)] = getOrElse[Terminal].distinct.keyBy(_.TopologicalNode)
         val result_per_terminals: RDD[(ScNode, Terminal)] = result_keyed.join(terminals_keyed).values.setName("result_per_terminals")
+        val result_per_terminals_keyed_by_cond_equipment = result_per_terminals.keyBy(_._2.ConductingEquipment)
 
         val container_per_cond_equipment: RDD[(CondEquipmentID, Container)] = get_container_per_equipment
 
         val results_with_container: RDD[(ScNode, TerminalID, CondEquipmentID, Container)] =
-            result_per_terminals.keyBy(_._2.ConductingEquipment)
+                result_per_terminals_keyed_by_cond_equipment
                 .join(container_per_cond_equipment)
                 .map(
                     (x: (CondEquipmentID, ((ScNode, Terminal), Container))) =>
@@ -491,12 +500,16 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
     {
         assert(null != getOrElse[TopologicalNode], "no topology")
         val transformers: RDD[TransformerIsland] = get_starting_transformers
+
         val traced_results: RDD[ScResult] = calculateTraceResults(transformers).setName("traced_results")
         val non_computable_results: RDD[ScResult] = clean_results(traced_results)
+
         val traced_results_keyed = traced_results.keyBy(_.node)
         val non_computable_results_keyed = non_computable_results.keyBy(_.node)
         val computable_results: RDD[(String, ScResult)] = traced_results_keyed.subtractByKey(non_computable_results_keyed)
+
         val gridlab_results: RDD[ScResult] = calculate_nonradial(transformers, computable_results.map(_._2))
+
         val gridlab_results_keyed = gridlab_results.keyBy(_.node)
         val reduced_trace_results: RDD[ScResult] = computable_results.subtractByKey(gridlab_results_keyed).values
         spark.sparkContext.union(reduced_trace_results, non_computable_results, gridlab_results)
@@ -517,20 +530,27 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             val (transformer, node, ztrafo, branches) = x._1
             val original = x._2
             val z = if (null == branches) ztrafo else branches.z(ztrafo)
+
             calculate_short_circuit((
-                ScNode(node, original.voltage, transformer, original.prev, z, branches, List(ScError(fatal = false, invalid = false, "computed by load-flow"))), // replace the errors
-                original.terminal, original.equipment, original.container
+                ScNode(
+                    node,
+                    original.voltage,
+                    transformer,
+                    original.prev,
+                    z,
+                    branches,
+                    List(ScError(fatal = false, invalid = false, "computed by load-flow")) // replace the errors
+                ),
+                original.terminal,
+                original.equipment,
+                original.container
             ))
         }).persist(storage_level)
     }
 
     private def clean_results (traced_results: RDD[ScResult]): RDD[ScResult] =
     {
-        def other_error (s: String): Boolean =
-            !(s.startsWith("FATAL: non-radial network detected") ||
-                s.startsWith("INVALID: 3 transformer windings") || // ToDo: Remove when 3W transformer test for SC is available
-                s.startsWith("INVALID: low voltage")) &&
-                s.startsWith("INVALID")
+        def other_error (s: String): Boolean = !ScNonRadial.need_load_flow(s) && s.startsWith("INVALID")
 
         val verboten_trafos: RDD[(String, String)] = traced_results
             .filter(result => result.errors.exists(other_error))
