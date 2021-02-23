@@ -364,16 +364,19 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 {
                     if (trafo_lv_nodes.length > 1)
                     {
+                        // Multiple 3W trafos
                         log.error(s"meshed 3-windig-trafos detected (not supported) for ${experiment.mrid}")
                         false
                     } else
                     {
+                        // Single 3W trafo
                         val lvnodes = trafo_lv_nodes.head
                         ((experiment.mrid == branch.to) && lvnodes.contains(branch.from)) ||
                             ((experiment.mrid == branch.from) && lvnodes.contains(branch.to))
                     }
                 } else
                 {
+                    // 2W
                     val lvnodes_string = flatten_trafo_lv_nodes.toList.sorted.mkString("_")
                     ((experiment.mrid == branch.to) && (lvnodes_string == branch.from)) ||
                         ((experiment.mrid == branch.from) && (lvnodes_string == branch.to))
