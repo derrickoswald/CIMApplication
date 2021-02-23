@@ -316,6 +316,8 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
 
         // get directed edges hi→lo voltage = Branch from→to
+        if (experiment.mrid.startsWith("HAS107220"))
+            print(experiment.mrid)
         val graph_edges: Iterable[Branch] = edges.flatMap(
             x =>
             {
@@ -330,7 +332,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                                 x match
                                 {
                                     case switch: GLMSwitchEdge =>
-                                        makeSwitchBranch(switch, flatten_trafo_lv_nodes, experiment.mrid, v1, v2)
+                                        makeSwitchBranch(switch, flatten_trafo_lv_nodes, experiment.mrid, voltage1, voltage2, v1, v2)
                                     case cable: GLMLineEdge =>
                                         makeCableBranch(cable, voltage1, voltage2, v1, v2)
                                     case transformer: GLMTransformerEdge =>
@@ -450,7 +452,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def makeSwitchBranch (switch: GLMSwitchEdge, lvnodes: Array[String], mrid: String, v1: Double, v2: Double): List[Branch] =
+    def makeSwitchBranch (switch: GLMSwitchEdge, lvnodes: Array[String], mrid: String, voltage1: ThreePhaseComplexDataElement, voltage2: ThreePhaseComplexDataElement, v1: Double, v2: Double): List[Branch] =
     {
         if (!switch.closed)
             List()
@@ -460,22 +462,32 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             val name = switch.data.switches.head.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
             val stds = switch.data.switches.flatMap(_.standard).toArray.distinct
             val std = if (0 == stds.length) "" else stds(0) // ToDo: what if parallel switches have different standards?
-            if (lvnodes.contains(switch.cn1))
-                List(SimpleBranch(switch.cn1, switch.cn2, 0.0, switch.id, name, rating, std))
-            else
-                if (lvnodes.contains(switch.cn2))
-                    List(SimpleBranch(switch.cn2, switch.cn1, 0.0, switch.id, name, rating, std))
+            val current =
+                if (v1 > v2)
+                {
+                    ((voltage1.value_a - voltage2.value_a) / Complex(0.001, 0.001)).modulus
+                } else {
+                    ((voltage2.value_a - voltage1.value_a) / Complex(0.001, 0.001)).modulus
+                }
+
+            val (from, to) =
+                if (lvnodes.contains(switch.cn1))
+                    (switch.cn1, switch.cn2)
                 else
-                    if (mrid == switch.cn2)
-                        List(SimpleBranch(switch.cn1, switch.cn2, 0.0, switch.id, name, rating, std))
+                    if (lvnodes.contains(switch.cn2))
+                        (switch.cn2, switch.cn1)
                     else
-                        if (mrid == switch.cn1)
-                            List(SimpleBranch(switch.cn2, switch.cn1, 0.0, switch.id, name, rating, std))
+                        if (mrid == switch.cn2)
+                            (switch.cn1, switch.cn2)
                         else
-                            if (v1 > v2)
-                                List(SimpleBranch(switch.cn1, switch.cn2, 0.0, switch.id, name, rating, std))
+                            if (mrid == switch.cn1)
+                                (switch.cn2, switch.cn1)
                             else
-                                List(SimpleBranch(switch.cn2, switch.cn1, 0.0, switch.id, name, rating, std))
+                                if (v1 > v2)
+                                    (switch.cn1, switch.cn2)
+                                else
+                                    (switch.cn2, switch.cn1)
+            List(SimpleBranch(from, to, current, switch.id, name, rating, std))
         }
     }
 
