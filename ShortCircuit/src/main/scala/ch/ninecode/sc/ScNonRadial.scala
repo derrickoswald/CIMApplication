@@ -488,7 +488,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                                     (switch.cn1, switch.cn2)
                                 else
                                     (switch.cn2, switch.cn1)
-            List(SimpleBranch(from, to, current, switch.id, name, rating, std, ScNonRadial.switch_default_z))
+            List(SimpleBranch(from, to, current, switch.id, name, rating, std))
         }
     }
 
