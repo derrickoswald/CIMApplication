@@ -104,14 +104,14 @@ class ScBranches
                         branch.add_in_series(buddy)
                     else
                     // choose the simplest element to reverse
-                        branch match
+                        buddy match
                         {
                             case _: SimpleBranch =>
-                                buddy.add_in_series(branch.reverse)
+                                branch.add_in_series(buddy.reverse)
                             case _: TransformerBranch =>
-                                buddy.add_in_series(branch.reverse)
+                                branch.add_in_series(buddy.reverse)
                             case _ =>
-                                buddy.reverse.add_in_series(branch)
+                                branch.reverse.add_in_series(buddy)
                         }
                 (true, Seq(new_series) ++ rest)
             case _ =>
@@ -144,7 +144,7 @@ class ScBranches
         }
 
         // check for parallel elements
-        val parallel = for
+        val parallel: Iterable[Iterable[Branch]] = for
             {
             branch <- network
             buddies = network.filter(parallel_branches_filter(branch))

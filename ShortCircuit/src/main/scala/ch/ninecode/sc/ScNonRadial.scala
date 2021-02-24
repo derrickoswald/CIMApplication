@@ -462,12 +462,13 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             val name = switch.data.switches.head.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
             val stds = switch.data.switches.flatMap(_.standard).toArray.distinct
             val std = if (0 == stds.length) "" else stds(0) // ToDo: what if parallel switches have different standards?
+
             val current =
                 if (v1 > v2)
                 {
-                    ((voltage1.value_a - voltage2.value_a) / Complex(0.001, 0.001)).modulus
+                    ((voltage1.value_a - voltage2.value_a) / ScNonRadial.switch_default_z.impedanz_low).modulus
                 } else {
-                    ((voltage2.value_a - voltage1.value_a) / Complex(0.001, 0.001)).modulus
+                    ((voltage2.value_a - voltage1.value_a) / ScNonRadial.switch_default_z.impedanz_low).modulus
                 }
 
             val (from, to) =
@@ -487,7 +488,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                                     (switch.cn1, switch.cn2)
                                 else
                                     (switch.cn2, switch.cn1)
-            List(SimpleBranch(from, to, current, switch.id, name, rating, std))
+            List(SimpleBranch(from, to, current, switch.id, name, rating, std, ScNonRadial.switch_default_z))
         }
     }
 
@@ -609,4 +610,11 @@ object ScNonRadial {
             error.startsWith("INVALID: 3 transformer windings") ||
             error.startsWith("INVALID: low voltage")
     }
+
+    val switch_default_z = Impedanzen(
+        Complex(0.001, 0.001),
+        Complex(0.001, 0.001),
+        Complex(0.001, 0.001),
+        Complex(0.001, 0.001)
+    )
 }
