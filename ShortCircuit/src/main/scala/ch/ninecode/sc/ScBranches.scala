@@ -97,22 +97,18 @@ class ScBranches
             case (branch, buddy) :: _ =>
                 // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
                 val rest = network.filter(x => branch != x && buddy != x)
-                val new_series = if (buddy.to == branch.from)
-                    buddy.add_in_series(branch)
-                else
-                    if (branch.to == buddy.from)
-                        branch.add_in_series(buddy)
-                    else
-                    // choose the simplest element to reverse
-                        buddy match
-                        {
-                            case _: SimpleBranch =>
-                                branch.add_in_series(buddy.reverse)
-                            case _: TransformerBranch =>
-                                branch.add_in_series(buddy.reverse)
-                            case _ =>
-                                branch.reverse.add_in_series(buddy)
-                        }
+                val new_series = if (branch.hasSameTo(buddy) || branch.hasSameFrom(buddy)) {
+                    buddy match {
+                        case _: SimpleBranch =>
+                            branch.add_in_series(buddy.reverse)
+                        case _: TransformerBranch =>
+                            branch.add_in_series(buddy.reverse)
+                        case _ =>
+                            branch.reverse.add_in_series(buddy)
+                    }
+                } else {
+                    branch.add_in_series(buddy)
+                }
                 (true, Seq(new_series) ++ rest)
             case _ =>
                 (false, network)
