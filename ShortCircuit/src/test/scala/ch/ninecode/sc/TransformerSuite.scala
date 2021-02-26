@@ -151,7 +151,7 @@ class TransformerSuite extends SCTestBase with BeforeAndAfter
             for (i <- csv.indices)
                 println(csv(i))
 
-            near(results.filter(_.equipment == "USR0001").first().high_ik, 213.83700143897838)
-            near(results.filter(_.equipment == "USR0002").first().high_ik, 181.53370928588038)
+            near(results.filter(_.equipment == "USR0001").first().high_ik, 213.8, 0.1)
+            near(results.filter(_.equipment == "USR0002").first().high_ik, 181.5, 0.1)
     }
 }

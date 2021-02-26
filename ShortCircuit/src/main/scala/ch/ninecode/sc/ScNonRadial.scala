@@ -504,7 +504,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                     case None => getSourceAndDestinationFromVoltages(v1, v2, switch)
                 }
             }
-            List(SimpleBranch(from, to, current, switch.id, name, rating, std))
+            List(SimpleBranch(from, to, current, switch.id, name, rating, std, ScNonRadial.switch_default_z))
         }
     }
 
@@ -638,9 +638,9 @@ object ScNonRadial {
     }
 
     val switch_default_z = Impedanzen(
-        Complex(0.001, 0.001),
-        Complex(0.001, 0.001),
-        Complex(0.001, 0.001),
-        Complex(0.001, 0.001)
+        Complex(0.0001, 0),
+        Complex(0.0001, 0),
+        Complex(0.0001, 0),
+        Complex(0.0001, 0)
     )
 }
