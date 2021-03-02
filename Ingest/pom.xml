@@ -25,7 +25,7 @@
         <version.dependency.log4j>2.12.1</version.dependency.log4j>
         <version.dependency.commons-lang3>3.10</version.dependency.commons-lang3>
         <version.dependency.aws-java-sdk>1.11.893</version.dependency.aws-java-sdk>
-        <version.dependency.jackson>2.10.4</version.dependency.jackson>
+        <version.dependency.jackson>2.12.1</version.dependency.jackson>
     </properties>
 
     <dependencyManagement>
