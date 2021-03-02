@@ -478,9 +478,15 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
     private def getSourceAndDestinationFromVoltages = (v1: Double, v2: Double, switch: GLMSwitchEdge) => {
         if (v1 > v2)
+        {
             (switch.cn1, switch.cn2)
-        else
+        } else if ( v2 > v1)
+        {
             (switch.cn2, switch.cn1)
+        } else {
+            log.warn(s"guessing: (${switch.cn1},${switch.cn2}) for ${switch.id}")
+            (switch.cn2, switch.cn1)
+        }
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))

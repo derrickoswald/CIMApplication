@@ -1,5 +1,7 @@
 package ch.ninecode.sc
 
+import scala.util.control.Breaks.break
+
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -61,58 +63,50 @@ class ScBranches
      */
     def reduce_series (network: Iterable[Branch], trafo_nodes: Array[String], mrid: String): (Boolean, Iterable[Branch]) = // (reduced?, network)
     {
-        // check for series elements, eliminate making a series connection across the house or trafo
-        val prepend =
-            for
-                {
-                branch <- network
-                house = branch.from == mrid
-                if !house
-                trafo = trafo_nodes.contains(branch.from)
-                if !trafo
-                buddies = network.filter(x => (branch.from == x.to) || (branch.from == x.from && branch != x))
-                if buddies.size == 1
-                buddy :: _ = buddies
-            }
-                yield (branch, buddy)
-
-        val append =
-            for
-                {
-                branch <- network
-                house = branch.to == mrid
-                if !house
-                trafo = trafo_nodes.contains(branch.to)
-                if !trafo
-                buddies = network.filter(x => (branch.to == x.from) || (branch.to == x.to && branch != x))
-                if buddies.size == 1
-                buddy :: _ = buddies
-            }
-                yield (branch, buddy)
-
-        val series = prepend ++ append
-
-        series match
-        {
-            case (branch, buddy) :: _ =>
-                // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-                val rest = network.filter(x => branch != x && buddy != x)
-                val new_series = if (branch.hasSameTo(buddy) || branch.hasSameFrom(buddy)) {
-                    buddy match {
-                        case _: SimpleBranch =>
-                            branch.add_in_series(buddy.reverse)
-                        case _: TransformerBranch =>
-                            branch.add_in_series(buddy.reverse)
-                        case _ =>
-                            branch.reverse.add_in_series(buddy)
-                    }
-                } else {
-                    branch.add_in_series(buddy)
-                }
-                (true, Seq(new_series) ++ rest)
-            case _ =>
-                (false, network)
+        def is_reducable: String => Boolean = (node: String) => {
+            network.count(_.to == node) == 1 && network.count(_.from == node) == 1
         }
+
+        def get_all_nodes(branches: Iterable[Branch]) = {
+            branches.map(_.to).toSet ++ branches.map(_.from).toSet
+        }
+
+        def get_reduced_series(starting_branch: Branch, branches: Iterable[Branch], reducable_nodes: Set[String]): Branch = {
+            var reduced_series_branch = starting_branch
+            do
+            {
+                branches.find(_.to == reduced_series_branch.from) match {
+                    case Some(branch) => {
+                        reduced_series_branch = reduced_series_branch.add_in_series(branch)
+                    }
+                    case None => {
+                        log.error(s"Trying to reduce ${reduced_series_branch} failed. Because no branch found going to ${reduced_series_branch.from}. MRID: ${mrid}")
+                        break
+                    }
+                }
+            } while (reducable_nodes.contains(reduced_series_branch.from))
+            reduced_series_branch
+        }
+
+        val all_nodes = get_all_nodes(network)
+        val reducable_nodes = all_nodes.filter(is_reducable)
+        val intersection_nodes_to_process = all_nodes -- reducable_nodes
+
+        val new_network = intersection_nodes_to_process.flatMap((intersection_node) =>
+        {
+            var results: Set[Branch] = Set()
+            for (starting_branch <- network.filter(_.to == intersection_node))
+            {
+                val new_series_branch = if (reducable_nodes.contains(starting_branch.from)){
+                    get_reduced_series(starting_branch, network, reducable_nodes)
+                } else {
+                    starting_branch
+                }
+                results ++= Set(new_series_branch)
+            }
+            results
+        })
+        (new_network.size != network.size, new_network)
     }
 
     /**
@@ -147,9 +141,9 @@ class ScBranches
             if buddies.nonEmpty
         }
             yield buddies ++ Seq(branch)
-        parallel match
+        parallel.headOption match
         {
-            case set :: _ =>
+            case Some(set) =>
                 if (set.tail.forall(x => set.head.isParallelTo(x)))
                 // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
                     (true, Seq(set.head.add_in_parallel(set.tail)) ++ network.filter(x => !set.toSeq.contains(x)))
@@ -161,7 +155,7 @@ class ScBranches
                     val trafo_parallel_branch = Seq(Branch(from, head.to, head.current + tail.map(_.current).sum, head.iter ++ tail.flatMap(x => x.iter)))
                     (true, trafo_parallel_branch ++ network.filter(x => !set.toSeq.contains(x)))
                 }
-            case _ =>
+            case None =>
                 (false, network)
         }
     }
