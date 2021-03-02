@@ -17,6 +17,7 @@ import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.GLMSwitchEdge
 import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.gl.GridLABD
+import ch.ninecode.model.ACLineSegment
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
 import ch.ninecode.net.TransformerData
@@ -327,12 +328,13 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                             case Some(voltage2) =>
                                 val v1 = voltage1.value_a.modulus
                                 val v2 = voltage2.value_a.modulus
+                                val voltage_diff = (voltage1.value_a - voltage2.value_a)
                                 x match
                                 {
                                     case switch: GLMSwitchEdge =>
-                                        makeSwitchBranch(switch, flatten_trafo_lv_nodes, experiment.mrid, v1, v2)
+                                        makeSwitchBranch(switch, flatten_trafo_lv_nodes, experiment.mrid, v1, v2, voltage_diff)
                                     case cable: GLMLineEdge =>
-                                        makeCableBranch(cable, voltage1, voltage2, v1, v2)
+                                        makeCableBranch(cable, v1, v2, voltage_diff)
                                     case transformer: GLMTransformerEdge =>
                                         makeTransformerBranch(transformer, v1, v2)
                                     case _ =>
@@ -412,9 +414,19 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         (experiment.trafo, experiment.mrid, impedance, path)
     }
 
+    private def getImpedanzenFor (line: ACLineSegment, dist_km: Double) =
+    {
+        val x_per_km = line.x * dist_km
+        val x0_per_km = line.x0 * dist_km
+        Impedanzen(
+            Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r) * dist_km, x_per_km),
+            Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r0) * dist_km, x0_per_km),
+            Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r) * dist_km, x_per_km),
+            Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r0) * dist_km, x0_per_km))
+    }
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def makeCableBranch (cable: GLMLineEdge, voltage1: ThreePhaseComplexDataElement, voltage2: ThreePhaseComplexDataElement, v1: Double, v2: Double): List[Branch] =
+    def makeCableBranch (cable: GLMLineEdge,v1: Double, v2: Double, voltage_diff: Complex): List[Branch] =
     {
         // Adjust this threshold according the chosen "default_maximum_voltage_error" in gridlabd
         if (Math.abs(v1 - v2) < 1e-5)
@@ -423,18 +435,10 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         {
             val line = cable.lines.head
             val dist_km = line.Conductor.len / 1000.0
-            var z = Impedanzen(
-                Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
-                Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km),
-                Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r) * dist_km, line.x * dist_km),
-                Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r0) * dist_km, line.x0 * dist_km))
+            var z = getImpedanzenFor(line, dist_km)
             for (l <- cable.lines.tail)
             {
-                val z1 = Impedanzen(
-                    Complex(resistanceAt(options.low_temperature, options.base_temperature, l.r) * dist_km, l.x * dist_km),
-                    Complex(resistanceAt(options.low_temperature, options.base_temperature, l.r0) * dist_km, l.x0 * dist_km),
-                    Complex(resistanceAt(options.high_temperature, options.base_temperature, l.r) * dist_km, l.x * dist_km),
-                    Complex(resistanceAt(options.high_temperature, options.base_temperature, l.r0) * dist_km, l.x0 * dist_km))
+                val z1 = getImpedanzenFor(l, dist_km)
                 z = Impedanzen(
                     z.impedanz_low.parallel_impedanz(z1.impedanz_low),
                     z.null_impedanz_low.parallel_impedanz(z1.null_impedanz_low),
@@ -442,15 +446,51 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                     z.null_impedanz_high.parallel_impedanz(z1.null_impedanz_high))
             }
             val name = line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
+            val current = (voltage_diff / z.impedanz_low).modulus
             if (v1 > v2)
-                List(SimpleBranch(cable.cn1, cable.cn2, ((voltage1.value_a - voltage2.value_a) / z.impedanz_low).modulus, cable.id, name, None, "", z))
+                List(SimpleBranch(cable.cn1, cable.cn2, current, cable.id, name, None, "", z))
             else
-                List(SimpleBranch(cable.cn2, cable.cn1, ((voltage2.value_a - voltage1.value_a) / z.impedanz_low).modulus, cable.id, name, None, "", z))
+                List(SimpleBranch(cable.cn2, cable.cn1, current, cable.id, name, None, "", z))
+        }
+    }
+
+    private def getSourceAndDestinationFromLvnodes = (lvnodes: Array[String], switch: GLMSwitchEdge) =>
+    {
+        if (lvnodes.contains(switch.cn1))
+            Some((switch.cn1, switch.cn2))
+        else
+            if (lvnodes.contains(switch.cn2))
+                Some((switch.cn2, switch.cn1))
+            else
+                None
+    }
+
+    private def getSourceAndDestinationFromMrid = (mrid: String, switch: GLMSwitchEdge) =>
+    {
+        if (mrid == switch.cn2)
+            Some((switch.cn1, switch.cn2))
+        else
+            if (mrid == switch.cn1)
+                Some((switch.cn2, switch.cn1))
+            else
+                None
+    }
+
+    private def getSourceAndDestinationFromVoltages = (v1: Double, v2: Double, switch: GLMSwitchEdge) => {
+        if (v1 > v2)
+        {
+            (switch.cn1, switch.cn2)
+        } else if ( v2 > v1)
+        {
+            (switch.cn2, switch.cn1)
+        } else {
+            log.warn(s"guessing: (${switch.cn1},${switch.cn2}) for ${switch.id}")
+            (switch.cn2, switch.cn1)
         }
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def makeSwitchBranch (switch: GLMSwitchEdge, lvnodes: Array[String], mrid: String, v1: Double, v2: Double): List[Branch] =
+    def makeSwitchBranch(switch: GLMSwitchEdge,lvnodes: Array[String],mrid: String, v1: Double, v2: Double, voltage_diff: Complex): List[Branch] =
     {
         if (!switch.closed)
             List()
@@ -460,30 +500,35 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             val name = switch.data.switches.head.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
             val stds = switch.data.switches.flatMap(_.standard).toArray.distinct
             val std = if (0 == stds.length) "" else stds(0) // ToDo: what if parallel switches have different standards?
-            if (lvnodes.contains(switch.cn1))
-                List(SimpleBranch(switch.cn1, switch.cn2, 0.0, switch.id, name, rating, std))
-            else
-                if (lvnodes.contains(switch.cn2))
-                    List(SimpleBranch(switch.cn2, switch.cn1, 0.0, switch.id, name, rating, std))
-                else
-                    if (mrid == switch.cn2)
-                        List(SimpleBranch(switch.cn1, switch.cn2, 0.0, switch.id, name, rating, std))
-                    else
-                        if (mrid == switch.cn1)
-                            List(SimpleBranch(switch.cn2, switch.cn1, 0.0, switch.id, name, rating, std))
-                        else
-                            if (v1 > v2)
-                                List(SimpleBranch(switch.cn1, switch.cn2, 0.0, switch.id, name, rating, std))
-                            else
-                                List(SimpleBranch(switch.cn2, switch.cn1, 0.0, switch.id, name, rating, std))
+
+            val current = (voltage_diff / ScNonRadial.switch_default_z.impedanz_low).modulus
+
+            val (from, to) = getSourceAndDestinationFromLvnodes(lvnodes,switch) match {
+                case Some((from,to)) => (from,to)
+                case None => getSourceAndDestinationFromMrid(mrid, switch) match {
+                    case Some((from, to)) => (from, to)
+                    case None => getSourceAndDestinationFromVoltages(v1, v2, switch)
+                }
+            }
+            List(SimpleBranch(from, to, current, switch.id, name, rating, std, ScNonRadial.switch_default_z))
         }
     }
 
     def makeTransformerBranch (transformer: GLMTransformerEdge, v1: Double, v2: Double): List[Branch] =
     {
-        List(TransformerBranch(transformer.cn1, transformer.cn2, 0.0, transformer.transformer.transformer_name, transformer.id,
-            transformer.transformer.power_rating, v1, v2, transformer.transformer.total_impedance_per_unit._1))
-
+        List(
+            TransformerBranch(
+                transformer.cn1,
+                transformer.cn2,
+                0.0,
+                transformer.transformer.transformer_name,
+                transformer.id,
+                transformer.transformer.power_rating,
+                v1,
+                v2,
+                transformer.transformer.total_impedance_per_unit._1
+            )
+        )
     }
 
 
@@ -597,4 +642,11 @@ object ScNonRadial {
             error.startsWith("INVALID: 3 transformer windings") ||
             error.startsWith("INVALID: low voltage")
     }
+
+    val switch_default_z = Impedanzen(
+        Complex(0.0001, 0),
+        Complex(0.0001, 0),
+        Complex(0.0001, 0),
+        Complex(0.0001, 0)
+    )
 }
