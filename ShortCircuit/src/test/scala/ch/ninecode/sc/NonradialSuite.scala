@@ -114,7 +114,7 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
                 println(csv(i))
 
             near(results.filter(_.equipment == "USR0001").first().low_sk, 2617497, 1)
-            near(results.filter(_.equipment == "USR0002").first().low_sk, 6196606, 1)
-            near(results.filter(_.equipment == "USR0003").first().low_sk, 6169913, 1)
+            near(results.filter(_.equipment == "USR0002").first().low_sk, 6186327, 1)
+            near(results.filter(_.equipment == "USR0003").first().low_sk, 6159839, 1)
     }
 }
