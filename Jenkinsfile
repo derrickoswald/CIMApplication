@@ -14,7 +14,6 @@ pipeline {
         maven 'maven'
     }
     parameters {
-    // GridLAB-D, Ingest, MaximumFeedIn,MSCONSReader,Net,NetworkParameters,ShortCircuit,Simulation,TestUtil,Util
         booleanParam defaultValue: true, description: 'Build', name: 'BUILD'
         booleanParam defaultValue: true, description: 'GridLAB-D', name: 'GridLAB'
         booleanParam defaultValue: true, description: 'Ingest', name: 'Ingest'
@@ -45,7 +44,6 @@ pipeline {
                 }
             }
         }
-        // sh 'mvn test -pl GridLAB-D, Ingest, MaximumFeedIn,MSCONSReader,Net,NetworkParameters,ShortCircuit,Simulation,TestUtil,Util'
         stage('Test') {
             parallel{
                 stage("Test GridLAB-D") {
@@ -56,7 +54,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl GridLAB-D'
+                            sh 'mvn verify -pl GridLAB-D'
                         }
                     }
                     post {
@@ -73,7 +71,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl Ingest'
+                            sh 'mvn verify -pl Ingest'
                         }
                     }
                     post {
@@ -90,7 +88,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl MaximumFeedIn'
+                            sh 'mvn verify -pl MaximumFeedIn'
                         }
                     }
                     post {
@@ -107,7 +105,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl MSCONSReader'
+                            sh 'mvn verify -pl MSCONSReader'
                         }
                     }
                     post {
@@ -124,7 +122,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl Net'
+                            sh 'mvn verify -pl Net'
                         }
                     }
                     post {
@@ -141,7 +139,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl NetworkParameters'
+                            sh 'mvn verify -pl NetworkParameters'
                         }
                     }
                     post {
@@ -158,7 +156,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl ShortCircuit'
+                            sh 'mvn verify -pl ShortCircuit'
                         }
                     }
                     post {
@@ -175,7 +173,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl Simulation'
+                            sh 'mvn verify -pl Simulation'
                         }
                     }
                     post {
@@ -192,7 +190,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl TestUtil'
+                            sh 'mvn verify -pl TestUtil'
                         }
                     }
                 }
@@ -204,7 +202,7 @@ pipeline {
                     }
                     steps {
                         withMaven(maven: 'maven', mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME) {
-                            sh 'mvn test -pl Util'
+                            sh 'mvn verify -pl Util'
                         }
                     }
                     post {
