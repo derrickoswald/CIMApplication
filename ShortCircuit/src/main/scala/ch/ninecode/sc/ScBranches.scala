@@ -1,5 +1,7 @@
 package ch.ninecode.sc
 
+import scala.util.control.Breaks.break
+
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -61,58 +63,58 @@ class ScBranches
      */
     def reduce_series (network: Iterable[Branch], trafo_nodes: Array[String], mrid: String): (Boolean, Iterable[Branch]) = // (reduced?, network)
     {
-        // check for series elements, eliminate making a series connection across the house or trafo
-        val prepend =
-            for
-                {
-                branch <- network
-                house = branch.from == mrid
-                if !house
-                trafo = trafo_nodes.contains(branch.from)
-                if !trafo
-                buddies = network.filter(x => (branch.from == x.to) || (branch.from == x.from && branch != x))
-                if buddies.size == 1
-                buddy :: _ = buddies
-            }
-                yield (branch, buddy)
-
-        val append =
-            for
-                {
-                branch <- network
-                house = branch.to == mrid
-                if !house
-                trafo = trafo_nodes.contains(branch.to)
-                if !trafo
-                buddies = network.filter(x => (branch.to == x.from) || (branch.to == x.to && branch != x))
-                if buddies.size == 1
-                buddy :: _ = buddies
-            }
-                yield (branch, buddy)
-
-        val series = prepend ++ append
-
-        series match
+        def is_reducable: String => Boolean = (node: String) =>
         {
-            case (branch, buddy) :: _ =>
-                // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
-                val rest = network.filter(x => branch != x && buddy != x)
-                val new_series = if (branch.hasSameTo(buddy) || branch.hasSameFrom(buddy)) {
-                    buddy match {
-                        case _: SimpleBranch =>
-                            branch.add_in_series(buddy.reverse)
-                        case _: TransformerBranch =>
-                            branch.add_in_series(buddy.reverse)
-                        case _ =>
-                            branch.reverse.add_in_series(buddy)
-                    }
-                } else {
-                    branch.add_in_series(buddy)
-                }
-                (true, Seq(new_series) ++ rest)
-            case _ =>
-                (false, network)
+            network.count(_.to == node) == 1 && network.count(_.from == node) == 1
         }
+
+        def get_all_nodes (branches: Iterable[Branch]) =
+        {
+            branches.map(_.to).toSet ++ branches.map(_.from).toSet
+        }
+
+        def get_reduced_series (starting_branch: Branch, branches: Iterable[Branch], reducable_nodes: Set[String]): Branch =
+        {
+            var reduced_series_branch = starting_branch
+            do
+            {
+                branches.find(_.to == reduced_series_branch.from) match
+                {
+                    case Some(branch) =>
+                    {
+                        reduced_series_branch = reduced_series_branch.add_in_series(branch)
+                    }
+                    case None =>
+                    {
+                        log.error(s"Trying to reduce ${reduced_series_branch} failed. Because no branch found going to ${reduced_series_branch.from}. MRID: ${mrid}")
+                        break
+                    }
+                }
+            } while (reducable_nodes.contains(reduced_series_branch.from))
+            reduced_series_branch
+        }
+
+        val all_nodes = get_all_nodes(network)
+        val reducable_nodes = all_nodes.filter(is_reducable)
+        val intersection_nodes_to_process = all_nodes -- reducable_nodes
+
+        val new_network = intersection_nodes_to_process.flatMap((intersection_node) =>
+        {
+            var results: Set[Branch] = Set()
+            for (starting_branch <- network.filter(_.to == intersection_node))
+            {
+                val new_series_branch = if (reducable_nodes.contains(starting_branch.from))
+                {
+                    get_reduced_series(starting_branch, network, reducable_nodes)
+                } else
+                {
+                    starting_branch
+                }
+                results ++= Set(new_series_branch)
+            }
+            results
+        })
+        (new_network.size != network.size, new_network)
     }
 
     /**
@@ -129,7 +131,8 @@ class ScBranches
             trafo_nodes.contains(branch_end) && trafo_nodes.contains(x_end)
         }
 
-        def trafo_parallel_condtion (branch: Branch, x: Branch, trafo_nodes: Array[String]): Boolean = {
+        def trafo_parallel_condtion (branch: Branch, x: Branch, trafo_nodes: Array[String]): Boolean =
+        {
             (has_trafo_end(branch.from, x.from, trafo_nodes) && branch.hasSameTo(x)) ||
                 (has_trafo_end(branch.to, x.to, trafo_nodes) && branch.hasSameFrom(x))
         }
@@ -147,9 +150,9 @@ class ScBranches
             if buddies.nonEmpty
         }
             yield buddies ++ Seq(branch)
-        parallel match
+        parallel.headOption match
         {
-            case set :: _ =>
+            case Some(set) =>
                 if (set.tail.forall(x => set.head.isParallelTo(x)))
                 // only do one reduction at a time... I'm not smart enough to figure out how to do it in bulk
                     (true, Seq(set.head.add_in_parallel(set.tail)) ++ network.filter(x => !set.toSeq.contains(x)))
@@ -161,7 +164,7 @@ class ScBranches
                     val trafo_parallel_branch = Seq(Branch(from, head.to, head.current + tail.map(_.current).sum, head.iter ++ tail.flatMap(x => x.iter)))
                     (true, trafo_parallel_branch ++ network.filter(x => !set.toSeq.contains(x)))
                 }
-            case _ =>
+            case None =>
                 (false, network)
         }
     }
@@ -169,39 +172,35 @@ class ScBranches
     def reduce (branches: Iterable[Branch], trafo_nodes: Array[String], mrid: String): Iterable[Branch] =
     {
         // step by step reduce the network to a single branch through series and parallel reductions
-        var done = false
-        var network: Iterable[Branch] = branches
+        var network = branches
+        var changed = false
         do
         {
-            val (modified, net) = reduce_series(network, trafo_nodes, mrid)
-            network = net
-            done = !modified
-            if (done)
+            val series_result = reduce_series(network, trafo_nodes, mrid)
+            val series_modified = series_result._1
+            network = series_result._2
+            val parallel_result = reduce_parallel(network, trafo_nodes)
+            val parallel_modified = parallel_result._1
+            network = parallel_result._2
+            changed = series_modified || parallel_modified
+            if (!changed && network.size > 1)
             {
-                val (modified, net) = reduce_parallel(network, trafo_nodes)
-                network = net
-                done = !modified
-                // check that all branches start from the transformer
-                if (done)
-                    if (!network.forall(x => trafo_nodes.contains(x.from)))
+                // no changes in last iteration, but still more than 1 branch --> try to reverse fuse branches
+                val branches_with_unclear_direction = network.filter(_.current == 0.0)
+                for (branch <- branches_with_unclear_direction)
+                {
+                    val has_connection_on_from = network.count(_.from == branch.from) > 0
+                    val has_connection_on_to = network.count(_.to == branch.to) > 0
+                    if (has_connection_on_from && has_connection_on_to)
                     {
-                        val max = network.map(_.current).foldLeft(Double.MinValue)((x: Double, y: Double) => if (x > y) x else y)
-                        val significant = max * 0.01 // 1% of the maximum current
-                        val filtered = network.filter(x =>
-                            (x.current > significant)
-                                || trafo_nodes.contains(x.from)
-                                || trafo_nodes.contains(x.to)
-                                || (x.from == mrid)
-                                || (x.to == mrid))
-                        if (filtered.size < network.size)
-                        {
-                            done = false
-                            network = filtered
-                        }
+                        network = network.filter(_ != branch)
+                        network = Seq(branch.reverse) ++ network
+                        changed = true
                     }
+                }
             }
         }
-        while (!done)
+        while (changed)
 
         network
     }
