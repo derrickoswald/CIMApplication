@@ -157,6 +157,7 @@
                 </executions>
                 <configuration>
                     <runOrder>reversealphabetical</runOrder>
+                    <jvm>/usr/lib/jvm/java-11-openjdk-amd64/bin/java</jvm>
                 </configuration>
             </plugin>
             <plugin>
@@ -179,6 +180,28 @@
                                 <portName>cassandra.storagePort</portName>
                                 <portName>cassandra.nativeTransportPort</portName>
                             </portNames>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>${version.dependency.maven-toolchains-plugin}</version>
+                <executions>
+                    <execution>
+                        <id>default-pre-integration-test</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>toolchain</goal>
+                        </goals>
+                        <configuration>
+                            <toolchains>
+                                <jdk>
+                                    <version>1.8</version>
+                                    <vendor>OpenJDK</vendor>
+                                </jdk>
+                            </toolchains>
                         </configuration>
                     </execution>
                 </executions>

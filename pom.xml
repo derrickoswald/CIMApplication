@@ -119,6 +119,7 @@
         <version.dependency.maven-enforcer-plugin>3.0.0-M3</version.dependency.maven-enforcer-plugin>
         <version.dependency.maven-failsafe-plugin>2.22.2</version.dependency.maven-failsafe-plugin>
         <version.dependency.build-helper-maven-plugin>3.0.0</version.dependency.build-helper-maven-plugin>
+        <version.dependency.maven-toolchains-plugin>3.0.0</version.dependency.maven-toolchains-plugin>
         <version.dependency.cassandra-maven-plugin>3.6</version.dependency.cassandra-maven-plugin>
         <version.dependency.scala-maven-plugin>4.2.0</version.dependency.scala-maven-plugin>
         <version.dependency.wartremover>2.4.5</version.dependency.wartremover>
