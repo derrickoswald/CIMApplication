@@ -42,9 +42,9 @@ pipeline {
                     maven: 'maven',
                     mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                     options: [
-                        junitPublisher(healthScaleFactor: 1.0),
+                        junitPublisher(disabled: true),
                         artifactsPublisher(disabled: true),
-                        findbugsPublisher()
+                        findbugsPublisher(healthy: '10', unHealthy: '100')
                     ]
                 ) {
                     sh 'mvn -B -DskipTests clean install'
@@ -70,10 +70,16 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl GridLAB-D'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'GridLAB-D/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -88,10 +94,16 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl Ingest'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'Ingest/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -106,10 +118,16 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl MaximumFeedIn'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'MaximumFeedIn/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -124,10 +142,16 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl MSCONSReader'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'MSCONSReader/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -142,10 +166,16 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl Net'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'Net/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -160,10 +190,16 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl NetworkParameters'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'NetworkParameters/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -178,10 +214,16 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl ShortCircuit'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'ShortCircuit/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -196,10 +238,16 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl Simulation'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'Simulation/target/surefire-reports/*.xml'
                         }
                     }
                 }
@@ -214,7 +262,8 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl TestUtil'
@@ -232,10 +281,16 @@ pipeline {
                             maven: 'maven',
                             mavenLocalRepo: '../../maven_repos/'+BRANCH_NAME,
                             options: [
-                                junitPublisher(healthScaleFactor: 1.0)
+                                junitPublisher(disabled: true),
+                                artifactsPublisher(disabled: true)
                             ]
                         ) {
                             sh 'mvn test -pl Util'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'Util/target/surefire-reports/*.xml'
                         }
                     }
                 }
