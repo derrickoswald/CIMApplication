@@ -14,7 +14,7 @@ pipeline {
         maven 'maven'
     }
     options {
-        buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr:'5')
+        buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr:'5'))
     }
     parameters {
     // GridLAB-D, Ingest, MaximumFeedIn,MSCONSReader,Net,NetworkParameters,ShortCircuit,Simulation,TestUtil,Util
