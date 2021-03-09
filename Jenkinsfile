@@ -43,7 +43,7 @@ pipeline {
                     options: [
                         junitPublisher(disabled: true),
                         artifactsPublisher(disabled: true),
-                        findbugsPublisher(healthy: '10', unHealthy: '100')
+                        spotbugsPublisher(healthy: '10', unHealthy: '100')
                     ]
                 ) {
                     sh 'mvn -B -DskipTests clean install'
