@@ -193,6 +193,7 @@
                 </executions>
                 <configuration>
                     <skipAfterFailureCount>1</skipAfterFailureCount>
+                    <jvm>/usr/lib/jvm/java-11-openjdk-amd64/bin/java</jvm>
                 </configuration>
             </plugin>
             <plugin>
@@ -218,7 +219,8 @@
                         <goals>
                             <goal>reserve-network-port</goal>
                         </goals>
-                        <!-- reserve the ports in the phase before process-test-resources (where the resources are filtered and copied) -->
+                        <!-- reserve the ports in the phase before process-test-resources
+                             (where the resources are filtered and copied) -->
                         <phase>generate-test-resources</phase>
                         <configuration>
                             <portNames>
@@ -241,13 +243,36 @@
                                 jmxPort = ${localCassandra} ? 7199 : ${cassandra.jmxPort};
                                 rpcPort = ${localCassandra} ? 9160 : ${cassandra.rpcPort};
                                 storagePort = ${localCassandra} ? 7000 : ${cassandra.storagePort};
-                                nativeTransportPort = ${localCassandra} ? 9042 : ${cassandra.nativeTransportPort};</source>
+                                nativeTransportPort = ${localCassandra} ? 9042 : ${cassandra.nativeTransportPort};
+                            </source>
                             <properties>
                                 <property>jmxPort</property>
                                 <property>rpcPort</property>
                                 <property>storagePort</property>
                                 <property>nativeTransportPort</property>
                             </properties>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>${version.dependency.maven-toolchains-plugin}</version>
+                <executions>
+                    <execution>
+                        <id>default-pre-integration-test</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>toolchain</goal>
+                        </goals>
+                        <configuration>
+                            <toolchains>
+                                <jdk>
+                                    <version>8</version>
+                                    <vendor>OpenJDK</vendor>
+                                </jdk>
+                            </toolchains>
                         </configuration>
                     </execution>
                 </executions>

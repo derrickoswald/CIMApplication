@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -53,7 +53,8 @@
                     <artifactId>commons-lang3</artifactId>
                 </exclusion>
                 <exclusion>
-                    <!-- if included it leads to multiple slf4j bindings, and it's older than the dependency in spark-core  -->
+                    <!-- if included it leads to multiple slf4j bindings,
+                         and it's older than the dependency in spark-core  -->
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
@@ -263,6 +264,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${version.dependency.maven-failsafe-plugin}</version>
+                <configuration>
+                    <jvm>/usr/lib/jvm/java-11-openjdk-amd64/bin/java</jvm>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -295,6 +299,28 @@
                                 <portName>cassandra.storagePort</portName>
                                 <portName>cassandra.nativeTransportPort</portName>
                             </portNames>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>${version.dependency.maven-toolchains-plugin}</version>
+                <executions>
+                    <execution>
+                        <id>default-pre-integration-test</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>toolchain</goal>
+                        </goals>
+                        <configuration>
+                            <toolchains>
+                                <jdk>
+                                    <version>8</version>
+                                    <vendor>OpenJDK</vendor>
+                                </jdk>
+                            </toolchains>
                         </configuration>
                     </execution>
                 </executions>
@@ -384,5 +410,4 @@ enable_scripted_user_defined_functions: true
             </plugin>
         </plugins>
     </build>
-
 </project>
