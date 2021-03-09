@@ -221,7 +221,8 @@
                         <goals>
                             <goal>reserve-network-port</goal>
                         </goals>
-                        <!-- reserve the ports in the phase before process-test-resources (where the resources are filtered and copied) -->
+                        <!-- reserve the ports in the phase before process-test-resources
+                             (where the resources are filtered and copied) -->
                         <phase>generate-test-resources</phase>
                         <configuration>
                             <portNames>
@@ -241,9 +242,10 @@
                         <phase>generate-test-resources</phase>
                         <configuration>
                             <source>jmxPort = ${localCassandra} ? 7199 : ${cassandra.jmxPort};
-                            rpcPort = ${localCassandra} ? 9160 : ${cassandra.rpcPort};
-                            storagePort = ${localCassandra} ? 7000 : ${cassandra.storagePort};
-                            nativeTransportPort = ${localCassandra} ? 9042 : ${cassandra.nativeTransportPort};</source>
+                                rpcPort = ${localCassandra} ? 9160 : ${cassandra.rpcPort};
+                                storagePort = ${localCassandra} ? 7000 : ${cassandra.storagePort};
+                                nativeTransportPort = ${localCassandra} ? 9042 : ${cassandra.nativeTransportPort};
+                            </source>
                             <properties>
                                 <property>jmxPort</property>
                                 <property>rpcPort</property>
@@ -268,7 +270,7 @@
                         <configuration>
                             <toolchains>
                                 <jdk>
-                                    <version>1.8</version>
+                                    <version>8</version>
                                     <vendor>OpenJDK</vendor>
                                 </jdk>
                             </toolchains>

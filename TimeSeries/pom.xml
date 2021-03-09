@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -170,7 +170,8 @@
                         <goals>
                             <goal>reserve-network-port</goal>
                         </goals>
-                        <!-- reserve the ports in the phase before process-test-resources (where the resources are filtered and copied) -->
+                        <!-- reserve the ports in the phase before process-test-resources
+                             (where the resources are filtered and copied) -->
                         <phase>generate-test-resources</phase>
                         <configuration>
                             <portNames>
@@ -198,7 +199,7 @@
                         <configuration>
                             <toolchains>
                                 <jdk>
-                                    <version>1.8</version>
+                                    <version>8</version>
                                     <vendor>OpenJDK</vendor>
                                 </jdk>
                             </toolchains>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -53,7 +53,8 @@
                     <artifactId>commons-lang3</artifactId>
                 </exclusion>
                 <exclusion>
-                    <!-- if included it leads to multiple slf4j bindings, and it's older than the dependency in spark-core  -->
+                    <!-- if included it leads to multiple slf4j bindings,
+                         and it's older than the dependency in spark-core  -->
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
@@ -316,7 +317,7 @@
                         <configuration>
                             <toolchains>
                                 <jdk>
-                                    <version>1.8</version>
+                                    <version>8</version>
                                     <vendor>OpenJDK</vendor>
                                 </jdk>
                             </toolchains>
@@ -409,5 +410,4 @@ enable_scripted_user_defined_functions: true
             </plugin>
         </plugins>
     </build>
-
 </project>
