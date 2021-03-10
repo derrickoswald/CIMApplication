@@ -15,6 +15,14 @@
             "type": "integer",
             "minimum": 0,
             "description": "Cassandra connection port"
+        },
+        "user": {
+            "type": "string",
+            "description": "Cassandra user to use for connection to host"
+        },
+        "password": {
+            "type": "string",
+            "description": "Cassandra password to use for connection to host"
         }
     }
 }

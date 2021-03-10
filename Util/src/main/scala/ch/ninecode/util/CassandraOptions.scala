@@ -8,7 +8,9 @@ package ch.ninecode.util
  */
 case class CassandraOptions (
     host: String = "localhost",
-    port: Int = 9042
+    port: Int = 9042,
+    user: String = "",
+    password: String = ""
 )
 {
     def toJSON: String = CassandraOptions.toJSON(this)
