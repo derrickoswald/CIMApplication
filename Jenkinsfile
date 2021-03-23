@@ -294,5 +294,10 @@ pipeline {
                 }
             }
         }
+        stage('archiveArtifacts') {
+            steps {
+                sh 'printenv'
+            }
+        }
     }
 }
