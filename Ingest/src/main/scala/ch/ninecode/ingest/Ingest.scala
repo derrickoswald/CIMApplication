@@ -3,7 +3,14 @@ package ch.ninecode.ingest
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.sql.Timestamp
+import java.io.File
+import java.nio.file.StandardCopyOption
 
+import com.amazonaws.auth.AWSStaticCredentialsProvider
+import com.amazonaws.auth.BasicAWSCredentials
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.services.s3.model.GetObjectRequest
+import com.sun.jndi.toolkit.url.Uri
 import org.apache.log4j.LogManager
 import org.apache.log4j.Level
 import org.apache.spark.sql.SparkSession
@@ -36,7 +43,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
     def readFile (file: String): Array[Byte] =
     {
         try
-        Files.readAllBytes(Paths.get(file))
+            Files.readAllBytes(Paths.get(file))
         catch
         {
             case e: Exception =>
@@ -52,26 +59,49 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
 
     def runJob (job: IngestJob): Unit =
     {
+        var jobWithLocalFiles = job.copy()
         val made = time("schema: %s seconds")
         {
             val schema = Schema(session, "/simulation_schema.sql", verbose = options.verbose)
-            schema.make(keyspace = job.keyspace, replication = job.replication)
+            schema.make(keyspace = jobWithLocalFiles.keyspace, replication = jobWithLocalFiles.replication)
         }
         if (made)
         {
-            val mapping_files = time(s"put ${job.mapping}: %s seconds")
+            val mapping_files = time(s"put ${jobWithLocalFiles.mapping}: %s seconds")
             {
-                if (job.nocopy)
-                    Seq(job.mapping)
+                if (jobWithLocalFiles.nocopy)
+                    Seq(jobWithLocalFiles.mapping)
                 else
-                    putFile(s"${options.workdir}${base_name(job.mapping)}", job.mapping, job.mapping.toLowerCase.endsWith(".zip"))
+                {
+                    if (jobWithLocalFiles.mapping.startsWith("s3"))
+                    {
+                        val uri = new Uri(jobWithLocalFiles.mapping)
+                        val bucket = uri.getHost
+                        val key = uri.getPath.substring(1)
+                        val awsCreds = new BasicAWSCredentials(jobWithLocalFiles.aws_s3a_access_key, jobWithLocalFiles.aws_s3a_secret_key)
+                        val s3Client = AmazonS3ClientBuilder.standard()
+                            .withCredentials(new AWSStaticCredentialsProvider(awsCreds))
+                            .withRegion("eu-central-1")
+                            .build();
+                        val fullObject = s3Client.getObject(new GetObjectRequest(bucket, key))
+
+                        val localFile = File.createTempFile("s3_ingest_", key.replace('\\','_').replace('/','_'))
+                        val copyResult = Files.copy(fullObject.getObjectContent, localFile.toPath, StandardCopyOption.REPLACE_EXISTING)
+                        if (copyResult > 0) {
+                            log.info(s"copied ${jobWithLocalFiles.mapping} to ${localFile.toString}")
+                        }
+                        jobWithLocalFiles = jobWithLocalFiles.copy(mapping = localFile.toString.replace("\\","\\\\"))
+                    }
+                    putFile(s"${options.workdir}${base_name(jobWithLocalFiles.mapping)}", jobWithLocalFiles.mapping, jobWithLocalFiles.mapping.toLowerCase.endsWith(".zip"))
+
+                }
             }
             mapping_files.headOption match
             {
                 case Some(filename) =>
                     time("process: %s seconds")
                     {
-                        val processor: IngestProcessor = job.format.toString match
+                        val processor: IngestProcessor = jobWithLocalFiles.format.toString match
                         {
                             case "Belvis" => IngestBelvis(session, options)
                             case "LPEx" => IngestLPEx(session, options)
@@ -80,9 +110,9 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
                             case "Parquet" => IngestParquet(session, options)
                             case "Nyquist" => IngestNyquist(session, options)
                         }
-                        processor.process(filename, job)
+                        processor.process(filename, jobWithLocalFiles)
                     }
-                    cleanUp(job, filename)
+                    cleanUp(jobWithLocalFiles, filename)
                 case None =>
             }
         }
