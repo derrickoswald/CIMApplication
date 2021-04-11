@@ -1,7 +1,5 @@
 package ch.ninecode.sim
 
-import javax.json.JsonObject
-
 import com.datastax.spark.connector._
 
 import org.apache.spark.sql.SparkSession
@@ -20,18 +18,18 @@ import org.slf4j.LoggerFactory
  * @param spark   The Spark session
  * @param options The simulation options.
  */
-case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(spark: SparkSession, options: SimulationOptions)
-    extends SimulationPostProcessor(spark, options)
+case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])
+    extends SimulationPostProcessor
 {
-    if (options.verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger(getClass)
-
     /**
      * Load factor
      */
     @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-    def run (implicit access: SimulationCassandraAccess): Unit =
+    def run (spark: SparkSession, access: SimulationCassandraAccess, options: SimulationOptions): Unit =
     {
+        if (options.verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
+        val log: Logger = LoggerFactory.getLogger(getClass)
+
         log.info("Load Factor")
 
         val typ = "power"
@@ -42,7 +40,7 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(sp
         {
             // get the mrid,power,date DataFrame for the trafo
             log.info(trafo)
-            val simulated_power_values = simulatedPowerValues(mrids)
+            val simulated_power_values = simulatedPowerValues(mrids, access, options)
                 .drop("time")
                 .persist(options.cim_options.storage)
 
@@ -77,41 +75,10 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(sp
     }
 }
 
-object SimulationLoadFactor extends SimulationPostProcessorParser
+object SimulationLoadFactor // extends SimulationPostProcessorParser
 {
     // standard aggregation is daily
     val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate](
         SimulationAggregate(96, 0)
     )
-
-    def cls: String = "load_factor"
-
-    /**
-     * Generates a JSON parser to populate a processor.
-     *
-     * @return A method that will return an instance of a post processor given the postprocessing element of a JSON.
-     */
-    def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
-        post =>
-        {
-            val aggregates = if (post.containsKey("aggregates"))
-            {
-                val list = post.getJsonArray("aggregates")
-                for (i <- 0 until list.size)
-                    yield
-                        {
-                            val aggregate = list.getJsonObject(i)
-                            val intervals = aggregate.getInt("intervals", 96)
-                            val ttl = if (aggregate.isNull("ttl"))
-                                0
-                            else
-                                aggregate.getJsonNumber("ttl").intValue
-                            SimulationAggregate(intervals, ttl)
-                        }
-            }
-            else
-                STANDARD_AGGREGATES
-
-            SimulationLoadFactor(aggregates)(_: SparkSession, _: SimulationOptions)
-        }
 }

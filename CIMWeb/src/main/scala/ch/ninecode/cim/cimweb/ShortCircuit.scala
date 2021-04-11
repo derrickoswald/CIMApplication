@@ -8,6 +8,7 @@ import javax.ejb.Stateless
 import javax.json.Json
 import javax.json.JsonArray
 import javax.json.JsonException
+import javax.json.JsonString
 import javax.json.JsonObject
 import javax.json.JsonValue
 import javax.ws.rs.BadRequestException
@@ -16,6 +17,8 @@ import javax.ws.rs.Path
 import javax.ws.rs.Produces
 import javax.ws.rs.core.MediaType
 import javax.ws.rs.core.Response
+
+import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
 
 import ch.ninecode.cim.connector.CIMConnection
@@ -106,8 +109,8 @@ class ShortCircuit extends RESTful
             cosphi = getDouble(json, "cosphi", 0.5),
             fuse_table = fuse_table,
             messagemax = json.getInt("messagemax", 5),
-            batchsize = getLong(json, "batchsize", 10000),
-            trafos = json.getString("trafos", ""),
+            batchsize = getLong(json, "batchsize", 10000L).toInt,
+            trafos = json.getJsonArray("trafos").getValuesAs(classOf[JsonString]).asScala.map(_.getString).toArray,
             cable_impedance_limit = 5.0,
             workdir = json.getString("workdir", ""),
             calculate_public_lighting = json.getBoolean("calculate_public_lighting", false),
@@ -154,8 +157,15 @@ class ShortCircuit extends RESTful
                 {
                     case json: JsonObject =>
                         val ret = new RESTfulJSONResult()
+                        val parameters = Json.createReader(new StringReader(options.toJSON)).readObject match
+                        {
+                            case obj: JsonObject => Some(obj)
+                            case _ =>
+                                Logger.getLogger(getClass.getName).log(Level.SEVERE, """not a JsonObject""")
+                                None
+                        }
                         val result = Json.createObjectBuilder
-                            .add("parameters", options.asJSON)
+                            .add("parameters", parameters match { case Some (x) => x case _ => Json.createValue(options.toJSON) })
                             .add("result", json)
                         ret.setResult(result.build)
                         Response.ok(ret.toString, MediaType.APPLICATION_JSON).build

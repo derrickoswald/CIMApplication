@@ -4,8 +4,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import scala.io.Source
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -87,19 +85,8 @@ case class LowVoltage (session: SparkSession, options: LowVoltageOptions) extend
     // determine transformer list if any
     def getTrafos: Array[String] =
     {
-        if ("" != options.trafos)
-        {
-            // do all transformers listed in the file
-            val source = Source.fromFile(options.trafos, "UTF-8")
-            val lines = source.getLines().filter(_ != "").toArray
-            if (0 == lines.length)
-            {
-                log.error("no transformers to process")
-                sys.exit(1)
-            }
-            source.close
-            lines
-        }
+        if (0 != options.trafos.size)
+            options.trafos.toArray
         else
             Array()
     }

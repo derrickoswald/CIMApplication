@@ -4,6 +4,7 @@ import java.io.IOException
 import java.io.Serializable
 import java.util
 
+import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.collection.convert.ImplicitConversions.`map AsScala`
 import scala.io.Source
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.networknt.schema.JsonSchema
 import com.networknt.schema.JsonSchemaFactory
+import com.networknt.schema.SchemaValidatorsConfig
 import com.networknt.schema.SpecVersion
 import com.networknt.schema.SpecVersionDetector
 import com.networknt.schema.ValidationMessage
@@ -39,14 +41,18 @@ trait JSON[T <: AnyRef with Product with Serializable] extends Using
     {
         val factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V4)
         val is = Thread.currentThread.getContextClassLoader.getResourceAsStream(name)
-        factory.getSchema(is)
+        val config = new SchemaValidatorsConfig
+        config.setUriMappings(schemaUriMap)
+        factory.getSchema(is, config)
     }
 
     // Automatically detect version for given JsonNode
     def getJsonSchemaFromJsonNodeAutomaticVersion (jsonNode: JsonNode): JsonSchema =
     {
         val factory = JsonSchemaFactory.getInstance(SpecVersionDetector.detect(jsonNode))
-        factory.getSchema(jsonNode)
+        val config = new SchemaValidatorsConfig
+        config.setUriMappings(schemaUriMap)
+        factory.getSchema(jsonNode, config)
     }
 
     /**
@@ -57,12 +63,18 @@ trait JSON[T <: AnyRef with Product with Serializable] extends Using
     def schemaResourceName: String
 
     /**
+     * The mapping from URI in the schema to local URI.
+     *
+     * @return The map from global URI to local URI
+     */
+    def schemaUriMap: Map[String,String]
+
+    /**
      * Return the text of the JSON schema for the options.
      *
      * @return a string that embodies the schema for these options
      */
     def schemaText: String = using (Source.fromResource(schemaResourceName)) { src => src.mkString }
-
 
     /**
      * Return the parsed schema for the options.
@@ -70,6 +82,11 @@ trait JSON[T <: AnyRef with Product with Serializable] extends Using
      * @return the top level (object) node for the JSON schema of the options
      */
     def schema: JsonSchema = getJsonSchemaFromJsonNodeAutomaticVersion(getJsonNodeFromStringContent(schemaText))
+
+    /**
+     * The list of custom serializers for the options.
+     */
+    def customSerializers: Seq[JSONCustomSerializer[_]]
 
     /**
      * Convert a validation error message into a string.
@@ -86,23 +103,22 @@ trait JSON[T <: AnyRef with Product with Serializable] extends Using
     /**
      * Convert the given JSON text to an instance of the options.
      * @param json the string to parse into the object
-     * @param serializers the custom serializers for the case class
      * @param m Scala voodoo to be able to extract the type
      * @return either an error message in Left or the options instance in Right
      */
-    def fromJSON (json: String, serializers: Seq[JSONCustomSerializer[_]] = List())(implicit m: Manifest[T]): Either[String, T] =
+    def fromJSON (json: String)(implicit m: Manifest[T]): Either[String, T] =
     {
         val node: JsonNode = getJsonNodeFromStringContent(json)
         val errors: util.Set[ValidationMessage] = schema.validate(node)
         if (errors.isEmpty)
         {
             val json4s: JValue = fromJsonNode (node)
-            val formats: Formats =  Serialization.formats(NoTypeHints) ++ serializers
+            val formats: Formats =  Serialization.formats(NoTypeHints) ++ customSerializers
             json4s.extractOpt[T](formats, m) match
             {
                 case Some (options) => Right(options)
                 case None =>
-                    val error = serializers.foldLeft("")((error, ser) => error + ser.errors)
+                    val error = customSerializers.foldLeft("")((error, ser) => error + ser.errors)
                     Left(if (error != "") error else s"${m.runtimeClass.getName} extract failed")
             }
         }
@@ -114,12 +130,11 @@ trait JSON[T <: AnyRef with Product with Serializable] extends Using
      * Convert the given options instance into JSON.
      *
      * @param options the object to convert
-     * @param serializers the custom serializers for the case class
      * @return the JSON corresponding to the object
      */
-    def toJSON (options: T, serializers: Seq[JSONCustomSerializer[_]] = List()): String =
+    def toJSON (options: T): String =
     {
-        implicit val formats: AnyRef with Formats = Serialization.formats(NoTypeHints) ++ serializers
+        implicit val formats: AnyRef with Formats = Serialization.formats(NoTypeHints) ++ customSerializers
         writePretty (options)
     }
 }

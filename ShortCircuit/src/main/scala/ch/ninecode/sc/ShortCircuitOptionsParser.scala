@@ -4,6 +4,7 @@ import java.io.StringReader
 
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.io.Source
 
 import javax.json.Json
 import javax.json.JsonArray
@@ -115,7 +116,20 @@ class ShortCircuitOptionsParser (default: ShortCircuitOptions)
 
     opt[String]("trafos")
         .valueName("<TRA file>")
-        .action((x, c) => c.copy(trafos = x))
+        .action((x, c) =>
+            {
+                // do all transformers listed in the file
+                using (Source.fromFile(x, "UTF-8"))(
+                    source =>
+                    {
+                        val lines = source.getLines().filter(_ != "").toArray
+                        if (0 == lines.length)
+                            throw new Exception("no transformers to process") // sadly, scopt only understands exceptions
+                        c.copy(trafos = lines)
+                    }
+                )
+            }
+        )
         .text("file of transformer names (one per line) to process")
 
     opt[Double]("trafop")
@@ -148,7 +162,7 @@ class ShortCircuitOptionsParser (default: ShortCircuitOptions)
         .action((x, c) => c.copy(messagemax = x))
         .text(s"maximum number of warning and error messages per node [${default.messagemax}]")
 
-    opt[Long]("batchsize")
+    opt[Int]("batchsize")
         .action((x, c) => c.copy(batchsize = x))
         .text(s"size of result collections for driver database writes [${default.batchsize}]")
 

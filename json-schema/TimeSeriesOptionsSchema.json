@@ -1,0 +1,130 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/TimeSeriesOptionsSchema.json",
+    "description": "Options for TimeSeries.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "main_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MainOptionsSchema.json",
+            "description": "main() program options"
+        },
+        "spark_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json",
+            "description": "Spark session options"
+        },
+        "cassandra_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CassandraOptionsSchema.json",
+            "description": "Cassandra options"
+        },
+        "storage": {
+            "default": "MEMORY_AND_DISK_SER",
+            "type": "string",
+            "description": "the RDD storage level",
+            "pattern": "^NONE$|^DISK_ONLY$|^DISK_ONLY_2$|^MEMORY_ONLY$|^MEMORY_ONLY_2$|^MEMORY_ONLY_SER$|^MEMORY_ONLY_SER_2$|^MEMORY_AND_DISK$|^MEMORY_AND_DISK_2$|^MEMORY_AND_DISK_SER$|^MEMORY_AND_DISK_SER_2$|^OFF_HEAP$"
+        },
+        "keyspace": {
+            "default": "cimapplication",
+            "type": "string",
+            "description": "Cassandra keyspace"
+        },
+        "replication": {
+            "default": 1,
+            "type": "integer",
+            "description": "Cassandra keyspace replication factor only if the keyspace is created",
+            "minimum": 1
+        },
+        "model_file": {
+            "default": "models/myDecisionTreeRegressorModel",
+            "type": "string",
+            "description": "file name for model save/load"
+        },
+        "meta_file": {
+            "default": "meta_utf8.csv",
+            "type": "string",
+            "description": "file name for metadata"
+        },
+        "operation": {
+            "default": "Synthesize",
+            "type": "string",
+            "description": "the operation to perform",
+            "pattern": "^Statistics$|^Meta$|^Model$|^MetaModel$|^SimpleMetaModel$|^Synthesize$"
+        },
+        "tree_depth": {
+            "default": [15],
+            "type": ["integer", "array"],
+            "items": {
+                "type": "integer"
+            },
+            "description": "the depth of the generated decision tree, or array for hyperparameter tuning"
+        },
+        "bins": {
+            "default": [80],
+            "type": ["integer", "array"],
+            "items": {
+                "type": "integer"
+            },
+            "description": "the maximum number of bins for discretizing continuous features, or array for hyperparameter tuning"
+        },
+        "info": {
+            "default": [0.0],
+            "type": ["number", "array"],
+            "items": {
+                "type": "number"
+            },
+            "description": "the minimum information gain for a split to be considered at a tree node, or array for hyperparameter tuning"
+        },
+        "seed": {
+            "default": -1,
+            "type": "number",
+            "description": "a random number seed"
+        },
+        "synthesis": {
+            "default": "HASFAKE",
+            "type": "string",
+            "description": "the name, id, or mRID for the synthesized time series"
+        },
+        "start": {
+            "default": "2017-07-19T00:00:00.000+0000",
+            "type": [
+                "string",
+                "number"
+            ],
+            "description": "the starting time for the synthesis",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[+-]\\d{4}$"
+        },
+        "end": {
+            "default": "2017-07-19T00:00:00.000+0000",
+            "type": [
+                "string",
+                "number"
+            ],
+            "description": "the ending time for the time series",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[+-]\\d{4}$"
+        },
+        "period": {
+            "default": 900000,
+            "type": "integer",
+            "description": "the number of milliseconds between synthesized readings"
+        },
+        "yearly_kWh": {
+            "default": 7200.0,
+            "type": "number",
+            "description": "the energy used by the synthesized time series per year (kWh)"
+        },
+        "classes": {
+            "default": {},
+            "type": "object",
+            "patternProperties": {
+                "^.*$": {
+                    "type": "integer"
+                }
+            },
+            "description": "The class types and counts for synthesis using meta data, e.g. 'Apartment=4, General=1'"
+        }
+    }
+}

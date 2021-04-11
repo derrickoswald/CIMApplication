@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationRecorderQuerySchema.json",
+    "description": "Simulation recorder query description.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "title":
+        {
+            "default": "",
+            "type": "string",
+            "minLength": 1,
+            "description": "the name for the recorder query"
+        },
+        "query":
+        {
+            "default": "",
+            "type": "string",
+            "minLength": 6,
+            "description": "the query to determine what nodes or edges are recorded - must return name, mrid, parent, type, property, unit and island"
+        },
+        "interval":
+        {
+            "default": 900,
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "the recording interval in seconds"
+        },
+        "aggregations":
+        {
+            "default": [],
+            "type": "array",
+            "items": {
+                "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationAggregateSchema.json"
+            },
+            "description": "the list of aggregations"
+        }
+    }
+}
+
+

@@ -14,8 +14,13 @@ case class CassandraOptions (
 )
 {
     def toJSON: String = CassandraOptions.toJSON(this)
+    def fromJSON (text: String): Either[String, CassandraOptions] = CassandraOptions.fromJSON(text)
 }
 object CassandraOptions extends JSON[CassandraOptions]
 {
     def schemaResourceName: String = "CassandraOptionsSchema.json"
+    def schemaUriMap: Map[String,String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CassandraOptionsSchema.json" -> "resource:CassandraOptionsSchema.json"
+    )
+    def customSerializers: Seq[JSONCustomSerializer[_]] = Seq()
 }

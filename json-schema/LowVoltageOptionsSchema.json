@@ -1,0 +1,52 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/LowVoltageOptionsSchema.json",
+    "description": "Options for LowVoltage.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "main_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MainOptionsSchema.json",
+            "description": "main() program options"
+        },
+        "spark_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json",
+            "description": "Spark session options"
+        },
+        "cim_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CIMReaderOptionsSchema.json",
+            "description": "CIMReader options"
+        },
+        "verbose":
+        {
+            "default": false,
+            "type": "boolean",
+            "description": "if true output informational messages"
+        },
+        "three":
+        {
+            "default": false,
+            "type": "boolean",
+            "description": "if true generate three phase .glm files, else one phase"
+        },
+        "trafos": {
+            "default": [
+
+            ],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "the list of transformers to process"
+        },
+        "workdir": {
+            "default": "",
+            "type": "string",
+            "description": "the shared directory (among Spark executors) to use for staging GridLAB-D simulations"
+        }
+    }
+}

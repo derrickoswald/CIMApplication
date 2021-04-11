@@ -1,5 +1,7 @@
 package ch.ninecode.sc
 
+import scala.io.Source
+
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.net.Net
@@ -15,4 +17,13 @@ class SCTestBase extends TestUtil
         Net.classes,
         ShortCircuit.classes,
         Util.classes)
+    def readTrafoFile (filename: String): Array[String]=
+    {
+        using (Source.fromFile(filename, "UTF-8"))(
+            source =>
+            {
+                source.getLines().filter(_ != "").toArray
+            }
+        )
+    }
 }

@@ -4,6 +4,8 @@ import java.io.StringReader
 import java.util.logging.Level
 import java.util.logging.Logger
 
+import scala.collection.JavaConverters.asScalaBufferConverter
+
 import javax.json.Json
 import javax.json.JsonObject
 import javax.json.JsonStructure
@@ -66,7 +68,7 @@ case class MaximumFeedInFunction (job: String) extends CIMWebFunction
             verbose = json.getBoolean("verbose", false),
             three = json.getBoolean("three", false),
             precalculation = json.getBoolean("precalculation", false),
-            trafos = json.getString("trafos", ""),
+            trafos = json.getJsonArray("trafos").getValuesAs(classOf[JsonString]).asScala.map(_.getString),
             export_only = json.getBoolean("export_only", false),
             all = json.getBoolean("all", false),
             erase = json.getBoolean("erase", false),
@@ -145,7 +147,7 @@ case class MaximumFeedInFunction (job: String) extends CIMWebFunction
         LoggerFactory.getLogger(getClass).info("computed")
         spark.sparkContext.setJobGroup(null, null)
         val result = Json.createObjectBuilder
-            .add("parameters", options.asJSON)
+            .add("parameters", options.toJSON)
             .add("transformers", count)
             .add ("id", options.id)
             .add ("run", 1) // always 1 for a new id

@@ -1,5 +1,9 @@
 package ch.ninecode.sim
 
+import ch.ninecode.util.JSON
+import ch.ninecode.util.JSONAble
+import ch.ninecode.util.JSONCustomSerializer
+
 case class SimulationAggregate
 (
     /**
@@ -19,5 +23,42 @@ case class SimulationAggregate
      * If non-zero the records saved for this aggregation will be assigned
      * this time-o-live (https://docs.datastax.com/en/dse/6.7/cql/cql/cql_using/useExpire.html).
      */
-    time_to_live: Int
-)
+    ttl: Int
+) extends JSONAble[SimulationAggregate]
+{
+    /**
+     * Output equivalent JSON options.
+     */
+    override def toJSON: String = SimulationAggregate.toJSON(this)
+
+    /**
+     * Create one of these option objects from JSON.
+     *
+     * @param text the JSON text
+     * @return either an error message in Left or the options instance in Right
+     */
+    override def fromJSON (text: String): Either[String, SimulationAggregate] = SimulationAggregate.fromJSON(text)
+}
+object SimulationAggregate extends JSON[SimulationAggregate]
+{
+    /**
+     * The name of the resource containing the JSON schema for the options.
+     *
+     * @return a resource name string for use by ClassLoader.getResourceAsStream
+     */
+    override def schemaResourceName: String = "SimulationAggregateSchema.json"
+
+    /**
+     * The mapping from URI in the schema to local URI.
+     *
+     * @return The map from global URI to local URI
+     */
+    override def schemaUriMap: Map[String, String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationAggregateSchema.json" -> "resource:SimulationAggregateSchema.json"
+    )
+
+    /**
+     * The list of custom serializers for the options.
+     */
+    override def customSerializers: Seq[JSONCustomSerializer[_]] = Seq()
+}

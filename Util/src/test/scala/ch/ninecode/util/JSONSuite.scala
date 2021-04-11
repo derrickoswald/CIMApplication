@@ -430,4 +430,74 @@ class JSONSuite extends AnyFunSuite
                 assert (options.storage == StorageLevel.NONE, "storage in cimreader options")
         }
     }
+
+    test("complex string")
+    {
+        val complex = """"3+4j""""
+        Complex.fromJSON(complex) match
+        {
+            case Left(errors) => fail(s"parse complex string: $errors")
+            case Right(c) => assert(c == Complex(3,4))
+        }
+    }
+
+    test("bad complex string")
+    {
+        val complex = """"3x+4j""""
+        Complex.fromJSON(complex) match
+        {
+            case Left(errors) => assert(errors.contains("$: does not match the regex pattern ^((?:[+-]?(?:[0-9]*\\.?[0-9]*)|(?:\\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)?[\\s]*([+-<])[\\s]*[ij]?((?:[+-]?(?:[0-9]*\\.?[0-9]*)|(?:\\.[0-9]+))(?:[Ee][+-]?[0-9]+)?)([ijd°])?$"))
+            case Right(_) => fail("bad JSON")
+        }
+    }
+
+    test("complex object")
+    {
+        val complex = """{"re":3,"im":4}"""
+        Complex.fromJSON(complex) match
+        {
+            case Left(errors) => fail(s"parse complex object: $errors")
+            case Right(c) => assert(c == Complex(3,4))
+        }
+    }
+
+    test("bad complex object")
+    {
+        val complex = """{"real":3,"imaginary":4}"""
+        Complex.fromJSON(complex) match
+        {
+            case Left(errors) => assert(errors.contains("additionalProperties 1001 $ [real]  $.real: is not defined in the schema and the schema does not allow additional properties"))
+            case Right(_) => fail("bad JSON")
+        }
+    }
+
+    test("complex number")
+    {
+        val complex = """42.0"""
+        Complex.fromJSON(complex) match
+        {
+            case Left(errors) => fail(s"parse complex number: $errors")
+            case Right(c) => assert(c == Complex(42.0))
+        }
+    }
+
+    test("complex integer")
+    {
+        val complex = """42"""
+        Complex.fromJSON(complex) match
+        {
+            case Left(errors) => fail(s"parse complex integer: $errors")
+            case Right(c) => assert(c == Complex(42))
+        }
+    }
+
+    test("complex polar string")
+    {
+        val complex = """"17<13°""""
+        Complex.fromJSON(complex) match
+        {
+            case Left(errors) => fail(s"parse complex polar string: $errors")
+            case Right(c) => assert(c == Complex("17<13°"))
+        }
+    }
 }

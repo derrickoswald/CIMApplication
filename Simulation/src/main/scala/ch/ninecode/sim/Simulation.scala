@@ -276,8 +276,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             val players_recorders: RDD[(island_id, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult]))] = playersets.join(recordersets)
 
             // get the starting and ending times
-            val start = job.start_time
-            val end = job.end_time
+            val start = job.interval.start_time
+            val end = job.interval.end_time
 
             log.info("""generating simulation tasks""")
 
@@ -405,24 +405,24 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     def queryValues (job: SimulationJob, simulations: RDD[SimulationTrafoKreis]): RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] =
     {
         val phases = if (options.three_phase && !options.fake_three_phase) 3 else 1
-        val start = dup(job.start_time)
-        start.add(Calendar.MILLISECOND, -job.buffer)
-        val end = dup(job.end_time)
-        end.add(Calendar.MILLISECOND, job.buffer)
+        val start = dup(job.interval.start_time)
+        start.add(Calendar.MILLISECOND, -job.interval.buffer)
+        val end = dup(job.interval.end_time)
+        end.add(Calendar.MILLISECOND, job.interval.buffer)
         val low = cassandra_date_format.format(start.getTime)
         val high = cassandra_date_format.format(end.getTime)
         val time_filter = s"time >= '$low' and time <= '$high'"
         val measured_df = spark
             .read
             .format("org.apache.spark.sql.cassandra")
-            .options(Map("table" -> "measured_value", "keyspace" -> job.input_keyspace))
+            .options(Map("table" -> "measured_value", "keyspace" -> job.keyspaces.input_keyspace))
             .load
             .filter(time_filter)
             .selectExpr(columns("mrid")(phases): _*)
         val synthesised_df = spark
             .read
             .format("org.apache.spark.sql.cassandra")
-            .options(Map("table" -> "synthesized_value", "keyspace" -> job.input_keyspace))
+            .options(Map("table" -> "synthesized_value", "keyspace" -> job.keyspaces.input_keyspace))
             .load
             .filter(time_filter)
             .selectExpr(columns("synthesis")(phases): _*)
@@ -503,7 +503,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         if ((keytype != "string") || (valuetype != "string"))
                             log.error(s"""extra query "${extra.title}" schema fields key and value are not both strings (key=$keytype, value=$valuetype)""")
                         else
-                            df.rdd.map(row => (job.id, extra.title, row.getString(keyindex), row.getString(valueindex))).saveToCassandra(job.output_keyspace, "key_value", SomeColumns("simulation", "query", "key", "value"))
+                            df.rdd.map(row => (job.id, extra.title, row.getString(keyindex), row.getString(valueindex))).saveToCassandra(job.keyspaces.output_keyspace, "key_value", SomeColumns("simulation", "query", "key", "value"))
                     }
                 }
                 else
@@ -548,9 +548,9 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         val numSimulations = simulations.count().toInt
         log.info(s"""performing $numSimulations GridLAB-D simulation${plural(numSimulations)}""")
         val runner = SimulationRunner(
-            job.output_keyspace, options.workdir,
+            job.keyspaces.output_keyspace, options.workdir,
             options.three_phase, options.fake_three_phase,
-            job.cim_temperature, job.simulation_temperature, job.swing_voltage_factor,
+            job.temperatures.cim_temperature, job.temperatures.simulation_temperature, job.swing_voltage_factor,
             options.keep, options.verbose)
         val raw_results =
             simulations
@@ -568,7 +568,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     {
         val (transformers, _) = getTransformers
         val tasks = make_tasks(job)
-        job.save(session, job.output_keyspace, job.id, tasks)
+        job.save(session, job.keyspaces.output_keyspace, job.id, tasks)
 
         log.info("""matching tasks to topological islands""")
         val _simulations =
@@ -639,7 +639,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 log.info(s"starting simulation ${job.id}")
 
                 val schema = Schema(session, "/simulation_schema.sql", options.verbose)
-                if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
+                if (schema.make(keyspace = job.keyspaces.output_keyspace, replication = job.keyspaces.replication))
                 {
                     // perform the extra queries and insert into the key_value table
                     performExtraQueries(job)
@@ -649,7 +649,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     if (!simulations.isEmpty())
                     {
                         log.info("""storing GeoJSON data""")
-                        val geo = SimulationGeometry(session, job.output_keyspace)
+                        val geo = SimulationGeometry(session, job.keyspaces.output_keyspace)
                         geo.storeGeometry(job.id, simulations)
 
                         log.info("""querying player data""")
@@ -660,7 +660,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         // save the results
                         log.info("""saving GridLAB-D simulation results""")
                         val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
-                        simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
+                        simulationResults.saveToCassandra(job.keyspaces.output_keyspace, "simulated_value", writeConf = conf)
                         log.info("""saved GridLAB-D simulation results""")
                         vanishRDD(player_rdd)
                     }
@@ -676,7 +676,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def postprocess (ids: Seq[String], jobs: Seq[SimulationJob])
     {
-        val keyspaces = jobs.map(_.output_keyspace).distinct
+        val keyspaces = jobs.map(_.keyspaces.output_keyspace).distinct
         val lookup = keyspaces.flatMap(
             keyspace =>
             {
@@ -698,18 +698,12 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             lookup.find(_._1 == simulation) match
             {
                 case Some((id, input, output)) =>
-                    implicit val access: SimulationCassandraAccess =
+                    val access: SimulationCassandraAccess =
                         SimulationCassandraAccess(spark, options.cim_options.storage, id, input, output, options.verbose)
                     // ToDo: this isn't quite right, take the first job matching the output keyspace
-                    val batches = jobs.groupBy(_.output_keyspace)
+                    val batches = jobs.groupBy(_.keyspaces.output_keyspace)
                     val job = aJob(batches(output))
-                    job.postprocessors.foreach(
-                        processor =>
-                        {
-                            val runner = processor(session, options)
-                            runner.run(access)
-                        }
-                    )
+                    job.postprocessors.foreach(_.run (spark, access, options))
                 case None =>
                     log.error(s"simulation $simulation not found in keyspaces (${lookup.map(_._2).mkString(",")})")
             }
@@ -725,13 +719,13 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         val ids = if (!options.postprocessonly)
         {
             // organize by same RDF, options and output keyspace
-            val batches = jobs.groupBy(job => s"${job.cim}${job.optionString}${job.output_keyspace}").values
+            val batches = jobs.groupBy(job => s"${job.cim}${job.optionString}${job.keyspaces.output_keyspace}").values
             batches.flatMap(simulate).toSeq
         }
         else
         {
             // get all simulations from the output keyspace(s)
-            val keyspaces = jobs.map(_.output_keyspace).distinct
+            val keyspaces = jobs.map(_.keyspaces.output_keyspace).distinct
             log.info(s"""using keyspace${plural(keyspaces.length)} ${keyspaces.mkString(",")}""")
             keyspaces.flatMap(
                 keyspace =>

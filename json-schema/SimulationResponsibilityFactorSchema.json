@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationResponsibilityFactorSchema.json",
+    "description": "Simulation responsibility factor definitions.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "class": {
+            "default": "responsibility_factor",
+            "type": "string",
+            "description": "responsibility factor class",
+            "pattern": "^responsibility_factor"
+        },
+        "aggregates": {
+            "default": [],
+            "type": "array",
+            "items": {
+                "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationAggregateSchema.json"
+            },
+            "description": "the list of aggregations to calculate the responsibility factor for"
+        }
+    },
+    "required": ["class"]
+}

@@ -6,7 +6,7 @@ package ch.ninecode.util
  * @tparam T class type required for parsed values
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-trait CassandraOptionsParser[T <: Cassandraable with Sparkable with Mainable] extends MainOptionsParser[T]
+trait CassandraOptionsParser[T <: Cassandraable with Sparkable with Mainable with JSONAble[T]] extends MainOptionsParser[T]
 {
     opt[String]("host")
         .valueName("Cassandra")

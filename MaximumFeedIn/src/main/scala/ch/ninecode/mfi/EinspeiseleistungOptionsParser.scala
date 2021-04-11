@@ -1,11 +1,13 @@
 package ch.ninecode.mfi
 
+import scala.io.Source
+
 import ch.ninecode.util.CIMReaderOptionsParser
 import ch.ninecode.util.CassandraOptionsParser
 import ch.ninecode.util.MainOptionsParser
 import ch.ninecode.util.SparkOptionsParser
 
-@SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
+@SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements", "org.wartremover.warts.Throw"))
 class EinspeiseleistungOptionsParser (options: EinspeiseleistungOptions)
     extends MainOptionsParser[EinspeiseleistungOptions](options)
     with SparkOptionsParser[EinspeiseleistungOptions]
@@ -13,11 +15,6 @@ class EinspeiseleistungOptionsParser (options: EinspeiseleistungOptions)
     with CassandraOptionsParser[EinspeiseleistungOptions]
 {
     implicit val FormatsRead: scopt.Read[MaximumFeedInOutputType.Value] = scopt.Read.reads(MaximumFeedInOutputType.withName)
-
-    opt[String]("checkpoint")
-        .valueName("<dir>")
-        .action((x, c) => c.copy(checkpoint_dir = x))
-        .text(s"checkpoint directory on HDFS, e.g. hdfs://... [${options.checkpoint_dir}]")
 
     opt[String]("id")
         .valueName("<text>")
@@ -38,8 +35,21 @@ class EinspeiseleistungOptionsParser (options: EinspeiseleistungOptions)
 
     opt[String]("trafos")
         .valueName("<TRA file>")
-        .action((x, c) => c.copy(trafos = x))
-        .text(s"file of transformer names (one per line) to process [${options.trafos}]")
+        .action((x, c) =>
+        {
+            // do all transformers listed in the file
+            using (Source.fromFile(x, "UTF-8"))(
+                source =>
+                {
+                    val lines = source.getLines().filter(_ != "").toArray
+                    if (0 == lines.length)
+                        throw new Exception("no transformers to process") // sadly, scopt only understands exceptions
+                    c.copy(trafos = lines)
+                }
+            )
+        }
+        )
+        .text("file of transformer names (one per line) to process")
 
     opt[Unit]("export_only")
         .action((_, c) => c.copy(export_only = true))

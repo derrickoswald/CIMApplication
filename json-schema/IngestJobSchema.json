@@ -1,0 +1,88 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/IngestJobSchema.json",
+    "description": "An Ingest job.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "mapping": {
+            "default": "",
+            "type": "string",
+            "description": "mapping CSV file or RDF file name",
+            "minLength": 1
+        },
+        "metercol": {
+            "default": "Messpunktbezeichnung",
+            "type": "string",
+            "description": "mapping CSV measurement identifier column name (column containing CH############################### values)"
+        },
+        "mridcol": {
+            "default": "NISNr",
+            "type": "string",
+            "description": "mapping CSV mRID column name (column containing HAS##### values)"
+        },
+        "timezone": {
+            "default": "Europe/Berlin",
+            "type": "string",
+            "description": "time zone for the measurement files"
+        },
+        "mintime": {
+            "default": 0,
+            "type": "number",
+            "description": "minimum time for ingestion timespan"
+        },
+        "maxtime": {
+            "default": 2147483647000,
+            "type": "number",
+            "description": "maximum time for ingestion timespan"
+        },
+        "format": {
+            "default": "Belvis",
+            "type": "string",
+            "description": "type of data file, either Belvis, LPEx or MSCONS, Custom, Parquet or Nyquist",
+            "pattern": "^Belvis$|^LPEx$|^MSCONS$|^Custom$|^Parquet$|^Nyquist$"
+        },
+        "mode": {
+            "default": "Overwrite",
+            "type": "string",
+            "description": "ingest Mode: 'Overwrite' or 'Append'",
+            "pattern": "^Overwrite$|^Append$"
+        },
+        "nocopy": {
+            "default": false,
+            "type": "boolean",
+            "description": "if true, use the file names provided directly, without unzipping or transferring them to HDFS"
+        },
+        "datafiles": {
+            "default": [
+
+            ],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Source Belvis/LPEx/MSCONS/Custom/Parquet/Nyquist files"
+        },
+        "keyspace": {
+            "default": "cimapplication",
+            "type": "string",
+            "description": "Cassandra keyspace"
+        },
+        "replication": {
+            "default": 1,
+            "type": "integer",
+            "description": "Cassandra keyspace replication factor only if the keyspace is created",
+            "minimum": 1
+        },
+        "aws_s3a_access_key": {
+            "default": "",
+            "type": "string",
+            "description": "access key used to execute Amazon Web Services"
+        },
+        "aws_s3a_secret_key": {
+            "default": "",
+            "type": "string",
+            "description": "secret access key used to execute Amazon Web Services"
+        }
+    }
+}

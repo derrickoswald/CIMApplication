@@ -1,0 +1,40 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MSCONSOptionsSchema.json",
+    "description": "Options for the MSCONSReader.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "verbose": {
+            "default": false,
+            "type": "boolean",
+            "description": "if true, emit progress messages"
+        },
+        "log_level": {
+            "default": "OFF",
+            "type": "string",
+            "description": "logging level",
+            "pattern": "^ALL$|^DEBUG$|^ERROR$|^FATAL$|^INFO$|^OFF$|^TRACE$|^WARN$"
+        },
+        "output_file": {
+            "default": "",
+            "type": "string",
+            "description": "name of the output file to write"
+        },
+        "delimiter": {
+            "default": " ",
+            "type": "string",
+            "description": "the character to insert between record fields"
+        },
+        "mscons": {
+            "default": [
+
+            ],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "MSCONS files"
+        }
+    }
+}

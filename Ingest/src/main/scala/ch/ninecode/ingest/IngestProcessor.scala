@@ -205,7 +205,7 @@ trait IngestProcessor
             time(s"copy $file: %s seconds")
             {
                 val name = base_name(file)
-                putFile(s"${workdir}$name", file, file.toLowerCase.endsWith(".zip"))
+                putFile(s"$workdir$name", file, file.toLowerCase.endsWith(".zip"))
             }
     }
 

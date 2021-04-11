@@ -120,9 +120,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
 
     def run (): Unit =
     {
-        // the ingestion jobs to do
-        val jobs: Seq[IngestJob] = IngestJob.getAll(options)
-        jobs.foreach(runJob)
+        options.ingestions.foreach(runJob)
     }
 }
 
@@ -162,6 +160,7 @@ object Ingest extends SparkInitializer[IngestOptions] with Main
             val default = IngestOptions(
                 main_options = MainOptions(application_name, application_version),
                 spark_options = SparkOptions(jars = jars),
+                ingestions = Seq(IngestJob())
             )
 
             // parse the command line arguments

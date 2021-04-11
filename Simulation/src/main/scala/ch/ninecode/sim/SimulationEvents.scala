@@ -3,9 +3,6 @@ package ch.ninecode.sim
 import java.sql.Date
 import java.sql.Timestamp
 
-import javax.json.JsonObject
-import javax.json.JsonValue
-import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.reflect.runtime.universe.TypeTag
 
 import org.apache.spark.rdd.RDD
@@ -96,7 +93,7 @@ abstract class Trigger (
  *
  * @param `type`    The type of value, which corresponds to the <code>type</code> column of the simulated_value Cassandra table.
  * @param severity  The severity of the event.
- * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the geojson_XXX Cassandra table.
+ * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the key_value Cassandra table.
  * @param default   The reference default value if it is not found in the <code>properties</code> column. (same units as simulated_value records for the type)
  * @param ratio     The ratio between the value and reference above which the event will be triggered.
  * @param duration  The continuous duration that the ratio must be exceeded for the event to be registered (mSec).
@@ -124,7 +121,7 @@ case class HighTrigger (
  *
  * @param `type`    The type of value, which corresponds to the <code>type</code> column of the simulated_value Cassandra table.
  * @param severity  The severity of the event.
- * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the geojson_XXX Cassandra table.
+ * @param reference The reference value, which corresponds to the property in the <code>properties</code> column of the key_value Cassandra table.
  * @param default   The reference default value if it is not found in the <code>properties</code> column. (same units as simulated_value records for the type)
  * @param ratio     The ratio between the value and reference below which the event will be triggered.
  * @param duration  The continuous duration that the ratio must be subceeded for the event to be registered (mSec).
@@ -352,7 +349,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * @param events the detected events
      * @param access a Cassandra helper class
      */
-    def save (events: RDD[Event])(implicit access: SimulationCassandraAccess): Unit =
+    def save (events: RDD[Event], access: SimulationCassandraAccess): Unit =
     {
         val columns = SomeColumns("simulation", "mrid", "type", "start_time", "end_time", "ratio", "severity", "message")
         val configuration = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(consistencyLevel = ConsistencyLevel.ANY)
@@ -424,7 +421,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * @param triggers the trigger thresholds in the set
      * @param access   a Cassandra helper class
      */
-    def checkFor (triggers: Iterable[Trigger])(implicit access: SimulationCassandraAccess): Unit =
+    def checkFor (triggers: Iterable[Trigger], access: SimulationCassandraAccess): Unit =
     {
         val (typ, reference) = getTriggerDetails(triggers)
 
@@ -491,7 +488,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         else
             spark.sparkContext.emptyRDD[Event]
 
-        save(highEvents.union(lowEvents))
+        save(highEvents.union(lowEvents), access)
 
         {
             val _ = values_rdd.unpersist(false)
@@ -518,7 +515,7 @@ case class EventNumber (
 
 case class Summarizer (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"))
 {
-    def getEvents (implicit access: SimulationCassandraAccess): DataFrame =
+    def getEvents (access: SimulationCassandraAccess): DataFrame =
     {
         val events = access.events
         val ret = events
@@ -528,7 +525,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
         ret
     }
 
-    def getRecorders (implicit access: SimulationCassandraAccess): DataFrame =
+    def getRecorders (access: SimulationCassandraAccess): DataFrame =
     {
         val recorders = access.recorders
         val ret = recorders
@@ -646,13 +643,13 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
         summary.mapValues(toUDT)
     }
 
-    def summarize ()(implicit access: SimulationCassandraAccess): Unit =
+    def summarize (access: SimulationCassandraAccess): Unit =
     {
         // get the events - a mix of "voltage" "current" and "power" types
-        val power_events = getEvents
+        val power_events = getEvents (access)
 
         // get the recorders - a mix of "voltage" "current" and "power" types
-        val recorders = getRecorders
+        val recorders = getRecorders (access)
 
         // join on mrid and type
         val values = power_events.join(recorders, Seq("mrid", "type"))
@@ -701,14 +698,14 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
  * @param spark    The Spark session
  * @param options  The simulation options. Note: Currently only the verbose and storage_level options are used.
  */
-case class SimulationEvents (triggers: Iterable[Trigger])(spark: SparkSession, options: SimulationOptions)
-    extends SimulationPostProcessor(spark, options)
+case class SimulationEvents (triggers: Iterable[Trigger])
+    extends SimulationPostProcessor
 {
-    if (options.verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger(getClass)
-
-    def run (implicit access: SimulationCassandraAccess): Unit =
+    def run (spark: SparkSession, access: SimulationCassandraAccess, options: SimulationOptions): Unit =
     {
+        if (options.verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
+        val log: Logger = LoggerFactory.getLogger(getClass)
+
         // organize the triggers by type, table, reference and default
         val sets = triggers.groupBy(trigger => (trigger.`type`, trigger.reference, trigger.default)).toArray
         log.info(s"checking for events in ${access.simulation} (input keyspace: ${access.input_keyspace}, output keyspace: ${access.output_keyspace})")
@@ -717,13 +714,13 @@ case class SimulationEvents (triggers: Iterable[Trigger])(spark: SparkSession, o
         for (((typ, ref, default), thresholds) <- sets)
         {
             log.info(s"$typ events with reference $ref and default $default")
-            DoubleChecker(spark, options.cim_options.storage, options.three_phase).checkFor(thresholds)
+            DoubleChecker(spark, options.cim_options.storage, options.three_phase).checkFor(thresholds, access)
             log.info(s"$typ deviation events saved to ${access.output_keyspace}.simulation_event")
         }
 
         // perform the summary
         log.info("summarizing events")
-        Summarizer(spark, options.cim_options.storage).summarize()
+        Summarizer(spark, options.cim_options.storage).summarize(access)
         log.info(s"event summary saved to ${access.output_keyspace}.simulation_event_summary")
     }
 }
@@ -731,7 +728,7 @@ case class SimulationEvents (triggers: Iterable[Trigger])(spark: SparkSession, o
 /**
  * Parser for "event" post processor.
  */
-object SimulationEvents extends SimulationPostProcessorParser
+object SimulationEvents
 {
     val STANDARD_TRIGGERS: Iterable[Trigger] = List[Trigger](
         // voltage exceeds ±10% of nominal = red, voltage exceeds ±6%=orange
@@ -754,58 +751,4 @@ object SimulationEvents extends SimulationPostProcessorParser
         HighTrigger("power", 2, "ratedS", 630.0, 0.90, 3 * 60 * 60 * 1000),
         HighTrigger("power", 2, "ratedS", 630.0, 1.10, 15 * 60 * 1000)
     )
-
-
-    def cls: String = "event"
-
-    /**
-     * Generates a JSON parser to populate a processor.
-     *
-     * @return A method that will return an instance of a post processor given the postprocessing element of a JSON.
-     */
-    def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
-        post =>
-        {
-            val triggers = if (post.containsKey("thresholds"))
-            {
-                val value = post.get("thresholds")
-                if (value.getValueType == JsonValue.ValueType.ARRAY)
-                {
-                    val post_processors: Seq[Option[Trigger]] = value
-                        .asJsonArray
-                        .asScala
-                        .map
-                        {
-                            case threshold: JsonObject =>
-                                val trigger = threshold.getString("trigger", "high")
-                                val `type` = threshold.getString("type", "voltage")
-                                val severity = threshold.getInt("severity", 1)
-                                val reference = threshold.getString("reference", "ratedS")
-                                val default = threshold.getJsonNumber("default").doubleValue()
-                                val ratio = threshold.getJsonNumber("ratio").doubleValue()
-                                val duration = threshold.getInt("duration", 900000)
-                                trigger match
-                                {
-                                    case "high" =>
-                                        val hi: Trigger = HighTrigger(`type`, severity, reference, default, ratio, duration)
-                                        Some(hi)
-                                    case "low" =>
-                                        val lo: Trigger = LowTrigger(`type`, severity, reference, default, ratio, duration)
-                                        Some(lo)
-                                    case _ => None
-                                }
-                            case _ =>
-                                // ToDo: log.error
-                                None
-                        }
-                    post_processors.flatten
-                }
-                else
-                    STANDARD_TRIGGERS
-            }
-            else
-                STANDARD_TRIGGERS
-
-            SimulationEvents(triggers)(_: SparkSession, _: SimulationOptions)
-        }
 }

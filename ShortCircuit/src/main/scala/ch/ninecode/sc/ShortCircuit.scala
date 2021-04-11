@@ -1,7 +1,6 @@
 package ch.ninecode.sc
 
 import scala.collection.Map
-import scala.io.Source
 
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
@@ -579,19 +578,14 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
 
         val transformers: RDD[TransformerIsland] =
-            if (null != options.trafos && "" != options.trafos && "all" != options.trafos)
-            {
-                val source = Source.fromFile(options.trafos, "UTF-8")
-                val trafos = source.getLines().filter(_ != "").toArray
-                source.close()
+            if (0 != options.trafos.length)
                 transformer_data
-                    .filter(transformer => trafos.contains(transformer.transformer.id))
+                    .filter(transformer => options.trafos.contains(transformer.transformer.id))
                     .groupBy(_.node1.TopologicalIsland)
                     .values
                     .map(TransformerIsland.apply)
-            }
             else
-            // do all low voltage power transformers
+                // do all low voltage power transformers
                 transformer_data
                     .filter(td => (td.v0 > 1000.0) && (td.v1 <= 1000.0)) // ToDo: don't hard code this rule
                     .groupBy(_.node1.TopologicalIsland)

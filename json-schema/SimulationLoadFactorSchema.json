@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationLoadFactorSchema.json",
+    "description": "Simulation load factor definitions.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "class": {
+            "default": "load_factor",
+            "type": "string",
+            "description": "load factor class",
+            "pattern": "^load_factor$"
+        },
+        "aggregates": {
+            "default": [],
+            "type": "array",
+            "items": {
+                "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationAggregateSchema.json"
+            },
+            "description": "the list of aggregations to calculate the load factor for"
+        }
+    },
+    "required": ["class"]
+}

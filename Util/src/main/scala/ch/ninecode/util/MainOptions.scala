@@ -14,11 +14,16 @@ case class MainOptions
     version: String = "2.12-3.0.1-3.0.6",
     valid: Boolean = true,
     unittest: Boolean = false,
-)
+) extends JSONAble[MainOptions]
 {
     def toJSON: String = MainOptions.toJSON(this)
+    def fromJSON (text: String): Either[String, MainOptions] = MainOptions.fromJSON(text)
 }
 object MainOptions extends JSON[MainOptions]
 {
     def schemaResourceName: String = "MainOptionsSchema.json"
+    def schemaUriMap: Map[String,String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MainOptionsSchema.json" -> "resource:MainOptionsSchema.json"
+    )
+    def customSerializers: Seq[JSONCustomSerializer[_]] = Seq()
 }

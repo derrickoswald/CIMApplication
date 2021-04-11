@@ -1,0 +1,116 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationJobSchema.json",
+    "description": "Simulation job.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "id": {
+            "default": "",
+            "type": ["string", "null"],
+            "description": "the user specified ID or a generated GUID identifying this simulation uniquely (if one is not supplied in the JSON it will be generated)"
+        },
+        "name": {
+            "default": "",
+            "type": ["string", "null"],
+            "description": "a user specified name for the simulation - this would be used in chart titles or graph labels when comparing scenarios"
+        },
+        "description": {
+            "default": "",
+            "type": ["string", "null"],
+            "description": "a user specified description for the simulation - this would be a reminder to the user about why they did the simulation, i.e. a project name"
+        },
+        "cim": {
+            "default": "",
+            "type": "string",
+            "description": "the CIM files (file system dependent names, e.g. hdfs://sandbox:8020/DemoData.rdf) used in the simulation, if there is more than one file, e.g. an additional switch setting overlay file, then separate the file names with commas"
+        },
+        "cimreaderoptions": {
+            "default": {
+            },
+            "type": "object",
+            "patternProperties": {
+                "^.*$": {
+                    "type": "string"
+                }
+            },
+            "description": "options to pass to the CIMReader - unless there is a topology already in the CIM file, this should include ch.ninecode.cim.do_topo_islands=true"
+        },
+        "keyspaces":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationKeyspacesSchema.json",
+            "description": "the Cassandra keyspaces to use"
+        },
+        "interval":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationIntervalSchema.json",
+            "description": "the time period over which to simulate"
+        },
+        "temperatures":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationTemperaturesSchema.json",
+            "description": "simulation temperature and CIM file temperature"
+        },
+        "swing_voltage_factor": {
+            "default": 1.0,
+            "type": "number",
+            "description": "he factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal"
+        },
+        "transformers": {
+            "default": [
+
+            ],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "The name of the transformers to simulate (if this list is empty all transformers in the CIM file will be processed) where the names should reflect \"ganged\" transformers. For example, if TRA1234 and TRA1235 share a common low voltage topological node, then the name would be \"TRA1234_TRA1235\""
+        },
+        "swing": {
+            "default": "hi",
+            "type": "string",
+            "pattern": "^hi$|^lo$",
+            "description": "either \"hi\" or \"lo\" to set the swing bus (slack bus) on the high or low voltage winding of the transformer"
+        },
+        "players":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationPlayerQuerySchema.json",
+            "description": "queries for driving data"
+        },
+        "recorders":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationRecorderQuerySchema.json",
+            "description": "queries for recording data and the recording interval and any aggregations"
+        },
+        "extras":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationExtraQuerySchema.json",
+            "description": "queries for data to attach to the GeoJSON point, line and polygon features"
+        },
+        "postprocessing":
+        {
+            "default": [
+
+            ],
+            "type": "array",
+            "items": {
+                "anyOf": [
+                    {
+                        "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationEventsSchema.json"
+                    },
+                    {
+                        "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationCoincidenceFactorSchema.json"
+                    },
+                    {
+                        "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationLoadFactorSchema.json"
+                    },
+                    {
+                        "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationResponsibilityFactorSchema.json"
+                    }
+                ]
+            },
+            "description": "operations to be performed after the simulation is complete - each processor in the list handles one type of operation"
+        }
+    }
+}

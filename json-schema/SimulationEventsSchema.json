@@ -1,0 +1,64 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationEventsSchema.json",
+    "description": "Simulation event (significant deviations) definitions.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "class": {
+            "default": "event",
+            "type": "string",
+            "description": "event detection class",
+            "pattern": "^event$"
+        },
+        "thresholds": {
+            "default": [],
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties":{
+                    "trigger": {
+                        "default": "high",
+                        "type": "string",
+                        "description": "Either \"high\" which triggers an event when the value exceeds a threshold, or \"low\" which triggers an event when the value subceeds a threshold",
+                        "pattern": "^high$|^low$"
+                    },
+                    "type": {
+                        "default": "voltage",
+                        "type": "string",
+                        "description": "the type of value, which corresponds to the 'type' column of the simulated_value Cassandra table"
+                    },
+                    "severity": {
+                        "default": 1,
+                        "type": "integer",
+                        "description": "the severity of the event"
+                    },
+                    "reference": {
+                        "default": "ratedVoltage",
+                        "type": "string",
+                        "description": "the reference value, which corresponds to the property in the 'properties' column of the key_value Cassandra table"
+                    },
+                    "default": {
+                        "type": "number",
+                        "description": "the reference default value if it is not found in the 'properties' column (same units as simulated_value records for the type)"
+                    },
+                    "ratio": {
+                        "type": "number",
+                        "description": "the ratio between the value and reference above which the event will be triggered"
+                    },
+                    "duration": {
+                        "default": 900000,
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "description": "the continuous duration that the ratio must be exceeded for the event to be registered (mSec)"
+                    }
+                },
+                "required": ["default", "ratio"]
+            },
+            "description": "the list of trigger thresholds to check for"
+        }
+    },
+    "required": ["class"]
+}

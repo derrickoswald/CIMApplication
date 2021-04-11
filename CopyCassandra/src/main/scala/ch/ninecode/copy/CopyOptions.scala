@@ -1,5 +1,8 @@
 package ch.ninecode.copy
 
+import ch.ninecode.util.JSON
+import ch.ninecode.util.JSONAble
+import ch.ninecode.util.JSONCustomSerializer
 import ch.ninecode.util.MainOptions
 import ch.ninecode.util.Mainable
 import ch.ninecode.util.SparkOptions
@@ -30,4 +33,19 @@ case class CopyOptions (
     target_port: Int = 9042,
     target_keyspace: String = "cimapplication",
     target_replication: Int = 1
-) extends Mainable with Sparkable
+) extends Mainable with JSONAble[CopyOptions] with Sparkable
+{
+    def toJSON: String = CopyOptions.toJSON(this)
+
+    def fromJSON (text: String): Either[String, CopyOptions] = CopyOptions.fromJSON(text)
+}
+object CopyOptions extends JSON[CopyOptions]
+{
+    def schemaResourceName: String = "CopyOptionsSchema.json"
+    def schemaUriMap: Map[String,String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CopyOptionsSchema.json" -> "resource:CopyOptionsSchema.json"
+    ) ++ MainOptions.schemaUriMap ++ SparkOptions.schemaUriMap
+    def customSerializers: Seq[JSONCustomSerializer[_]] = List.concat(
+        MainOptions.customSerializers,
+        SparkOptions.customSerializers)
+}

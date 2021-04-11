@@ -70,7 +70,14 @@ class SimulationOptionsParser (default: SimulationOptions)
                     val source = scala.io.Source.fromFile(file, "UTF-8")
                     val text = source.mkString
                     source.close
-                    c.copy(simulation = c.simulation :+ text)
+                    SimulationJob.fromJSON(text) match {
+                        case Right(job) => c.copy(simulation = c.simulation :+ job)
+                        case Left(message) =>
+                            val log = LoggerFactory.getLogger(getClass.getName)
+                            log.error(message)
+                            c
+                    }
+
                 }
                 catch
                 {

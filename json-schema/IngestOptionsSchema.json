@@ -1,0 +1,40 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/IngestOptionsSchema.json",
+    "description": "Options for Ingest.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "main_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MainOptionsSchema.json",
+            "description": "main() program options"
+        },
+        "spark_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json",
+            "description": "Spark session options"
+        },
+        "cassandra_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CassandraOptionsSchema.json",
+            "description": "Cassandra options"
+        },
+        "verbose": {
+            "default": false,
+            "type": "boolean",
+            "description": "if true, emit progress messages"
+        },
+        "workdir": {
+            "default": "",
+            "type": "string",
+            "description": "working directory for unzipping and copying if nocopy is false"
+        },
+        "ingestions":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/IngestJobSchema.json",
+            "description": "ingest jobs"
+        }
+    }
+}

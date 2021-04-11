@@ -1,7 +1,5 @@
 package ch.ninecode.sim
 
-import javax.json.JsonObject
-
 import com.datastax.spark.connector._
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.round
@@ -20,18 +18,18 @@ import org.slf4j.LoggerFactory
  * @param spark   The Spark session
  * @param options The simulation options.
  */
-case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggregate])(spark: SparkSession, options: SimulationOptions)
-    extends SimulationPostProcessor(spark, options)
+case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggregate])
+    extends SimulationPostProcessor
 {
-    if (options.verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger(getClass)
-
     /**
      * Responsibility factor
      */
     @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-    def run (implicit access: SimulationCassandraAccess): Unit =
+    def run (spark: SparkSession, access: SimulationCassandraAccess, options: SimulationOptions): Unit =
     {
+        if (options.verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
+        val log: Logger = LoggerFactory.getLogger(getClass)
+
         log.info("Responsibility Factor")
 
         val typ = "power"
@@ -42,7 +40,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
         {
             // get the mrid,power,time,date DataFrame for the trafo
             log.info(trafo)
-            val simulated_power_values = simulatedPowerValues(mrids)
+            val simulated_power_values = simulatedPowerValues(mrids, access, options)
                 .persist(options.cim_options.storage)
 
             // get the time at system peak for each day
@@ -101,41 +99,10 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
     }
 }
 
-object SimulationResponsibilityFactor extends SimulationPostProcessorParser
+object SimulationResponsibilityFactor
 {
     // standard aggregation is daily
     val STANDARD_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate](
         SimulationAggregate(96, 0)
     )
-
-    def cls: String = "responsibility_factor"
-
-    /**
-     * Generates a JSON parser to populate a processor.
-     *
-     * @return A method that will return an instance of a post processor given the postprocessing element of a JSON.
-     */
-    def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor =
-        post =>
-        {
-            val aggregates = if (post.containsKey("aggregates"))
-            {
-                val list = post.getJsonArray("aggregates")
-                for (i <- 0 until list.size)
-                    yield
-                        {
-                            val aggregate = list.getJsonObject(i)
-                            val intervals = aggregate.getInt("intervals", 96)
-                            val ttl = if (aggregate.isNull("ttl"))
-                                0
-                            else
-                                aggregate.getJsonNumber("ttl").intValue
-                            SimulationAggregate(intervals, ttl)
-                        }
-            }
-            else
-                STANDARD_AGGREGATES
-
-            SimulationResponsibilityFactor(aggregates)(_: SparkSession, _: SimulationOptions)
-        }
 }

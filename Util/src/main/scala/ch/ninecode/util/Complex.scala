@@ -10,12 +10,20 @@ import scala.math.sin
 import scala.math.sqrt
 import scala.math.Pi
 
+import org.json4s.Formats
+import org.json4s.JValue
+import org.json4s.JsonAST.JDouble
+import org.json4s.JsonAST.JInt
+import org.json4s.JsonAST.JLong
+import org.json4s.JsonAST.JObject
+import org.json4s.JsonAST.JString
+
 /**
  * Complex number implementation.
  *
  * Derived from http://www.stoyanr.com/2013/02/complex-numbers-in-scala.html
  */
-case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with Numeric[Complex]
+case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with Numeric[Complex] with JSONAble[Complex]
 {
     def this (complex: Complex) = this(complex.re, complex.im)
 
@@ -131,9 +139,22 @@ case class Complex (re: Double, im: Double = 0.0) extends Ordered[Complex] with 
     override def toDouble (x: Complex): Double = x.abs
 
     override def compare (x: Complex, y: Complex): Int = x.compare(y)
+
+    /**
+     * Output equivalent JSON form.
+     */
+    override def toJSON: String = Complex.toJSON(this)
+
+    /**
+     * Create a complex number from JSON.
+     *
+     * @param text the JSON text
+     * @return either an error message in Left or the options instance in Right
+     */
+    override def fromJSON (text: String): Either[String, Complex] = Complex.fromJSON(text)
 }
 
-object Complex
+object Complex extends JSON[Complex]
 {
     // constants
     lazy val j: Complex = Complex(0, 1)
@@ -193,4 +214,62 @@ object Complex
     }
 
     implicit def fromString (string: String): Complex = parseString(string)
+
+    /**
+     * The name of the resource containing the JSON schema for complex numbers.
+     *
+     * @return a resource name string for use by ClassLoader.getResourceAsStream
+     */
+    def schemaResourceName: String = "ComplexSchema.json"
+
+    /**
+     * The mapping from URI in the schema to local URI.
+     *
+     * @return The map from global URI to local URI
+     */
+    def schemaUriMap: Map[String,String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/ComplexSchema.json" -> "resource:ComplexSchema.json"
+    )
+
+    def jsonAsNumber (v: JValue): Double =
+    {
+        v match
+        {
+            case JDouble(d) => d
+            case JLong(l) => l
+            case JInt(i) => i.doubleValue()
+            case _ => 0.0 // ToDo
+        }
+    }
+
+    class ComplexSerializer extends JSONCustomSerializer[Complex](
+        (format: Formats) =>
+            (
+                {
+                    case JString(s) => Complex.fromString(s)
+                    case JDouble(d) => Complex.fromDouble(d)
+                    case JLong(l) => Complex.fromLong(l)
+                    case JInt(i) => Complex.fromLong(i.longValue())
+                    case JObject(o) =>
+                        o.foldLeft(Complex(0))(
+                            (current: Complex, next: (String, JValue)) =>
+                                next match
+                                {
+                                    case ("re", v) => Complex (jsonAsNumber (v), current.im)
+                                    case ("im", v) => Complex (current.re, jsonAsNumber (v))
+                                    case _ => Complex (0)  // ToDo
+                                }
+                        )
+                },
+                {
+                    case x: Complex =>
+                        JString(x.toString)
+                }
+            )
+    )
+
+    /**
+     * The list of custom serializers for the options.
+     */
+    override def customSerializers: Seq[JSONCustomSerializer[_]] = List(new ComplexSerializer)
 }

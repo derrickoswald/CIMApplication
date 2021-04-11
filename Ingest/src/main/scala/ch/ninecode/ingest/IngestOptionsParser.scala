@@ -19,14 +19,12 @@ class IngestOptionsParser (options: IngestOptions)
     with SparkOptionsParser[IngestOptions]
     with CassandraOptionsParser[IngestOptions]
 {
-    var job: IngestJob = IngestJob()
-
     implicit val FormatsRead: scopt.Read[Formats.Value] = scopt.Read.reads(Formats.withName)
     implicit val ModesRead: scopt.Read[Modes.Value] = scopt.Read.reads(Modes.withName)
 
-    def measurementTimestampFormat: SimpleDateFormat =
+    def measurementTimestampFormat (timezone: String): SimpleDateFormat =
     {
-        val zone = TimeZone.getTimeZone(job.timezone)
+        val zone = TimeZone.getTimeZone(timezone)
         val calendar = Calendar.getInstance()
         calendar.setTimeZone(zone)
         val ret = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
@@ -34,17 +32,15 @@ class IngestOptionsParser (options: IngestOptions)
         ret
     }
 
-    def parseTime (time: String): Long =
+    def parseTime (time: String, timezone: String): Long =
     {
-        measurementTimestampFormat.parse(time).getTime
+        measurementTimestampFormat(timezone).parse(time).getTime
     }
 
-    def formatTime (time: Long): String =
+    def formatTime (time: Long, timezone: String): String =
     {
-        measurementTimestampFormat.format(time)
+        measurementTimestampFormat(timezone).format(time)
     }
-
-    def updateJson (options: IngestOptions): IngestOptions = options.copy(ingestions = Seq(job.asJson))
 
     opt[Unit]("verbose")
         .action((_, c) => c.copy(verbose = true))
@@ -63,106 +59,94 @@ class IngestOptionsParser (options: IngestOptions)
     opt[String]("mapping")
         .action((x, c) =>
         {
-            job = job.copy(mapping = x)
-            updateJson(c)
+            val v = c.copy (ingestions = c.ingestions.map(_.copy(mapping = x)))
+            v
         })
-        .text(s"file name of mapping CSV or RDF [${job.mapping}] (required)")
+        .text(s"file name of mapping CSV or RDF [${options.ingestions.map(_.mapping).mkString(",")}] (required)")
 
     opt[String]("metercol")
         .action((x, c) =>
         {
-            job = job.copy(metercol = x)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(metercol = x)))
         })
-        .text(s"column name of meter id in mapping CSV [${job.metercol}]")
+        .text(s"column name of meter id in mapping CSV [${options.ingestions.map(_.metercol).mkString(",")}]")
 
     opt[String]("mridcol")
         .action((x, c) =>
         {
-            job = job.copy(mridcol = x)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(mridcol = x)))
         })
-        .text(s"column name of CIM mRID in mapping CSV [${job.mridcol}]")
+        .text(s"column name of CIM mRID in mapping CSV [${options.ingestions.map(_.mridcol).mkString(",")}]")
 
     opt[String]("timezone")
         .action((x, c) =>
         {
-            job = job.copy(timezone = x)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(timezone = x)))
         })
-        .text(s"measurement time zone for measurements [${job.timezone}]")
+        .text(s"measurement time zone for measurements [${options.ingestions.map(_.timezone).mkString(",")}]")
 
     opt[String]("mintime")
         .action((x, c) =>
         {
-            job = job.copy(mintime = parseTime(x))
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(y => y.copy(mintime = parseTime(x, y.timezone))))
         })
-        .text(s"minimum time for ingestion timespan [${formatTime(job.mintime)}]")
+        .text(s"minimum time for ingestion timespan [${options.ingestions.map(x => formatTime(x.mintime, x.timezone)).mkString(",")}]")
 
     opt[String]("maxtime")
         .action((x, c) =>
         {
-            job = job.copy(maxtime = parseTime(x))
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(y => y.copy(maxtime = parseTime(x, y.timezone))))
         })
-        .text(s"maximum time for ingestion timespan [${formatTime(job.maxtime)}]")
+        .text(s"maximum time for ingestion timespan [${options.ingestions.map(x => formatTime(x.maxtime, x.timezone)).mkString(",")}]")
 
     opt[String]("keyspace")
         .action((x, c) =>
         {
-            job = job.copy(keyspace = x)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(keyspace = x)))
         })
-        .text(s"target Cassandra keyspace [${job.keyspace}]")
+        .text(s"target Cassandra keyspace [${options.ingestions.map(_.keyspace).mkString(",")}]")
 
     opt[Int]("replication")
         .action((x, c) =>
         {
-            job = job.copy(replication = x)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(replication = x)))
         })
-        .text(s"keyspace replication if the Cassandra keyspace needs creation [${job.replication}]")
+        .text(s"keyspace replication if the Cassandra keyspace needs creation [${options.ingestions.map(_.replication.toString).mkString(",")}]")
 
     opt[Formats.Value]("format")
         .action((x, c) =>
         {
-            job = job.copy(format = x)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(format = x)))
         })
-        .text(s"format of the data files, one of ${Formats.values.iterator.mkString(",")} [${job.format}]")
+        .text(s"format of the data files, one of ${Formats.values.iterator.mkString(",")} [${options.ingestions.map(_.format.toString).mkString(",")}]")
 
     opt[Modes.Value]("mode")
         .action((x, c) =>
         {
-            job = job.copy(mode = x)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(mode = x)))
         })
-        .text(s"ingest mode, one of ${Modes.values.iterator.mkString(",")} [${job.mode}]")
+        .text(s"ingest mode, one of ${Modes.values.iterator.mkString(",")} [${options.ingestions.map(_.mode.toString).mkString(",")}]")
 
     opt[Unit]("nocopy")
         .action((_, c) =>
         {
-            job = job.copy(nocopy = true)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(nocopy = true)))
         })
-        .text(s"use files 'as is' without unzipping and copying to HDFS [${job.nocopy}]")
+        .text(s"use files 'as is' without unzipping and copying to HDFS [${options.ingestions.map(_.nocopy.toString).mkString(",")}]")
 
     opt[String]("aws_s3a_access_key")
         .action((x, c) =>
         {
-            job = job.copy(aws_s3a_access_key = x)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(aws_s3a_access_key = x)))
         })
-        .text(s"aws access key [${job.aws_s3a_access_key}]")
+        .text(s"aws access key [${options.ingestions.map(_.aws_s3a_access_key).mkString(",")}]")
 
     opt[String]("aws_s3a_secret_key")
         .action((x, c) =>
         {
-            job = job.copy(aws_s3a_secret_key = x)
-            updateJson(c)
+            c.copy (ingestions = c.ingestions.map(_.copy(aws_s3a_secret_key = x)))
         })
-        .text(s"aws seceret key [${job.aws_s3a_secret_key}]")
+        .text(s"aws seceret key [${options.ingestions.map(_.aws_s3a_secret_key).mkString(",")}]")
 
     arg[String]("<ZIP> or <CSV>...")
         .optional()
@@ -173,14 +157,10 @@ class IngestOptionsParser (options: IngestOptions)
             {
                 val sep = System.getProperty("file.separator")
                 val file = if (x.startsWith(sep) || x.startsWith("s3a:"))
-                {
                     x
-                } else
-                {
+                else
                     s"${new java.io.File(".").getCanonicalPath}$sep$x"
-                }
-                job = job.copy(datafiles = job.datafiles :+ file)
-                updateJson(c)
+                c.copy (ingestions = c.ingestions.map(x => x.copy(datafiles = x.datafiles :+ file)))
             }
             catch
             {
@@ -188,8 +168,7 @@ class IngestOptionsParser (options: IngestOptions)
                     val log = LoggerFactory.getLogger(getClass.getName)
                     log.error("bad input file name", e)
                     helpout = true
-                    job = job.copy(datafiles = Seq())
-                    updateJson(c)
+                    c.copy (ingestions = c.ingestions.map(x => x.copy(datafiles = Seq())))
             }
         })
         .text("data files to process")

@@ -46,9 +46,9 @@ class EventAndFactorSuiteIT
             HighTrigger("power", 2, "ratedS", 630.0, 0.90, 3 * 60 * 60 * 1000),
             HighTrigger("power", 2, "ratedS", 630.0, 1.10, 15 * 60 * 1000)
         )
-        val check = SimulationEvents(STANDARD_TRIGGERS)(_Spark, options)
+        val check = SimulationEvents(STANDARD_TRIGGERS)
         val access = SimulationCassandraAccess(_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
-        check.run(access)
+        check.run(_Spark, access, options)
     }
 
     @Test def coincidence_factor ()
@@ -56,8 +56,8 @@ class EventAndFactorSuiteIT
         val access = SimulationCassandraAccess(_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate]()
         val options = SimulationOptions(verbose = true, main_options = MainOptions(unittest = true), three_phase = true)
-        val coincidence = SimulationCoincidenceFactor(IGNORED_AGGREGATES)(_Spark, options)
-        coincidence.run(access)
+        val coincidence = SimulationCoincidenceFactor(IGNORED_AGGREGATES)
+        coincidence.run(_Spark, access, options)
     }
 
     @Test def load_factor ()
@@ -65,8 +65,8 @@ class EventAndFactorSuiteIT
         val access = SimulationCassandraAccess(_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate]()
         val options = SimulationOptions(verbose = true, main_options = MainOptions(unittest = true), three_phase = true)
-        val load = SimulationLoadFactor(IGNORED_AGGREGATES)(_Spark, options)
-        load.run(access)
+        val load = SimulationLoadFactor(IGNORED_AGGREGATES)
+        load.run(_Spark, access, options)
     }
 
     @Test def responsibility_factor ()
@@ -74,8 +74,8 @@ class EventAndFactorSuiteIT
         val access = SimulationCassandraAccess(_Spark, org.apache.spark.storage.StorageLevel.MEMORY_AND_DISK_SER, ID, INPUT_KEYSPACE, OUTPUT_KEYSPACE, verbose = true)
         val IGNORED_AGGREGATES: Iterable[SimulationAggregate] = List[SimulationAggregate]()
         val options = SimulationOptions(verbose = true, main_options = MainOptions(unittest = true), three_phase = true)
-        val responsibility = SimulationResponsibilityFactor(IGNORED_AGGREGATES)(_Spark, options)
-        responsibility.run(access)
+        val responsibility = SimulationResponsibilityFactor(IGNORED_AGGREGATES)
+        responsibility.run(_Spark, access, options)
     }
 }
 

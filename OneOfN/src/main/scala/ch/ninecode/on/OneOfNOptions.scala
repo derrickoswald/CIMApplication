@@ -2,32 +2,13 @@ package ch.ninecode.on
 
 import ch.ninecode.util.CIMAble
 import ch.ninecode.util.CIMReaderOptions
+import ch.ninecode.util.JSON
+import ch.ninecode.util.JSONAble
+import ch.ninecode.util.JSONCustomSerializer
 import ch.ninecode.util.MainOptions
 import ch.ninecode.util.Mainable
 import ch.ninecode.util.SparkOptions
 import ch.ninecode.util.Sparkable
-
-/**
- * Logging level enumeration.
- */
-object LogLevels extends Enumeration
-{
-    type LogLevels = Value
-    val ALL, DEBUG, ERROR, FATAL, INFO, OFF, TRACE, WARN = Value
-
-    def toLog4j (level: Value): org.apache.log4j.Level =
-        level match
-        {
-            case ALL => org.apache.log4j.Level.ALL
-            case DEBUG => org.apache.log4j.Level.DEBUG
-            case ERROR => org.apache.log4j.Level.ERROR
-            case FATAL => org.apache.log4j.Level.FATAL
-            case INFO => org.apache.log4j.Level.INFO
-            case OFF => org.apache.log4j.Level.ALL
-            case TRACE => org.apache.log4j.Level.ALL
-            case WARN => org.apache.log4j.Level.WARN
-        }
-}
 
 /**
  * Options for the One-Of-N program.
@@ -48,5 +29,44 @@ case class OneOfNOptions
     base_temperature: Double = 20.0,
     temperature: Double = 60.0,
     workdir: String = ""
-) extends Mainable with Sparkable with CIMAble
+) extends Mainable with JSONAble[OneOfNOptions] with Sparkable with CIMAble
+{
+    /**
+     * Output equivalent JSON options.
+     */
+    override def toJSON: String = OneOfNOptions.toJSON(this)
 
+    /**
+     * Create one of these option objects from JSON.
+     *
+     * @param text the JSON text
+     * @return either an error message in Left or the options instance in Right
+     */
+    override def fromJSON (text: String): Either[String, OneOfNOptions] = OneOfNOptions.fromJSON(text)
+}
+object OneOfNOptions extends JSON[OneOfNOptions]
+{
+    /**
+     * The name of the resource containing the JSON schema for the options.
+     *
+     * @return a resource name string for use by ClassLoader.getResourceAsStream
+     */
+    override def schemaResourceName: String = "OneOfNOptionsSchema.json"
+
+    /**
+     * The mapping from URI in the schema to local URI.
+     *
+     * @return The map from global URI to local URI
+     */
+    override def schemaUriMap: Map[String, String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/OneOfNOptionsSchema.json" -> "resource:OneOfNOptionsSchema.json"
+    ) ++ MainOptions.schemaUriMap ++ SparkOptions.schemaUriMap ++ CIMReaderOptions.schemaUriMap
+
+    /**
+     * The list of custom serializers for the options.
+     */
+    override def customSerializers: Seq[JSONCustomSerializer[_]] = List.concat(
+        MainOptions.customSerializers,
+        SparkOptions.customSerializers,
+        CIMReaderOptions.customSerializers)
+}

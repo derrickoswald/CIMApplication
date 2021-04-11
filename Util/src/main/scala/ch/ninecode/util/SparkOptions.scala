@@ -31,12 +31,15 @@ case class SparkOptions (
 )
 {
     def toJSON: String = SparkOptions.toJSON(this)
+    def fromJSON (text: String): Either[String, SparkOptions] = SparkOptions.fromJSON(text)
 }
 object SparkOptions extends JSON[SparkOptions]
 {
 
     def schemaResourceName: String = "SparkOptionsSchema.json"
-
+    def schemaUriMap: Map[String,String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json" -> "resource:SparkOptionsSchema.json"
+    )
     class LevelSerializer extends JSONCustomSerializer[Level](
         (format: Formats) =>
             (
@@ -69,17 +72,12 @@ object SparkOptions extends JSON[SparkOptions]
         def test(s: String): Boolean = try { Class.forName (s) != null } catch { case t: Throwable => errors = t.toString; false }
     }
 
-    lazy val Custom = List(new LevelSerializer, new ClassSerializer)
+    def customSerializers: Seq[JSONCustomSerializer[_]] = List(new LevelSerializer, new ClassSerializer)
 
-    override def fromJSON (json: String, serializers: Seq[JSONCustomSerializer[_]])
+    override def fromJSON (json: String)
         (implicit m: Manifest[SparkOptions]): Either[String, SparkOptions] =
     {
         ClassSerializer.errors = ""
-        super.fromJSON(json, serializers ++ Custom)
-    }
-
-    override def toJSON (options: SparkOptions, serializers: Seq[JSONCustomSerializer[_]] = List()): String =
-    {
-        super.toJSON (options, serializers ++ Custom)
+        super.fromJSON(json)
     }
 }

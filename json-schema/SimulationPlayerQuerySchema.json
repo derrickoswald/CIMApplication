@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationPlayerQuerySchema.json",
+    "description": "Simulation player query description.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "title":
+        {
+            "default": "",
+            "type": "string",
+            "minLength": 1,
+            "description": "the name for the player query"
+        },
+        "query":
+        {
+            "default": "",
+            "type": "string",
+            "minLength": 6,
+            "description": "the Spark query to determine what nodes or edges are played - must return mrid, name, parent, type, property, unit and island, and possibly synthesis if querying synthesized_value"
+        },
+        "transform":
+        {
+            "default": null,
+            "type": ["string", "null"],
+            "description": "the transformation from meter data (from Cassandra) to the value to be applied during simulation - code that can be compiled to an instance of type MeasurementTransform"
+        }
+    }
+}

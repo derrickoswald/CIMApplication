@@ -1,5 +1,7 @@
 package ch.ninecode.util
 
+import scala.io.Source
+
 import scopt.OptionParser
 
 /**
@@ -8,8 +10,8 @@ import scopt.OptionParser
  * @param default object that provides default values
  * @tparam T T class type required for parsed values
  */
-@SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](default.main_options.application)
+@SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements", "org.wartremover.warts.Throw"))
+class MainOptionsParser[T <: Mainable with JSONAble[T]] (default: T) extends OptionParser[T](default.main_options.application) with Using
 {
     var unittest = false
     var helpout = false
@@ -28,47 +30,75 @@ class MainOptionsParser[T <: Mainable] (default: T) extends OptionParser[T](defa
             sys.exit(if (state.isRight) 0 else 1)
     }
 
-    head(default.main_options.application, default.main_options.version)
+    head(getDefault.main_options.application, getDefault.main_options.version)
 
     opt[Unit]("unittest")
         .hidden
         .action(
             (_, c) =>
             {
-                unittest = true;
-                c.main_options = c.main_options.copy(unittest = true);
+                unittest = true
+                c.main_options = c.main_options.copy(unittest = true)
                 c
             }
         )
-        .text(s"unit testing - don't call sys.exit() [${default.main_options.unittest}]")
+        .text(s"unit testing - don't call sys.exit() [${getDefault.main_options.unittest}]")
 
     help("help")
         .hidden
         .validate(Unit =>
         {
-            helpout = true;
+            helpout = true
             Right(Unit)
         })
 
     version("version")
         .validate(Unit =>
         {
-            versionout = true;
+            versionout = true
             Right(Unit)
         })
         .text(
             {
-                val version = default.main_options.version.split("-")
+                val version = getDefault.main_options.version.split("-")
                 if (3 == version.length)
-                    s"Scala: ${version(0)}, Spark: ${version(1)}, ${default.main_options.application}: ${version(2)}"
+                    s"Scala: ${version(0)}, Spark: ${version(1)}, ${getDefault.main_options.application}: ${version(2)}"
                 else
-                    default.main_options.version
+                    getDefault.main_options.version
             }
         )
 
-    checkConfig(o =>
+    opt[Unit]("default_json")
+        .action((_, c) => { println(c.toJSON); c })
+        .validate(Unit =>
+        {
+            helpout = true
+            Right(Unit)
+        })
+        .text(s"emit the current options as JSON to provide an example file for --json")
+
+    opt[String]("json")
+        .valueName("<JSON file>")
+        .action(
+            (x, c) =>
+            {
+                using (Source.fromFile(x, "UTF-8"))(
+                    source =>
+                    {
+                        c.fromJSON (source.mkString) match
+                        {
+                            case Right (options) => options
+                            case Left(message) => throw new Exception(message) // sadly, scopt only understands exceptions
+                        }
+                    }
+                )
+            }
+        )
+        .text(s"override the options with the contents of the given file")
+
+    checkConfig(c =>
     {
-        o.main_options = o.main_options.copy(valid = !(helpout || versionout));
+        c.main_options = c.main_options.copy(valid = !(helpout || versionout))
         Right(Unit)
     })
 }

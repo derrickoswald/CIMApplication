@@ -90,13 +90,14 @@ class SimulationJobTests
         {
             appender =>
                 val text = "Now is the time for all good men to come to the aid of the party."
-                val options = SimulationOptions(simulation = Seq(text))
-                val empty = SimulationJob.getAll(options)
-                assert(empty.isEmpty)
-                val log = appender.getLog
-                assert(log.length == 2)
-                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.startsWith("unparseable as JSON")))
-                assert(log.exists(entry => entry.getLevel == Level.WARN && entry.getRenderedMessage.equals("not all simulations will be processed")))
+                SimulationJob.fromJSON(text) match {
+                    case Right(jobs) => assert(false, s"unexpected job $jobs")
+                    case Left(_) =>
+                        val log = appender.getLog
+                        assert(log.length == 2)
+                        assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.startsWith("unparseable as JSON")))
+                        assert(log.exists(entry => entry.getLevel == Level.WARN && entry.getRenderedMessage.equals("not all simulations will be processed")))
+                }
         }
     }
 
@@ -106,13 +107,14 @@ class SimulationJobTests
         {
             appender =>
                 val text = "{ }"
-                val options = SimulationOptions(simulation = Seq(text))
-                val empty = SimulationJob.getAll(options)
-                assert(empty.isEmpty)
-                val log = appender.getLog
-                assert(log.length == 2)
-                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("does not specify a CIM file")))
-                assert(log.exists(entry => entry.getLevel == Level.WARN && entry.getRenderedMessage.equals("some simulation JSON files have errors")))
+                SimulationJob.fromJSON(text) match {
+                    case Right(jobs) => assert(false, s"unexpected job $jobs")
+                    case Left(_) =>
+                        val log = appender.getLog
+                        assert(log.length == 2)
+                        assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("does not specify a CIM file")))
+                        assert(log.exists(entry => entry.getLevel == Level.WARN && entry.getRenderedMessage.equals("some simulation JSON files have errors")))
+                }
         }
     }
 
@@ -249,146 +251,6 @@ class SimulationJobTests
                         assert(extra.isDefined)
                 }
                 assert(appender.getLog.isEmpty)
-        }
-    }
-
-    @Test def extrasNone (): Unit =
-    {
-        loggingTo(new TestAppender)
-        {
-            appender =>
-                val text =
-                    s"""
-                       |{
-                       |    "cim": "some.rdf",
-                       |    "interval": {"start": "2018-01-01T00:00:00.000+0100", "end": "2018-02-01T00:00:00.000+0100"}
-                       |}
-                    """.stripMargin
-                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
-                val simulations = SimulationJob.getAll(options)
-                assert(simulations.length == 1)
-                simulations.headOption match
-                {
-                    case Some(simulation) =>
-                        assert(simulation.extras.isEmpty)
-                    case None =>
-                }
-                val log = appender.getLog
-                assert(log.isEmpty)
-        }
-    }
-
-    @Test def extrasType (): Unit =
-    {
-        loggingTo(new TestAppender)
-        {
-            appender =>
-                val text =
-                    s"""
-                       |{
-                       |    "cim": "some.rdf",
-                       |    "interval": {"start": "2018-01-01T00:00:00.000+0100", "end": "2018-02-01T00:00:00.000+0100"},
-                       |    "extras": 42
-                       |}
-                    """.stripMargin
-                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
-                val simulations = SimulationJob.getAll(options)
-                assert(simulations.length == 1)
-                simulations.headOption match
-                {
-                    case Some(simulation) =>
-                        assert(simulation.extras.isEmpty)
-                    case None =>
-                }
-                val log = appender.getLog
-                assert(log.length == 1)
-                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("unexpected JSON type")))
-        }
-    }
-
-    @Test def extrasEmpty (): Unit =
-    {
-        loggingTo(new TestAppender)
-        {
-            appender =>
-                val text =
-                    s"""
-                       |{
-                       |    "cim": "some.rdf",
-                       |    "interval": {"start": "2018-01-01T00:00:00.000+0100", "end": "2018-02-01T00:00:00.000+0100"},
-                       |    "extras": []
-                       |}
-                    """.stripMargin
-                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
-                val simulations = SimulationJob.getAll(options)
-                assert(simulations.length == 1)
-                simulations.headOption match
-                {
-                    case Some(simulation) =>
-                        assert(simulation.extras.isEmpty)
-                    case None =>
-                }
-                val log = appender.getLog
-                assert(log.isEmpty)
-        }
-    }
-
-    @Test def extrasElementType (): Unit =
-    {
-        loggingTo(new TestAppender)
-        {
-            appender =>
-                val text =
-                    s"""
-                       |{
-                       |    "cim": "some.rdf",
-                       |    "interval": {"start": "2018-01-01T00:00:00.000+0100", "end": "2018-02-01T00:00:00.000+0100"},
-                       |    "extras": [42]
-                       |}
-                    """.stripMargin
-                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
-                val simulations = SimulationJob.getAll(options)
-                assert(simulations.length == 1)
-                simulations.headOption match
-                {
-                    case Some(simulation) =>
-                        assert(simulation.extras.isEmpty)
-                    case None =>
-                }
-                val log = appender.getLog
-                assert(log.length == 1)
-                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("unexpected JSON type")))
-        }
-
-        loggingTo(new TestAppender)
-        {
-            appender =>
-                val text =
-                    s"""
-                       |{
-                       |    "cim": "some.rdf",
-                       |    "interval": {"start": "2018-01-01T00:00:00.000+0100", "end": "2018-02-01T00:00:00.000+0100"},
-                       |    "extras": [
-                       |        {
-                       |            "title": "ratedCurrent",
-                       |            "query": "select l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.mRID key, cast (w.ratedCurrent as string) value from ACLineSegment l, WireInfo w where w.AssetInfo.IdentifiedObject.mRID = l.Conductor.ConductingEquipment.Equipment.PowerSystemResource.AssetDatasheet"
-                       |        },
-                       |        42
-                       |    ]
-                       |}
-                    """.stripMargin
-                val options: SimulationOptions = SimulationOptions(simulation = Seq(text))
-                val simulations = SimulationJob.getAll(options)
-                assert(simulations.length == 1)
-                simulations.headOption match
-                {
-                    case Some(simulation) =>
-                        assert(simulation.extras.length == 1)
-                    case None =>
-                }
-                val log = appender.getLog
-                assert(log.length == 1)
-                assert(log.exists(entry => entry.getLevel == Level.ERROR && entry.getRenderedMessage.contains("unexpected JSON type")))
         }
     }
 }

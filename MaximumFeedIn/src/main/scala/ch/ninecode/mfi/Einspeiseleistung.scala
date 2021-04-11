@@ -5,6 +5,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
+import scala.collection._
+
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GridLABD
@@ -26,9 +28,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
-import scala.collection._
-import scala.io.Source
 
 case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungOptions) extends CIMRDD
 {
@@ -537,19 +536,8 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
     def initializeTransformers (): (RDD[TransformerIsland], Array[TransformerData]) =
     {
         // determine transformer list if any
-        val trafos = if ("" != options.trafos)
-        {
-            // do all transformers listed in the file
-            val file = Source.fromFile(options.trafos, "UTF-8")
-            val lines = file.getLines().filter(_ != "").toArray
-            file.close()
-            if (0 == lines.length)
-            {
-                log.error("no transformers to process")
-                sys.exit(1)
-            }
-            Some(lines)
-        }
+        val trafos = if (options.trafos.nonEmpty)
+            Some(options.trafos.toArray)
         else
             if (-1 != options.simulation)
             {

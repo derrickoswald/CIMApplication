@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationExtraQuerySchema.json",
+    "description": "Simulation extra query description.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "title":
+        {
+            "default": "",
+            "type": "string",
+            "minLength": 1,
+            "description": "the name for the extra query - this is used as part of the Cassandra primary key (in addition to the simulation id and the key field)"
+        },
+        "query":
+        {
+            "default": "",
+            "type": "string",
+            "minLength": 6,
+            "description": "The query to get key value pairs - must return key and value, the simulation will be added automatically"
+        }
+    }
+}

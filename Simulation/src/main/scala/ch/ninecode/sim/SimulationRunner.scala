@@ -302,7 +302,7 @@ case class SimulationRunner (
                                     entry.value_c.re,
                                     entry.value_c.im,
                                     entry.units,
-                                    baseline.time_to_live
+                                    baseline.ttl
                                 )
                         )
 
@@ -310,7 +310,7 @@ case class SimulationRunner (
                         val sorted = records.sortBy(_.time)
 
                         // get an accumulator for every interval to be aggregated
-                        val accumulators = recorder.aggregations.map(x => Accumulator(x.intervals, recorder.`type` != "energy", x.time_to_live))
+                        val accumulators = recorder.aggregations.map(x => Accumulator(x.intervals, recorder.`type` != "energy", x.ttl))
 
                         // aggregate over the accumulators
                         val accumulated = sorted.flatMap(

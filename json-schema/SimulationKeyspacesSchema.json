@@ -1,0 +1,26 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationKeyspacesSchema.json",
+    "description": "Cassandra keyspace definitions.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "input_keyspace": {
+            "default": "cimapplication",
+            "type": "string",
+            "description": "the Cassandra keyspace to read measured data from - a table named measured_value with an appropriate schema (see simulation_schema.sql) is expected"
+        },
+        "output_keyspace": {
+            "default": "cimapplication",
+            "type": "string",
+            "description": "the Cassandra keyspace to save results to - a table named simulated_value with an appropriate schema (see simulation_schema.sql) and if summarization operations are performed additional tables with appropriate schema are expected"
+        },
+        "replication": {
+            "default": 1,
+            "type": "integer",
+            "description": "Cassandra keyspace replication factor only if the keyspace is created",
+            "minimum": 1
+        }
+    }
+}

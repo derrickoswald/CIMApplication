@@ -8,7 +8,7 @@ import org.apache.log4j.Level
  * @tparam T T class type required for parsed values
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-trait SparkOptionsParser[T <: Mainable with Sparkable] extends MainOptionsParser[T]
+trait SparkOptionsParser[T <: Mainable with Sparkable with JSONAble[T]] extends MainOptionsParser[T]
 {
     val COMMA = ","
     val EQUAL = "="

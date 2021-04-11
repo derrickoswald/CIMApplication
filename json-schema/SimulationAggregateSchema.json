@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationAggregateSchema.json",
+    "description": "Simulation recorder aggregation description.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "intervals":
+        {
+            "default": 96,
+            "type": "integer",
+            "description": "the number of periods to accumulate for the aggregation"
+        },
+        "ttl":
+        {
+            "default": null,
+            "type": ["integer", "null"],
+            "description": "the Cassandra time-to-live value"
+        }
+    },
+    "required": ["intervals", "ttl"]
+}

@@ -14,6 +14,7 @@ import javax.ws.rs.MatrixParam
 
 import ch.ninecode.cim.connector.CIMFunction
 import ch.ninecode.cim.connector.CIMMappedRecord
+import ch.ninecode.sim.SimulationJob
 import ch.ninecode.sim.SimulationOptions
 
 @Stateless
@@ -46,23 +47,28 @@ class Estimation extends RESTful
                     // the SparkContext configuration for spark.cassandra.connection.host, i.e.	"sandbox",
                     // so we do that in the EstimationFunction when we get a SparkSession,
                     // otherwise it defaults to localhost
-                    val options = SimulationOptions(verbose = verbose, keep = keep, simulation = Seq(json))
-                    val estimator = EstimationFunction(options)
-                    val (spec, input) = getFunctionInput(estimator)
-                    val interaction = connection.createInteraction
-                    val output = interaction.execute(spec, input)
-                    output match
-                    {
-                        case record: CIMMappedRecord =>
-                            record.get(CIMFunction.RESULT) match
+                    SimulationJob.fromJSON(json) match {
+                        case Right(job) =>
+                            val options = SimulationOptions(verbose = verbose, keep = keep, simulation = Seq(job))
+                            val estimator = EstimationFunction(options)
+                            val (spec, input) = getFunctionInput(estimator)
+                            val interaction = connection.createInteraction
+                            val output = interaction.execute(spec, input)
+                            output match
                             {
-                                case struct: JsonObject =>
-                                    ret = RESTfulJSONResult(struct.getString("status"), struct.getString("message"), struct.getJsonObject("result"))
+                                case record: CIMMappedRecord =>
+                                    record.get(CIMFunction.RESULT) match
+                                    {
+                                        case struct: JsonObject =>
+                                            ret = RESTfulJSONResult(struct.getString("status"), struct.getString("message"), struct.getJsonObject("result"))
+                                        case _ =>
+                                            ret.setResultException(new ResourceException("EstimationFunction result is not a JsonObject"), "unhandled result type")
+                                    }
                                 case _ =>
-                                    ret.setResultException(new ResourceException("EstimationFunction result is not a JsonObject"), "unhandled result type")
+                                    ret.setResultException(new ResourceException("EstimationFunction interaction result is not a MappedRecord"), "unhandled interaction result")
                             }
-                        case _ =>
-                            ret.setResultException(new ResourceException("EstimationFunction interaction result is not a MappedRecord"), "unhandled interaction result")
+                        case Left(msg) =>
+                            ret.setResultException(new ResourceException("bad job"), msg)
                     }
                 }
                 catch

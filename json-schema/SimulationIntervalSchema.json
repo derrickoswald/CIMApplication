@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationIntervalSchema.json",
+    "description": "Simulation time period definitions.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "start_time": {
+            "default": "2017-07-19T00:00:00.000+0000",
+            "type": [
+                "string",
+                "number"
+            ],
+            "description": "the starting date and time of the simulation",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[+-]\\d{4}$"
+        },
+        "end_time": {
+            "default": "2017-07-19T00:00:00.000+0000",
+            "type": [
+                "string",
+                "number"
+            ],
+            "description": "the ending date and time of the simulation",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}[+-]\\d{4}$"
+        },
+        "buffer": {
+            "default": 900000,
+            "type": "integer",
+            "description": "the number of milliseconds of buffer either side of the start=>end interval to read from measured data"
+        }
+    }
+}

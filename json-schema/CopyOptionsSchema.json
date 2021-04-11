@@ -1,0 +1,62 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CopyOptionsSchema.json",
+    "description": "Options for Copy.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "main_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MainOptionsSchema.json",
+            "description": "main() program options"
+        },
+        "spark_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json",
+            "description": "Spark session options"
+        },
+        "source_host":
+        {
+            "default": "localhost",
+            "type": "string",
+            "description": "Cassandra source connection host"
+        },
+        "source_port":
+        {
+            "default": 9042,
+            "type": "integer",
+            "description": "Cassandra source connection port",
+            "minimum": 0
+        },
+        "source_keyspace": {
+            "default": "cimapplication",
+            "type": "string",
+            "description": "Cassandra source keyspace"
+        },
+        "target_host":
+        {
+            "default": "localhost",
+            "type": "string",
+            "description": "Cassandra target connection host"
+        },
+        "target_port":
+        {
+            "default": 9042,
+            "type": "integer",
+            "description": "Cassandra target connection port",
+            "minimum": 0
+        },
+        "target_keyspace": {
+            "default": "cimapplication",
+            "type": "string",
+            "description": "Cassandra target keyspace"
+        },
+        "target_replication": {
+            "default": 1,
+            "type": "integer",
+            "description": "Cassandra destination keyspace replication factor",
+            "minimum": 1
+        }
+    }
+}

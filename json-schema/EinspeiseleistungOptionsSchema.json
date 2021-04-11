@@ -1,0 +1,157 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/EinspeiseleistungOptionsSchema.json",
+    "description": "Options for Maximum Feed-In.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "main_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MainOptionsSchema.json",
+            "description": "main() program options"
+        },
+        "spark_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json",
+            "description": "Spark session options"
+        },
+        "cim_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CIMReaderOptionsSchema.json",
+            "description": "CIMReader options"
+        },
+        "cassandra_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CassandraOptionsSchema.json",
+            "description": "Cassandra options"
+        },
+        "id": {
+            "default": "",
+            "type": "string",
+            "description": "run id on input, primary key for database on output"
+        },
+        "workdir": {
+            "default": "",
+            "type": "string",
+            "description": "the shared directory (among Spark executors) to use for staging GridLAB-D simulations (each simulation is created in a subdirectory of this directory)"
+        },
+        "verbose": {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to output progress and interesting values"
+        },
+        "three": {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to use three-phase calculations"
+        },
+        "precalculation": {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to perform only the precalculation and store the results in the database"
+        },
+        "trafos": {
+            "default": [],
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "transformer names to process"
+        },
+        "export_only": {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to only generate the GridLAB-D .glm files without simulating them"
+        },
+        "all": {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to force all house connections to be analysed with load flow, rather than just non-radial networks or the ones with a changed photo-voltaic installation"
+        },
+        "erase": {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to delete the generated GridLAB-D .glm files and player and recorder files"
+        },
+        "simulation": {
+            "default": -1,
+            "type": "integer",
+            "description": "the prior simulation number to use in determining the transformers to process"
+        },
+        "reference": {
+            "default": -1,
+            "type": "integer",
+            "description": "the prior simulation number to determine if the photo-voltaic installation status is changed"
+        },
+        "delta": {
+            "default": 1e-6,
+            "type": "number",
+            "description": "the difference threshold to determine if the maximum feed-in power has changed between precalculations"
+        },
+        "precalc_factor": {
+            "default": 2.5,
+            "type": "number",
+            "description": "the scale factor to apply to precalculation maximum values - which is used as an upper bound for the stepped simulation calculation"
+        },
+        "cosphi": {
+            "default": 1.0,
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "the maximum feed-in power factor, i.e. the power factor for new photo-voltaic installations, +lagging, -leading"
+        },
+        "voltage_threshold": {
+            "default": 3.0,
+            "type": "number",
+            "description": "the voltage threshold for the feeder of the house under test"
+        },
+        "voltage_threshold2": {
+            "default": 3.0,
+            "type": "number",
+            "description": "the voltage threshold to be used for neighboring feeders of the house under test"
+        },
+        "ignore_other": {
+            "default": false,
+            "type": "boolean",
+            "description": "flag whether to check cable currents on neighboring feeders of the house under test"
+        },
+        "cable_impedance_limit": {
+            "default": 5.0,
+            "type": "number",
+            "description": "cables with a R1 value higher than this are not calculated with GridLAB-D, the reason is bad performance in GridLAB-D with too high impedance values"
+        },
+        "base_temperature": {
+            "default": 20.0,
+            "type": "number",
+            "description": "temperature of elements in the input CIM file (°C)"
+        },
+        "sim_temperature": {
+            "default": 20.0,
+            "type": "number",
+            "description": "temperature at which the simulation should be done (°C)"
+        },
+        "output": {
+            "default": "SQLite",
+            "type": "string",
+            "pattern": "^SQLite$|^Cassandra$",
+            "description": "type of output, SQLite or Cassandra"
+        },
+        "outputfile": {
+            "default": "simulation/results.db",
+            "type": "string",
+            "description": "the name of the SQLite database results file"
+        },
+        "keyspace": {
+            "default": "cimapplication",
+            "type": "string",
+            "description": "the Cassandra keyspace to store results"
+        },
+        "replication": {
+            "default": 1,
+            "type": "integer",
+            "description": "keyspace replication factor if the Cassandra keyspace needs creation",
+            "minimum": 1
+        }
+    }
+}

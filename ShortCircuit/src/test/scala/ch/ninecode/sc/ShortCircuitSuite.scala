@@ -86,7 +86,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 default_short_circuit_power_min = 600.0e6,
                 default_short_circuit_impedance_min = Complex(0.0, 20.166666666666667), // purely reactive
                 low_temperature = 20.0,
-                trafos = s"$FILE_DEPOT$FILENAME1.transformers")
+                trafos = readTrafoFile(s"$FILE_DEPOT$FILENAME1.transformers"))
             val shortcircuit = ShortCircuit(session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run()
 
@@ -123,7 +123,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             // short circuit calculations
             val sc_options = ShortCircuitOptions(
                 low_temperature = 20.0,
-                trafos = s"$FILE_DEPOT$FILENAME2.transformers")
+                trafos = readTrafoFile(s"$FILE_DEPOT$FILENAME2.transformers"))
             val shortcircuit = ShortCircuit(session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run()
 
@@ -162,7 +162,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val sc_options = ShortCircuitOptions(
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"$FILE_DEPOT$FILENAME3.transformers")
+                trafos = readTrafoFile(s"$FILE_DEPOT$FILENAME3.transformers"))
             val shortcircuit = ShortCircuit(session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run()
 
@@ -204,7 +204,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"$FILE_DEPOT$FILENAME4.transformers")
+                trafos = readTrafoFile(s"$FILE_DEPOT$FILENAME4.transformers"))
             val shortcircuit = ShortCircuit(session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run()
 
@@ -246,7 +246,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"$FILE_DEPOT$FILENAME5.transformers")
+                trafos = readTrafoFile(s"$FILE_DEPOT$FILENAME5.transformers"))
             val shortcircuit = ShortCircuit(session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run()
 
@@ -295,7 +295,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val sc_options = ShortCircuitOptions(
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"$FILE_DEPOT$FILENAME6.transformers")
+                trafos = readTrafoFile(s"$FILE_DEPOT$FILENAME6.transformers"))
             val shortcircuit = ShortCircuit(session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run()
 
@@ -342,7 +342,7 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
             val sc_options = ShortCircuitOptions(
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"$FILE_DEPOT$FILENAME7.transformers")
+                trafos = readTrafoFile(s"$FILE_DEPOT$FILENAME7.transformers"))
             val shortcircuit = ShortCircuit(session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run()
 

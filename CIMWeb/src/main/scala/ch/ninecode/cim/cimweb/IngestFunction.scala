@@ -12,8 +12,10 @@ import javax.json.JsonString
 import org.apache.spark.sql.SparkSession
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.cim.cimweb.RESTfulJSONResult.FAIL
 import ch.ninecode.cim.cimweb.RESTfulJSONResult.OK
 import ch.ninecode.cim.connector.CIMFunction.Return
+import ch.ninecode.ingest.IngestJob
 import ch.ninecode.ingest.IngestOptions
 import ch.ninecode.util.MainOptions
 
@@ -86,21 +88,27 @@ case class IngestFunction (job: String) extends CIMWebFunction
         }
         else
             "Ingest"
-        val options = IngestOptions(
-            verbose = true,
-            workdir = "/work/",
-            ingestions = Seq(job)
-        )
-        val ingest = new ch.ninecode.ingest.Ingest(spark, options)
-        spark.sparkContext.setJobGroup(id, "ingest smart meter data")
-        ingest.run()
-        LoggerFactory.getLogger(getClass).info("ingested")
-        spark.sparkContext.setJobGroup(null, null)
-        val result = Json.createObjectBuilder
-            .add("verbose", options.verbose)
-            .add("workdir", options.workdir)
-            .add("ingestions", Json.createObjectBuilder(json))
-        RESTfulJSONResult(OK, "ingest successful", result.build).getJSON
+        IngestJob.fromJSON(job) match {
+            case Right(thing) =>
+                val options = IngestOptions(
+                    verbose = true,
+                    workdir = "/work/",
+                    ingestions = Seq(thing)
+                )
+                val ingest = new ch.ninecode.ingest.Ingest(spark, options)
+                spark.sparkContext.setJobGroup(id, "ingest smart meter data")
+                ingest.run()
+                LoggerFactory.getLogger(getClass).info("ingested")
+                spark.sparkContext.setJobGroup(null, null)
+                val result = Json.createObjectBuilder
+                    .add("verbose", options.verbose)
+                    .add("workdir", options.workdir)
+                    .add("ingestions", Json.createObjectBuilder(json))
+                RESTfulJSONResult(OK, "ingest successful", result.build).getJSON
+            case Left(msg) =>
+                RESTfulJSONResult(FAIL, msg, Json.createObjectBuilder.build).getJSON
+        }
+
     }
 
     override def toString: String =

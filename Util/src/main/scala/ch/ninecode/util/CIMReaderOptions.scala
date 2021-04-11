@@ -70,10 +70,14 @@ case class CIMReaderOptions (
     }
 
     def toJSON: String = CIMReaderOptions.toJSON(this)
+    def fromJSON (text: String): Either[String, CIMReaderOptions] = CIMReaderOptions.fromJSON(text)
 }
 object CIMReaderOptions extends JSON[CIMReaderOptions]
 {
     def schemaResourceName: String = "CIMReaderOptionsSchema.json"
+    def schemaUriMap: Map[String,String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CIMReaderOptionsSchema.json" -> "resource:CIMReaderOptionsSchema.json"
+    )
 
     def stateAsString (state: State): String =
         state match
@@ -132,18 +136,7 @@ object CIMReaderOptions extends JSON[CIMReaderOptions]
             )
     )
 
-    lazy val Custom = List(new StateSerializer, new StorageLevelSerializer)
-
-    override def fromJSON (json: String, serializers: Seq[JSONCustomSerializer[_]])
-        (implicit m: Manifest[CIMReaderOptions]): Either[String, CIMReaderOptions] =
-    {
-        super.fromJSON(json, serializers ++ Custom)
-    }
-
-    override def toJSON (options: CIMReaderOptions, serializers: Seq[JSONCustomSerializer[_]] = List()): String =
-    {
-        super.toJSON (options, serializers ++ Custom)
-    }
+    def customSerializers: Seq[JSONCustomSerializer[_]] = List(new StateSerializer, new StorageLevelSerializer)
 
     def parseBoolean (text: String, default: Boolean = false): Boolean =
     {

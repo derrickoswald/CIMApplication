@@ -1,7 +1,5 @@
 package ch.ninecode.sim
 
-import javax.json.JsonObject
-
 import scala.reflect.runtime.universe.TypeTag
 
 import org.apache.spark.sql.DataFrame
@@ -15,21 +13,21 @@ import org.apache.spark.sql.types.DateType
  * @param spark   the Spark session
  * @param options simulation options
  */
-abstract class SimulationPostProcessor (spark: SparkSession, options: SimulationOptions)
+abstract class SimulationPostProcessor
 {
     /**
      * Execute the post processor.
      *
      * @param access Access to the simulated data in Cassandra with the simulation id baked in to the queries.
      */
-    def run (implicit access: SimulationCassandraAccess): Unit
+    def run (spark: SparkSession, access: SimulationCassandraAccess, options: SimulationOptions): Unit
 
     def unpersistDataFrame (dataframe: DataFrame): Unit =
     {
         val _ = dataframe.unpersist(false)
     }
 
-    def simulatedPowerValues (mrids: Iterable[String])(implicit access: SimulationCassandraAccess): DataFrame =
+    def simulatedPowerValues (mrids: Iterable[String], access: SimulationCassandraAccess, options: SimulationOptions): DataFrame =
     {
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt(x * x + y * y))
 
@@ -58,26 +56,4 @@ abstract class SimulationPostProcessor (spark: SparkSession, options: Simulation
         simulated_power_values
             .withColumn("date", simulated_power_values("time").cast(DateType))
     }
-}
-
-/**
- * The 'trait' that all post processor companion objects must implement.
- *
- * @tparam T the postprocessor type
- */
-abstract class SimulationPostProcessorParser[T <: SimulationPostProcessor]
-{
-    /**
-     * The class name of the postprocessor, as found in the JSON file.
-     *
-     * @return A unique class of processor.
-     */
-    def cls: String
-
-    /**
-     * Generates a JSON parser to populate a processor.
-     *
-     * @return A method that will return a way to make an instance of a post processor given the postprocessing element of a JSON.
-     */
-    def parser (): JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor
 }

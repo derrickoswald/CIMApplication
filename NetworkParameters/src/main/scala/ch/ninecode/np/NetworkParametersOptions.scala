@@ -5,6 +5,9 @@ import ch.ninecode.cim.ForceTrue
 import ch.ninecode.cim.Unforced
 import ch.ninecode.util.CIMAble
 import ch.ninecode.util.CIMReaderOptions
+import ch.ninecode.util.JSON
+import ch.ninecode.util.JSONAble
+import ch.ninecode.util.JSONCustomSerializer
 import ch.ninecode.util.MainOptions
 import ch.ninecode.util.Mainable
 import ch.ninecode.util.SparkOptions
@@ -36,4 +39,29 @@ case class NetworkParametersOptions (
     export: String = "",
     available_power_csv: String = "",
     station_transformer_csv: String = ""
-) extends Mainable with Sparkable with CIMAble
+) extends Mainable with JSONAble[NetworkParametersOptions] with Sparkable with CIMAble
+{
+    /**
+     * Output equivalent JSON options.
+     */
+    override def toJSON: String = NetworkParametersOptions.toJSON(this)
+
+    /**
+     * Create one of these option objects from JSON.
+     *
+     * @param text the JSON text
+     * @return either an error message in Left or the options instance in Right
+     */
+    override def fromJSON (text: String): Either[String, NetworkParametersOptions] = NetworkParametersOptions.fromJSON(text)
+}
+object NetworkParametersOptions extends JSON[NetworkParametersOptions]
+{
+    def schemaResourceName: String = "NetworkParametersOptionsSchema.json"
+    def schemaUriMap: Map[String,String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/NetworkParametersOptionsSchema.json" -> "resource:NetworkParametersOptionsSchema.json"
+    ) ++ MainOptions.schemaUriMap ++ SparkOptions.schemaUriMap ++ CIMReaderOptions.schemaUriMap
+    def customSerializers: Seq[JSONCustomSerializer[_]] = List.concat(
+        MainOptions.customSerializers,
+        SparkOptions.customSerializers,
+        CIMReaderOptions.customSerializers)
+}

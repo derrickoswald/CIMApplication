@@ -2,8 +2,7 @@ package ch.ninecode.mfi
 
 import java.net.URI
 
-import javax.json.Json
-import javax.json.JsonObjectBuilder
+import org.json4s.JsonAST.JString
 
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.cim.ForceTrue
@@ -11,6 +10,9 @@ import ch.ninecode.util.CIMAble
 import ch.ninecode.util.CIMReaderOptions
 import ch.ninecode.util.CassandraOptions
 import ch.ninecode.util.Cassandraable
+import ch.ninecode.util.JSON
+import ch.ninecode.util.JSONAble
+import ch.ninecode.util.JSONCustomSerializer
 import ch.ninecode.util.MainOptions
 import ch.ninecode.util.Mainable
 import ch.ninecode.util.SparkOptions
@@ -24,7 +26,6 @@ import ch.ninecode.util.Sparkable
  * @param cim_options           CIMReader options
  * @param cassandra_options     Cassandra options
  * @param id                    run id on input, primary key for database on output
- * @param checkpoint_dir        Checkpoint directory on HDFS, e.g. hdfs://...
  * @param workdir               The shared directory (among Spark executors) to use for staging GridLAB-D simulations. Each simulation is created in a subdirectory of this directory.
  * @param verbose               If <code>true</code> turns on the INFO logging if it was not on. Default <code>false</code>.
  * @param three                 If <code>true</code> uses three-phase calculations. Default <code>false</code> - single phase calculations.
@@ -44,6 +45,7 @@ import ch.ninecode.util.Sparkable
  * @param cable_impedance_limit Cables with a R1 value higher than this are not calculated with GridLAB-D, the reason is bad performance in GridLAB-D for very high impedance values (Ω). Default 5.0.
  * @param base_temperature      Temperature of elements in the input CIM file (°C).
  * @param sim_temperature       Temperature at which the simulation should be done (°C).
+ * @param output                Type of output, SQLite or Cassandra.
  * @param outputfile            The name of the SQLite database results file.
  * @param keyspace              The Cassandra keyspace to store results.
  * @param replication           The Cassandra keyspace replication if it needs to be created.
@@ -62,12 +64,11 @@ case class EinspeiseleistungOptions
     ),
     var cassandra_options: CassandraOptions = CassandraOptions(),
     id: String = "",
-    checkpoint_dir: String = "",
     workdir: String = "",
     verbose: Boolean = false,
     three: Boolean = false,
     precalculation: Boolean = false,
-    trafos: String = "",
+    trafos: Seq[String] = Seq(),
     export_only: Boolean = false,
     all: Boolean = false,
     erase: Boolean = false,
@@ -86,7 +87,7 @@ case class EinspeiseleistungOptions
     outputfile: String = "simulation/results.db",
     keyspace: String = "cimapplication",
     replication: Int = 1
-) extends Mainable with Sparkable with CIMAble with Cassandraable
+) extends Mainable with Sparkable with CIMAble with Cassandraable with JSONAble[EinspeiseleistungOptions]
 {
     def derive_work_dir (files: Seq[String]): String =
     {
@@ -112,37 +113,49 @@ case class EinspeiseleistungOptions
     def getWorkDir: String = if ("" != workdir) workdir else derive_work_dir(cim_options.files)
 
     /**
-     * JSON representation of the options.
-     *
-     * @return a JSON object with the parameters as properties
+     * Output equivalent JSON options.
      */
-    def asJSON: JsonObjectBuilder =
-    {
-        Json.createObjectBuilder
-            .add("id", id)
-            .add("checkpoint_dir", checkpoint_dir)
-            .add("workdir", workdir)
-            .add("verbose", verbose)
-            .add("three", three)
-            .add("precalculation", precalculation)
-            .add("trafos", trafos)
-            .add("export_only", export_only)
-            .add("all", all)
-            .add("erase", erase)
-            .add("simulation", simulation)
-            .add("reference", reference)
-            .add("delta", delta)
-            .add("precalc_factor", precalc_factor)
-            .add("cosphi", cosphi)
-            .add("voltage_threshold", voltage_threshold)
-            .add("voltage_threshold2", voltage_threshold2)
-            .add("ignore_other", ignore_other)
-            .add("cable_impedance_limit", cable_impedance_limit)
-            .add("base_temperature", base_temperature)
-            .add("sim_temperature", sim_temperature)
-            .add("output", output.toString)
-            .add("outputfile", outputfile)
-            .add("keyspace", keyspace)
-            .add("replication", replication)
-    }
+    override def toJSON: String = EinspeiseleistungOptions.toJSON(this)
+
+    /**
+     * Create one of these option objects from JSON.
+     *
+     * @param text the JSON text
+     * @return either an error message in Left or the options instance in Right
+     */
+    override def fromJSON (text: String): Either[String, EinspeiseleistungOptions] = EinspeiseleistungOptions.fromJSON(text)
+}
+object EinspeiseleistungOptions extends JSON[EinspeiseleistungOptions]
+{
+    /**
+     * The name of the resource containing the JSON schema for the options.
+     *
+     * @return a resource name string for use by ClassLoader.getResourceAsStream
+     */
+    override def schemaResourceName: String = "EinspeiseleistungOptionsSchema.json"
+
+    /**
+     * The mapping from URI in the schema to local URI.
+     *
+     * @return The map from global URI to local URI
+     */
+    override def schemaUriMap: Map[String, String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/EinspeiseleistungOptionsSchema.json" -> "resource:EinspeiseleistungOptionsSchema.json"
+    ) ++ MainOptions.schemaUriMap ++ SparkOptions.schemaUriMap ++ CIMReaderOptions.schemaUriMap ++ CassandraOptions.schemaUriMap
+
+    class MaximumFeedInOutputTypeSerializer extends JSONCustomSerializer[MaximumFeedInOutputType.Value](
+        (format: org.json4s.Formats) =>
+            (
+                {
+                    case JString(s) => MaximumFeedInOutputType.withName(s)
+                },
+                {
+                    case x: MaximumFeedInOutputType.Value => JString(x.toString)
+                }
+            )
+    )
+    /**
+     * The list of custom serializers for the options.
+     */
+    override def customSerializers: Seq[JSONCustomSerializer[_]] = Seq(new MaximumFeedInOutputTypeSerializer)
 }

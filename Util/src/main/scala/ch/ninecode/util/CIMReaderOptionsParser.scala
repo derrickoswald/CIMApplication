@@ -13,7 +13,7 @@ import ch.ninecode.cim.State
  * @tparam T class type required for parsed values
  */
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-trait CIMReaderOptionsParser[T <: CIMAble with Mainable] extends MainOptionsParser[T]
+trait CIMReaderOptionsParser[T <: CIMAble with Mainable with JSONAble[T]] extends MainOptionsParser[T]
 {
     lazy val stateStrings = List("ForceTrue", "ForceFalse", "Unforced")
     implicit val stateRead: scopt.Read[State] = scopt.Read.reads(CIMTopologyOptions.parseState)

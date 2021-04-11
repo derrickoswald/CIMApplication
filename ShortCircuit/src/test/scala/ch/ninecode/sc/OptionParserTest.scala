@@ -223,6 +223,223 @@ class OptionParserTest extends Using
         )
     }
 
+    @Test def round_trip ()
+    {
+        val fuse_table = FuseData(
+            Array(
+                FuseTable(
+                    "DIN",
+                    Array(
+                        Amp(0, 0), // failsafe fallback for currents less than 65A
+                        Amp(65, 25),
+                        Amp(105, 40),
+                        Amp(140, 50),
+                        Amp(180, 63),
+                        Amp(240, 80),
+                        Amp(320, 100),
+                        Amp(380, 125),
+                        Amp(500, 160),
+                        Amp(650, 200),
+                        Amp(800, 250),
+                        Amp(1050, 315),
+                        Amp(1300, 400),
+                        Amp(1750, 500),
+                        Amp(2400, 630)
+                    )
+                ),
+                FuseTable(
+                    "SEV",
+                    Array(
+                        Amp(0, 0), // failsafe fallback for currents less than 200A
+                        Amp(200, 60),
+                        Amp(250, 75),
+                        Amp(300, 100),
+                        Amp(340, 125),
+                        Amp(500, 150),
+                        Amp(600, 200),
+                        Amp(720, 250),
+                        Amp(850, 300),
+                        Amp(1150, 400)
+                    )
+                )
+            )
+        )
+        val trafos = Array("TX0001", "TX0002")
+        val options = ShortCircuitOptions (
+            fuse_table = fuse_table,
+            trafos = trafos
+        )
+        val json = options.toJSON
+        val expected =
+"""{
+  "main_options" : {
+    "application" : "SparkApplication",
+    "version" : "2.12-3.0.1-3.0.5",
+    "valid" : true,
+    "unittest" : false
+  },
+  "spark_options" : {
+    "master" : "local[*]",
+    "options" : {
+      "spark.serializer" : "org.apache.spark.serializer.KryoSerializer",
+      "spark.sql.catalog.casscatalog" : "com.datastax.spark.connector.datasource.CassandraCatalog",
+      "spark.kryo.registrator" : "ch.ninecode.cim.CIMRegistrator",
+      "spark.graphx.pregel.checkpointInterval" : "8",
+      "spark.ui.showConsoleProgress" : "false",
+      "spark.sql.debug.maxToStringFields" : "250"
+    },
+    "log" : "OFF",
+    "jars" : [ ],
+    "kryo" : [ ],
+    "checkpoint" : ""
+  },
+  "cim_options" : {
+    "topology" : true,
+    "topology_options" : {
+      "identify_islands" : true,
+      "force_retain_switches" : "Unforced",
+      "force_retain_fuses" : "ForceTrue",
+      "force_switch_separate_islands" : "Unforced",
+      "force_fuse_separate_islands" : "Unforced",
+      "default_switch_open_state" : false,
+      "debug" : false,
+      "storage" : "MEMORY_AND_DISK_SER"
+    },
+    "about" : false,
+    "normalize" : false,
+    "dedup" : false,
+    "edges" : false,
+    "join" : false,
+    "debug" : false,
+    "splitsize" : 67108864,
+    "cache" : "",
+    "storage" : "MEMORY_AND_DISK_SER",
+    "files" : [ ]
+  },
+  "cassandra_options" : {
+    "host" : "localhost",
+    "port" : 9042
+  },
+  "id" : "",
+  "verbose" : true,
+  "description" : "",
+  "default_short_circuit_power_max" : 2.0E8,
+  "default_short_circuit_impedance_max" : "0.43778578-1.20280655j",
+  "default_short_circuit_angle_max" : null,
+  "default_short_circuit_power_min" : 1.0E8,
+  "default_short_circuit_impedance_min" : "0.87557157-2.40561311j",
+  "default_short_circuit_angle_min" : null,
+  "default_transformer_power_rating" : 630000.0,
+  "default_transformer_impedance" : "0.0059+0.03956248j",
+  "base_temperature" : 20.0,
+  "low_temperature" : 60.0,
+  "high_temperature" : 90.0,
+  "cmax" : 1.0,
+  "cmin" : 0.9,
+  "worstcasepf" : true,
+  "cosphi" : 0.5,
+  "fuse_table" : {
+    "DIN" : [ {
+      "ik" : 0.0,
+      "rating" : 0.0
+    }, {
+      "ik" : 65.0,
+      "rating" : 25.0
+    }, {
+      "ik" : 105.0,
+      "rating" : 40.0
+    }, {
+      "ik" : 140.0,
+      "rating" : 50.0
+    }, {
+      "ik" : 180.0,
+      "rating" : 63.0
+    }, {
+      "ik" : 240.0,
+      "rating" : 80.0
+    }, {
+      "ik" : 320.0,
+      "rating" : 100.0
+    }, {
+      "ik" : 380.0,
+      "rating" : 125.0
+    }, {
+      "ik" : 500.0,
+      "rating" : 160.0
+    }, {
+      "ik" : 650.0,
+      "rating" : 200.0
+    }, {
+      "ik" : 800.0,
+      "rating" : 250.0
+    }, {
+      "ik" : 1050.0,
+      "rating" : 315.0
+    }, {
+      "ik" : 1300.0,
+      "rating" : 400.0
+    }, {
+      "ik" : 1750.0,
+      "rating" : 500.0
+    }, {
+      "ik" : 2400.0,
+      "rating" : 630.0
+    } ],
+    "SEV" : [ {
+      "ik" : 0.0,
+      "rating" : 0.0
+    }, {
+      "ik" : 200.0,
+      "rating" : 60.0
+    }, {
+      "ik" : 250.0,
+      "rating" : 75.0
+    }, {
+      "ik" : 300.0,
+      "rating" : 100.0
+    }, {
+      "ik" : 340.0,
+      "rating" : 125.0
+    }, {
+      "ik" : 500.0,
+      "rating" : 150.0
+    }, {
+      "ik" : 600.0,
+      "rating" : 200.0
+    }, {
+      "ik" : 720.0,
+      "rating" : 250.0
+    }, {
+      "ik" : 850.0,
+      "rating" : 300.0
+    }, {
+      "ik" : 1150.0,
+      "rating" : 400.0
+    } ]
+  },
+  "messagemax" : 5,
+  "batchsize" : 10000,
+  "trafos" : [ "TX0001", "TX0002" ],
+  "cable_impedance_limit" : 5.0,
+  "workdir" : "",
+  "calculate_public_lighting" : false,
+  "output" : "SQLite",
+  "outputfile" : "results/shortcircuit.db",
+  "keyspace" : "cimapplication",
+  "replication" : 1
+}"""
+        assert (json == expected, "unexpected JSON")
+
+        ShortCircuitOptions.fromJSON(json) match
+        {
+            case Right(options) =>
+                // ToDo: change the Array type in FuseData and FuseTable to be Seq, so we can uses == comparison
+                assert(options.fuse_table.toString == fuse_table.toString, "fuse table incorrect")
+                assert(options.trafos.sameElements(trafos), "trafo table incorrect")
+            case Left(errors) =>
+                assert(false, s"parse errors $errors")
+        }
+    }
     case class MockShortCircuitOptionsParser () extends ShortCircuitOptionsParser(ShortCircuitOptions())
     {
         val stderr = new ArrayBuffer[String]()

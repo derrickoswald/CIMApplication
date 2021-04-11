@@ -1,0 +1,47 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/NetworkParameterOptionsSchema.json",
+    "description": "Options for NetworkParameters.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "main_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MainOptionsSchema.json",
+            "description": "main() program options"
+        },
+        "spark_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json",
+            "description": "Spark session options"
+        },
+        "cim_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CIMReaderOptionsSchema.json",
+            "description": "CIMReader options"
+        },
+        "verbose":
+        {
+            "default": false,
+            "type": "boolean",
+            "description": "if true output informational messages"
+        },
+        "export":
+        {
+            "default": "",
+            "type": "string",
+            "description": "save processed CIM rdf as this file name"
+        },
+        "available_power_csv": {
+            "default": "",
+            "type": "string",
+            "description": "available power at station file"
+        },
+        "station_transformer_csv": {
+            "default": "",
+            "type": "string",
+            "description": "mapping between station and transformer file"
+        }
+    }
+}

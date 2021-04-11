@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationTemperaturesSchema.json",
+    "description": "Simulation temperatures definition.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "cim_temperature":
+        {
+            "default": 20.0,
+            "type": "number",
+            "description": "the temperature of the elements in the CIM file (°C)"
+        },
+        "simulation_temperature":
+        {
+            "default": 20.0,
+            "type": "number",
+            "description": "the temperature at which the simulation is to be run (°C)"
+        }
+    }
+}

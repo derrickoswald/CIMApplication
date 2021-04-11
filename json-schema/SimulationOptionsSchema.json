@@ -1,0 +1,84 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationOptionsSchema.json",
+    "description": "Options for Simulation.",
+    "type": "object",
+    "additionalProperties": false,
+    "properties":
+    {
+        "main_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/MainOptionsSchema.json",
+            "description": "main() program options"
+        },
+        "spark_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SparkOptionsSchema.json",
+            "description": "Spark session options"
+        },
+        "cim_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CIMReaderOptionsSchema.json",
+            "description": "CIMReader options"
+        },
+        "cassandra_options":
+        {
+            "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/CassandraOptionsSchema.json",
+            "description": "Cassandra options"
+        },
+        "verbose":
+        {
+            "default": false,
+            "type": "boolean",
+            "description": "if true output informational messages"
+        },
+        "workdir": {
+            "default": "simulation/",
+            "type": "string",
+            "description": "working directory for executors"
+        },
+        "three_phase":
+        {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to simulate in three phase"
+        },
+        "fake_three_phase":
+        {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to convert single phase meter readings into three phase"
+        },
+        "keep":
+        {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to keep glm and input/output files in workdir"
+        },
+        "simulationonly":
+        {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to only perform simulation, not postprocessing"
+        },
+        "postprocessonly":
+        {
+            "default": false,
+            "type": "boolean",
+            "description": "flag to only perform postprocessing, not simulation"
+        },
+        "cable_impedance_limit": {
+            "default": 5.0,
+            "type": "number",
+            "description": "cables with a R1 value higher than this are not calculated with gridlab, the reason is bad performance in gridlab with too high impedance values"
+        },
+        "simulation": {
+            "default": [],
+            "type": "array",
+            "items": {
+                "$ref": "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationJobSchema.json"
+            },
+            "description": "simulation jobs to process"
+        }
+    }
+}

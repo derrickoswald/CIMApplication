@@ -16,14 +16,25 @@ import javax.json.JsonValue
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
 
+import com.datastax.spark.connector._
+import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.json4s.Formats
+import org.json4s.JsonAST.JObject
+import org.json4s.JsonAST.JString
+import org.json4s.JArray
+import org.json4s.JDouble
+import org.json4s.JInt
+import org.json4s.JValue
 
-import com.datastax.spark.connector._
-import com.datastax.spark.connector.cql.CassandraConnector
+
+import ch.ninecode.util.JSON
+import ch.ninecode.util.JSONAble
+import ch.ninecode.util.JSONCustomSerializer
 
 /**
  * Simulation job details.
@@ -40,24 +51,15 @@ import com.datastax.spark.connector.cql.CassandraConnector
  *                               names with commas. These are file system dependent names, e.g. hdfs://sandbox:8020/DemoData.rdf.
  * @param cimreaderoptions       Options to pass to the CIMReader.
  *                               Unless there is a topology already in the CIM file, this should include ch.ninecode.cim.do_topo_islands=true.
- * @param input_keyspace         The Cassandra keyspace to read measured data from.
- *                               A table named measured_value with an appropriate schema (see simulation_schema.sql) is expected.
- * @param output_keyspace        The Cassandra keyspace to save results to.
- *                               A table named simulated_value with an appropriate schema (see simulation_schema.sql) and if summarization
- *                               operations are performed additional tables with appropriate schema are expected.
- * @param replication            The Cassandra keyspace replication.
- *                               The replication factor used in the <code>create keyspace if not exists</code> DDL, and hence
- *                               <em>used only if the <code>output_keyspace</code> is created.</em>
- * @param start_time             The starting date and time of the simulation.
- * @param end_time               The ending date and time of the simulation.
- * @param buffer                 The number of milliseconds of buffer either side of the start=>end interval to read from measured data.
- * @param cim_temperature        The temperature of the elements in the CIM file (°C).
- * @param simulation_temperature The temperature at which the simulation is to be run (°C).
+ * @param keyspaces              The Cassandra keyspaces to use.
+ * @param interval               The time period over which to simulate.
+ * @param temperatures           The simulation temperature and CIM file temperature.
  * @param swing_voltage_factor   The factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal.
  * @param transformers           The name of the transformers to simulate.
  *                               If this list is empty all transformers in the CIM file will be processed.
  *                               The names should reflect "ganged" transformers. For example, if TRA1234 and TRA1235 share a common
  *                               low voltage topological node, then the name would be "TRA1234_TRA1235".
+ * @param swing                  Either "hi" or "lo" to set the swing bus (slack bus) on the high or low voltage winding of the transformer.
  * @param players                Queries for driving data.
  *                               Queries against the Spark schema (https://github.com/derrickoswald/CIMReader/blob/master/Model.md)
  *                               yielding mrid, name, parent, type, property, unit and island for playing data.
@@ -146,22 +148,17 @@ case class SimulationJob
     description: String,
     cim: String,
     cimreaderoptions: Map[String, String],
-    input_keyspace: String,
-    output_keyspace: String,
-    replication: Int,
-    start_time: Calendar,
-    end_time: Calendar,
-    buffer: Int,
-    cim_temperature: Double,
-    simulation_temperature: Double,
+    keyspaces: SimulationKeyspaces,
+    interval: SimulationInterval,
+    temperatures: SimulationTemperatures,
     swing_voltage_factor: Double,
     transformers: Seq[String],
     swing: String = "hi",
     players: Seq[SimulationPlayerQuery],
     recorders: Seq[SimulationRecorderQuery],
     extras: Seq[SimulationExtraQuery],
-    postprocessors: Seq[(SparkSession, SimulationOptions) => SimulationPostProcessor]
-)
+    postprocessors: Seq[SimulationPostProcessor]
+) extends JSONAble[SimulationJob]
 {
     def optionString: String = cimreaderoptions.map(kv => s"${kv._1}=${kv._2}").mkString(",")
 
@@ -206,14 +203,14 @@ case class SimulationJob
                 cim,
                 cimreaderoptions,
                 current_time,
-                start_time,
-                end_time,
-                cim_temperature,
-                simulation_temperature,
+                interval.start_time,
+                interval.end_time,
+                temperatures.cim_temperature,
+                temperatures.simulation_temperature,
                 swing,
                 swing_voltage_factor,
-                input_keyspace,
-                output_keyspace,
+                keyspaces.input_keyspace,
+                keyspaces.output_keyspace,
                 transformers
             )
         ))
@@ -237,12 +234,25 @@ case class SimulationJob
             recorders.saveToCassandra(keyspace, "simulation_recorder", SomeColumns("simulation", "transformer", "name", "mrid", "type", "property", "unit", "interval", "aggregations"))
         }
     }
+
+    /**
+     * Output equivalent JSON options.
+     */
+    override def toJSON: String = SimulationJob.toJSON(this)
+
+    /**
+     * Create one of these option objects from JSON.
+     *
+     * @param text the JSON text
+     * @return either an error message in Left or the options instance in Right
+     */
+    override def fromJSON (text: String): Either[String, SimulationJob] = SimulationJob.fromJSON(text)
 }
 
 /**
  * Parse the JSON describing a simulation to be done.
  */
-object SimulationJob
+object SimulationJob extends JSON[SimulationJob]
 {
     val log: Logger = LoggerFactory.getLogger(getClass)
 
@@ -253,13 +263,13 @@ object SimulationJob
         try
         {
             try
-            Json.createReader(new StringReader(json)).readObject match
-            {
-                case obj: JsonObject => Some(obj)
-                case _ =>
-                    log.error("not a JsonObject")
-                    None
-            }
+                Json.createReader(new StringReader(json)).readObject match
+                {
+                    case obj: JsonObject => Some(obj)
+                    case _ =>
+                        log.error("not a JsonObject")
+                        None
+                }
             catch
             {
                 case je: JsonException =>
@@ -618,31 +628,6 @@ object SimulationJob
         }
     }
 
-    def lookup (cls: String): Option[JsonObject => (SparkSession, SimulationOptions) => SimulationPostProcessor] =
-    {
-        cls match
-        {
-            case "event" => Some(SimulationEvents.parser())
-            case "coincidence_factor" => Some(SimulationCoincidenceFactor.parser())
-            case "load_factor" => Some(SimulationLoadFactor.parser())
-            case "responsibility_factor" => Some(SimulationResponsibilityFactor.parser())
-            case _ =>
-                log.error(s"""cls $cls is not recognized as a post processor""")
-                None
-        }
-    }
-
-    def parsePostProcess (name: String, post: JsonObject): Option[(SparkSession, SimulationOptions) => SimulationPostProcessor] =
-    {
-        val cls = post.getString("class", "")
-        val class_parser = lookup(cls)
-        class_parser match
-        {
-            case Some(parser) => Some(parser(post))
-            case None => None
-        }
-    }
-
     def parseJob (options: SimulationOptions)(json: JsonObject): Option[SimulationJob] =
     {
         val id = json.getString("id", java.util.UUID.randomUUID.toString)
@@ -670,21 +655,16 @@ object SimulationJob
             val players = parseArrayOfObjects[SimulationPlayerQuery](name, "players", parsePlayer, json)
             val recorders = parseArrayOfObjects[SimulationRecorderQuery](name, "recorders", parseRecorder, json)
             val extras = parseArrayOfObjects[SimulationExtraQuery](name, "extras", parseExtra, json)
-            val postprocessors = parseArrayOfObjects[(SparkSession, SimulationOptions) => SimulationPostProcessor](name, "postprocessing", parsePostProcess, json)
+            val postprocessors = Seq[SimulationPostProcessor]() // parseArrayOfObjects[SimulationPostProcessor](name, "postprocessing", parsePostProcess, json)
             Some(SimulationJob(
                 id = id,
                 name = name,
                 description = description,
                 cim = cim,
                 cimreaderoptions = cimreaderoptions,
-                input_keyspace = read,
-                output_keyspace = write,
-                replication = replication,
-                start_time = start,
-                end_time = end,
-                buffer = buffer,
-                cim_temperature = cim_temperature,
-                simulation_temperature = simulation_temperature,
+                keyspaces = SimulationKeyspaces (read, write, replication),
+                interval = SimulationInterval (start, end, buffer),
+                temperatures = SimulationTemperatures (cim_temperature, simulation_temperature),
                 swing_voltage_factor = swing_voltage_factor,
                 transformers = transformers,
                 swing = swing,
@@ -697,15 +677,97 @@ object SimulationJob
 
     def getAll (options: SimulationOptions): Seq[SimulationJob] =
     {
-        if (options.verbose)
-            org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
-        val jsons = options.simulation.map(readJSON)
-        val simulations = jsons.flatten
-        if (jsons.length != simulations.length)
-            log.warn("not all simulations will be processed")
-        val jobs = simulations.flatMap(parseJob(options))
-        if (simulations.length != jobs.length)
-            log.warn("some simulation JSON files have errors")
-        jobs
+//        if (options.verbose)
+//            org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
+//        val jsons = options.simulation.map(readJSON)
+//        val simulations = jsons.flatten
+//        if (jsons.length != simulations.length)
+//            log.warn("not all simulations will be processed")
+//        val jobs = simulations.flatMap(parseJob(options))
+//        if (simulations.length != jobs.length)
+//            log.warn("some simulation JSON files have errors")
+//        jobs
+        Seq()
     }
+
+    /**
+     * The name of the resource containing the JSON schema for the options.
+     *
+     * @return a resource name string for use by ClassLoader.getResourceAsStream
+     */
+    override def schemaResourceName: String = "SimulationJobSchema.json"
+
+    /**
+     * The mapping from URI in the schema to local URI.
+     *
+     * @return The map from global URI to local URI
+     */
+    override def schemaUriMap: Map[String, String] = Map[String,String](
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationEventsSchema.json" -> "resource:SimulationEventsSchema.json",
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationCoincidenceFactorSchema.json" -> "resource:SimulationCoincidenceFactorSchema.json",
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationLoadFactorSchema.json" -> "resource:SimulationLoadFactorSchema.json",
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationResponsibilityFactorSchema.json" -> "resource:SimulationResponsibilityFactorSchema.json",
+        "https://raw.githubusercontent.com/derrickoswald/CIMApplication/master/json-schema/SimulationJobSchema.json" -> "resource:SimulationJobSchema.json"
+    ) ++ SimulationKeyspaces.schemaUriMap ++ SimulationInterval.schemaUriMap ++ SimulationTemperatures.schemaUriMap ++
+        SimulationPlayerQuery.schemaUriMap ++ SimulationRecorderQuery.schemaUriMap ++ SimulationExtraQuery.schemaUriMap ++ SimulationAggregate.schemaUriMap
+
+    class SimulationEventsSerializer extends JSONCustomSerializer[SimulationEvents](
+        (format: Formats) =>
+            (
+                {
+                    case JObject(o) => SimulationEvents(SimulationEventsSerializer.triggers (o))
+                },
+                {
+                    case x: SimulationEvents => JObject(
+                        List(
+                            ("class", JString("event")),
+                            ("thresholds", JArray (
+                                x.triggers.map (trigger => JObject(
+                                    List(
+                                        // ToDo: Fix this
+                                        ("trigger", JString (trigger.getClass.getName match { case "ch.ninecode.sim.HighTrigger" => "high" case "ch.ninecode.sim.LowTrigger" => "low" })),
+                                        ("type", JString (trigger.`type`)),
+                                        ("severity", JInt (trigger.severity)),
+                                        ("reference", JString (trigger.reference)),
+                                        ("default", JDouble (trigger.default)),
+                                        ("ratio", JDouble (trigger.ratio)),
+                                        ("duration", JInt (trigger.duration))
+                                    ))
+                                ).toList
+                            ))
+                        ))
+                }
+            )
+    )
+    object SimulationEventsSerializer
+    {
+        def trigger (l: List[(String, JValue)]): Option[Trigger] =
+        {
+            val    `type` = l.find { case ("type", _) => true case _ => false }.map (_._2)  match { case Some (JString(s)) => s case _ => "voltage" }
+            val  severity = l.find { case ("severity", _) => true case _ => false }.map (_._2)  match { case Some (JInt(i)) => i.intValue case _ => 1 }
+            val reference = l.find { case ("reference", _) => true case _ => false }.map (_._2)  match { case Some (JString(s)) => s case _ => "ratedVoltage" }
+            val   default = l.find { case ("default", _) => true case _ => false }.map (_._2)  match { case Some (JDouble(d)) => d case _ => 0.0 }
+            val     ratio = l.find { case ("ratio", _) => true case _ => false }.map (_._2)  match { case Some (JDouble(d)) => d case _ => 1.0 }
+            val  duration = l.find { case ("duration", _) => true case _ => false }.map (_._2)  match { case Some (JInt(i)) => i.intValue case _ => 900000 }
+            l.find (_._1 == "trigger") match
+            {
+                case Some ((_, JString("high"))) => Some (HighTrigger(`type`, severity, reference, default, ratio, duration))
+                case Some ((_, JString("low"))) => Some (LowTrigger(`type`, severity, reference, default, ratio, duration))
+                case _ => None
+            }
+        }
+
+        def triggers (l: List[(String, JValue)]): Iterable[Trigger] =
+        {
+            l.flatMap { case ("triggers", JArray(array)) => array.flatMap { case JObject(o) => trigger(o) case _ => None } case _ => Iterable.empty}
+        }
+    }
+
+    /**
+     * The list of custom serializers for the options.
+     */
+    override def customSerializers: Seq[JSONCustomSerializer[_]] =
+        Seq (new SimulationEventsSerializer) ++ SimulationKeyspaces.customSerializers ++ SimulationInterval.customSerializers ++
+            SimulationTemperatures.customSerializers ++ SimulationPlayerQuery.customSerializers ++ SimulationRecorderQuery.customSerializers ++
+            SimulationExtraQuery.customSerializers ++ SimulationAggregate.customSerializers ++ Seq(new SimulationEventsSerializer)
 }
