@@ -136,6 +136,14 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
                 "ch.ninecode.cim.debug" -> "true",
                 "ch.ninecode.cim.do_deduplication" -> "true"
             )
+            if (job.mapping.startsWith("s3")) {
+                val _ = System.setProperty("com.amazonaws.services.s3.enableV4", "true")
+                session.sparkContext.hadoopConfiguration.set("com.amazonaws.services.s3.enableV4", "true")
+                session.sparkContext.hadoopConfiguration.set("fs.s3a.access.key", job.aws_s3a_access_key)
+                session.sparkContext.hadoopConfiguration.set("fs.s3a.secret.key", job.aws_s3a_secret_key)
+                session.sparkContext.hadoopConfiguration.set("fs.s3a.endpoint", "s3.eu-central-1.amazonaws.com")
+                session.sparkContext.hadoopConfiguration.set("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+            }
             val elements = session.sqlContext.read.format("ch.ninecode.cim")
                 .options(readOptions)
                 .load(thisFiles: _*)
