@@ -55,6 +55,14 @@ class SimulationOptionsParser (default: SimulationOptions)
         .action((x, c) => c.copy(cable_impedance_limit = x))
         .text("cables with higher impedances for R1 will not be processed with gridlabd [%g]".format(default.cable_impedance_limit))
 
+    opt[String]("aws_s3a_access_key")
+      .action((x, c) => c.copy(aws_s3a_access_key = x))
+      .text(s"aws access key [${default.aws_s3a_access_key}]")
+
+    opt[String]("aws_s3a_secret_key")
+      .action((x, c) => c.copy(aws_s3a_secret_key = x))
+      .text(s"aws seceret key [${default.aws_s3a_secret_key}]")
+
     // turn off <CIM> files and use <JSON> instead
     options.remove(options.indexOf(cim_files))
     arg[String]("<JSON> <JSON>...")

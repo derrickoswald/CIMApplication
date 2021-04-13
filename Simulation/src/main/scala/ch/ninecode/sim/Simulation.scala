@@ -122,6 +122,14 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     {
         log.info(s"""reading "$rdf"""")
         val start = System.nanoTime()
+        if (rdf.startsWith("s3") && options.aws_s3a_access_key.trim.nonEmpty && options.aws_s3a_secret_key.trim.nonEmpty) {
+            val _ = System.setProperty("com.amazonaws.services.s3.enableV4", "true")
+            session.sparkContext.hadoopConfiguration.set("com.amazonaws.services.s3.enableV4", "true")
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.access.key", options.aws_s3a_access_key)
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.secret.key", options.aws_s3a_secret_key)
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.endpoint", "s3.eu-central-1.amazonaws.com")
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        }
         val elements = session.read.format("ch.ninecode.cim").options(reader_options).load(rdf)
         log.info(s"${elements.count()} elements")
         val read = System.nanoTime()

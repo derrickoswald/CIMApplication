@@ -26,6 +26,8 @@ import ch.ninecode.util.Sparkable
  * @param postprocessonly       If <code>true</code>, only perform postprocessing, not simulation.
  * @param cable_impedance_limit cables with a R1 value higher than this are not calculated with gridlab,
  *                              the reason is bad performance in gridlab with too high impedance values
+ * @param aws_s3a_access_key    AWS access key id to authenticate and authorize against AWS S3
+ * @param aws_s3a_secret_key    AWS access secret key to authenticate and authorize against AWS S3
  * @param simulation            Simulation JSON files.
  */
 case class SimulationOptions
@@ -44,5 +46,7 @@ case class SimulationOptions
     simulationonly: Boolean = false,
     postprocessonly: Boolean = false,
     cable_impedance_limit: Double = 5.0,
+    aws_s3a_access_key: String = "",
+    aws_s3a_secret_key: String = "",
     simulation: Seq[String] = Seq()
 ) extends Mainable with Sparkable with CIMAble with Cassandraable
