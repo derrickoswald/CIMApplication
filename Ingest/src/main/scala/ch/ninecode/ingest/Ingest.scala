@@ -4,8 +4,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.sql.Timestamp
 
-import org.apache.log4j.LogManager
 import org.apache.log4j.Level
+import org.apache.log4j.LogManager
 import org.apache.spark.sql.SparkSession
 
 import ch.ninecode.util.Main
@@ -36,7 +36,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
     def readFile (file: String): Array[Byte] =
     {
         try
-        Files.readAllBytes(Paths.get(file))
+            Files.readAllBytes(Paths.get(file))
         catch
         {
             case e: Exception =>
@@ -50,8 +50,51 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
         log.error("abstract class Ingest call to process()")
     }
 
+    def setS3Configurations (job: IngestJob): Unit =
+    {
+        if (job.aws_s3a_access_key.trim.nonEmpty && job.aws_s3a_secret_key.trim.nonEmpty)
+        {
+            val _ = System.setProperty("com.amazonaws.services.s3.enableV4", "true")
+            session.sparkContext.hadoopConfiguration.set("com.amazonaws.services.s3.enableV4", "true")
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.access.key", job.aws_s3a_access_key)
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.secret.key", job.aws_s3a_secret_key)
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.endpoint", "s3.eu-central-1.amazonaws.com")
+            session.sparkContext.hadoopConfiguration.set("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        }
+    }
+
+    def runIngestProcessor(job: IngestJob): Unit = {
+        val mapping_files = time(s"put ${job.mapping}: %s seconds")
+        {
+            if (job.nocopy)
+                Seq(job.mapping)
+            else
+                putFile(s"${options.workdir}${base_name(job.mapping)}", job.mapping, job.mapping.toLowerCase.endsWith(".zip"))
+        }
+        mapping_files.headOption match
+        {
+            case Some(filename) =>
+                time("process: %s seconds")
+                {
+                    val processor: IngestProcessor = job.format.toString match
+                    {
+                        case "Belvis" => IngestBelvis(session, options)
+                        case "LPEx" => IngestLPEx(session, options)
+                        case "MSCONS" => IngestMSCONS(session, options)
+                        case "Custom" => IngestCustom(session, options)
+                        case "Parquet" => IngestParquet(session, options)
+                        case "Nyquist" => IngestNyquist(session, options)
+                    }
+                    processor.process(filename, job)
+                }
+                cleanUp(job, filename)
+            case None =>
+        }
+    }
+
     def runJob (job: IngestJob): Unit =
     {
+        setS3Configurations(job)
         val made = time("schema: %s seconds")
         {
             val schema = Schema(session, "/simulation_schema.sql", verbose = options.verbose)
@@ -59,32 +102,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
         }
         if (made)
         {
-            val mapping_files = time(s"put ${job.mapping}: %s seconds")
-            {
-                if (job.nocopy)
-                    Seq(job.mapping)
-                else
-                    putFile(s"${options.workdir}${base_name(job.mapping)}", job.mapping, job.mapping.toLowerCase.endsWith(".zip"))
-            }
-            mapping_files.headOption match
-            {
-                case Some(filename) =>
-                    time("process: %s seconds")
-                    {
-                        val processor: IngestProcessor = job.format.toString match
-                        {
-                            case "Belvis" => IngestBelvis(session, options)
-                            case "LPEx" => IngestLPEx(session, options)
-                            case "MSCONS" => IngestMSCONS(session, options)
-                            case "Custom" => IngestCustom(session, options)
-                            case "Parquet" => IngestParquet(session, options)
-                            case "Nyquist" => IngestNyquist(session, options)
-                        }
-                        processor.process(filename, job)
-                    }
-                    cleanUp(job, filename)
-                case None =>
-            }
+            runIngestProcessor(job)
         }
     }
 
