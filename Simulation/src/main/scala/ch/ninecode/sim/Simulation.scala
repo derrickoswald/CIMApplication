@@ -10,32 +10,30 @@ import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
 
-import javax.json.Json
-import javax.json.JsonArray
-import javax.json.JsonException
-import javax.json.JsonObject
-import javax.json.stream.JsonGenerator
-
+import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.JavaConverters.mapAsJavaMapConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
-import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.tools.nsc.io.Jar
 import scala.util.Random
-
-import org.apache.log4j.LogManager
-import org.apache.log4j.Level
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
-import org.apache.spark.sql.Row
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
 import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.TTLOption
 import com.datastax.spark.connector.writer.WriteConf
+import javax.json.Json
+import javax.json.JsonArray
+import javax.json.JsonException
+import javax.json.JsonObject
+import javax.json.stream.JsonGenerator
+import org.apache.log4j.Level
+import org.apache.log4j.LogManager
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.storage.StorageLevel
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
@@ -122,7 +120,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     {
         log.info(s"""reading "$rdf"""")
         val start = System.nanoTime()
-        if (rdf.startsWith("s3") && options.aws_s3a_access_key.trim.nonEmpty && options.aws_s3a_secret_key.trim.nonEmpty) {
+        if (rdf.startsWith("s3") && options.aws_s3a_access_key.trim.nonEmpty && options.aws_s3a_secret_key.trim.nonEmpty)
+        {
             val _ = System.setProperty("com.amazonaws.services.s3.enableV4", "true")
             session.sparkContext.hadoopConfiguration.set("com.amazonaws.services.s3.enableV4", "true")
             session.sparkContext.hadoopConfiguration.set("fs.s3a.access.key", options.aws_s3a_access_key)
@@ -176,14 +175,14 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     def destringify (string: String): Seq[JsonObject] =
     {
         try
-        Json.createReader(new StringReader(string)).readArray match
-        {
-            case obj: JsonArray =>
-                obj.getValuesAs(classOf[JsonObject]).asScala
-            case _ =>
-                log.error("""not a JsonArray""")
-                Seq()
-        }
+            Json.createReader(new StringReader(string)).readArray match
+            {
+                case obj: JsonArray =>
+                    obj.getValuesAs(classOf[JsonObject]).asScala
+                case _ =>
+                    log.error("""not a JsonArray""")
+                    Seq()
+            }
         catch
         {
             case je: JsonException =>
@@ -484,6 +483,11 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             .setName(null)
     }
 
+    def vanishRDDs (rddList: List[RDD[_]]): Unit =
+    {
+        rddList.foreach(vanishRDD)
+    }
+
     def cleanRDDs (): Unit =
     {
         session.sparkContext.getPersistentRDDs.foreach(x => vanishRDD(x._2))
@@ -572,7 +576,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         results
     }
 
-    def createSimulationTasks (job: SimulationJob, batchno: Int): RDD[SimulationTrafoKreis] =
+    def createSimulationTasks (job: SimulationJob): RDD[SimulationTrafoKreis] =
     {
         val (transformers, _) = getTransformers
         val tasks = make_tasks(job)
@@ -608,7 +612,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 }
             ).persist(options.cim_options.storage).setName(s"${job.id}_simulations")
         val numsimulations = _simulations.count.toInt
-        log.info(s"$numsimulations GridLAB-D simulation${plural(numsimulations)} to do for simulation ${job.id} batch $batchno")
+        log.info(s"$numsimulations GridLAB-D simulation${plural(numsimulations)} to do for simulation ${job.id} batch ${job.name}")
 
         var simulations: RDD[SimulationTrafoKreis] = spark.sparkContext.emptyRDD
         if (0 != numsimulations)
@@ -639,47 +643,41 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         // clean up in case there was a file already loaded
         cleanRDDs()
         read(ajob.cim, ajob.cimreaderoptions, options.cim_options.storage)
+        batch.map(simulateJob)
+    }
 
-        var batchno = 1
-        val ids = batch.map(
-            job =>
+    def simulateJob (job: SimulationJob): String =
+    {
+        log.info(s"starting simulation ${job.id}")
+
+        val schema = Schema(session, "/simulation_schema.sql", options.verbose)
+        if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
+        {
+            // perform the extra queries and insert into the key_value table
+            performExtraQueries(job)
+
+            val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job)
+
+            if (!simulations.isEmpty())
             {
-                log.info(s"starting simulation ${job.id}")
+                log.info("""storing GeoJSON data""")
+                val geo = SimulationGeometry(session, job.output_keyspace)
+                geo.storeGeometry(job.id, simulations)
 
-                val schema = Schema(session, "/simulation_schema.sql", options.verbose)
-                if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
-                {
-                    // perform the extra queries and insert into the key_value table
-                    performExtraQueries(job)
+                log.info("""querying player data""")
+                val player_rdd = queryValues(job, simulations)
 
-                    val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job, batchno)
+                val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd)
 
-                    if (!simulations.isEmpty())
-                    {
-                        log.info("""storing GeoJSON data""")
-                        val geo = SimulationGeometry(session, job.output_keyspace)
-                        geo.storeGeometry(job.id, simulations)
-
-                        log.info("""querying player data""")
-                        val player_rdd = queryValues(job, simulations)
-
-                        val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd)
-
-                        // save the results
-                        log.info("""saving GridLAB-D simulation results""")
-                        val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
-                        simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
-                        log.info("""saved GridLAB-D simulation results""")
-                        vanishRDD(player_rdd)
-                    }
-
-                    cleanRDDs()
-                    batchno = batchno + 1
-                }
-                job.id
+                // save the results
+                log.info("""saving GridLAB-D simulation results""")
+                val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
+                simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
+                log.info("""saved GridLAB-D simulation results""")
+                vanishRDDs(List(simulations, player_rdd, simulationResults))
             }
-        )
-        ids
+        }
+        job.id
     }
 
     def postprocess (ids: Seq[String], jobs: Seq[SimulationJob])
@@ -733,7 +731,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         val ids = if (!options.postprocessonly)
         {
             // organize by same RDF, options and output keyspace
-            val batches = jobs.groupBy(job => s"${job.cim}${job.optionString}${job.output_keyspace}").values
+            val batches: Iterable[Seq[SimulationJob]] = jobs.groupBy(job => s"${job.cim}${job.optionString}${job.output_keyspace}").values
             batches.flatMap(simulate).toSeq
         }
         else
