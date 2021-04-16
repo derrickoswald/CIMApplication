@@ -24,6 +24,8 @@
 
     <properties>
         <version.dependency.log4j>2.12.1</version.dependency.log4j>
+        <version.dependency.aws-java-sdk>1.11.893</version.dependency.aws-java-sdk>
+        <version.dependency.hadoop>3.2.0</version.dependency.hadoop>
     </properties>
 
     <dependencies>
@@ -105,6 +107,36 @@
         </dependency>
 
         <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>${version.dependency.hadoop}</version>
+            <exclusions>
+                <exclusion>
+                    <!-- fails badly looking for Java 11, replace with more recent version, see below -->
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-lang3</artifactId>
+                </exclusion>
+                <exclusion>
+                    <!-- if included it leads to multiple slf4j bindings,
+                         and it's older than the dependency in spark-core  -->
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-aws</artifactId>
+            <version>${version.dependency.hadoop}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-s3</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_${version.dependency.scala}</artifactId>
             <version>${version.dependency.spark}</version>
@@ -154,6 +186,13 @@
                 <groupId>io.netty</groupId>
                 <artifactId>netty-all</artifactId>
                 <version>${version.dependency.netty-all}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-bom</artifactId>
+                <version>${version.dependency.aws-java-sdk}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
