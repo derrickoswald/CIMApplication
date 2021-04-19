@@ -101,6 +101,7 @@
         <version.dependency.bigdl>0.9.1</version.dependency.bigdl>
         <version.dependency.joda-time>2.10.6</version.dependency.joda-time>
         <version.dependency.json4s>3.6.9</version.dependency.json4s>
+        <version.dependency.jackson-scala-module>2.12.3</version.dependency.jackson-scala-module>
         <version.dependency.json-schema-validator>1.0.45</version.dependency.json-schema-validator>
 
         <!-- test versions -->

@@ -107,6 +107,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-scala_${version.dependency.scala}</artifactId>
+            <version>${version.dependency.jackson-scala-module}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
             <version>${version.dependency.hadoop}</version>
