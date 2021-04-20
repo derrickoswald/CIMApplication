@@ -1,5 +1,6 @@
 package ch.ninecode.ingest
 
+import java.sql.Timestamp
 import java.text.SimpleDateFormat
 
 import scala.collection.Iterable
@@ -10,7 +11,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-
 import com.datastax.spark.connector.SomeColumns
 import com.datastax.spark.connector._
 
@@ -97,6 +97,7 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
             .values
     }
 
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     def import_parquet (job: IngestJob): RDD[MeasuredValue] =
     {
         val dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssXXX")
@@ -104,7 +105,12 @@ case class IngestParquet (session: SparkSession, options: IngestOptions) extends
         def parquetMapping (row: Row): MeasuredValue =
         {
             val ao_id = row.getLong(0).toString
-            val timestamp = dateFormat.parse(row.getString(1)).getTime
+            val time = row.get(1)
+            val timestamp: Time = time match {
+                case timeString: String => dateFormat.parse(timeString).getTime
+                case timestamp: Timestamp => timestamp.getTime
+                case _ => throw new Exception("invalid timestamp format")
+            }
             val real_a = row.getDouble(2)
             val imag_a = row.getDouble(3)
             (ao_id, "energy", timestamp, 900000, real_a, imag_a, "Wh")
