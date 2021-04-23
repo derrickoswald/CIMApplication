@@ -163,8 +163,6 @@ These are typically smart meter readings, or transformer values from a SCADA sys
     units  - the units for the measurement
 ';
 
-create index if not exists measured_value_tim_idx on cimapplication.measured_value (time);
-
 create table if not exists cimapplication.measured_value_stats (
     mrid text,
     type text,
@@ -207,8 +205,6 @@ Auxiliary properties of measurement_value table entries.
     lat     - the latitude of the location (°)
 ';
 
-create index if not exists measured_value_meta_cla_idx on cimapplication.measured_value_meta (full(classes));
-
 create table if not exists cimapplication.simulated_value (
     simulation text,
     mrid text,
@@ -240,12 +236,6 @@ These are values obtained from load-flow simulations or other analysis software.
     units  - the units for the simulated value
 ';
 
-create index if not exists simulated_value_sim_idx on cimapplication.simulated_value (simulation);
-
-create index if not exists simulated_value_typ_idx on cimapplication.simulated_value (type);
-
-create index if not exists simulated_value_per_idx on cimapplication.simulated_value (period);
-
 create table if not exists cimapplication.synthesized_value (
     synthesis text,
     type text,
@@ -274,10 +264,6 @@ These are synthesized values from synthetic load-profile software or machine lea
     imag_c - the imaginary component of the phase C (or T) value
     units  - the units for the synthesized value
 ';
-
-create index if not exists synthesized_value_typ_idx on cimapplication.synthesized_value (type);
-
-create index if not exists synthesized_value_per_idx on cimapplication.synthesized_value (period);
 
 create table if not exists cimapplication.simulation_event (
     simulation text,
@@ -441,8 +427,6 @@ Describes each point object in the simulation, excluding transformers.
     properties        - the attributes for this element from the extra queries
 ';
 
-create index if not exists geojson_points_tra_idx on cimapplication.geojson_points (transformer);
-
 create table if not exists cimapplication.geojson_lines (
     simulation text,
     coordinate_system text,
@@ -463,8 +447,6 @@ Describes each linear object in the simulation.
     geometry          - the type ("LineString") and line coordinates
     properties        - the attributes for this element from the extra queries
 ';
-
-create index if not exists geojson_lines_tra_idx on cimapplication.geojson_lines (transformer);
 
 create table if not exists cimapplication.geojson_polygons (
     simulation text,
@@ -527,8 +509,6 @@ Describes each station polygonal object in the simulation.
     properties        - the attributes for this station from the extra queries
 ';
 
-create index if not exists geojson_stations_tra_idx on cimapplication.geojson_stations (transformer);
-
 create table if not exists cimapplication.key_value (
     simulation text,
     query text,
@@ -543,8 +523,6 @@ Extra query results.
     key        - the key as returned by the query
     value      - the value as returned by the query
 ';
-
-create index if not exists key_value_que_idx on cimapplication.key_value (query);
 
 create table if not exists cimapplication.load_factor_by_day (
    mrid text,
