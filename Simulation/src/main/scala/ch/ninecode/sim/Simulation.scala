@@ -776,8 +776,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         log.info(s"""simulation${plural(ids.size)} ${ids.mkString(",")}""")
 
         // postprocess
-        if (!options.simulationonly)
-            postprocess(ids, jobs)
+        /*if (!options.simulationonly)
+            postprocess(ids, jobs)*/
 
         ids
     }
