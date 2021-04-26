@@ -674,16 +674,25 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
                 simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
                 // Run postprocessing
-//                if (!options.simulationonly) {
-//                    implicit val access = new SimulationRDDAccess(spark, options.cim_options.storage, job.id, job.input_keyspace, job.output_keyspace, options.verbose)
-//                    job.postprocessors.foreach(
-//                        processor =>
-//                        {
-//                            val runner = processor(session, options)
-//                            runner.run(access)
-//                        }
-//                    )
-//                }
+                if (!options.simulationonly) {
+                    implicit val access = new SimulationRDDAccess(
+                        spark,
+                        options.cim_options.storage,
+                        job.id,
+                        job.input_keyspace,
+                        job.output_keyspace,
+                        options.verbose,
+                        simulationResults,
+                        tasks
+                    )
+                    job.postprocessors.foreach(
+                        processor =>
+                        {
+                            val runner = processor(session, options)
+                            runner.run(access)
+                        }
+                    )
+                }
                 log.info("""saved GridLAB-D simulation results""")
                 vanishRDDs(List(simulations, player_rdd, simulationResults))
             }
