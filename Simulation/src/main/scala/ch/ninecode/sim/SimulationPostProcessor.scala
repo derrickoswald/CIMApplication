@@ -22,14 +22,14 @@ abstract class SimulationPostProcessor (spark: SparkSession, options: Simulation
      *
      * @param access Access to the simulated data in Cassandra with the simulation id baked in to the queries.
      */
-    def run (implicit access: SimulationCassandraAccess): Unit
+    def run (implicit access: SimulationAccess): Unit
 
     def unpersistDataFrame (dataframe: DataFrame): Unit =
     {
         val _ = dataframe.unpersist(false)
     }
 
-    def simulatedPowerValues (mrids: Iterable[String])(implicit access: SimulationCassandraAccess): DataFrame =
+    def simulatedPowerValues (mrids: Iterable[String])(implicit access: SimulationAccess): DataFrame =
     {
         def magnitude[Type_x: TypeTag, Type_y: TypeTag] = udf[Double, Double, Double]((x: Double, y: Double) => Math.sqrt(x * x + y * y))
 

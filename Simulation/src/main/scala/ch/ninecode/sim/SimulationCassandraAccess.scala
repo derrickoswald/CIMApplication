@@ -3,8 +3,6 @@ package ch.ninecode.sim
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
 /**
  * Standard queries to Cassandra.
@@ -16,25 +14,15 @@ import org.slf4j.LoggerFactory
  * @param output_keyspace the keyspace used for simulated and other values
  * @param verbose         if <code>true</code> turns on logging level INFO for this class
  */
-case class SimulationCassandraAccess (
-    spark: SparkSession,
-    storage_level: StorageLevel,
-    simulation: String,
-    input_keyspace: String,
-    output_keyspace: String,
-    verbose: Boolean = false)
+class SimulationCassandraAccess (
+    override val spark: SparkSession,
+    override val storage_level: StorageLevel,
+    override val simulation: String,
+    override val input_keyspace: String,
+    override val output_keyspace: String,
+    override val verbose: Boolean = false) extends SimulationAccess(spark, storage_level, simulation, input_keyspace, output_keyspace, verbose)
 {
-    if (verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger(getClass)
 
-    type Trafo = String
-    type Type = String
-    type Mrid = String
-
-    // ToDo: how can we not hard-code this period?
-    val PERIOD: Int = 900000
-
-    def getPeriod: Int = PERIOD
 
     /**
      * Get a DataFrame of the key-value pairs.

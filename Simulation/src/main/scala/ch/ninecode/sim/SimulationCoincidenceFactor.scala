@@ -27,7 +27,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
      * Coincidence factor
      */
     @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-    def run (implicit access: SimulationCassandraAccess): Unit =
+    def run (implicit access: SimulationAccess): Unit =
     {
         log.info(s"Coincidence Factor")
 

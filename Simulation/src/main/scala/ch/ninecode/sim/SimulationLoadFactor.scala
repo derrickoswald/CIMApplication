@@ -30,7 +30,7 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(sp
      * Load factor
      */
     @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-    def run (implicit access: SimulationCassandraAccess): Unit =
+    def run (implicit access: SimulationAccess): Unit =
     {
         log.info("Load Factor")
 

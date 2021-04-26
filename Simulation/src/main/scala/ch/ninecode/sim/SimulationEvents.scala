@@ -15,7 +15,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions
 import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.types.DateType
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -26,6 +25,7 @@ import com.datastax.spark.connector.types.IntType
 import com.datastax.spark.connector.types.UDTFieldDef
 import com.datastax.spark.connector.types.UserDefinedType
 import com.datastax.spark.connector.writer.WriteConf
+import org.apache.spark.sql.types.DateType
 
 // Measurements needed from GridLAB-D recorders:
 //   - PowerTransformer (N6) apparent power [Scheinleistung (S)] (VA)
@@ -352,7 +352,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * @param events the detected events
      * @param access a Cassandra helper class
      */
-    def save (events: RDD[Event])(implicit access: SimulationCassandraAccess): Unit =
+    def save (events: RDD[Event])(implicit access: SimulationAccess): Unit =
     {
         val columns = SomeColumns("simulation", "mrid", "type", "start_time", "end_time", "ratio", "severity", "message")
         val configuration = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(consistencyLevel = ConsistencyLevel.ANY)
@@ -424,7 +424,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * @param triggers the trigger thresholds in the set
      * @param access   a Cassandra helper class
      */
-    def checkFor (triggers: Iterable[Trigger])(implicit access: SimulationCassandraAccess): Unit =
+    def checkFor (triggers: Iterable[Trigger])(implicit access: SimulationAccess): Unit =
     {
         val (typ, reference) = getTriggerDetails(triggers)
 
@@ -518,7 +518,7 @@ case class EventNumber (
 
 case class Summarizer (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"))
 {
-    def getEvents (implicit access: SimulationCassandraAccess): DataFrame =
+    def getEvents (implicit access: SimulationAccess): DataFrame =
     {
         val events = access.events
         val ret = events
@@ -528,7 +528,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
         ret
     }
 
-    def getRecorders (implicit access: SimulationCassandraAccess): DataFrame =
+    def getRecorders (implicit access: SimulationAccess): DataFrame =
     {
         val recorders = access.recorders
         val ret = recorders
@@ -646,7 +646,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
         summary.mapValues(toUDT)
     }
 
-    def summarize ()(implicit access: SimulationCassandraAccess): Unit =
+    def summarize ()(implicit access: SimulationAccess): Unit =
     {
         // get the events - a mix of "voltage" "current" and "power" types
         val power_events = getEvents
@@ -707,7 +707,7 @@ case class SimulationEvents (triggers: Iterable[Trigger])(spark: SparkSession, o
     if (options.verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger(getClass)
 
-    def run (implicit access: SimulationCassandraAccess): Unit =
+    def run (implicit access: SimulationAccess): Unit =
     {
         // organize the triggers by type, table, reference and default
         val sets = triggers.groupBy(trigger => (trigger.`type`, trigger.reference, trigger.default)).toArray

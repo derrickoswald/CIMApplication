@@ -576,10 +576,9 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         results
     }
 
-    def createSimulationTasks (job: SimulationJob): RDD[SimulationTrafoKreis] =
+    def createSimulationTasks (job: SimulationJob, tasks: RDD[SimulationTask]): RDD[SimulationTrafoKreis] =
     {
         val (transformers, _) = getTransformers
-        val tasks = make_tasks(job)
         job.save(session, job.output_keyspace, job.id, tasks)
 
         log.info("""matching tasks to topological islands""")
@@ -656,7 +655,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             // perform the extra queries and insert into the key_value table
             performExtraQueries(job)
 
-            val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job)
+            val tasks = make_tasks(job)
+            val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job, tasks)
 
             if (!simulations.isEmpty())
             {
@@ -673,6 +673,17 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 log.info("""saving GridLAB-D simulation results""")
                 val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
                 simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
+                // Run postprocessing
+//                if (!options.simulationonly) {
+//                    implicit val access = new SimulationRDDAccess(spark, options.cim_options.storage, job.id, job.input_keyspace, job.output_keyspace, options.verbose)
+//                    job.postprocessors.foreach(
+//                        processor =>
+//                        {
+//                            val runner = processor(session, options)
+//                            runner.run(access)
+//                        }
+//                    )
+//                }
                 log.info("""saved GridLAB-D simulation results""")
                 vanishRDDs(List(simulations, player_rdd, simulationResults))
             }
@@ -705,7 +716,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             {
                 case Some((id, input, output)) =>
                     implicit val access: SimulationCassandraAccess =
-                        SimulationCassandraAccess(spark, options.cim_options.storage, id, input, output, options.verbose)
+                        new SimulationCassandraAccess(spark, options.cim_options.storage, id, input, output, options.verbose)
                     // ToDo: this isn't quite right, take the first job matching the output keyspace
                     val batches = jobs.groupBy(_.output_keyspace)
                     val job = aJob(batches(output))

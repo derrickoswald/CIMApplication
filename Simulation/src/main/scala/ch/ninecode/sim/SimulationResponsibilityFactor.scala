@@ -30,7 +30,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
      * Responsibility factor
      */
     @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
-    def run (implicit access: SimulationCassandraAccess): Unit =
+    def run (implicit access: SimulationAccess): Unit =
     {
         log.info("Responsibility Factor")
 
