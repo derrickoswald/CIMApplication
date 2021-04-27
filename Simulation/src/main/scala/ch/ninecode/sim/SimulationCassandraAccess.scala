@@ -122,9 +122,11 @@ class SimulationCassandraAccess (
             .collect
     }
 
+    /*
     def events: DataFrame =
     {
         val where = s"simulation = '$simulation'"
         spark.sql(s"""select `mrid`,`type`,`start_time`,`end_time`,`message`,`ratio`,`severity` from casscatalog.$output_keyspace.simulation_event where $where""").persist(storage_level)
     }
+     */
 }

@@ -493,9 +493,10 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         session.sparkContext.getPersistentRDDs.foreach(x => vanishRDD(x._2))
     }
 
-    def performExtraQueries (job: SimulationJob): Unit =
+    def performExtraQueries (job: SimulationJob): DataFrame =
     {
         log.info(s"executing ${job.extras.length} extra queries")
+        var key_values: RDD[(String, String, String, String)] = spark.sparkContext.emptyRDD[(String, String, String, String)]
         job.extras.foreach(
             extra =>
             {
@@ -515,7 +516,11 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         if ((keytype != "string") || (valuetype != "string"))
                             log.error(s"""extra query "${extra.title}" schema fields key and value are not both strings (key=$keytype, value=$valuetype)""")
                         else
-                            df.rdd.map(row => (job.id, extra.title, row.getString(keyindex), row.getString(valueindex))).saveToCassandra(job.output_keyspace, "key_value", SomeColumns("simulation", "query", "key", "value"))
+                        {
+                            val key_value = df.rdd.map(row => (job.id, extra.title, row.getString(keyindex), row.getString(valueindex)))
+                            key_value.saveToCassandra(job.output_keyspace, "key_value", SomeColumns("simulation", "query", "key", "value"))
+                            key_values = key_values.union(key_value)
+                        }
                     }
                 }
                 else
@@ -523,6 +528,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 df.unpersist(false)
             }
         )
+        import spark.implicits._
+        key_values.map(k => (k._3, k._4)).toDF("mrid", "value")
     }
 
     def getTransformers: (Map[String, TransformerSet], Array[TransformerData]) =
@@ -653,9 +660,9 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
         {
             // perform the extra queries and insert into the key_value table
-            performExtraQueries(job)
+            val key_values: DataFrame = performExtraQueries(job)
 
-            val tasks = make_tasks(job)
+            val tasks: RDD[SimulationTask] = make_tasks(job)
             val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job, tasks)
 
             if (!simulations.isEmpty())
@@ -683,7 +690,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         job.output_keyspace,
                         options.verbose,
                         simulationResults,
-                        tasks
+                        tasks,
+                        key_values
                     )
                     job.postprocessors.foreach(
                         processor =>

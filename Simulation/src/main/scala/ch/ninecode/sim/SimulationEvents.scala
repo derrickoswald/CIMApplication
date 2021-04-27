@@ -424,7 +424,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * @param triggers the trigger thresholds in the set
      * @param access   a Cassandra helper class
      */
-    def checkFor (triggers: Iterable[Trigger])(implicit access: SimulationAccess): Unit =
+    def checkFor (triggers: Iterable[Trigger])(implicit access: SimulationAccess): RDD[Event] =
     {
         val (typ, reference) = getTriggerDetails(triggers)
 
@@ -491,7 +491,8 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         else
             spark.sparkContext.emptyRDD[Event]
 
-        save(highEvents.union(lowEvents))
+        val events = highEvents.union(lowEvents)
+        save(events)
 
         {
             val _ = values_rdd.unpersist(false)
@@ -502,6 +503,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         {
             val _ = simulated_values.unpersist(false)
         }
+        events
     }
 }
 
@@ -516,11 +518,11 @@ case class EventNumber (
     orange: Int,
     red: Int)
 
-case class Summarizer (spark: SparkSession, storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"))
+case class Summarizer (spark: SparkSession, events: DataFrame, storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER")) extends Evented
 {
-    def getEvents (implicit access: SimulationAccess): DataFrame =
+    def getEvents (): DataFrame =
     {
-        val events = access.events
+        //val events = access.events
         val ret = events
             .withColumn("date", events("start_time").cast(DateType))
             .drop("start_time", "end_time", "message", "ratio")
@@ -702,7 +704,7 @@ case class Summarizer (spark: SparkSession, storage_level: StorageLevel = Storag
  * @param options  The simulation options. Note: Currently only the verbose and storage_level options are used.
  */
 case class SimulationEvents (triggers: Iterable[Trigger])(spark: SparkSession, options: SimulationOptions)
-    extends SimulationPostProcessor(spark, options)
+    extends SimulationPostProcessor(spark, options) with Evented
 {
     if (options.verbose) org.apache.log4j.LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
     val log: Logger = LoggerFactory.getLogger(getClass)
@@ -713,17 +715,25 @@ case class SimulationEvents (triggers: Iterable[Trigger])(spark: SparkSession, o
         val sets = triggers.groupBy(trigger => (trigger.`type`, trigger.reference, trigger.default)).toArray
         log.info(s"checking for events in ${access.simulation} (input keyspace: ${access.input_keyspace}, output keyspace: ${access.output_keyspace})")
 
+        var events: RDD[Event] = spark.sparkContext.emptyRDD[Event]
         // handle each trigger set
         for (((typ, ref, default), thresholds) <- sets)
         {
             log.info(s"$typ events with reference $ref and default $default")
-            DoubleChecker(spark, options.cim_options.storage, options.three_phase).checkFor(thresholds)
+            val event = DoubleChecker(spark, options.cim_options.storage, options.three_phase).checkFor(thresholds)
+            events = events.union(event)
             log.info(s"$typ deviation events saved to ${access.output_keyspace}.simulation_event")
         }
 
+        import spark.implicits._
+
+        // Event(simulation, mrid, type, start_time, end_time, ratio, severity, message)
+        val eventsDF = events.map((e: Event) => (e._2, e._3, e._4, e._5, e._8, e._6, e._7))
+            .toDF("mrid","type", "start_time","end_time","message","ratio","severity")
+
         // perform the summary
         log.info("summarizing events")
-        Summarizer(spark, options.cim_options.storage).summarize()
+        Summarizer(spark, eventsDF, options.cim_options.storage).summarize()
         log.info(s"event summary saved to ${access.output_keyspace}.simulation_event_summary")
     }
 }

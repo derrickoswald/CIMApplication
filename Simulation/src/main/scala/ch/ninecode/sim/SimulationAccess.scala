@@ -34,7 +34,7 @@ abstract case class SimulationAccess (
 
     def mrid_raw_values (typ: String, mrids: Iterable[String], to_drop: Seq[String], period: Int = PERIOD): DataFrame
 
-    def events: DataFrame
+    //def events: DataFrame
 
     def recorders: DataFrame
 }

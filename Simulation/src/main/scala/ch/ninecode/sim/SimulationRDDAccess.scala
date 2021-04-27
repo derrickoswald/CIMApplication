@@ -27,7 +27,9 @@ class SimulationRDDAccess (
     override val output_keyspace: String,
     override val verbose: Boolean = false,
     val simulationresults: RDD[SimulationResult],
-    val tasks: RDD[SimulationTask]) extends SimulationAccess(spark, storage_level, simulation, input_keyspace, output_keyspace, verbose)
+    val tasks: RDD[SimulationTask],
+    val key_values: DataFrame)
+    extends SimulationAccess(spark, storage_level, simulation, input_keyspace, output_keyspace, verbose)
 {
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
@@ -57,7 +59,10 @@ class SimulationRDDAccess (
         filterSimulationResultsDF.select(columns.head, columns.tail: _*)
     }
 
-    override def key_value (reference: String): DataFrame = ???
+    override def key_value (reference: String): DataFrame = {
+        // TODO: filter ?? val where = s"simulation = '$simulation' and query='$query'"
+        key_values
+    }
 
     override def raw_values (`type`: String, to_drop: Seq[String], period: Int = PERIOD): DataFrame =
     {
@@ -91,9 +96,15 @@ class SimulationRDDAccess (
         values(Seq(simulationFilter, typeFilter, periodFilter, mridFilter), to_drop)
     }
 
-    override def recorders: DataFrame = ???
+    override def recorders: DataFrame =
+    {
+        // TODO: filter ??
+        import spark.implicits._
+        val recorders =
+            tasks.flatMap(
+                task => task.recorders.map(recorder => (task.transformer, recorder.name, recorder.aggregationsMap, recorder.interval, recorder.mrid, recorder.`type`, recorder.unit)))
+        recorders.toDF("transformer", "name","aggregations","interval", "mrid","property","type", "unit")
+    }
 
     override def mrids_for_recorders (typ: String): Array[(Trafo, Iterable[Mrid])] = ???
-
-    override def events: DataFrame = ???
 }
