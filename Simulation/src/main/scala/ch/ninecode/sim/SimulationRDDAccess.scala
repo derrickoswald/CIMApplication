@@ -4,7 +4,6 @@ import scala.collection.convert.ImplicitConversions.`collection asJava`
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.Encoder
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
@@ -39,29 +38,34 @@ class SimulationRDDAccess (
                 filterToTest(result)
             })
         })
-        import spark.implicits._
-        val filterSimulationResultsDF = spark.createDataFrame(filteredResults.map(attributes => Row(attributes)), implicitly[Encoder[SimulationResult]].schema)
 
-        val columns = Seq(
+        val all_columns = Seq(
             "simulation",
             "mrid",
             "type",
-            "period",
             "time",
+            "period",
             "imag_a",
             "imag_b",
             "imag_c",
             "real_a",
             "real_b",
             "real_c",
-            "units").filter(!to_drop.contains(_))
+            "units",
+            "ttl")
+        val columns = all_columns.filter(!(to_drop +: "ttl").contains(_))
+
+        import spark.implicits._
+        val filterSimulationResultsDF = filteredResults.toDF(all_columns:_*)
 
         filterSimulationResultsDF.select(columns.head, columns.tail: _*)
     }
 
     override def key_value (reference: String): DataFrame = {
-        // TODO: filter ?? val where = s"simulation = '$simulation' and query='$query'"
-        key_values
+        def queryFilter: (Row) => Boolean = (keyValueRow) => {
+            keyValueRow.getAs[String]("query").equals(reference)
+        }
+        key_values.filter(queryFilter)
     }
 
     override def raw_values (`type`: String, to_drop: Seq[String], period: Int = PERIOD): DataFrame =
@@ -102,7 +106,7 @@ class SimulationRDDAccess (
         import spark.implicits._
         val recorders =
             tasks.flatMap(
-                task => task.recorders.map(recorder => (task.transformer, recorder.name, recorder.aggregationsMap, recorder.interval, recorder.mrid, recorder.`type`, recorder.unit)))
+                task => task.recorders.map(recorder => (task.transformer, recorder.name, recorder.aggregationsMap, recorder.interval, recorder.mrid, recorder.property, recorder.`type`, recorder.unit)))
         recorders.toDF("transformer", "name","aggregations","interval", "mrid","property","type", "unit")
     }
 

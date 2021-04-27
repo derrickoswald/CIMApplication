@@ -529,7 +529,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             }
         )
         import spark.implicits._
-        key_values.map(k => (k._3, k._4)).toDF("mrid", "value")
+        key_values.map(k => (k._2, k._3, k._4)).toDF("query", "mrid", "value")
     }
 
     def getTransformers: (Map[String, TransformerSet], Array[TransformerData]) =

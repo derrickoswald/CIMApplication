@@ -311,7 +311,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * @return (mRID, threshold)
      */
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def getConstants (data: Iterable[(String, Timestamp, Int, Double, Double)]): (String, Double) =
+    def getConstants (data: Iterable[(String, _, _, _, Double)]): (String, Double) =
     {
         val first = data.head
         (first._1, first._5)
@@ -328,12 +328,12 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
      * @param data       the raw data that passes the 'best' case filtering
      * @return a list of business rule events, if any
      */
-    def check (simulation: String, triggers: Iterable[_ <: Trigger])(data: Iterable[(String, Timestamp, Int, Double, Double)]): Iterable[Event] =
+    def check (simulation: String, triggers: Iterable[_ <: Trigger])(data: Iterable[(String, Long, Int, Double, Double)]): Iterable[Event] =
     {
         val (mrid, threshold) = getConstants(data)
 
         // pare down the data and sort by time
-        val values = data.map(x => (x._2.getTime, x._3, x._4)).toArray.sortWith(_._1 < _._1)
+        val values = data.map(x => (x._2, x._3, x._4)).toArray.sortWith(_._1 < _._1)
 
         val checkers = triggers.map(x => Checker(simulation, mrid, x, threshold))
         for (i <- values.indices)
@@ -477,7 +477,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         val highEvents = if (0 < highs.size)
             values_rdd
                 .filter(filterFor(highs, value_min, ref))
-                .map(row => (row.getString(mrid), row.getTimestamp(time), row.getInt(period), row.getDouble(value_min), row.getDouble(ref)))
+                .map(row => (row.getString(mrid), row.getLong(time), row.getInt(period), row.getDouble(value_min), row.getDouble(ref)))
                 .groupBy(_._1).values.flatMap(check(access.simulation, highs))
         else
             spark.sparkContext.emptyRDD[Event]
@@ -486,7 +486,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
         val lowEvents = if (0 < lows.size)
             values_rdd
                 .filter(filterFor(lows, value_max, ref))
-                .map(row => (row.getString(mrid), row.getTimestamp(time), row.getInt(period), row.getDouble(value_max), row.getDouble(ref)))
+                .map(row => (row.getString(mrid), row.getLong(time), row.getInt(period), row.getDouble(value_max), row.getDouble(ref)))
                 .groupBy(_._1).values.flatMap(check(access.simulation, lows))
         else
             spark.sparkContext.emptyRDD[Event]
