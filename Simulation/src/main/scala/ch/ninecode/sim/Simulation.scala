@@ -681,6 +681,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 log.info("""saving GridLAB-D simulation results""")
                 val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
                 simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
+                log.info("""saved GridLAB-D simulation results""")
+
                 // Run postprocessing
                 if (!options.simulationonly) {
                     implicit val access = new SimulationRDDAccess(
@@ -702,16 +704,22 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         }
                     )
                 }
-                log.info("""saved GridLAB-D simulation results""")
+
                 vanishRDDs(List(simulations, player_rdd, simulationResults))
             }
         }
         job.id
     }
 
-    def postprocess (ids: Seq[String], jobs: Seq[SimulationJob])
+
+
+    def postprocess_only (jobs: Seq[SimulationJob]): Seq[String] =
     {
-        val keyspaces = jobs.map(_.output_keyspace).distinct
+        // get all simulations from the output keyspace(s)
+        val keyspaces: Seq[String] = jobs.map(_.output_keyspace).distinct
+        log.info(s"""using keyspace${plural(keyspaces.length)} ${keyspaces.mkString(",")}""")
+        val ids: Seq[String] = getSimulationIds(keyspaces)
+
         val lookup = keyspaces.flatMap(
             keyspace =>
             {
@@ -749,7 +757,25 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     log.error(s"simulation $simulation not found in keyspaces (${lookup.map(_._2).mkString(",")})")
             }
         }
+        ids
 
+    }
+
+    private def getSimulationIds(keyspaces: Seq[String]) =
+    {
+        keyspaces.flatMap(
+            keyspace =>
+            {
+                spark
+                    .read
+                    .format("org.apache.spark.sql.cassandra")
+                    .options(Map("table" -> "simulation", "keyspace" -> keyspace))
+                    .load
+                    .select("id")
+                    .collect
+                    .map(_.getString(0))
+            }
+        )
     }
 
     def run (): Seq[String] =
@@ -765,28 +791,9 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         }
         else
         {
-            // get all simulations from the output keyspace(s)
-            val keyspaces = jobs.map(_.output_keyspace).distinct
-            log.info(s"""using keyspace${plural(keyspaces.length)} ${keyspaces.mkString(",")}""")
-            keyspaces.flatMap(
-                keyspace =>
-                {
-                    spark
-                        .read
-                        .format("org.apache.spark.sql.cassandra")
-                        .options(Map("table" -> "simulation", "keyspace" -> keyspace))
-                        .load
-                        .select("id")
-                        .collect
-                        .map(_.getString(0))
-                }
-            )
+            postprocess_only(jobs)
         }
         log.info(s"""simulation${plural(ids.size)} ${ids.mkString(",")}""")
-
-        // postprocess
-        /*if (!options.simulationonly)
-            postprocess(ids, jobs)*/
 
         ids
     }
