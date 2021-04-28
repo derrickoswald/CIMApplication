@@ -580,6 +580,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 .persist(options.cim_options.storage)
         raw_results.flatMap(_._1).collect.foreach(log.error)
         val results = raw_results.flatMap(_._2).persist(options.cim_options.storage).setName(s"${job.id}_results")
+        val _ = raw_results.unpersist(false)
         results
     }
 

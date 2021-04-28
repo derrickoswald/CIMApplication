@@ -459,7 +459,7 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
                 .join(references, Seq("mrid"))
         }
 
-        val values_rdd = values.rdd.persist(storage_level)
+        val values_rdd = values.rdd.persist(storage_level).setName(s"SimulationEvents_values_rdd")
 
         val mrid = values.schema.fieldIndex("mrid")
         val period = values.schema.fieldIndex("period")
@@ -475,19 +475,25 @@ case class DoubleChecker (spark: SparkSession, storage_level: StorageLevel = Sto
 
         // for exceeding threshold checks, use the minimum of the three phases (worst case), or just the value (single phase case)
         val highEvents = if (0 < highs.size)
-            values_rdd
-                .filter(filterFor(highs, value_min, ref))
-                .map(row => (row.getString(mrid), row.getLong(time), row.getInt(period), row.getDouble(value_min), row.getDouble(ref)))
-                .groupBy(_._1).values.flatMap(check(access.simulation, highs))
+        {
+            val values_filtered_max = values_rdd.filter(filterFor(highs, value_min, ref)).setName("SimulationEvents_highEvents_filtered")
+            val values_mapped = values_filtered_max
+                .map(row => (row.getString(mrid), row.getLong(time), row.getInt(period), row.getDouble(value_min), row.getDouble(ref))).setName("SimulationEvents_mapped")
+            val values_grouped = values_mapped.groupBy(_._1).values.setName("SimulationEvents_highEvents_groupby")
+            values_grouped.flatMap(check(access.simulation, highs)).setName("SimulationEvents_highEvents")
+        }
         else
             spark.sparkContext.emptyRDD[Event]
 
         // for subceeding threshold checks, use the maximum of the three phases (worst case), or just the value (single phase case)
         val lowEvents = if (0 < lows.size)
-            values_rdd
-                .filter(filterFor(lows, value_max, ref))
-                .map(row => (row.getString(mrid), row.getLong(time), row.getInt(period), row.getDouble(value_max), row.getDouble(ref)))
-                .groupBy(_._1).values.flatMap(check(access.simulation, lows))
+        {
+            val values_filtered_min = values_rdd.filter(filterFor(lows, value_max, ref)).setName("SimulationEvents_lowEvents_filtered")
+            val values_mapped = values_filtered_min
+                .map(row => (row.getString(mrid), row.getLong(time), row.getInt(period), row.getDouble(value_max), row.getDouble(ref))).setName("SimulationEvents_lowEvents_mapped")
+            val values_grouped = values_mapped.groupBy(_._1).values.setName("SimulationEvents_lowEvents_after_groupby")
+            values_grouped.flatMap(check(access.simulation, lows)).setName("SimulationEvents_lowEvents")
+        }
         else
             spark.sparkContext.emptyRDD[Event]
 
