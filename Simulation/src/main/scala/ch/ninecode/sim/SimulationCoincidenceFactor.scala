@@ -80,7 +80,7 @@ case class SimulationCoincidenceFactor (aggregations: Iterable[SimulationAggrega
                 row =>
                 {
                     val factor = if (row.isNullAt(coincidence)) 0.0 else row.getDouble(coincidence)
-                    (trafo, typ, row.getDate(date), row.getDouble(peak_power), row.getDouble(sum_power), factor, "VA÷VA", access.simulation)
+                    (trafo, typ, row.getTimestamp(date), row.getDouble(peak_power), row.getDouble(sum_power), factor, "VA÷VA", access.simulation)
                 }
             )
 

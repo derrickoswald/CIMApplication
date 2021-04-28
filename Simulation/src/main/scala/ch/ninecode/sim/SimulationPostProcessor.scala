@@ -1,13 +1,12 @@
 package ch.ninecode.sim
 
 import javax.json.JsonObject
-
 import scala.reflect.runtime.universe.TypeTag
 
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.udf
-import org.apache.spark.sql.types.DateType
+import org.apache.spark.sql.types.TimestampType
 
 /**
  * Postprocessor base class.
@@ -56,7 +55,7 @@ abstract class SimulationPostProcessor (spark: SparkSession, options: Simulation
                     .withColumn("power", magnitude[Double, Double].apply(simulated_values("real_a"), simulated_values("imag_a")))
                     .drop("real_a", "imag_a")
         simulated_power_values
-            .withColumn("date", simulated_power_values("time").cast(DateType))
+            .withColumn("date", simulated_power_values("time").cast(TimestampType))
     }
 }
 

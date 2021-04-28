@@ -102,13 +102,10 @@ class SimulationRDDAccess (
 
     override def recorders: DataFrame =
     {
-        // TODO: filter ??
         import spark.implicits._
         val recorders =
             tasks.flatMap(
                 task => task.recorders.map(recorder => (task.transformer, recorder.name, recorder.aggregationsMap, recorder.interval, recorder.mrid, recorder.property, recorder.`type`, recorder.unit)))
         recorders.toDF("transformer", "name","aggregations","interval", "mrid","property","type", "unit")
     }
-
-    override def mrids_for_recorders (typ: String): Array[(Trafo, Iterable[Mrid])] = ???
 }

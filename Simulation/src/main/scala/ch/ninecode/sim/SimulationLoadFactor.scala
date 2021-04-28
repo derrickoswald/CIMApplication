@@ -64,7 +64,7 @@ case class SimulationLoadFactor (aggregations: Iterable[SimulationAggregate])(sp
             val load_factor = loadfactors.schema.fieldIndex("load_factor")
 
             val work = loadfactors.rdd.map(
-                row => (trafo, typ, row.getDate(date), row.getDouble(avg_power), row.getDouble(peak_power), row.getDouble(load_factor), "VA÷VA", access.simulation))
+                row => (trafo, typ, row.getTimestamp(date), row.getDouble(avg_power), row.getDouble(peak_power), row.getDouble(load_factor), "VA÷VA", access.simulation))
 
             // save to Cassandra
             work.saveToCassandra(access.output_keyspace, "load_factor_by_day",

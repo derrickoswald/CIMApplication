@@ -103,30 +103,4 @@ class SimulationCassandraAccess (
         val where = s"simulation = '$simulation'"
         spark.sql(s"""select `transformer`,`name`,`aggregations`,`interval`,`mrid`,`property`,`type`,`unit` from casscatalog.$output_keyspace.simulation_recorder where $where""").persist(storage_level)
     }
-
-    def mrids_for_recorders (`type`: Type): Array[(Trafo, Iterable[Mrid])] =
-    {
-        import spark.implicits._
-
-        val rec = recorders
-        val r = rec
-            .where(rec("property") === "power" || rec("property") === "power_in") // select only consumers and transformer
-            .drop("name", "aggregations", "interval", "property", "type", "unit")
-            .distinct
-        val transformer = r.schema.fieldIndex("transformer")
-        val mrid = r.schema.fieldIndex("mrid")
-        r
-            .map(x => (x.getString(transformer), x.getString(mrid)))
-            .rdd
-            .groupByKey
-            .collect
-    }
-
-    /*
-    def events: DataFrame =
-    {
-        val where = s"simulation = '$simulation'"
-        spark.sql(s"""select `mrid`,`type`,`start_time`,`end_time`,`message`,`ratio`,`severity` from casscatalog.$output_keyspace.simulation_event where $where""").persist(storage_level)
-    }
-     */
 }

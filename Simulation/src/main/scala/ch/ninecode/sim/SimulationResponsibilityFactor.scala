@@ -87,7 +87,7 @@ case class SimulationResponsibilityFactor (aggregations: Iterable[SimulationAggr
                 row =>
                 {
                     val resp = if (row.isNullAt(responsibility)) 0.0 else row.getDouble(responsibility)
-                    (row.getString(mrid), typ, row.getDate(date), row.getTimestamp(time), trafo, row.getDouble(power), row.getDouble(peak), resp, "VA÷VA×100", access.simulation)
+                    (row.getString(mrid), typ, row.getTimestamp(date), row.getLong(time), trafo, row.getDouble(power), row.getDouble(peak), resp, "VA÷VA×100", access.simulation)
                 }
             )
             // save to Cassandra
