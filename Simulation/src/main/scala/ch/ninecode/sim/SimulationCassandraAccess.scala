@@ -2,6 +2,8 @@ package ch.ninecode.sim
 
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.types.LongType
 import org.apache.spark.storage.StorageLevel
 
 /**
@@ -52,7 +54,7 @@ class SimulationCassandraAccess (
             "mrid",
             "type",
             "period",
-            "blobAsBigint(timestampAsBlob(time))",
+            "time",
             "imag_a",
             "imag_b",
             "imag_c",
@@ -60,7 +62,7 @@ class SimulationCassandraAccess (
             "real_b",
             "real_c",
             "units").filter(!to_drop.contains(_)).map(x => s"`$x`").mkString(",")
-        spark.sql(s"""select $columns from casscatalog.$output_keyspace.simulated_value where $where""").persist(storage_level)
+        spark.sql(s"""select $columns from casscatalog.$output_keyspace.simulated_value where $where""").withColumn("time", col("time").cast(LongType)).persist(storage_level)
     }
 
     /**
@@ -81,7 +83,7 @@ class SimulationCassandraAccess (
             "mrid",
             "type",
             "period",
-            "blobAsBigint(timestampAsBlob(time))",
+            "time",
             "imag_a",
             "imag_b",
             "imag_c",
@@ -89,7 +91,7 @@ class SimulationCassandraAccess (
             "real_b",
             "real_c",
             "units").filter(!to_drop.contains(_)).map(x => s"`$x`").mkString(",")
-        spark.sql(s"""select $columns from casscatalog.$output_keyspace.simulated_value where $where""")
+        spark.sql(s"""select $columns from casscatalog.$output_keyspace.simulated_value where $where""").withColumn("time", col("time").cast(LongType))
     }
 
     def players (`type`: String): DataFrame =
