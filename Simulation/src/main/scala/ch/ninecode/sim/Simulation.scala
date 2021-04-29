@@ -782,7 +782,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     {
         val jobs = SimulationJob.getAll(options)
 
-        // simulate
         val ids = if (!options.postprocessonly)
         {
             // organize by same RDF, options and output keyspace

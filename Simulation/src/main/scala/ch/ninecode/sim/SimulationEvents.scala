@@ -528,7 +528,6 @@ case class Summarizer (spark: SparkSession, events: DataFrame, storage_level: St
 {
     def getEvents (): DataFrame =
     {
-        //val events = access.events
         val ret = events
             .withColumn("date", events("start_time").cast(DateType))
             .drop("start_time", "end_time", "message", "ratio")
