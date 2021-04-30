@@ -31,6 +31,34 @@ class SimulationRDDAccess (
     extends SimulationAccess(spark, storage_level, simulation, input_keyspace, output_keyspace, verbose)
 {
 
+    private def simulationFilter: (SimulationResult => Boolean) = (simulationResult: SimulationResult) => {
+        simulationResult.simulation.equals(simulation)
+    }
+
+    private def typeFilter: (Type) => (SimulationResult => Boolean) = (`type`) =>
+    {
+        (simulationResult) =>  {
+            simulationResult.`type`.equals(`type`)
+        }
+    }
+
+    private def periodFilter: SimulationResult => Boolean = (simulationResult) =>
+    {
+        simulationResult.period == PERIOD
+    }
+
+    private def mridFilter: (Iterable[Mrid] => (SimulationResult => Boolean)) = (mrids) => {
+        (simulationResult) => {
+            mrids.contains(simulationResult.mrid)
+        }
+    }
+
+    private def queryFilter: (String => (Row => Boolean)) = (reference) => {
+        (keyValueRow) => {
+            keyValueRow.getAs[String]("query").equals(reference)
+        }
+    }
+
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     private def values (filterList: Seq[SimulationResult => Boolean], to_drop: Seq[String]): DataFrame = {
         val filteredResults = simulationresults.filter((result) => {
@@ -62,42 +90,17 @@ class SimulationRDDAccess (
     }
 
     override def key_value (reference: String): DataFrame = {
-        def queryFilter: (Row) => Boolean = (keyValueRow) => {
-            keyValueRow.getAs[String]("query").equals(reference)
-        }
-        key_values.filter(queryFilter)
+        key_values.filter(queryFilter(reference))
     }
 
     override def raw_values (`type`: String, to_drop: Seq[String], period: Int = PERIOD): DataFrame =
     {
-        def simulationFilter: SimulationResult => Boolean = (simulationResult) => {
-            simulationResult.simulation.equals(simulation)
-        }
-        def typeFilter: SimulationResult => Boolean = (simulationResult) =>  {
-            simulationResult.`type`.equals(`type`)
-        }
-        def periodFilter: SimulationResult => Boolean = (simulationResult) => {
-            simulationResult.period == PERIOD
-        }
-
-        values(Seq(simulationFilter, typeFilter, periodFilter), to_drop)
+        values(Seq(simulationFilter, typeFilter(`type`), periodFilter), to_drop)
     }
 
     override def mrid_raw_values (`type`: Type, mrids: Iterable[Mrid], to_drop: Seq[String], period: Int = PERIOD): DataFrame =
     {
-        def simulationFilter: SimulationResult => Boolean = (simulationResult) => {
-            simulationResult.simulation.equals(simulation)
-        }
-        def typeFilter: SimulationResult => Boolean = (simulationResult) =>  {
-            simulationResult.`type`.equals(`type`)
-        }
-        def periodFilter: SimulationResult => Boolean = (simulationResult) => {
-            simulationResult.period == PERIOD
-        }
-        def mridFilter:  SimulationResult => Boolean = (simulationResult) => {
-            mrids.contains(simulationResult.mrid)
-        }
-        values(Seq(simulationFilter, typeFilter, periodFilter, mridFilter), to_drop)
+        values(Seq(simulationFilter, typeFilter(`type`), periodFilter, mridFilter(mrids)), to_drop)
     }
 
     override def recorders: DataFrame =
