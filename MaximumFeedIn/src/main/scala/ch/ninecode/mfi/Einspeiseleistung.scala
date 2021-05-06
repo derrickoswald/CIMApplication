@@ -150,7 +150,14 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         {
             lookup.get(element) match
             {
-                case Some(feeder) => if (feeder == experiment.feeder) max else neighbormax
+                case Some(feeder) =>
+                    if (feeder == experiment.feeder) {
+                        max
+                    }  else if (options.ignore_threshold2_when_nonradial &&  experiment.nonradial) {
+                        max
+                    } else {
+                        neighbormax
+                    }
                 case None => max
             }
         }

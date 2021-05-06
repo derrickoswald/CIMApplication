@@ -32,7 +32,9 @@ case class Experiment
     interval: Int,
     from: Double,
     to: Double,
-    step: Double)
+    step: Double,
+    nonradial: Boolean
+)
 {
     /**
      * Calendar duplication utility function.
