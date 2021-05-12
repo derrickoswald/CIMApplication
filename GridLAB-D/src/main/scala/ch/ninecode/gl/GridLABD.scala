@@ -559,61 +559,71 @@ class GridLABD
             (trafo, k._2)
         }
 
-        def read (f: String): TraversableOnce[ThreePhaseComplexDataElement] =
-        {
-            var units = ""
-            var element = ""
-            val content = f.split("\n").filter(s => s.startsWith("# file") || ((s.length > 0) && s.charAt(0).isDigit))
-
-            def makeResult (c: String): Option[ThreePhaseComplexDataElement] =
-            {
-                if (c.startsWith("# file"))
-                {
-                    val filename_pattern = "# file...... output_data/(.*)" //# file...... output_data/HAS138117_topo_voltage.csv
-                    val filename = c.replaceAll(filename_pattern, "$1").replaceAll("\\r", "")
-                    val (e, u) = filenameparser(filename)
-                    element = e
-                    units = u
-                    None
-                }
-                else
-                {
-                    val c_arr = c.split(",")
-                    if (one_phase)
-                        if (c_arr.length > 3)
-                        {
-                            val fd = FlowDirection(c_arr(3))
-                            Some(ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), fd.a * Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0), Complex(0.0), units))
-                        }
-                        else
-                            if (c_arr.length == 3)
-                                Some(ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(0.0), Complex(0.0), units))
-                            else
-                            {
-                                log.error("""%s recorder text "%s" cannot be interpreted as one phase complex %s""".format(element, c, units))
-                                None
-                            }
+        def getThreePhaseConverter(onePhase: Boolean): ((String, String,Array[String])) => Option[ThreePhaseComplexDataElement] = {
+            if (onePhase) {
+                (row: (String, String, Array[String])) => {
+                    val element = row._1
+                    val units = row._2
+                    val resultArray = row._3
+                    if (resultArray.length > 3)
+                    {
+                        val fd = FlowDirection(resultArray(3))
+                        Some(ThreePhaseComplexDataElement(element, toTimeStamp(resultArray(0)), fd.a * Complex(resultArray(1).toDouble, resultArray(2).toDouble), Complex(0.0), Complex(0.0), units))
+                    }
                     else
-                        if (c_arr.length > 7)
-                        {
-                            val fd = FlowDirection(c_arr(7))
-                            Some(ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), fd.a * Complex(c_arr(1).toDouble, c_arr(2).toDouble), fd.b * Complex(c_arr(3).toDouble, c_arr(4).toDouble), fd.c * Complex(c_arr(5).toDouble, c_arr(6).toDouble), units))
-                        }
+                        if (resultArray.length == 3)
+                            Some(ThreePhaseComplexDataElement(element, toTimeStamp(resultArray(0)), Complex(resultArray(1).toDouble, resultArray(2).toDouble), Complex(0.0), Complex(0.0), units))
                         else
-                            if (c_arr.length == 7)
-                                Some(ThreePhaseComplexDataElement(element, toTimeStamp(c_arr(0)), Complex(c_arr(1).toDouble, c_arr(2).toDouble), Complex(c_arr(3).toDouble, c_arr(4).toDouble), Complex(c_arr(5).toDouble, c_arr(6).toDouble), units))
-                            else
-                            {
-                                log.error("""%s recorder text "%s" cannot be interpreted as three phase complex %s""".format(element, c, units))
-                                None
-                            }
+                        {
+                            log.error("""%s recorder text "%s" cannot be interpreted as one phase complex %s""".format(element, resultArray.mkString(","), units))
+                            None
+                        }
+                }
+            } else  {
+                (row: (String, String, Array[String])) =>
+                {
+                    val element = row._1
+                    val units = row._2
+                    val resultArray = row._3
+                    if (resultArray.length > 7)
+                    {
+                        val fd = FlowDirection(resultArray(7))
+                        Some(ThreePhaseComplexDataElement(element, toTimeStamp(resultArray(0)), fd.a * Complex(resultArray(1).toDouble, resultArray(2).toDouble), fd.b * Complex(resultArray(3).toDouble, resultArray(4).toDouble), fd.c * Complex(resultArray(5).toDouble, resultArray(6).toDouble), units))
+                    }
+                    else
+                        if (resultArray.length == 7)
+                            Some(ThreePhaseComplexDataElement(element, toTimeStamp(resultArray(0)), Complex(resultArray(1).toDouble, resultArray(2).toDouble), Complex(resultArray(3).toDouble, resultArray(4).toDouble), Complex(resultArray(5).toDouble, resultArray(6).toDouble), units))
+                        else
+                        {
+                            log.error("""%s recorder text "%s" cannot be interpreted as three phase complex %s""".format(element, resultArray.mkString(","), units))
+                            None
+                        }
                 }
             }
-
-            content.flatMap(makeResult)
         }
 
-        files.map(extract_trafo).flatMapValues(read)
+        def makeResult (threePhaseConverter: ((String, String,Array[String])) => Option[ThreePhaseComplexDataElement])(row: (String, String, String)): TraversableOnce[ThreePhaseComplexDataElement] =
+        {
+            val element = row._1
+            val units = row._2
+            val individualResult = row._3
+            threePhaseConverter((element,units,individualResult.split(',')))
+        }
+
+        val threPhaseConverter: ((String, String, Array[String])) => Option[ThreePhaseComplexDataElement] = getThreePhaseConverter(one_phase)
+        val applyMakeResult: ((String, String, String)) => TraversableOnce[ThreePhaseComplexDataElement] = makeResult(threPhaseConverter)
+        files.map(extract_trafo).flatMapValues((simulationResult: String) =>
+        {
+            simulationResult.split("(?=# file)")
+            // val content = f.split("\n").filter(s => s.startsWith("# file") || ((s.length > 0) && s.charAt(0).isDigit))
+        }).flatMapValues(f = (hasResult: String) =>
+        {
+            val hasIndividualResult = hasResult.split("\n").filter(s => s.startsWith("# file") || ((s.length > 0) && s.charAt(0).isDigit))
+            val filename_pattern = "# file...... output_data/(.*)" //# file...... output_data/HAS138117_topo_voltage.csv
+            val filename = hasIndividualResult(0).replaceAll(filename_pattern, "$1").replaceAll("\\r", "")
+            val (element, units) = filenameparser(filename)
+            hasIndividualResult.drop(1).map((individualResult) => (element, units, individualResult))
+        }).flatMapValues(applyMakeResult)
     }
 
     def parsePermissions (s: String): Set[PosixFilePermission] =

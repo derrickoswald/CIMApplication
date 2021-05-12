@@ -85,12 +85,14 @@ trait TestUtil extends FixtureAnyFunSuite with SQLite with Unzip
                 // create the configuration
                 val configuration = new SparkConf(false)
                     .setAppName(this.getClass.getSimpleName)
-                    .setMaster("local[2]")
-                    .set("spark.driver.memory", "2g")
-                    .set("spark.executor.memory", "2g")
+                    .setMaster("local[*]")
+                    .set("spark.driver.memory", "10g")
+                    .set("spark.executor.memory", "10g")
                     .set("spark.ui.showConsoleProgress", "false")
                     .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
                     .set("spark.graphx.pregel.checkpointInterval", "8")
+                    .set("spark.memory.offHeap.enabled","true")
+                    .set("spark.memory.offHeap.size","16g")
 
                 // register relevant classes
                 registerDependency(configuration)

@@ -256,7 +256,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         overI.flatMap(assign(experiments))
     }
 
-    def analyse (options: EinspeiseleistungOptions, errors: Array[GridlabFailure])(trafo: (String, ((Double, Iterable[(String, Double)], Iterable[(String, String)]), (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])))): List[MaxEinspeiseleistung] =
+    type TrafoPowerType = Double
+    type CDATAType = Iterable[(String, TrafoPowerType)]
+    type Feeders = Iterable[(String, String)]
+    type AType = (TrafoPowerType, CDATAType, Feeders)
+    type BType = (Iterable[ThreePhaseComplexDataElement], Iterable[Experiment])
+
+    def analyse (options: EinspeiseleistungOptions, errors: Array[GridlabFailure])(trafo: (String, (AType, BType))): List[MaxEinspeiseleistung] =
     {
         // get the maximum transformer power as sum(Trafo_Power)*1.44 (from YF)
         val trafo_power = trafo._2._1._1
@@ -271,26 +277,7 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
         if (complexDataElements.nonEmpty && error.isEmpty)
         {
             val experiments = trafo._2._2._2
-
-            val v = voltcheck(experiments, options, complexDataElements, feeders)
-            val i = ampcheck(experiments, options, complexDataElements, cdata, feeders)
-            val p = powercheck(experiments, complexDataElements, trafo_power, trafo_name)
-
-            // establish a "no limit found" default
-            val s = experiments.map(
-                x =>
-                {
-                    (
-                        x,
-                        ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
-                        "no limit",
-                        ""
-                    )
-                }
-            )
-
-            // rearrange results from "by node" to results "by house"
-            val raw_results = s ++ v ++ i ++ p groupBy (_._1.node)
+            val raw_results: Predef.Map[String, Iterable[(Experiment, ThreePhaseComplexDataElement, String, String)]] = getRawResults(options, trafo_power, cdata, feeders, trafo_name, complexDataElements, experiments)
             val shuffle = experiments.flatMap(
                 experiment =>
                 {
@@ -331,8 +318,40 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
                 case Some(problem) => problem.errorMessages.mkString("\n")
                 case None => "no returned errors"
             }
-            trafo._2._2._2.map(e => MaxEinspeiseleistung(e.trafo, e.feeder, e.node, e.house, None, s"gridlabd failed \n $errorMessage", "no results")).toList
+            trafo._2._2._2.map(experiment => {
+                MaxEinspeiseleistung(
+                    experiment.trafo,
+                    experiment.feeder,
+                    experiment.node,
+                    experiment.house,
+                    None,
+                    s"gridlabd failed \n $errorMessage", "no results"
+                )
+            }).toList
         }
+    }
+
+    private def getRawResults (options: EinspeiseleistungOptions, trafo_power: TrafoPowerType, cdata: CDATAType, feeders: Feeders, trafo_name: String, complexDataElements: Iterable[ThreePhaseComplexDataElement], experiments: Iterable[Experiment]) =
+    {
+        val v = voltcheck(experiments, options, complexDataElements, feeders)
+        val i = ampcheck(experiments, options, complexDataElements, cdata, feeders)
+        val p = powercheck(experiments, complexDataElements, trafo_power, trafo_name)
+
+        // establish a "no limit found" default
+        val s = experiments.map(
+            x =>
+            {
+                (
+                    x,
+                    ThreePhaseComplexDataElement(x.house, x.t2.getTimeInMillis, Double.PositiveInfinity, Double.PositiveInfinity, Double.PositiveInfinity, ""),
+                    "no limit",
+                    ""
+                )
+            }
+        )
+
+        // rearrange results from "by node" to results "by house"
+        s ++ v ++ i ++ p groupBy (_._1.node)
     }
 
     def solve_and_analyse (gridlabd: GridLABD, reduced_trafos: RDD[(String, (Double, Iterable[(String, Double)], Iterable[(String, String)]))], experiments: RDD[Experiment]): RDD[MaxEinspeiseleistung] =
@@ -353,9 +372,13 @@ case class Einspeiseleistung (session: SparkSession, options: EinspeiseleistungO
             })
         }
         val output = gridlabd.read_output_files(!options.three, trafos.collect)
+        val output_count = output.count()
+        log.info(s"output_count: ${output_count}")
         val read = System.nanoTime()
         log.info(s"read: ${(read - solved) / 1e9} seconds")
         val prepared_results = reduced_trafos.join(output.cogroup(experiments.keyBy(_.trafo)))
+        val prepared_results_count = prepared_results.count()
+        log.info(s"prepared_results_count: ${prepared_results_count}")
         val ret = prepared_results.flatMap(analyse(options, gridlabFailures))
         val anal = System.nanoTime()
         log.info(s"analyse: ${(anal - read) / 1e9} seconds")
