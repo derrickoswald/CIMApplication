@@ -78,7 +78,6 @@ case class MaximumFeedInFunction (job: String) extends CIMWebFunction
             voltage_threshold = getDouble (json, "voltage_threshold", 3.0),
             voltage_threshold2 = getDouble (json, "voltage_threshold2", 3.0),
             ignore_other = json.getBoolean("ignore_other", false),
-            ignore_threshold2_when_nonradial = json.getBoolean("ignore_threshold2_when_nonradial", false),
             cable_impedance_limit = getDouble (json, "cable_impedance_limit", 5.0),
             base_temperature = getDouble (json, "base_temperature", 20.0),
             sim_temperature = getDouble (json, "sim_temperature", 20.0),

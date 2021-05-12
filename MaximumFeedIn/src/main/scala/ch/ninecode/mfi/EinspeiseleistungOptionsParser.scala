@@ -92,10 +92,6 @@ class EinspeiseleistungOptionsParser (options: EinspeiseleistungOptions)
         .action((_, c) => c.copy(ignore_other = true))
         .text(s"ignore cable currents on neighboring feeders [${options.ignore_other}]")
 
-    opt[Unit]("ignore_threshold2_when_nonradial")
-        .action((_, c) => c.copy(ignore_threshold2_when_nonradial = true))
-        .text(s"ignore custom threshold voltage if trafo area is non-radial [${options.ignore_threshold2_when_nonradial}]")
-
     opt[Double]("cable_impedance_limit").valueName("D")
         .action((x, c) => c.copy(cable_impedance_limit = x))
         .text(f"cables with higher impedances for R1 will not be processed with GridLAB-D [${options.cable_impedance_limit}%gΩ]")

@@ -64,7 +64,6 @@ case class MaximumFeedInCassandra (
             "voltage_threshold" -> options.voltage_threshold,
             "voltage_threshold2" -> options.voltage_threshold2,
             "ignore_other" -> options.ignore_other,
-            "ignore_threshold2_when_nonradial" -> options.ignore_threshold2_when_nonradial,
             "cable_impedance_limit" -> options.cable_impedance_limit,
             "base_temperature" -> options.base_temperature,
             "sim_temperature" -> options.sim_temperature

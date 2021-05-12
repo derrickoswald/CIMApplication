@@ -79,8 +79,7 @@ case class Trafokreis
         val interval = 5 // seconds per step
         val steps = window / interval - 2 // total possible number of steps in the experiment (need 0 input on both ends, hence -2)
         val riser = if (steps * step >= max) step else math.ceil(max / steps / step) * step // limit as ceiling(minimum step size) in thousands
-        val nonradial = nodes.map(_.reason).filter(_.equals("non-radial network")).size > 0
-        Experiment(trafo, feeder, node, house, houses, start_time, index, window, interval, 0, max, riser, nonradial) // in 5 second intervals go from 0 to max in steps of <1000>
+        Experiment(trafo, feeder, node, house, houses, start_time, index, window, interval, 0, max, riser) // in 5 second intervals go from 0 to max in steps of <1000>
     }
 
     // generate experiments
