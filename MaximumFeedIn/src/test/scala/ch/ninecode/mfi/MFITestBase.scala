@@ -84,7 +84,8 @@ class MFITestBase extends TestUtil
     def checkResultsForMrid (trafo: String, mrid: String, max: Double, reason: String, details: String, dbFile: String): Unit =
     {
         val query =
-            s"SELECT Transformer, House, Maximum, Reason, Details FROM feedin WHERE Trafo='$trafo' AND House='$mrid';"
+            s"SELECT Transformer, House, Maximum, Reason, Details FROM feedin " +
+                s"WHERE Transformer='$trafo' AND House='$mrid';"
         val result = querySQLite(dbFile, query)
 
         assert(result.size == 1, "should have one result")
