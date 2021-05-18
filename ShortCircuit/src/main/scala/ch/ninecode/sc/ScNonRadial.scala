@@ -317,43 +317,9 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
 
         // get directed edges hi→lo voltage = Branch from→to
-        val graph_edges: Iterable[Branch] = edges.flatMap(
-            x =>
-            {
-                data.find(y => y.element == x.cn1) match
-                {
-                    case Some(voltage1) =>
-                        data.find(y => y.element == x.cn2) match
-                        {
-                            case Some(voltage2) =>
-                                val v1 = voltage1.value_a.modulus
-                                val v2 = voltage2.value_a.modulus
-                                val voltage_diff = (voltage1.value_a - voltage2.value_a)
-                                x match
-                                {
-                                    case switch: GLMSwitchEdge =>
-                                        makeSwitchBranch(switch, flatten_trafo_lv_nodes, experiment.mrid, v1, v2, voltage_diff)
-                                    case cable: GLMLineEdge =>
-                                        makeCableBranch(cable, v1, v2, voltage_diff)
-                                    case transformer: GLMTransformerEdge =>
-                                        makeTransformerBranch(transformer, v1, v2)
-                                    case _ =>
-                                        log.error(s"unexpected edge type ${x.toString}")
-                                        if (v1 > v2)
-                                            List(SimpleBranch(x.cn1, x.cn2, 0.0, x.id, "", None, ""))
-                                        else
-                                            List(SimpleBranch(x.cn2, x.cn1, 0.0, x.id, "", None, ""))
-                                }
-                            case None =>
-                                List()
-                        }
-                    case None =>
-                        List()
-                }
-            }
-        )
+        val graph_edges: Iterable[Branch] = get_directed_edges(edges, flatten_trafo_lv_nodes, data, experiment.mrid)
 
-        val branches = new ScBranches().reduce_branches(graph_edges, flatten_trafo_lv_nodes, experiment)
+        val branches = new ScBranches().reduce_branches(graph_edges, flatten_trafo_lv_nodes, experiment.mrid)
 
 
         // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers
@@ -412,6 +378,48 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 (b, tx.lv_impedance(experiment.voltage))
         }
         (experiment.trafo, experiment.mrid, impedance, path)
+    }
+
+    private def get_directed_edges (edges: Iterable[GLMEdge],
+        flatten_trafo_lv_nodes: Array[String],
+        data: Iterable[ThreePhaseComplexDataElement],
+        mrid: String): Iterable[Branch] =
+    {
+        edges.flatMap(
+            x =>
+            {
+                data.find(y => y.element == x.cn1) match
+                {
+                    case Some(voltage1) =>
+                        data.find(y => y.element == x.cn2) match
+                        {
+                            case Some(voltage2) =>
+                                val v1 = voltage1.value_a.modulus
+                                val v2 = voltage2.value_a.modulus
+                                val voltage_diff = (voltage1.value_a - voltage2.value_a)
+                                x match
+                                {
+                                    case switch: GLMSwitchEdge =>
+                                        makeSwitchBranch(switch, flatten_trafo_lv_nodes, mrid, v1, v2, voltage_diff)
+                                    case cable: GLMLineEdge =>
+                                        makeCableBranch(cable, v1, v2, voltage_diff)
+                                    case transformer: GLMTransformerEdge =>
+                                        makeTransformerBranch(transformer, v1, v2)
+                                    case _ =>
+                                        log.error(s"unexpected edge type ${x.toString}")
+                                        if (v1 > v2)
+                                            List(SimpleBranch(x.cn1, x.cn2, 0.0, x.id, "", None, ""))
+                                        else
+                                            List(SimpleBranch(x.cn2, x.cn1, 0.0, x.id, "", None, ""))
+                                }
+                            case None =>
+                                List()
+                        }
+                    case None =>
+                        List()
+                }
+            }
+        )
     }
 
     private def getImpedanzenFor (line: ACLineSegment, dist_km: Double) =

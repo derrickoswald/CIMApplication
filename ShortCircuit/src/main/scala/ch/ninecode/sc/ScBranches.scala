@@ -38,7 +38,7 @@ class ScBranches
     def reduce_branches (
         graph_edges: Iterable[Branch],
         lvnodes: Array[String],
-        experiment: ScExperiment): Iterable[Branch] =
+        mrid: String): Iterable[Branch] =
     {
         // reduce the tree to (hopefully) one branch spanning from start to end
         var family = graph_edges
@@ -46,11 +46,11 @@ class ScBranches
         do
         {
             count = family.size
-            family = family.filter(no_stubs(family, lvnodes, experiment.mrid))
+            family = family.filter(no_stubs(family, lvnodes, mrid))
         }
         while (count != family.size)
 
-        val branches: Iterable[Branch] = reduce(family, lvnodes, experiment.mrid)
+        val branches: Iterable[Branch] = reduce(family, lvnodes, mrid)
         branches
     }
 
@@ -61,7 +61,7 @@ class ScBranches
      * @param trafo_nodes the list of starting trafo nodes
      * @return the reduced network with one pair of series elements converted to a series branch
      */
-    def reduce_series (network: Iterable[Branch], trafo_nodes: Array[String], mrid: String): (Boolean, Iterable[Branch]) = // (reduced?, network)
+    def reduce_series (network: Iterable[Branch], mrid: String): (Boolean, Iterable[Branch]) = // (reduced?, network)
     {
         def is_reducable: String => Boolean = (node: String) =>
         {
@@ -176,7 +176,7 @@ class ScBranches
         var changed = false
         do
         {
-            val series_result = reduce_series(network, trafo_nodes, mrid)
+            val series_result = reduce_series(network, mrid)
             val series_modified = series_result._1
             network = series_result._2
             val parallel_result = reduce_parallel(network, trafo_nodes)
