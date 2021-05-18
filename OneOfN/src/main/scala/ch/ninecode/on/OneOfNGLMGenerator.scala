@@ -93,7 +93,7 @@ case class OneOfNGLMGenerator
      * @param node The swing node to emit.
      * @return The .glm file text for the swing bus.
      */
-    override def emit_slack (node: GLMNode, suffix:String=""): String =
+    override def emit_slack (node: GLMNode): String =
     {
         val phases = if (one_phase) "AN" else "ABCN"
         node match

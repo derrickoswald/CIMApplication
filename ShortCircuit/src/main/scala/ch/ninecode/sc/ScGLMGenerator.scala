@@ -78,7 +78,7 @@ case class ScGLMGenerator
      * @param node The swing node to emit.
      * @return The .glm file text for the swing bus.
      */
-    override def emit_slack (node: GLMNode, suffix: String = ""): String =
+    override def emit_slack (node: GLMNode): String =
     {
         val voltage = node.nominal_voltage
         val phase = if (one_phase) "AN" else "ABCN"
@@ -88,12 +88,12 @@ case class ScGLMGenerator
         // if the network short circuit impedance isn't 0Ω, we have to invent a cable
         if (z != Complex(0))
         {
-            val network_level = "N5_" + suffix
+            val network_level = "N5"
             val network_level_config_name = network_level + "_configuration"
 
             val swing = swing_meter_glm(network_level, voltage, phase)
             val config = generate_glm_configs(node, z, network_level, network_level_config_name)
-            val cable = overhead_line_glm(phase, network_level, nodename, network_level_config_name, suffix)
+            val cable = overhead_line_glm(phase, network_level, nodename, network_level_config_name)
             val meter = object_meter_glm(voltage, phase, nodename)
 
             swing +
@@ -102,9 +102,16 @@ case class ScGLMGenerator
                 meter
         }
         else
-        {
-            swing_meter_glm(nodename,voltage,phase)
-        }
+            """
+              |        object meter
+              |        {
+              |            name "%s";
+              |            phases %s;
+              |            bustype SWING;
+              |            nominal_voltage %sV;
+              |            voltage_A %s;
+              |        };
+              |""".stripMargin.format(nodename, phase, voltage, voltage)
     }
 
     private def generate_glm_configs (node: GLMNode, z: Complex, N5_name: String, N5_config_name: String) =
@@ -135,7 +142,7 @@ case class ScGLMGenerator
           |""".stripMargin.format(nodename, phase, voltage)
     }
 
-    private def overhead_line_glm (phase: String, from: String, to: String, configuration: String, suffix: String): String =
+    private def overhead_line_glm (phase: String, from: String, to: String, configuration: String): String =
     {
         s"""
            |        object overhead_line
@@ -147,7 +154,7 @@ case class ScGLMGenerator
            |            length 1000m;
            |            configuration "%s";
            |        };
-           |""".stripMargin.format("HV"+"_"+suffix, phase, from, to, configuration)
+           |""".stripMargin.format("HV", phase, from, to, configuration)
     }
 
     private def swing_meter_glm (name:String, voltage: Double, phase: String) =

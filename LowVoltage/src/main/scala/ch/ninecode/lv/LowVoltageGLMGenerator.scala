@@ -123,7 +123,7 @@ class LowVoltageGLMGenerator
         s"${super.emit_edge(edge)}$rec"
     }
 
-    override def emit_slack (node: GLMNode, suffix:String=""): String =
+    override def emit_slack (node: GLMNode): String =
     {
         node match
         {

@@ -310,9 +310,9 @@ class GLMGenerator
      * @param node The swing node to emit.
      * @return The .glm file text for the swing bus.
      */
-    def emit_slack (node: GLMNode, suffix: String=""): String =
+    def emit_slack (node: GLMNode): String =
     {
-        val name = node.id + suffix
+        val name = node.id
         val voltage = node.nominal_voltage * swing_voltage_factor
         val phase = if (one_phase) "AN" else "ABCN"
         val swing =
@@ -367,30 +367,19 @@ class GLMGenerator
         val l_strings = getACLineSegmentConfigurations(edges)
 
         // emit the swing node
-        val o_strings: Iterable[String] = if (swing_nodes.size > 1) {
-            var index = 0
-            val swing_nodes_grouped_by_id = swing_nodes.groupBy(x => x.id)
-            swing_nodes_grouped_by_id.keys.map((id) =>
-            {
-                swing_nodes_grouped_by_id.get(id) match
-                {
+        val o_strings = if (swing_nodes.size > 1) {
+            val test_strings = swing_nodes.groupBy(x => x.id)
+            test_strings.keys.map ((id) => {
+                test_strings.get(id) match {
                     case Some(swing_nodes_on_same_bus) => swing_nodes_on_same_bus.headOption match {
-                        case Some(first: GLMNode) => {
-                            val slack_string = emit_slack(first, index.toString)
-                            index = index + 1
-                            slack_string
-                        }
+                        case Some(first) => emit_slack(first)
                         case None => ""
                     }
                     case None => ""
                 }
             })
         } else {
-            swing_nodes.zipWithIndex.map
-            {
-                case (node:GLMNode, i:Int) => emit_slack(node, "_"+i.toString)
-                case _ => ""
-            }
+            swing_nodes.map(emit_slack)
         }
 
         // get the node strings
