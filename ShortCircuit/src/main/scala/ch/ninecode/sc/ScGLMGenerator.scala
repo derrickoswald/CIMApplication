@@ -37,6 +37,8 @@ case class ScGLMGenerator
     isMax: Boolean)
     extends GLMGenerator(one_phase, temperature, date_format)
 {
+    var slack_emitted: Boolean = false
+
     override def name: String = area.name
 
     override def directory: String = area.directory
@@ -90,14 +92,18 @@ case class ScGLMGenerator
         {
             val network_level = "N5"
             val network_level_config_name = network_level + "_configuration"
+            var results = ""
 
-            val swing = swing_meter_glm(network_level, voltage, phase)
-            val config = generate_glm_configs(node, z, network_level, network_level_config_name)
+            if (!slack_emitted) {
+                val swing = swing_meter_glm(network_level, voltage, phase)
+                val config = generate_glm_configs(node, z, network_level, network_level_config_name)
+                slack_emitted = true
+                results = swing + config
+            }
             val cable = overhead_line_glm(phase, network_level, nodename, network_level_config_name)
             val meter = object_meter_glm(voltage, phase, nodename)
 
-            swing +
-                config +
+            results +
                 cable +
                 meter
         }
