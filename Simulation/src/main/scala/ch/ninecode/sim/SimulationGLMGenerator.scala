@@ -147,7 +147,7 @@ case class SimulationGLMGenerator (
         }
     }
 
-    override def emit_slack (node: GLMNode): String =
+    override def emit_slack (node: GLMNode, suffix:String=""): String =
     {
         node match
         {
