@@ -33,6 +33,7 @@ import ch.ninecode.model.VoltageLevel
 import ch.ninecode.net.Net
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
+import ch.ninecode.net.TransformerSet
 import ch.ninecode.net.Transformers
 import ch.ninecode.sc.ScEdge.resistanceAt
 import ch.ninecode.util.CIMInitializer
@@ -156,7 +157,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         transformer_island
             .transformers
             .flatMap(
-                set =>
+                (set: TransformerSet) =>
                 {
                     val transformer = set.transformers(0)
                     for (lv_node <- transformer.nodes.tail)
@@ -428,15 +429,18 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 trafoData.nodes.exists(_.id == node.id_seq)
             }).head
 
+            val trafo_node_to = transformator.nodes.filter(_.id == node.id_seq).head
+            val voltage_to = transformator.voltages.filter(_._1 == trafo_node_to.BaseVoltage).head
+
             val trafo_branch = TransformerBranch(
                 transformator.node0.id,
-                transformator.node1.id,
+                trafo_node_to.id,
                 0.0,
                 trafo.transformer.transformer_name,
                 transformator.transformer.id,
                 trafo.transformer.power_rating,
                 trafo.transformer.v0,
-                trafo.transformer.v1,
+                voltage_to._2,
                 trafo.transformer.total_impedance_per_unit._1
             )
 
@@ -452,7 +456,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         }
 
         val starting_nodes: RDD[StartingTrafos] = transformers.flatMap(trafo_mapping).setName("starting_nodes")
-        val starting_trafos_with_edges = starting_nodes.keyBy(_.nsPin).join(initial.edges.flatMap(both_ends).groupByKey)
+        val starting_trafos_with_edges: RDD[(VertexId, (StartingTrafos, Iterable[ScEdge]))] = starting_nodes.keyBy(_.nsPin).join(initial.edges.flatMap(both_ends).groupByKey)
             .setName("starting_trafos_with_edges")
 
         val initial_with_starting_nodes: Graph[ScNode, ScEdge] = initial.joinVertices(starting_trafos_with_edges)(add_starting_trafo).persist(storage_level)
