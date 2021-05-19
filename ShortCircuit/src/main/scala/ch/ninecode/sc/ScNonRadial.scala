@@ -96,22 +96,6 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime("2018-07-19T12:00:00")
 
-            def notTheTransformers (island: TransformerIsland): GLMEdge => Boolean =
-            {
-                val trafos = island.transformers.flatMap(
-                    trafo =>
-                    {
-                        Set(trafo.transformer_name) ++ trafo.transformers.map(x => x.transformer.id).toSet
-                    }
-                ).toSet
-
-                {
-                    case t: GLMTransformerEdge =>
-                        !trafos.contains(t.transformer.transformer_name)
-                    case _ => true
-                }
-            }
-
             val simulations: RDD[SimulationTransformerServiceArea] = areas
                 .join(problem_transformers.keyBy(_.island_name))
                 .values
@@ -122,7 +106,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                         SimulationTransformerServiceArea(
                             island = island,
                             nodes = nodes,
-                            edges = edges.filter(notTheTransformers(island)),
+                            edges = edges,
                             start_time = now,
                             directory = island.island_name)
                     })
@@ -313,17 +297,20 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             for (node <- nodes.tail)
                 yield node.id
         })
+        val trafo_hv_nodes: Array[String] = trafokreis.island.transformers.map(x => {
+            val trafos: Array[TransformerData] = x.transformers
+            trafos(0).nodes.head.id
+        })
         val flatten_trafo_lv_nodes: Array[String] = trafo_lv_nodes.flatten
 
 
         // get directed edges hi→lo voltage = Branch from→to
         val graph_edges: Iterable[Branch] = get_directed_edges(edges, flatten_trafo_lv_nodes, data, experiment.mrid)
 
-        val branches = new ScBranches().reduce_branches(graph_edges, flatten_trafo_lv_nodes, experiment.mrid)
+        val branches: Iterable[Branch] = new ScBranches().reduce_branches(graph_edges, trafo_hv_nodes, experiment.mrid)
 
-
-        // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers
-        // finding the first is not sufficient
+        // do we still need this ..find?
+        // isnt it enough just checking if branches.size == 1
         val twig: Option[Branch] = branches.find(
             branch =>
             {
@@ -338,29 +325,29 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                     } else
                     {
                         // Single 3W trafo
-                        val lvnodes = trafo_lv_nodes.head
-                        ((experiment.mrid == branch.to) && lvnodes.contains(branch.from)) ||
-                            ((experiment.mrid == branch.from) && lvnodes.contains(branch.to))
+                        ((experiment.mrid == branch.to) && trafo_hv_nodes.contains(branch.from)) ||
+                            ((experiment.mrid == branch.from) && trafo_hv_nodes.contains(branch.to))
                     }
                 } else
                 {
                     // 2W
-                    val lvnodes_string = flatten_trafo_lv_nodes.toList.sorted.mkString("_")
-                    ((experiment.mrid == branch.to) && (lvnodes_string == branch.from)) ||
-                        ((experiment.mrid == branch.from) && (lvnodes_string == branch.to))
+                    val hvnodes_string = trafo_hv_nodes.toList.sorted.mkString("_")
+                    ((experiment.mrid == branch.to) && (hvnodes_string == branch.from)) ||
+                        ((experiment.mrid == branch.from) && (hvnodes_string == branch.to))
                 }
             }
         )
 
         // compute the impedance from start to end
-        // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers
+        // ToDo: "impedanzen_middle_voltage" does not work,
+        //  when there are meshed networks (multiple trafos) and each trafo has its own impedance from middle voltage
         val tx = StartingTrafos(0L, 0L, trafokreis.island.transformers(0))
+        val impedanzen_middle_voltage = tx.primary_impedance
         val (path, impedance) = twig match
         {
             case Some(branch) =>
                 val _branch = if (experiment.mrid == branch.to) branch else branch.reverse
-                val v = experiment.voltage / _branch.voltageRatio
-                (_branch, tx.lv_impedance(v))
+                (_branch, impedanzen_middle_voltage)
             case _ =>
                 val b: Branch = if (flatten_trafo_lv_nodes.contains(experiment.mrid))
                     SimpleBranch(experiment.mrid, experiment.mrid, 0.0, experiment.mrid, "", None, "")
@@ -375,7 +362,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                     // generate a fake impedance
                     ComplexBranch(flatten_trafo_lv_nodes.mkString(","), experiment.mrid, sum, branches.toArray)
                 }
-                (b, tx.lv_impedance(experiment.voltage))
+                (b, impedanzen_middle_voltage)
         }
         (experiment.trafo, experiment.mrid, impedance, path)
     }

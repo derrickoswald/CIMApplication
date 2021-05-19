@@ -45,7 +45,12 @@ case class ScGLMGenerator
 
     override def start_time: Calendar = area.start_time
 
-    override def edges: Iterable[GLMEdge] = area.edges
+    override def edges: Iterable[GLMEdge] = area.edges.filter(edges =>
+        edges match
+        {
+            case _: GLMTransformerEdge => false
+            case _ => true
+        })
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
@@ -94,7 +99,8 @@ case class ScGLMGenerator
             val network_level_config_name = network_level + "_configuration"
             var results = ""
 
-            if (!slack_emitted) {
+            if (!slack_emitted)
+            {
                 val swing = swing_meter_glm(network_level, voltage, phase)
                 val config = generate_glm_configs(node, z, network_level, network_level_config_name)
                 slack_emitted = true
@@ -163,7 +169,7 @@ case class ScGLMGenerator
            |""".stripMargin.format("HV", phase, from, to, configuration)
     }
 
-    private def swing_meter_glm (name:String, voltage: Double, phase: String) =
+    private def swing_meter_glm (name: String, voltage: Double, phase: String) =
     {
         s"""
            |        object meter

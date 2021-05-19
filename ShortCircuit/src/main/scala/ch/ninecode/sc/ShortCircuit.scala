@@ -424,12 +424,29 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
             val problems = edges.foldLeft(errors)((errors, edge) => edge.hasIssues(errors, options))
 
+            val transformator: TransformerData = trafo.transformer.transformers.filter((trafoData: TransformerData) => {
+                trafoData.nodes.exists(_.id == node.id_seq)
+            }).head
+
+            val trafo_branch = TransformerBranch(
+                transformator.node0.id,
+                transformator.node1.id,
+                0.0,
+                trafo.transformer.transformer_name,
+                transformator.transformer.id,
+                trafo.transformer.power_rating,
+                trafo.transformer.v0,
+                trafo.transformer.v1,
+                trafo.transformer.total_impedance_per_unit._1
+            )
+
             ScNode(
                 id_seq = node.id_seq,
                 voltage = node.voltage,
                 source_id = trafo.transformer.transformer_name,
                 id_prev = "self",
                 impedance = trafo.lv_impedance(node.voltage),
+                branches = trafo_branch,
                 errors = problems
             )
         }
@@ -527,9 +544,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
         results_keyed.join(original_keyed).values.map(x =>
         {
-            val (transformer, node, ztrafo, branches) = x._1
+            val (transformer, node, z_middle_voltage, branches) = x._1
             val original = x._2
-            val z = if (null == branches) ztrafo else branches.z(ztrafo)
+            val z = if (null == branches) z_middle_voltage else branches.z(z_middle_voltage)
 
             calculate_short_circuit((
                 ScNode(

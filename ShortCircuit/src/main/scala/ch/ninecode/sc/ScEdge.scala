@@ -260,6 +260,7 @@ case class ScEdge
                         case sim: SimpleBranch => SeriesBranch(sim.from, to, 0.0, Seq(prev_branch, next))
                         case ser: SeriesBranch => SeriesBranch(ser.from, to, 0.0, ser.series ++ Seq(next))
                         case par: ParallelBranch => SeriesBranch(par.from, to, 0.0, Seq(prev_branch, next))
+                        case trafo: TransformerBranch => SeriesBranch(trafo.from, to, 0.0, Seq(prev_branch, next))
                         case _ =>  throw new IllegalArgumentException(s"unknown class for ref (${prev_branch.getClass.toString})")
                     }
             case breaker: Breaker =>

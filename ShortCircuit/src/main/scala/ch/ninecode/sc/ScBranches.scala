@@ -37,7 +37,7 @@ class ScBranches
 
     def reduce_branches (
         graph_edges: Iterable[Branch],
-        lvnodes: Array[String],
+        trafo_hv_nodes: Array[String],
         mrid: String): Iterable[Branch] =
     {
         // reduce the tree to (hopefully) one branch spanning from start to end
@@ -46,11 +46,11 @@ class ScBranches
         do
         {
             count = family.size
-            family = family.filter(no_stubs(family, lvnodes, mrid))
+            family = family.filter(no_stubs(family, trafo_hv_nodes, mrid))
         }
         while (count != family.size)
 
-        val branches: Iterable[Branch] = reduce(family, lvnodes, mrid)
+        val branches: Iterable[Branch] = reduce(family, trafo_hv_nodes, mrid)
         branches
     }
 
