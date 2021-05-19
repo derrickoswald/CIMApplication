@@ -45,12 +45,11 @@ case class ScGLMGenerator
 
     override def start_time: Calendar = area.start_time
 
+    override def transformers: Iterable[GLMTransformerEdge] = area.island.transformers.map(GLMTransformerEdge)
+
     override def edges: Iterable[GLMEdge] = area.edges.filter(edges =>
-        edges match
-        {
-            case _: GLMTransformerEdge => false
-            case _ => true
-        })
+        !transformers.exists(_.id == edges.id)
+    )
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
@@ -65,8 +64,6 @@ case class ScGLMGenerator
         val configurations = trafos.groupBy(_.configurationName).values
         configurations.map(config => config.head.configuration(this, config.map(_.transformer.transformer_name).mkString(", ")))
     }
-
-    override def transformers: Iterable[GLMTransformerEdge] = area.island.transformers.map(GLMTransformerEdge)
 
     class ShortCircuitSwingNode (val set: TransformerSet) extends SwingNode(set.node0, set.v0, set.transformer_name)
 
