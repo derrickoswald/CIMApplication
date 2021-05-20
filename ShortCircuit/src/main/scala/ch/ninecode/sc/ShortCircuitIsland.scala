@@ -149,7 +149,7 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
     override def transformer_maker (rdd: RDD[Iterable[(TransformerSet, (identifier, LoadFlowNode))]]): RDD[(identifier, LoadFlowEdge)] =
     {
         rdd.flatMap(
-            x =>
+            (x: Iterable[(TransformerSet, (identifier, LoadFlowNode))]) =>
             {
                 val unique_identifiers = x.map(_._2._1).toList.distinct
                 unique_identifiers.flatMap(

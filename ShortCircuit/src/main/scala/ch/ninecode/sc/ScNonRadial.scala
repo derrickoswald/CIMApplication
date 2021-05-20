@@ -61,7 +61,8 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         {
             log.info(s"""performing load-flow for $n non-radial network${if (n > 1) "s" else ""}""")
             fix(gridlab_islands).setName("fixed_results")
-        } else {
+        } else
+        {
             log.info("No islands to calculate with GridLAB-D")
             spark.sparkContext.emptyRDD[(Trafo, Mrid, Impedanzen, Branch)]
         }
@@ -75,6 +76,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         // transformer area calculations
         val tsa = TransformerServiceArea(session, storage_level, calculate_public_lighting = options.calculate_public_lighting)
         val trafos_islands: RDD[(identifier, island_id)] = tsa.getTransformerServiceAreas.map(_.swap).setName("trafos_islands") // (trafosetid, islandid)
+
         def set_island (island: TransformerIsland): Iterable[(identifier, identifier)] =
         {
             for (set <- island.transformers)
@@ -297,9 +299,10 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             for (node <- nodes.tail)
                 yield node.id
         })
-        val trafo_hv_nodes: Array[String] = trafokreis.island.transformers.map(x => {
+        val trafo_hv_nodes: Array[String] = trafokreis.island.transformers.map(x =>
+        {
             val trafos: Array[TransformerData] = x.transformers
-            trafos(0).nodes.head.id
+            trafos(0).node0.id
         })
         val flatten_trafo_lv_nodes: Array[String] = trafo_lv_nodes.flatten
 
@@ -373,7 +376,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         mrid: String): Iterable[Branch] =
     {
         edges.flatMap(
-            x =>
+            (x: GLMEdge) =>
             {
                 data.find(y => y.element == x.cn1) match
                 {
@@ -421,7 +424,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def makeCableBranch (cable: GLMLineEdge,v1: Double, v2: Double, voltage_diff: Complex): List[Branch] =
+    def makeCableBranch (cable: GLMLineEdge, v1: Double, v2: Double, voltage_diff: Complex): List[Branch] =
     {
         // Adjust this threshold according the chosen "default_maximum_voltage_error" in gridlabd
         if (Math.abs(v1 - v2) < 1e-5)
@@ -471,21 +474,24 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 None
     }
 
-    private def getSourceAndDestinationFromVoltages = (v1: Double, v2: Double, switch: GLMSwitchEdge) => {
+    private def getSourceAndDestinationFromVoltages = (v1: Double, v2: Double, switch: GLMSwitchEdge) =>
+    {
         if (v1 > v2)
         {
             (switch.cn1, switch.cn2)
-        } else if ( v2 > v1)
-        {
-            (switch.cn2, switch.cn1)
-        } else {
-            log.warn(s"guessing: (${switch.cn1},${switch.cn2}) for ${switch.id}")
-            (switch.cn2, switch.cn1)
-        }
+        } else
+            if (v2 > v1)
+            {
+                (switch.cn2, switch.cn1)
+            } else
+            {
+                log.warn(s"guessing: (${switch.cn1},${switch.cn2}) for ${switch.id}")
+                (switch.cn2, switch.cn1)
+            }
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def makeSwitchBranch(switch: GLMSwitchEdge,lvnodes: Array[String],mrid: String, v1: Double, v2: Double, voltage_diff: Complex): List[Branch] =
+    def makeSwitchBranch (switch: GLMSwitchEdge, lvnodes: Array[String], mrid: String, v1: Double, v2: Double, voltage_diff: Complex): List[Branch] =
     {
         if (!switch.closed)
             List()
@@ -498,9 +504,11 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
             val current = (voltage_diff / ScNonRadial.switch_default_z.impedanz_low).modulus
 
-            val (from, to) = getSourceAndDestinationFromLvnodes(lvnodes,switch) match {
-                case Some((from,to)) => (from,to)
-                case None => getSourceAndDestinationFromMrid(mrid, switch) match {
+            val (from, to) = getSourceAndDestinationFromLvnodes(lvnodes, switch) match
+            {
+                case Some((from, to)) => (from, to)
+                case None => getSourceAndDestinationFromMrid(mrid, switch) match
+                {
                     case Some((from, to)) => (from, to)
                     case None => getSourceAndDestinationFromVoltages(v1, v2, switch)
                 }
@@ -654,8 +662,10 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
 }
 
-object ScNonRadial {
-    def need_load_flow (error: String): Boolean = {
+object ScNonRadial
+{
+    def need_load_flow (error: String): Boolean =
+    {
         error.startsWith("FATAL: non-radial network detected") ||
             error.startsWith("INVALID: 3 transformer windings") ||
             error.startsWith("INVALID: low voltage")

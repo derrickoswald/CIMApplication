@@ -227,20 +227,20 @@ class Island (
     // transformers definitely separate islands
     def makeTransformers (keyed_nodes: RDD[(String, (identifier, LoadFlowNode))]): RDD[(identifier, LoadFlowEdge)] =
     {
-        transformer_maker(
-            transformers
-                .flatMap(x => x.transformers.head.nodes.map(y => (y.id, x)))
-                .join(keyed_nodes)
-                .values
-                .groupBy(x => s"${x._1.transformer_name}${x._2._1}")
-                .values
-        )
+        val trafoset = transformers.flatMap(x => x.transformers.head.nodes.map(y => (y.id, x)))
+        val trafoset_nodes = trafoset.join(keyed_nodes).values
+        val trafos = trafoset_nodes.groupBy(x => s"${x._1.transformer_name}${x._2._1}").values
+
+        transformer_maker(trafos)
     }
 
     def queryNetwork (identifiers_islands: IslandMap): (Nodes, Edges) =
     {
         // the mapping between island and identifier (transformer service area, feeder)
-        val islands_identifiers: RDD[(island_id, identifier)] = identifiers_islands.map(_.swap).distinct.groupByKey.map(x => {
+        val islands_identifiers: RDD[(island_id, identifier)] = identifiers_islands
+            .map(_.swap).distinct
+            .groupByKey.map(x =>
+        {
             (x._1, x._2.toArray.sorted.mkString("_"))
         })
 
