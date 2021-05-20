@@ -511,19 +511,42 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
     def makeTransformerBranch (transformer: GLMTransformerEdge, v1: Double, v2: Double): List[Branch] =
     {
-        List(
-            TransformerBranch(
-                transformer.cn1,
-                transformer.cn2,
-                0.0,
-                transformer.transformer.transformer_name,
-                transformer.id,
-                transformer.transformer.power_rating,
-                v1,
-                v2,
-                transformer.transformer.total_impedance_per_unit._1
+        if (transformer.multiwinding)
+        {
+            val trafo = transformer.transformer.transformers.head
+            val hv_pin = transformer.transformer.node0
+
+            transformer.transformer.transformers.head.nodes.tail.map(trafo_end_node =>
+            {
+                // TODO: voltage should be exact value; see method params (how to get v3?)
+                val voltage = trafo.voltages.filter(_._1 == trafo_end_node.BaseVoltage).head._2
+                TransformerBranch(
+                    hv_pin,
+                    trafo_end_node.id,
+                    0.0,
+                    transformer.transformer.transformer_name,
+                    transformer.id,
+                    transformer.transformer.power_rating,
+                    v1,
+                    voltage,
+                    transformer.transformer.total_impedance_per_unit._1
+                )
+            }).toList
+        } else {
+            List(
+                TransformerBranch(
+                    transformer.cn1,
+                    transformer.cn2,
+                    0.0,
+                    transformer.transformer.transformer_name,
+                    transformer.id,
+                    transformer.transformer.power_rating,
+                    v1,
+                    v2,
+                    transformer.transformer.total_impedance_per_unit._1
+                )
             )
-        )
+        }
     }
 
 
