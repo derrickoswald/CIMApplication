@@ -286,13 +286,14 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
      * @param exp all the data, the simulation and specific experiment plus all the voltage readings
      * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, secondary impedance of the source transformer and an equivalent circuit
      */
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
     def evaluate (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (Trafo, Mrid, Impedanzen, Branch) =
     {
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
         val experiment: ScExperiment = exp._1._2
         val edges: Iterable[GLMEdge] = exp._1._1.edges
         val data: Iterable[ThreePhaseComplexDataElement] = exp._2
-        val trafo_lv_nodes: Array[Array[String]] = trafokreis.island.transformers.map(x =>
+        val flatten_trafo_lv_nodes: Array[String] = trafokreis.island.transformers.flatMap(x =>
         {
             val trafos: Array[TransformerData] = x.transformers
             val nodes = trafos(0).nodes
@@ -304,70 +305,35 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             val trafos: Array[TransformerData] = x.transformers
             trafos(0).node0.id
         })
-        val flatten_trafo_lv_nodes: Array[String] = trafo_lv_nodes.flatten
-
 
         // get directed edges hi→lo voltage = Branch from→to
         val graph_edges: Iterable[Branch] = get_directed_edges(edges, flatten_trafo_lv_nodes, data, experiment.mrid)
 
-        val branches: Iterable[Branch] = new ScBranches().reduce_branches(graph_edges, trafo_hv_nodes, experiment.mrid)
+        var branches: Iterable[Branch] = new ScBranches().reduce_branches(graph_edges, trafo_hv_nodes, experiment.mrid)
 
-        // do we still need this ..find?
-        // isnt it enough just checking if branches.size == 1
-        val twig: Option[Branch] = branches.find(
-            branch =>
-            {
-                val isThreeWindingTrafo = trafo_lv_nodes.filter(_.length > 1)
-                if (isThreeWindingTrafo.nonEmpty)
-                {
-                    if (trafo_lv_nodes.length > 1)
-                    {
-                        // Multiple 3W trafos
-                        log.error(s"meshed 3-windig-trafos detected (not supported) for ${experiment.mrid}")
-                        false
-                    } else
-                    {
-                        // Single 3W trafo
-                        ((experiment.mrid == branch.to) && trafo_hv_nodes.contains(branch.from)) ||
-                            ((experiment.mrid == branch.from) && trafo_hv_nodes.contains(branch.to))
-                    }
-                } else
-                {
-                    // 2W
-                    val hvnodes_string = trafo_hv_nodes.toList.sorted.mkString("_")
-                    ((experiment.mrid == branch.to) && (hvnodes_string == branch.from)) ||
-                        ((experiment.mrid == branch.from) && (hvnodes_string == branch.to))
-                }
-            }
-        )
+        if (branches.size > 1) {
+            val lv = flatten_trafo_lv_nodes.mkString(",")
+            val trace = branches.map(_.asString).mkString("\n")
+            log.error(s"branch could not be reduced to one single branch. " +
+                s"may be unsupported complex branch network from $lv to ${experiment.mrid}\n$trace")
+            val directs = branches.filter(experiment.mrid == _.to)
+            val sum = directs.map(_.current).sum
+            branches = List(ComplexBranch(flatten_trafo_lv_nodes.mkString(","), experiment.mrid, sum, branches.toArray))
+        }
+
+        val branch = branches.headOption match {
+            case Some(branch) => branch
+            case None => throw new Exception(s"no branches found for ${experiment.mrid}")
+        }
+        val path = if (experiment.mrid == branch.to) branch else branch.reverse
 
         // compute the impedance from start to end
-        // ToDo: "impedanzen_middle_voltage" does not work,
-        //  when there are meshed networks (multiple trafos) and each trafo has its own impedance from middle voltage
+        // WIK-1814: "impedanzen_middle_voltage" does not work, when there are meshed networks (multiple trafos) and
+        //   each trafo has its own impedance (Equivalent Injection) from middle voltage
         val tx = StartingTrafos(0L, 0L, trafokreis.island.transformers(0))
         val impedanzen_middle_voltage = tx.primary_impedance
-        val (path, impedance) = twig match
-        {
-            case Some(branch) =>
-                val _branch = if (experiment.mrid == branch.to) branch else branch.reverse
-                (_branch, impedanzen_middle_voltage)
-            case _ =>
-                val b: Branch = if (flatten_trafo_lv_nodes.contains(experiment.mrid))
-                    SimpleBranch(experiment.mrid, experiment.mrid, 0.0, experiment.mrid, "", None, "")
-                else
-                {
-                    val lv = flatten_trafo_lv_nodes.mkString(",")
-                    val trace = branches.map(_.asString).mkString("\n")
-                    log.error(s"complex branch network from $lv to ${experiment.mrid}\n$trace")
-                    // get the total current to the energy consumer
-                    val directs = branches.filter(experiment.mrid == _.to)
-                    val sum = directs.map(_.current).sum
-                    // generate a fake impedance
-                    ComplexBranch(flatten_trafo_lv_nodes.mkString(","), experiment.mrid, sum, branches.toArray)
-                }
-                (b, impedanzen_middle_voltage)
-        }
-        (experiment.trafo, experiment.mrid, impedance, path)
+
+        (experiment.trafo, experiment.mrid, impedanzen_middle_voltage, path)
     }
 
     private def get_directed_edges (edges: Iterable[GLMEdge],
