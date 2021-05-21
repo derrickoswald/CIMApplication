@@ -173,7 +173,10 @@ class ScBranches
     {
         // step by step reduce the network to a single branch through series and parallel reductions
         var network = branches
-        var changed = false
+        var networkChanged = false
+        var branchFlipped = false
+        val maxIter = branches.size * 10
+        var iterationStep = 0
         do
         {
             val series_result = reduce_series(network, mrid)
@@ -182,8 +185,8 @@ class ScBranches
             val parallel_result = reduce_parallel(network, trafo_nodes)
             val parallel_modified = parallel_result._1
             network = parallel_result._2
-            changed = series_modified || parallel_modified
-            if (!changed && network.size > 1)
+            networkChanged = series_modified || parallel_modified
+            if (!networkChanged && network.size > 1)
             {
                 // no changes in last iteration, but still more than 1 branch --> try to reverse fuse branches
                 val branches_with_unclear_direction = network.filter(_.current == 0.0)
@@ -195,12 +198,14 @@ class ScBranches
                     {
                         network = network.filter(_ != branch)
                         network = Seq(branch.reverse) ++ network
-                        changed = true
+                        branchFlipped = true
                     }
                 }
+
             }
+            iterationStep = iterationStep + 1
         }
-        while (changed)
+        while (networkChanged || (branchFlipped && iterationStep < maxIter))
 
         network
     }
