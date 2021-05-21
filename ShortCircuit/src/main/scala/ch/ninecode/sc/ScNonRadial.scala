@@ -23,6 +23,7 @@ import ch.ninecode.net.Island.island_id
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
+import ch.ninecode.net.TransformerSet
 import ch.ninecode.sc.ScEdge.resistanceAt
 import ch.ninecode.sc.ScNonRadial.need_load_flow
 import ch.ninecode.util.Complex
@@ -311,7 +312,8 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
         var branches: Iterable[Branch] = new ScBranches().reduce_branches(graph_edges, trafo_hv_nodes, experiment.mrid)
 
-        if (branches.size > 1) {
+        if (branches.size > 1)
+        {
             val lv = flatten_trafo_lv_nodes.mkString(",")
             val trace = branches.map(_.asString).mkString("\n")
             log.error(s"branch could not be reduced to one single branch. " +
@@ -321,7 +323,8 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             branches = List(ComplexBranch(flatten_trafo_lv_nodes.mkString(","), experiment.mrid, sum, branches.toArray))
         }
 
-        val branch = branches.headOption match {
+        val branch = branches.headOption match
+        {
             case Some(branch) => branch
             case None => throw new Exception(s"no branches found for ${experiment.mrid}")
         }
@@ -490,54 +493,42 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
     def makeTransformerBranch (transformer: GLMTransformerEdge, data: Iterable[ThreePhaseComplexDataElement]): List[Branch] =
     {
-        if (transformer.multiwinding)
+        val transformer_set: TransformerSet = transformer.transformer
+        val power_rating = transformer_set.power_rating
+        val z_per_unit = transformer_set.total_impedance_per_unit._1
+
+        val trafo = transformer_set.transformers.head
+        val hv_pin = transformer_set.node0
+        val voltages = get_voltages(data, Array(trafo.node0.id))
+        val voltage1 = voltages(0)
+        val v1 = voltage1.value_a.modulus
+
+        val base_ohms = v1 * v1 / power_rating
+        val z_low_voltage_node: Complex = z_per_unit * base_ohms
+
+        // create Branch for each low voltage node, multi-winding trafos have more than 1 low voltage node
+        val trafo_low_voltage_nodes = trafo.nodes.tail
+        trafo_low_voltage_nodes.map(trafo_end_node =>
         {
-            val trafo = transformer.transformer.transformers.head
-            val hv_pin = transformer.transformer.node0
+            val voltage = get_voltages(data, Array(trafo_end_node.id))
+            val voltage_end = voltage(0)
+            val v_end = voltage_end.value_a.modulus
 
-            val voltages = get_voltages(data, Array(trafo.node0.id))
-            val voltage1 = voltages(0)
+            val voltage_diff = voltage1.value_a - voltage_end.value_a
+            val current = (voltage_diff / z_low_voltage_node).modulus
 
-            val v1 = voltage1.value_a.modulus
-
-            transformer.transformer.transformers.head.nodes.tail.map(trafo_end_node =>
-            {
-                val voltage = get_voltages(data, Array(trafo_end_node.id))
-                val voltage_end = voltage(0).value_a.modulus
-                TransformerBranch(
-                    hv_pin,
-                    trafo_end_node.id,
-                    0.0,
-                    transformer.transformer.transformer_name,
-                    transformer.id,
-                    transformer.transformer.power_rating,
-                    v1,
-                    voltage_end,
-                    transformer.transformer.total_impedance_per_unit._1
-                )
-            }).toList
-        }
-        else
-        {
-            val voltages = get_voltages(data, Array(transformer.cn1, transformer.cn2))
-            val (voltage1, voltage2) = (voltages(0), voltages(1))
-
-            val v1 = voltage1.value_a.modulus
-            val v2 = voltage2.value_a.modulus
-            List(
-                TransformerBranch(
-                    transformer.cn1,
-                    transformer.cn2,
-                    0.0,
-                    transformer.transformer.transformer_name,
-                    transformer.id,
-                    transformer.transformer.power_rating,
-                    v1,
-                    v2,
-                    transformer.transformer.total_impedance_per_unit._1
-                )
+            TransformerBranch(
+                hv_pin,
+                trafo_end_node.id,
+                current,
+                transformer_set.transformer_name,
+                transformer.id,
+                power_rating,
+                v1,
+                v_end,
+                z_per_unit
             )
-        }
+        }).toList
     }
 
     private def makeUnexpectedBranch (x: GLMEdge, data: Iterable[ThreePhaseComplexDataElement]): List[Branch] =
