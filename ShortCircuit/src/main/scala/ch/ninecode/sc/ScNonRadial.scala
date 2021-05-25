@@ -20,6 +20,7 @@ import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.ACLineSegment
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
+import ch.ninecode.net.SwitchDetails
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
@@ -464,30 +465,41 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             List()
         else
         {
-            val voltages = get_voltages(data, Array(switch.cn1, switch.cn2))
-            val (voltage1, voltage2) = (voltages(0), voltages(1))
-
-            val v1 = voltage1.value_a.modulus
-            val v2 = voltage2.value_a.modulus
-            val voltage_diff = (voltage1.value_a - voltage2.value_a)
-
-            val rating = if (switch.fuse) Some(switch.ratedCurrent) else None
-            val name = switch.data.switches.head.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
-            val stds = switch.data.switches.flatMap(_.standard).toArray.distinct
-            val std = if (0 == stds.length) "" else stds(0) // ToDo: what if parallel switches have different standards?
-
-            val current = (voltage_diff / ScNonRadial.switch_default_z.impedanz_low).modulus
-
-            val (from, to) = getSourceAndDestinationFromLvnodes(lvnodes, switch) match
+            val branches: Iterable[SimpleBranch] = switch.data.switches.map((sub_switch: SwitchDetails) =>
             {
-                case Some((from, to)) => (from, to)
-                case None => getSourceAndDestinationFromMrid(mrid, switch) match
+                val voltages = get_voltages(data, Array(switch.cn1, switch.cn2))
+                val (voltage1, voltage2) = (voltages(0), voltages(1))
+
+                val v1 = voltage1.value_a.modulus
+                val v2 = voltage2.value_a.modulus
+                val voltage_diff = (voltage1.value_a - voltage2.value_a)
+
+                val rating = if (sub_switch.fuse) Some(sub_switch.ratedCurrent) else None
+                val identifiedObject = sub_switch.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject
+                val id = identifiedObject.mRID
+                val name = identifiedObject.name
+                val std = sub_switch.standard.getOrElse("DIN")
+
+                val current = (voltage_diff / ScNonRadial.switch_default_z.impedanz_low).modulus
+
+                val (from, to) = getSourceAndDestinationFromLvnodes(lvnodes, switch) match
                 {
                     case Some((from, to)) => (from, to)
-                    case None => getSourceAndDestinationFromVoltages(v1, v2, switch)
+                    case None => getSourceAndDestinationFromMrid(mrid, switch) match
+                    {
+                        case Some((from, to)) => (from, to)
+                        case None => getSourceAndDestinationFromVoltages(v1, v2, switch)
+                    }
                 }
+                SimpleBranch(from, to, current, id, name, rating, std, ScNonRadial.switch_default_z)
+            })
+            if (branches.size > 1) {
+                val parallel_branch = ParallelBranch(branches.head.from, branches.head.to, 0.0, branches.toList)
+                List(parallel_branch)
+            } else {
+                branches.toList
             }
-            List(SimpleBranch(from, to, current, switch.id, name, rating, std, ScNonRadial.switch_default_z))
+
         }
     }
 

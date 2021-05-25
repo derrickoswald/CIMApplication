@@ -48,38 +48,12 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
 
     def mergeMessage (a: ScMessage, b: ScMessage): ScMessage =
     {
-        if (a.previous_node != b.previous_node)
-        {
-            val text = s"non-radial network detected from ${a.previous_node} to ${b.previous_node}"
-            log.error(text)
-            val error = ScError(fatal = true, invalid = true, text)
-            val error1 = ScError.combine_errors(b.errors, List(error), options.messagemax)
-            val errors = ScError.combine_errors(a.errors, error1, options.messagemax)
-            a.copy(errors = errors)
-        }
-        else
-        {
-            val parallel =
-                if ((null != a.edge) && (null != b.edge))
-                    a.edge.parallel(b.edge)
-                else
-                    if (null != a.edge)
-                        a.edge
-                    else
-                        b.edge
-            // Convert to parallel branch if both branches have the same previous node
-            val parallel_branch =
-            {
-                if (a.fuses != null && b.fuses != null && a.previous_node == a.fuses.from && a.previous_node == b.fuses.from)
-                    ParallelBranch (a.fuses.from, a.fuses.to, 0.0, List(a.fuses, b.fuses))
-                else
-                    a.fuses
-            }
-            val warning = ScError(fatal = false, invalid = false, s"reinforcement detected from ${a.previous_node}")
-            val error1 = ScError.combine_errors(b.errors, List(warning), options.messagemax)
-            val errors = ScError.combine_errors(a.errors, error1, options.messagemax)
-            a.copy(edge = parallel, errors = errors, fuses = parallel_branch)
-        }
+        val text = s"non-radial network detected from ${a.previous_node} to ${b.previous_node}"
+        log.error(text)
+        val error = ScError(fatal = true, invalid = true, text)
+        val error1 = ScError.combine_errors(b.errors, List(error), options.messagemax)
+        val errors = ScError.combine_errors(a.errors, error1, options.messagemax)
+        a.copy(errors = errors)
     }
 
     def handleMesh (triplet: EdgeTriplet[ScNode, ScEdge]): Iterator[(VertexId, ScMessage)] =
