@@ -432,6 +432,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
             val trafo_node_to = transformator.nodes.filter(_.id == node.id_seq).head
             val voltage_to = transformator.voltages.filter(_._1 == trafo_node_to.BaseVoltage).head
 
+            val trafo_total_impedance: Complex = trafo.transformer.total_impedance._1
+            val impedanzen = Impedanzen(trafo_total_impedance, trafo_total_impedance, trafo_total_impedance, trafo_total_impedance)
+
             val trafo_branch = TransformerBranch(
                 transformator.node0.id,
                 trafo_node_to.id,
@@ -441,7 +444,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                 trafo.transformer.power_rating,
                 trafo.transformer.v0,
                 voltage_to._2,
-                trafo.transformer.total_impedance_per_unit._1
+                trafo.transformer.total_impedance_per_unit._1,
+                Some(impedanzen)
             )
 
             ScNode(

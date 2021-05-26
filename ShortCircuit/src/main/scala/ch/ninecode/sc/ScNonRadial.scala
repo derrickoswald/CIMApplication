@@ -531,6 +531,9 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             val voltage_diff = voltage1.value_a / node0BaseVoltage * voltageEndBaseVoltage - voltage_end.value_a
             val current = (voltage_diff / z_low_voltage_node).modulus
 
+            val trafo_total_impedance: Complex = transformer_set.total_impedance._1
+            val impedanzen = Impedanzen(trafo_total_impedance, trafo_total_impedance, trafo_total_impedance, trafo_total_impedance)
+
             val transformerBranch = TransformerBranch(
                 hv_pin,
                 trafo_end_node.id,
@@ -540,7 +543,8 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 power_rating,
                 v1,
                 v_end,
-                z_per_unit
+                z_per_unit,
+                Some(impedanzen)
             )
 
             if (voltage_diff.re < 0) {

@@ -110,15 +110,18 @@ abstract class Branch (val from: String, val to: String, val current: Double)
      */
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch])
 
-    def hasSameFrom (other: Branch): Boolean = {
+    def hasSameFrom (other: Branch): Boolean =
+    {
         from == other.from
     }
 
-    def hasSameTo (other: Branch): Boolean = {
+    def hasSameTo (other: Branch): Boolean =
+    {
         to == other.to
     }
 
-    def isParallelTo(other:Branch): Boolean = {
+    def isParallelTo (other: Branch): Boolean =
+    {
         this.hasSameFrom(other) && this.hasSameTo(other)
     }
 }
@@ -212,7 +215,7 @@ case class SimpleBranch (override val from: String, override val to: String, ove
  * @param pu      the per unit impedance
  */
 case class TransformerBranch (override val from: String, override val to: String, override val current: Double, mRID: String, name: String,
-    s: Double, vfrom: Double, vto: Double, pu: Complex) extends Branch(from, to, current)
+    s: Double, vfrom: Double, vto: Double, pu: Complex, reference_impedanzen: Option[Impedanzen]) extends Branch(from, to, current)
 {
     override def toString: String =
     {
@@ -240,7 +243,7 @@ case class TransformerBranch (override val from: String, override val to: String
 
     def justFuses: Option[Branch] = None
 
-    def reverse: Branch = TransformerBranch(to, from, current, mRID, name, s, vto, vfrom, pu)
+    def reverse: Branch = TransformerBranch(to, from, current, mRID, name, s, vto, vfrom, pu, reference_impedanzen)
 
     def ratios: Iterable[(Double, Branch)] = List((1.0, this))
 
@@ -259,8 +262,11 @@ case class TransformerBranch (override val from: String, override val to: String
         val secondary_z = pu * base_ohms
         val ratio = vto / vfrom
         val ratio2 = ratio * ratio
-        // use r0=r1 & x0=x1 for trafos, assume the temperature effects are negligible
-        in * ratio2 + Impedanzen(secondary_z, secondary_z, secondary_z, secondary_z)
+
+        val in_converted = in * ratio2
+        val trafo_impedance = reference_impedanzen.getOrElse(Impedanzen(secondary_z, secondary_z, secondary_z, secondary_z))
+
+        in_converted + trafo_impedance
     }
 }
 
@@ -589,7 +595,7 @@ object Branch
 {
     def apply (from: String, to: String, current: Double, mRID: String, name: String, standard: String, rating: Option[Double]): SimpleBranch = SimpleBranch(from, to, current, mRID, name, rating, standard)
 
-    def apply (from: String, to: String, current: Double, mRID: String, name: String, s: Double, vfrom: Double, vto: Double, pu: Complex): TransformerBranch = TransformerBranch(from, to, current, mRID, name, s, vfrom, vto, pu)
+    def apply (from: String, to: String, current: Double, mRID: String, name: String, s: Double, vfrom: Double, vto: Double, pu: Complex): TransformerBranch = TransformerBranch(from, to, current, mRID, name, s, vfrom, vto, pu, None)
 
     def apply (from: String, to: String, current: Double, series: Seq[Branch]): SeriesBranch = SeriesBranch(from, to, current, series)
 
