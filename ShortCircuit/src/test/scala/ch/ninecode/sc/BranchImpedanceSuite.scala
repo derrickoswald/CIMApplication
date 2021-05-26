@@ -250,7 +250,7 @@ class BranchImpedanceSuite extends AnyFunSuite
                         Complex(2.0, 2.0),
                         Complex(1.0, 1.0))),
                     TransformerBranch("b", "c", 0.0, "TX0001", "250kVA", 400000, 1000.0, 400.0,
-                        Complex(1.0, 1.0)),
+                        Complex(1.0, 1.0), None),
                     SimpleBranch("c", "d", 0.0, "KLE789", "", Some(4.0), "", Impedanzen(
                         Complex(2.0, 2.0),
                         Complex(1.0, 1.0),
@@ -275,7 +275,7 @@ class BranchImpedanceSuite extends AnyFunSuite
                         Complex(2.0, 2.0),
                         Complex(1.0, 1.0))
                     ),
-                    TransformerBranch("b", "c", 0.0, "TX0001", "250kVA", 400000, 400.0, 1000.0, Complex(1.0, 1.0)),
+                    TransformerBranch("b", "c", 0.0, "TX0001", "250kVA", 400000, 400.0, 1000.0, Complex(1.0, 1.0), None),
                     SimpleBranch("c", "d", 0.0, "KLE789", "", Some(4.0), "", Impedanzen(
                         Complex(2.0, 2.0),
                         Complex(1.0, 1.0),
