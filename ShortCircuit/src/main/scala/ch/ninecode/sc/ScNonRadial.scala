@@ -494,7 +494,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 SimpleBranch(from, to, current, id, name, rating, std, ScNonRadial.switch_default_z)
             })
             if (branches.size > 1) {
-                val parallel_branch = ParallelBranch(branches.head.from, branches.head.to, 0.0, branches.toList)
+                val parallel_branch = ParallelBranch(branches.head.from, branches.head.to, branches.head.current, branches.toList)
                 List(parallel_branch)
             } else {
                 branches.toList
@@ -528,7 +528,9 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             val v_end = voltage_end.value_a.modulus
 
             val voltageEndBaseVoltage = transformer_set.transformers(0).voltages.filter(_._1.equals(trafo_end_node.BaseVoltage))(0)._2
-            val voltage_diff = voltage1.value_a / node0BaseVoltage * voltageEndBaseVoltage - voltage_end.value_a
+            val upperPinVoltage = voltage1.value_a / node0BaseVoltage * voltageEndBaseVoltage
+            val voltage_diff = upperPinVoltage - voltage_end.value_a
+            val flipTransformerBranchDirection = upperPinVoltage.modulus < voltage_end.value_a.modulus
             val current = (voltage_diff / z_low_voltage_node).modulus
 
             val trafo_total_impedance: Complex = transformer_set.total_impedance._1
@@ -547,7 +549,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 Some(impedanzen)
             )
 
-            if (voltage_diff.re < 0) {
+            if (flipTransformerBranchDirection) {
                 transformerBranch.reverse
             } else {
                 transformerBranch

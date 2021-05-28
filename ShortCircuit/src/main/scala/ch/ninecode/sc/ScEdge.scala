@@ -274,6 +274,20 @@ case class ScEdge
                         case sim: SimpleBranch => SeriesBranch(sim.from, to, 0.0, Seq(prev_branch, next))
                         case ser: SeriesBranch => SeriesBranch(ser.from, to, 0.0, ser.series ++ Seq(next))
                         case par: ParallelBranch => SeriesBranch(par.from, to, 0.0, Seq(prev_branch, next))
+                        case trafo: TransformerBranch => SeriesBranch(trafo.from, to, 0.0, Seq(prev_branch, next))
+                        case _ => throw new IllegalArgumentException(s"unknown class for ref (${prev_branch.getClass.toString})")
+                    }
+            case line: ACLineSegment =>
+                val next = SimpleBranch(from, to, 0.0, line.id, line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, None, "")
+                if (null == prev_branch)
+                    next
+                else
+                    prev_branch match
+                    {
+                        case sim: SimpleBranch => SeriesBranch(sim.from, to, 0.0, Seq(prev_branch, next))
+                        case ser: SeriesBranch => SeriesBranch(ser.from, to, 0.0, ser.series ++ Seq(next))
+                        case par: ParallelBranch => SeriesBranch(par.from, to, 0.0, Seq(prev_branch, next))
+                        case trafo: TransformerBranch => SeriesBranch(trafo.from, to, 0.0, Seq(prev_branch, next))
                         case _ => throw new IllegalArgumentException(s"unknown class for ref (${prev_branch.getClass.toString})")
                     }
             case _ =>
