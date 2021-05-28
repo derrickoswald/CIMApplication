@@ -335,7 +335,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         // WIK-1814: "impedanzen_middle_voltage" does not work, when there are meshed networks (multiple trafos) and
         //   each trafo has its own impedance (Equivalent Injection) from middle voltage
         val tx = StartingTrafos(0L, 0L, trafokreis.island.transformers(0))
-        val impedanzen_middle_voltage = tx.primary_impedance
+        val impedanzen_middle_voltage = tx.secondary_impedance
 
         (experiment.trafo, experiment.mrid, impedanzen_middle_voltage, path)
     }
