@@ -354,7 +354,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 case cable: GLMLineEdge =>
                     makeCableBranch(cable, data)
                 case transformer: GLMTransformerEdge =>
-                    makeTransformerBranch(transformer, data)
+                    makeTransformerBranch(transformer, data, flatten_trafo_lv_nodes)
                 case _ =>
                     makeUnexpectedBranch(x, data)
             }
@@ -503,7 +503,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         }
     }
 
-    def makeTransformerBranch (transformer: GLMTransformerEdge, data: Iterable[ThreePhaseComplexDataElement]): List[Branch] =
+    def makeTransformerBranch (transformer: GLMTransformerEdge, data: Iterable[ThreePhaseComplexDataElement], lvnodes: Array[String]): List[Branch] =
     {
         val transformer_set: TransformerSet = transformer.transformer
         val power_rating = transformer_set.power_rating
@@ -530,7 +530,8 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             val voltageEndBaseVoltage = transformer_set.transformers(0).voltages.filter(_._1.equals(trafo_end_node.BaseVoltage))(0)._2
             val upperPinVoltage = voltage1.value_a / node0BaseVoltage * voltageEndBaseVoltage
             val voltage_diff = upperPinVoltage - voltage_end.value_a
-            val flipTransformerBranchDirection = upperPinVoltage.modulus < voltage_end.value_a.modulus
+            val hvTrafo = !lvnodes.contains(trafo_end_node.IdentifiedObject.mRID)
+            val flipTransformerBranchDirection = upperPinVoltage.modulus < voltage_end.value_a.modulus && hvTrafo
             val current = (voltage_diff / z_low_voltage_node).modulus
 
             val trafo_total_impedance: Complex = transformer_set.total_impedance._1
