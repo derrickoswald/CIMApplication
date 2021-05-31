@@ -143,7 +143,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                     {
                         val from = triplet.attr.impedanceFrom(triplet.dstAttr.id_seq, triplet.srcAttr.impedance)
                         val to = triplet.attr.impedanceTo(triplet.dstAttr.id_seq)
-                        val branches = triplet.attr.fusesTo(triplet.srcAttr.branches, triplet.srcAttr.id_seq)
+                        val branches = triplet.attr.fusesTo(triplet.srcAttr.branches, triplet.srcAttr.id_seq, options)
                         val errors = triplet.attr.hasIssues(triplet.srcAttr.errors, options)
                         val message = ScMessage(triplet.srcAttr.source_id, from, to, branches, triplet.srcAttr.id_seq, errors)
                         if (log.isDebugEnabled)
@@ -158,7 +158,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         {
                             val from = triplet.attr.impedanceFrom(triplet.srcAttr.id_seq, triplet.dstAttr.impedance)
                             val to = triplet.attr.impedanceTo(triplet.srcAttr.id_seq)
-                            val branches = triplet.attr.fusesTo(triplet.dstAttr.branches, triplet.dstAttr.id_seq)
+                            val branches = triplet.attr.fusesTo(triplet.dstAttr.branches, triplet.dstAttr.id_seq, options)
                             val errors = triplet.attr.hasIssues(triplet.dstAttr.errors, options)
                             val message = ScMessage(triplet.dstAttr.source_id, from, to, branches, triplet.dstAttr.id_seq, errors)
                             if (log.isDebugEnabled)

@@ -236,7 +236,7 @@ case class ScEdge
      * @return network of fuses at the other end of the edge
      */
     @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-    def fusesTo (prev_branch: Branch, prev_node: String): Branch =
+    def fusesTo (prev_branch: Branch, prev_node: String, options: ShortCircuitOptions): Branch =
     {
         val current_edge = element
         // Make sure the previous node is always "from"
@@ -278,7 +278,9 @@ case class ScEdge
                         case _ => throw new IllegalArgumentException(s"unknown class for ref (${prev_branch.getClass.toString})")
                     }
             case line: ACLineSegment =>
-                val next = SimpleBranch(from, to, 0.0, line.id, line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, None, "")
+                val dist_km = line.Conductor.len / 1000.0
+                val z = getImpedanzenFor(line, dist_km, options)
+                val next = SimpleBranch(from, to, 0.0, line.id, line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, None, "", z)
                 if (null == prev_branch)
                     next
                 else
@@ -293,6 +295,18 @@ case class ScEdge
             case _ =>
                 prev_branch
         }
+    }
+
+    // duplicate in ScNonRadial
+    private def getImpedanzenFor (line: ACLineSegment, dist_km: Double, options: ShortCircuitOptions) =
+    {
+        val x_per_km = line.x * dist_km
+        val x0_per_km = line.x0 * dist_km
+        Impedanzen(
+            Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r) * dist_km, x_per_km),
+            Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r0) * dist_km, x0_per_km),
+            Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r) * dist_km, x_per_km),
+            Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r0) * dist_km, x0_per_km))
     }
 }
 
