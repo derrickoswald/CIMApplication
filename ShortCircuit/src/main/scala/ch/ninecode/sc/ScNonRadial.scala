@@ -315,13 +315,13 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
         if (branches.size > 1)
         {
-            val lv = flatten_trafo_lv_nodes.mkString(",")
+            val hv_node = trafo_hv_nodes.mkString(",")
             val trace = branches.map(_.asString).mkString("\n")
             log.error(s"branch could not be reduced to one single branch. " +
-                s"may be unsupported complex branch network from $lv to ${experiment.mrid}\n$trace")
+                s"may be unsupported complex branch network from $hv_node to ${experiment.mrid}\n$trace")
             val directs = branches.filter(experiment.mrid == _.to)
             val sum = directs.map(_.current).sum
-            branches = List(ComplexBranch(flatten_trafo_lv_nodes.mkString(","), experiment.mrid, sum, branches.toArray))
+            branches = List(ComplexBranch(hv_node, experiment.mrid, sum, branches.toArray))
         }
 
         val branch = branches.headOption match
