@@ -340,6 +340,19 @@ case class SeriesBranch (override val from: String, override val to: String, ove
 
     def z (in: Impedanzen): Impedanzen = seq.foldLeft(in)((z, branch) => branch.z(z))
 
+    def getTransformerBranch: Option[TransformerBranch] =
+    {
+        series.headOption match
+        {
+            case Some(trafo) => trafo match
+            {
+                case trafo: TransformerBranch => Option(trafo)
+                case _ => None
+            }
+            case _ => None
+        }
+    }
+
     def contents: Iterable[Branch] = series
 
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
@@ -451,11 +464,38 @@ case class ParallelBranch (override val from: String, override val to: String, o
 
     def z (in: Impedanzen): Impedanzen =
     {
+        val prev_impedance = getTransformerBranch match
+        {
+            case Some(trafoBranch) =>
+            {
+                // use trafo.z to get the ratio impedance of previos impedance (NE5)
+                trafoBranch.z(in) - trafoBranch.z(Impedanzen())
+            }
+            case _ => in
+        }
+
         val pz = parallel.map(_.z(Impedanzen()))
         pz.reduceOption((z1, z2) => z1.parallel(z2)) match
         {
-            case Some(z) => in + z
-            case None => in
+            case Some(z) => prev_impedance + z
+            case None => prev_impedance
+        }
+    }
+
+    def getTransformerBranch: Option[TransformerBranch] =
+    {
+        parallel.headOption match
+        {
+            case Some(branch) =>
+            {
+                branch match
+                {
+                    case trafo: TransformerBranch => Option(trafo)
+                    case series: SeriesBranch => series.getTransformerBranch
+                    case _ => None
+                }
+            }
+            case None => None
         }
     }
 
