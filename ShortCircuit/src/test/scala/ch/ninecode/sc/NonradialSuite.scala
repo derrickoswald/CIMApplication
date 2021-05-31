@@ -113,8 +113,8 @@ class NonradialSuite extends SCTestBase with BeforeAndAfter
             for (i <- csv.indices)
                 println(csv(i))
 
-            near(results.filter(_.equipment == "USR0001").first().low_sk, 2617497, 1)
-            near(results.filter(_.equipment == "USR0002").first().low_sk, 6186328, 1)
-            near(results.filter(_.equipment == "USR0003").first().low_sk, 6159839, 1)
+            near(results.filter(_.equipment == "USR0001").first().low_sk, 2617509, 1000)
+            near(results.filter(_.equipment == "USR0002").first().low_sk, 6186524, 1000)
+            near(results.filter(_.equipment == "USR0003").first().low_sk, 6160033, 1000)
     }
 }
