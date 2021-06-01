@@ -260,13 +260,15 @@ case class TransformerBranch (override val from: String, override val to: String
     {
         val base_ohms = vto * vto / s
         val secondary_z = pu * base_ohms
-        val ratio = vto / vfrom
-        val ratio2 = ratio * ratio
-
-        val in_converted = in * ratio2
         val trafo_impedance = reference_impedanzen.getOrElse(Impedanzen(secondary_z, secondary_z, secondary_z, secondary_z))
 
-        in_converted + trafo_impedance
+        convert_impedance(in) + trafo_impedance
+    }
+
+    def convert_impedance(in: Impedanzen): Impedanzen = {
+        val ratio = vto / vfrom
+        val ratio2 = ratio * ratio
+        in * ratio2
     }
 }
 
@@ -468,8 +470,7 @@ case class ParallelBranch (override val from: String, override val to: String, o
         {
             case Some(trafoBranch) =>
             {
-                // use trafo.z to get the ratio impedance of previos impedance (NE5)
-                trafoBranch.z(in) - trafoBranch.z(Impedanzen())
+                trafoBranch.convert_impedance(in)
             }
             case _ => in
         }

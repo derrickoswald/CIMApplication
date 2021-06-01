@@ -17,7 +17,6 @@ import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.GLMSwitchEdge
 import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.model.ACLineSegment
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
 import ch.ninecode.net.SwitchDetails
@@ -25,12 +24,11 @@ import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.net.TransformerSet
-import ch.ninecode.sc.ScEdge.resistanceAt
 import ch.ninecode.sc.ScNonRadial.need_load_flow
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 
-case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions)
+case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions) extends ImpedanceForLine
 {
 
     implicit val spark: SparkSession = session
@@ -361,17 +359,6 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         })
     }
 
-    private def getImpedanzenFor (line: ACLineSegment, dist_km: Double) =
-    {
-        val x_per_km = line.x * dist_km
-        val x0_per_km = line.x0 * dist_km
-        Impedanzen(
-            Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r) * dist_km, x_per_km),
-            Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r0) * dist_km, x0_per_km),
-            Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r) * dist_km, x_per_km),
-            Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r0) * dist_km, x0_per_km))
-    }
-
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def makeCableBranch (cable: GLMLineEdge, data: Iterable[ThreePhaseComplexDataElement]): List[Branch] =
     {
@@ -389,10 +376,10 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         {
             val line = cable.lines.head
             val dist_km = line.Conductor.len / 1000.0
-            var z = getImpedanzenFor(line, dist_km)
+            var z = getImpedanzenFor(line, dist_km, options)
             for (l <- cable.lines.tail)
             {
-                val z1 = getImpedanzenFor(l, dist_km)
+                val z1 = getImpedanzenFor(l, dist_km, options)
                 z = Impedanzen(
                     z.impedanz_low.parallel_impedanz(z1.impedanz_low),
                     z.null_impedanz_low.parallel_impedanz(z1.null_impedanz_low),
@@ -493,10 +480,12 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 }
                 SimpleBranch(from, to, current, id, name, rating, std, ScNonRadial.switch_default_z)
             })
-            if (branches.size > 1) {
+            if (branches.size > 1)
+            {
                 val parallel_branch = ParallelBranch(branches.head.from, branches.head.to, branches.head.current, branches.toList)
                 List(parallel_branch)
-            } else {
+            } else
+            {
                 branches.toList
             }
 
@@ -550,9 +539,11 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 Some(impedanzen)
             )
 
-            if (flipTransformerBranchDirection) {
+            if (flipTransformerBranchDirection)
+            {
                 transformerBranch.reverse
-            } else {
+            } else
+            {
                 transformerBranch
             }
         }).toList
