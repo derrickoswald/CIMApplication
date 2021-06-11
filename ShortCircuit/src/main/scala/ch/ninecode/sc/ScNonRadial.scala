@@ -421,15 +421,14 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
     {
         if (v1 > v2)
         {
-            (switch.cn1, switch.cn2)
+            Some((switch.cn1, switch.cn2))
         } else
             if (v2 > v1)
             {
-                (switch.cn2, switch.cn1)
+                Some((switch.cn2, switch.cn1))
             } else
             {
-                log.warn(s"guessing: (${switch.cn1},${switch.cn2}) for ${switch.id}")
-                (switch.cn2, switch.cn1)
+                None
             }
     }
 
@@ -469,13 +468,18 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
                 val current = (voltage_diff / ScNonRadial.switch_default_z.impedanz_low).modulus
 
-                val (from, to) = getSourceAndDestinationFromLvnodes(lvnodes, switch) match
+                // Try different methods to determine the switch orientation
+                val (from, to) = getSourceAndDestinationFromVoltages(v1, v2, switch) match
                 {
                     case Some((from, to)) => (from, to)
                     case None => getSourceAndDestinationFromMrid(mrid, switch) match
                     {
                         case Some((from, to)) => (from, to)
-                        case None => getSourceAndDestinationFromVoltages(v1, v2, switch)
+                        case None => getSourceAndDestinationFromLvnodes(lvnodes, switch) match
+                        {
+                            case Some((from, to)) => (from, to)
+                            case None => (switch.cn2, switch.cn1)
+                        }
                     }
                 }
                 SimpleBranch(from, to, current, id, name, rating, std, ScNonRadial.switch_default_z)
@@ -500,27 +504,26 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
         val trafo = transformer_set.transformers.head
         val hv_pin = transformer_set.node0
-        val voltages = get_voltages(data, Array(trafo.node0.id))
-        val voltage1 = voltages(0)
+        val high_voltages = get_voltages(data, Array(trafo.node0.id))
+        val high_voltage = high_voltages(0)
         val node0BaseVoltage = transformer_set.transformers(0).voltages.filter(_._1.equals(trafo.node0.BaseVoltage))(0)._2
-        val v1 = voltage1.value_a.modulus
-
-        val base_ohms = v1 * v1 / power_rating
-        val z_low_voltage_node: Complex = z_per_unit * base_ohms
+        val v1 = high_voltage.value_a.modulus
 
         // create Branch for each low voltage node, multi-winding trafos have more than 1 low voltage node
         val trafo_low_voltage_nodes = trafo.nodes.tail
         trafo_low_voltage_nodes.map(trafo_end_node =>
         {
-            val voltage = get_voltages(data, Array(trafo_end_node.id))
-            val voltage_end = voltage(0)
-            val v_end = voltage_end.value_a.modulus
+            val low_voltages = get_voltages(data, Array(trafo_end_node.id))
+            val low_voltage = low_voltages(0)
+            val v_end = low_voltage.value_a.modulus
+            val base_ohms = v_end * v_end / power_rating
+            val z_low_voltage_node: Complex = z_per_unit * base_ohms
 
             val voltageEndBaseVoltage = transformer_set.transformers(0).voltages.filter(_._1.equals(trafo_end_node.BaseVoltage))(0)._2
-            val upperPinVoltage = voltage1.value_a / node0BaseVoltage * voltageEndBaseVoltage
-            val voltage_diff = upperPinVoltage - voltage_end.value_a
+            val upperPinVoltage = high_voltage.value_a / node0BaseVoltage * voltageEndBaseVoltage
+            val voltage_diff = upperPinVoltage - low_voltage.value_a
             val hvTrafo = lvnodes.contains(trafo_end_node.IdentifiedObject.mRID)
-            val flipTransformerBranchDirection = upperPinVoltage.modulus < voltage_end.value_a.modulus && !hvTrafo
+            val flipTransformerBranchDirection = upperPinVoltage.modulus < low_voltage.value_a.modulus && !hvTrafo
             val current = (voltage_diff / z_low_voltage_node).modulus
 
             val trafo_total_impedance: Complex = transformer_set.total_impedance._1
