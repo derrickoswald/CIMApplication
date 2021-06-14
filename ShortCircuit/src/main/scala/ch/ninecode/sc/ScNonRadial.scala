@@ -28,7 +28,8 @@ import ch.ninecode.sc.ScNonRadial.need_load_flow
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 
-case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions) extends ImpedanceForLine
+case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions)
+    extends ImpedanceForLine
 {
 
     implicit val spark: SparkSession = session
@@ -417,7 +418,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 None
     }
 
-    private def getSourceAndDestinationFromVoltages = (v1: Double, v2: Double, switch: GLMSwitchEdge) =>
+    private def getSourceAndDestinationFromVoltages(v1: Double, v2: Double, switch: GLMSwitchEdge): Option[(String, String)] =
     {
         if (v1 > v2)
         {
@@ -432,9 +433,9 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             }
     }
 
-    private def get_voltages (data: Iterable[ThreePhaseComplexDataElement], nodes: Array[String]) =
+    private def get_voltages (data: Iterable[ThreePhaseComplexDataElement], nodes: Array[String]): Array[ThreePhaseComplexDataElement] =
     {
-        nodes.flatMap((node) =>
+        nodes.flatMap(node =>
         {
             data.find(y => y.element == node) match
             {
@@ -468,20 +469,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
                 val current = (voltage_diff / ScNonRadial.switch_default_z.impedanz_low).modulus
 
-                // Try different methods to determine the switch orientation
-                val (from, to) = getSourceAndDestinationFromVoltages(v1, v2, switch) match
-                {
-                    case Some((from, to)) => (from, to)
-                    case None => getSourceAndDestinationFromMrid(mrid, switch) match
-                    {
-                        case Some((from, to)) => (from, to)
-                        case None => getSourceAndDestinationFromLvnodes(lvnodes, switch) match
-                        {
-                            case Some((from, to)) => (from, to)
-                            case None => (switch.cn2, switch.cn1)
-                        }
-                    }
-                }
+                val (from, to) = determineSwitchBranchOrientation(switch, lvnodes, mrid, v1, v2)
                 SimpleBranch(from, to, current, id, name, rating, std, ScNonRadial.switch_default_z)
             })
             if (branches.size > 1)
@@ -493,6 +481,23 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 branches.toList
             }
 
+        }
+    }
+
+    private def determineSwitchBranchOrientation (switch: GLMSwitchEdge, lvnodes: Array[String], mrid: String, v1: Double, v2: Double): (String, String) =
+    {
+        getSourceAndDestinationFromVoltages(v1, v2, switch) match
+        {
+            case Some((from, to)) => (from, to)
+            case None => getSourceAndDestinationFromMrid(mrid, switch) match
+            {
+                case Some((from, to)) => (from, to)
+                case None => getSourceAndDestinationFromLvnodes(lvnodes, switch) match
+                {
+                    case Some((from, to)) => (from, to)
+                    case None => (switch.cn2, switch.cn1)
+                }
+            }
         }
     }
 
