@@ -65,10 +65,9 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
      */
     def transformer_filter (transformer: TransformerData): Boolean =
     {
-        val power_transformer = transformer.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
         val power_significant = transformer.ends.forall(_.ratedS > 0.0)
         val voltage_significant = options.calculate_public_lighting || transformer.voltages.tail.exists(_._2 >= 400.0)
-        power_transformer && power_significant && voltage_significant
+        power_significant && voltage_significant
     }
 
     override lazy val transformers: RDD[TransformerSet] = Transformers(session, storageLevel).getTransformers(transformer_filter = transformer_filter) // substation filter
