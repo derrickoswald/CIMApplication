@@ -249,7 +249,12 @@ case class ScEdge
         current_edge match
         {
             case fuse: Fuse =>
-                val std = standard.getOrElse("")
+
+                val std_from_rdf = standard.getOrElse("")
+                val std = if (options.fuse_table.Tables.map(_.Standard).contains(std_from_rdf))
+                    std_from_rdf
+                else
+                    "DIN"
                 val next = SimpleBranch(from, to, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some(fuse.Switch.ratedCurrent), std)
                 add_branch_in_series(prev_branch, next)
             case breaker: Breaker =>
