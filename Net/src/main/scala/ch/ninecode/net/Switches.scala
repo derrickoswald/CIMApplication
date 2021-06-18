@@ -71,9 +71,13 @@ final case class Switches (
             else
                 s"${t2.TopologicalNode}_${t1.TopologicalNode}"
 
-    def getFuseStandards: RDD[(String, String)] =
+    def getFuseStandards (fuseTypes: Option[Array[String]] = None): RDD[(String, String)] =
     {
-        val types = Array("DIN", "SEV")
+        val types = fuseTypes match
+        {
+            case None => Array ("DIN", "SEV")
+            case Some (fuseType) => fuseType
+        }
         val attributes = getOrElse[UserAttribute]
         attributes.filter(x => types.contains(x.name)).map(x => (x.value, x.name))
     }
@@ -83,7 +87,7 @@ final case class Switches (
      *
      * @return the RDD of cable data
      */
-    def getSwitches: RDD[SwitchData] =
+    def getSwitches(fuseTypes:Option[Array[String]] = None): RDD[SwitchData] =
     {
         // get switches with two terminals
         val switches_terminals: RDD[(Switch, Terminal, Terminal)] =
@@ -105,7 +109,7 @@ final case class Switches (
         val switches_terminals_parameters_info_std: RDD[(Switch, Terminal, Terminal, Option[Element], Option[String])] =
             switches_terminals_parameters_info
                 .keyBy(_._1.id)
-                .leftOuterJoin(getFuseStandards)
+                .leftOuterJoin(getFuseStandards(fuseTypes))
                 .values
                 .map(x => (x._1._1, x._1._2, x._1._3, x._1._4, x._2))
 

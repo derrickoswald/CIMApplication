@@ -43,7 +43,7 @@ class Island (
 
     // get the edges we understand
     lazy val lines: RDD[LineData] = Lines(session, storage_level).getLines() // line filter
-    lazy val switches: RDD[SwitchData] = Switches(session, storage_level).getSwitches
+    lazy val switches: RDD[SwitchData] = Switches(session, storage_level).getSwitches()
     lazy val transformers: RDD[TransformerSet] = Transformers(session, storage_level).getTransformers() // transformer filter, substation filter
         // legacy naming: TransformerData should be TransformerDetails, TransformerSet should be TransformerData
         .groupBy(getTransformerId)
