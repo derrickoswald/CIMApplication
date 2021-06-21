@@ -730,6 +730,8 @@ object ShortCircuit extends CIMInitializer[ShortCircuitOptions] with Main
                     if (options.verbose)
                     {
                         org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ShortCircuit").setLevel(org.apache.log4j.Level.INFO)
+                        org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ShortCircuitTrace").setLevel(org.apache.log4j.Level.INFO)
+                        org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ScNonRadial").setLevel(org.apache.log4j.Level.INFO)
                         org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ScBranches").setLevel(org.apache.log4j.Level.INFO)
                         org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.Database").setLevel(org.apache.log4j.Level.INFO)
                     }
