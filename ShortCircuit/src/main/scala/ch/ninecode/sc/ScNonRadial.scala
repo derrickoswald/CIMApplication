@@ -182,7 +182,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             .setName("exp")
 
         val z: RDD[(Trafo, Mrid, Impedanzen, Branch)] = exp
-            .map(evaluate)
+            .flatMap(evaluate)
             .setName("z")
 
         val anal = System.nanoTime()
@@ -288,7 +288,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
      * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, secondary impedance of the source transformer and an equivalent circuit
      */
     @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-    def evaluate (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (Trafo, Mrid, Impedanzen, Branch) =
+    def evaluate (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): List[(Trafo, Mrid, Impedanzen, Branch)] =
     {
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
         val experiment: ScExperiment = exp._1._2
@@ -323,20 +323,25 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             branches = List(ComplexBranch(hv_node, experiment.mrid, sum, branches.toArray))
         }
 
-        val branch = branches.headOption match
+        branches.headOption match
         {
-            case Some(branch) => branch
-            case None => throw new Exception(s"no branches found for ${experiment.mrid}")
+            case Some(branch) =>
+            {
+                val path = if (experiment.mrid == branch.to) branch else branch.reverse
+
+                // compute the impedance from start to end
+                // WIK-1814: "impedanzen_middle_voltage" does not work, when there are meshed networks (multiple trafos) and
+                //   each trafo has its own impedance (Equivalent Injection) from middle voltage
+                val tx = StartingTrafos(0L, 0L, trafokreis.island.transformers(0))
+                val impedanzen_middle_voltage = tx.primary_impedance
+
+                List((experiment.trafo, experiment.mrid, impedanzen_middle_voltage, path))
+            }
+            case None => {
+                log.error(s"no branches found for ${experiment.mrid}")
+                List()
+            }
         }
-        val path = if (experiment.mrid == branch.to) branch else branch.reverse
-
-        // compute the impedance from start to end
-        // WIK-1814: "impedanzen_middle_voltage" does not work, when there are meshed networks (multiple trafos) and
-        //   each trafo has its own impedance (Equivalent Injection) from middle voltage
-        val tx = StartingTrafos(0L, 0L, trafokreis.island.transformers(0))
-        val impedanzen_middle_voltage = tx.primary_impedance
-
-        (experiment.trafo, experiment.mrid, impedanzen_middle_voltage, path)
     }
 
     private def get_directed_edges (edges: Iterable[GLMEdge],
