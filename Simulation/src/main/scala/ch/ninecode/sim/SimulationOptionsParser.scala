@@ -63,6 +63,10 @@ class SimulationOptionsParser (default: SimulationOptions)
       .action((x, c) => c.copy(aws_s3a_secret_key = x))
       .text(s"aws seceret key [${default.aws_s3a_secret_key}]")
 
+    opt[Unit]("include_busbar_voltage")
+        .action((_, c) => c.copy(include_busbar_voltage = true))
+        .text(s"include busbar voltage into calculations [${default.include_busbar_voltage}]")
+
     // turn off <CIM> files and use <JSON> instead
     options.remove(options.indexOf(cim_files))
     arg[String]("<JSON> <JSON>...")
