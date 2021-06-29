@@ -723,8 +723,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         val schema = Schema(session, "/simulation_schema.sql", options.verbose)
         if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
         {
-            // TODO: from simulation input parameters
-            val include_voltage = false
+            val include_voltage = house_trafo_mapping.head(1).isEmpty
 
             // perform the extra queries and insert into the key_value table
             performExtraQueries(job)
