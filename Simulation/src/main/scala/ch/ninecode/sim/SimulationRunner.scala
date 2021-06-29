@@ -385,7 +385,9 @@ case class SimulationRunner (
         data: Map[String, Iterable[SimulationPlayerData]],
         swing_nominal_voltage: Boolean = true): (List[String], Iterable[SimulationResult]) =
     {
-        log.info(trafo.island + " from " + iso_date_format.format(trafo.start_time.getTime) + " to " + iso_date_format.format(trafo.finish_time.getTime))
+        val start = iso_date_format.format(trafo.start_time.getTime)
+        val end = iso_date_format.format(trafo.finish_time.getTime)
+        log.info(s"${trafo.island} from $start to $end")
 
         write_glm(trafo, workdir, swing_nominal_voltage)
 

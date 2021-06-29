@@ -239,7 +239,7 @@ case class SimulationJob
         }
     }
 
-    def start_as_iso_date(): Long = {
+    def start_in_millis(): Long = {
         val calendar: Calendar = Calendar.getInstance()
         calendar.setTimeZone(TimeZone.getTimeZone("GMT"))
         calendar.setTimeInMillis(0L)
@@ -259,7 +259,7 @@ case class SimulationJob
             begin
     }
 
-    def end_as_iso_date(): Long = {
+    def end_in_millis(): Long = {
         end_time.getTimeInMillis
     }
 
