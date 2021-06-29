@@ -3,6 +3,7 @@ package ch.ninecode.sim
 import java.io.StringReader
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.TimeZone
 
 import javax.json.Json
@@ -12,7 +13,6 @@ import javax.json.JsonNumber
 import javax.json.JsonObject
 import javax.json.JsonString
 import javax.json.JsonValue
-
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.collection.JavaConverters.mapAsScalaMapConverter
 
@@ -21,7 +21,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.cql.CassandraConnector
 
@@ -163,6 +162,8 @@ case class SimulationJob
     postprocessors: Seq[(SparkSession, SimulationOptions) => SimulationPostProcessor]
 )
 {
+    val log: Logger = LoggerFactory.getLogger(getClass)
+
     def optionString: String = cimreaderoptions.map(kv => s"${kv._1}=${kv._2}").mkString(",")
 
     /**
@@ -237,6 +238,31 @@ case class SimulationJob
             recorders.saveToCassandra(keyspace, "simulation_recorder", SomeColumns("simulation", "transformer", "name", "mrid", "type", "property", "unit", "interval", "aggregations"))
         }
     }
+
+    def start_as_iso_date(): Long = {
+        val calendar: Calendar = Calendar.getInstance()
+        calendar.setTimeZone(TimeZone.getTimeZone("GMT"))
+        calendar.setTimeInMillis(0L)
+        val iso_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+        calendar.setTimeInMillis(0L)
+        iso_date_format.setCalendar(calendar)
+
+        val begin = start_time.getTimeInMillis
+        val end = end_time.getTimeInMillis
+        if (begin > end) {
+            val from = iso_date_format.format(new Date(begin))
+            val to = iso_date_format.format(new Date(end))
+            log.error(s"job $id / $name has a start time ($from) after the end time ($to)")
+            end
+        }
+        else
+            begin
+    }
+
+    def end_as_iso_date(): Long = {
+        end_time.getTimeInMillis
+    }
+
 }
 
 /**

@@ -7,7 +7,6 @@ import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.TimeZone
 
 import scala.collection.JavaConverters.asScalaBufferConverter
@@ -96,6 +95,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     if (options.verbose)
     {
         LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
+        LogManager.getLogger("ch.ninecode.gl.SimulationJob").setLevel(org.apache.log4j.Level.INFO)
         LogManager.getLogger("ch.ninecode.gl.TransformerServiceArea").setLevel(org.apache.log4j.Level.INFO)
         LogManager.getLogger("ch.ninecode.sim.SimulationSparkQuery").setLevel(org.apache.log4j.Level.INFO)
         LogManager.getLogger("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel(org.apache.log4j.Level.INFO)
@@ -109,9 +109,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     val glm_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
     glm_date_format.setCalendar(calendar)
-
-    val iso_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-    iso_date_format.setCalendar(calendar)
 
     val cassandra_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ")
     cassandra_date_format.setCalendar(calendar)
@@ -203,17 +200,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         }
     }
 
-    def generate_player_csv (begin: Long, end: Long)(player: SimulationPlayerResult): SimulationPlayer =
+    def generate_player_csv (job: SimulationJob)(player: SimulationPlayerResult): SimulationPlayer =
     {
-        val start = if (begin > end)
-        {
-            val from = iso_date_format.format(new Date(begin))
-            val to = iso_date_format.format(new Date(end))
-            log.error(s"""player "${player.title}" has a start time ($from) after the end time ($to)""")
-            end
-        }
-        else
-            begin
         val file = s"input_data/${player.name}.csv"
         SimulationPlayer(
             player.name,
@@ -222,8 +210,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             player.property,
             file,
             player.mrid,
-            start,
-            end,
+            job.start_as_iso_date(),
+            job.end_as_iso_date(),
             player.transform,
             player.synthesis)
     }
@@ -282,10 +270,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             // join players and recorders
             val players_recorders: RDD[(island_id, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult]))] = playersets.join(recordersets)
 
-            // get the starting and ending times
-            val start = job.start_time
-            val end = job.end_time
-
             log.info("""generating simulation tasks""")
 
             // maybe reduce the set of islands
@@ -331,13 +315,13 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         (x: (identifier, ((Iterable[SimulationNode], Iterable[SimulationEdge]), (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult])))) =>
                         {
                             val (area, ((nodes, edges), (pla, rec))) = x
-                            val players: Iterable[SimulationPlayer] = pla.map(generate_player_csv(start.getTimeInMillis, end.getTimeInMillis))
+                            val players: Iterable[SimulationPlayer] = pla.map(generate_player_csv(job))
                             val recorders: Iterable[SimulationRecorder] = rec.map(generate_recorder_csv)
                             SimulationTask(
                                 area, // trafo
                                 area, // island
-                                dupTime(start),
-                                dupTime(end),
+                                dupTime(job.start_time),
+                                dupTime(job.end_time),
                                 nodes, // nodes
                                 edges, // edges
                                 players,
