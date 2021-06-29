@@ -159,7 +159,8 @@ case class SimulationJob
     players: Seq[SimulationPlayerQuery],
     recorders: Seq[SimulationRecorderQuery],
     extras: Seq[SimulationExtraQuery],
-    postprocessors: Seq[(SparkSession, SimulationOptions) => SimulationPostProcessor]
+    postprocessors: Seq[(SparkSession, SimulationOptions) => SimulationPostProcessor],
+    house_trafo_mappings: String = ""
 )
 {
     val log: Logger = LoggerFactory.getLogger(getClass)
@@ -697,6 +698,7 @@ object SimulationJob
             val recorders = parseArrayOfObjects[SimulationRecorderQuery](name, "recorders", parseRecorder, json)
             val extras = parseArrayOfObjects[SimulationExtraQuery](name, "extras", parseExtra, json)
             val postprocessors = parseArrayOfObjects[(SparkSession, SimulationOptions) => SimulationPostProcessor](name, "postprocessing", parsePostProcess, json)
+            val house_trafo_mappings = json.getString("house_trafo_mapping")
             Some(SimulationJob(
                 id = id,
                 name = name,
@@ -717,7 +719,9 @@ object SimulationJob
                 players = players,
                 recorders = recorders,
                 extras = extras,
-                postprocessors = postprocessors))
+                postprocessors = postprocessors,
+                house_trafo_mappings = house_trafo_mappings
+            ))
         }
     }
 

@@ -53,7 +53,8 @@ case class SimulationTrafoKreis
     var recorders: Iterable[SimulationRecorder],
     directory: String,
     directions: Map[String, Int] = Map(),
-    var hacked: Boolean = false)
+    var hacked: Boolean = false,
+    house_for_voltage_calculation: String = "")
 {
     val name: String = transformer.transformer_name
 

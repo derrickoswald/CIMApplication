@@ -565,10 +565,22 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         results
     }
 
-    def createSimulationTasks (job: SimulationJob): RDD[SimulationTrafoKreis] =
+    def createSimulationTasks (house_trafo_mapping_dataframe: DataFrame, job: SimulationJob): RDD[SimulationTrafoKreis] =
     {
         val (transformers, _) = getTransformers
         val tasks = make_tasks(job)
+        val transformer_house_mapping: Map[String, String] = transformers.map((row) =>
+        {
+            val island = row._1
+            val first_house_for_trafo = house_trafo_mapping_dataframe.collect().filter(_.getString(1) == island)
+            val house_for_trafo = first_house_for_trafo.headOption match
+            {
+                case Some(x) => x.getString(0)
+                case _ => ""
+            }
+            (island, house_for_trafo)
+        })
+
         job.save(session, job.output_keyspace, job.id, tasks)
 
         log.info("""matching tasks to topological islands""")
@@ -591,7 +603,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                                     task.end,
                                     task.players,
                                     task.recorders,
-                                    s"${transformerset.transformer_name}${System.getProperty("file.separator")}"
+                                    s"${transformerset.transformer_name}${System.getProperty("file.separator")}",
+                                    house_for_voltage_calculation = transformer_house_mapping.getOrElse(task.island, "")
                                 )
                             )
                         case None =>
@@ -624,6 +637,18 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def aJob (batch: Seq[SimulationJob]): SimulationJob = batch.head
 
+    def read_house_trafo_csv (house_trafo_mappings: String): DataFrame =
+    {
+        if (house_trafo_mappings.eq(""))
+        {
+            spark.emptyDataFrame
+        }
+        else
+        {
+            spark.read.format("csv").option("header", "true").option("delimiter", "\t").load(house_trafo_mappings)
+        }
+    }
+
     def simulate (batch: Seq[SimulationJob]): Seq[String] =
     {
         log.info("""starting simulations""")
@@ -632,7 +657,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         // clean up in case there was a file already loaded
         cleanRDDs()
         read(ajob.cim, ajob.cimreaderoptions, options.cim_options.storage)
-        batch.map(simulateJob)
+        val house_trafo_mapping = read_house_trafo_csv(ajob.house_trafo_mappings)
+        batch.map(simulateJob(house_trafo_mapping))
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.Null"))
@@ -684,13 +710,13 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def extendPlayersRDDWithTrafoVoltage (
         player_rdd: RDD[(Trafo, PlayerData)],
-        trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] = {
-
+        trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] =
+    {
         val extended_player: RDD[(Trafo, PlayerData)] = player_rdd.union(trafo_voltage_players_rdd)
         extended_player.groupByKey().map(b => (b._1, b._2.flatten))
     }
 
-    def simulateJob (job: SimulationJob): String =
+    def simulateJob (house_trafo_mapping: DataFrame)(job: SimulationJob): String =
     {
         log.info(s"starting simulation ${job.id}")
 
@@ -703,7 +729,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             // perform the extra queries and insert into the key_value table
             performExtraQueries(job)
 
-            var simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job)
+            var simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(house_trafo_mapping, job)
 
             if (!simulations.isEmpty())
             {
