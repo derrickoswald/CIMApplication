@@ -25,11 +25,13 @@ case class SimulationGLMGenerator (
     cim_temperature: Double,
     simulation_temperature: Double,
     swing_voltage_factor: Double,
-    kreis: SimulationTrafoKreis) extends GLMGenerator(
+    kreis: SimulationTrafoKreis,
+    swing_nominal_voltage: Boolean = true) extends GLMGenerator(
     one_phase = one_phase,
     temperature = cim_temperature,
     date_format = date_format,
-    swing_voltage_factor = swing_voltage_factor)
+    swing_voltage_factor = swing_voltage_factor,
+    swing_nominal_voltage = swing_nominal_voltage)
 {
 
     override def name: String = kreis.name

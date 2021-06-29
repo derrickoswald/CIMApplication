@@ -38,6 +38,7 @@ import ch.ninecode.cim.CIMClasses
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.net.Island.identifier
@@ -539,7 +540,11 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         (transformers, subtransmission_trafos)
     }
 
-    def performGridlabSimulations (job: SimulationJob, simulations: RDD[SimulationTrafoKreis], player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])]): RDD[SimulationResult] =
+    def performGridlabSimulations (
+        job: SimulationJob,
+        simulations: RDD[SimulationTrafoKreis],
+        player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])],
+        swing_nominal_voltage: Boolean = true): RDD[SimulationResult] =
     {
         val numSimulations = simulations.count().toInt
         log.info(s"""performing $numSimulations GridLAB-D simulation${plural(numSimulations)}""")
@@ -553,7 +558,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 .keyBy(_.name)
                 .join(player_rdd)
                 .values
-                .map(x => runner.execute(x._1, x._2.toMap))
+                .map(x => runner.execute(x._1, x._2.toMap, swing_nominal_voltage))
                 .persist(options.cim_options.storage)
         raw_results.flatMap(_._1).collect.foreach(log.error)
         val results = raw_results.flatMap(_._2).persist(options.cim_options.storage).setName(s"${job.id}_results")
@@ -630,6 +635,35 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         batch.map(simulateJob)
     }
 
+    /*
+        def extendPlayersRDDWithTrafoVoltage (original_players_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])], trafo_voltage_players_rdd: Any) = ???
+    */
+
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
+    def extendSimulationWithVoltage (job: SimulationJob)(original_simulation: SimulationTrafoKreis): SimulationTrafoKreis =
+    {
+        val voltage_player: Iterable[SimulationPlayer] = original_simulation.swing_nodes.map((swing: GLMNode) =>
+        {
+            val mrid = swing.id // TODO: how to get mrid?
+            val file = s"input_data/${mrid}_voltage.csv"
+            SimulationPlayer(
+                swing.id + "_player",
+                swing.id,
+                "voltage",
+                "voltage",
+                file,
+                mrid,
+                job.start_as_iso_date(),
+                job.end_as_iso_date(),
+                null,
+                "")
+        })
+
+        val players: Iterable[SimulationPlayer] = original_simulation.players ++ voltage_player
+        original_simulation.copy(players = players)
+    }
+
+
     def simulateJob (job: SimulationJob): String =
     {
         log.info(s"starting simulation ${job.id}")
@@ -637,10 +671,13 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         val schema = Schema(session, "/simulation_schema.sql", options.verbose)
         if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
         {
+            // TODO: from simulation input parameters
+            val include_voltage = true
+
             // perform the extra queries and insert into the key_value table
             performExtraQueries(job)
 
-            val simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job)
+            var simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(job)
 
             if (!simulations.isEmpty())
             {
@@ -649,9 +686,16 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 geo.storeGeometry(job.id, simulations)
 
                 log.info("""querying player data""")
-                val player_rdd = queryValues(job, simulations)
+                val player_rdd: RDD[(Trafo, Iterable[(House, Iterable[SimulationPlayerData])])] = queryValues(job, simulations)
 
-                val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd)
+                if (include_voltage)
+                {
+
+                    //player_rdd = extendPlayersRDDWithTrafoVoltage(player_rdd, trafo_voltage_players_rdd)
+                    simulations = simulations.map(extendSimulationWithVoltage(job))
+                }
+
+                val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd, !include_voltage)
 
                 // save the results
                 log.info("""saving GridLAB-D simulation results""")

@@ -31,7 +31,8 @@ class GLMGenerator
     emit_voltage_dump: Boolean = false,
     emit_impedance_dump: Boolean = false,
     emit_fault_check: Boolean = false,
-    swing_voltage_factor: Double = 1.0)
+    swing_voltage_factor: Double = 1.0,
+    swing_nominal_voltage: Boolean = true)
     extends Serializable
 {
     /**
@@ -316,7 +317,9 @@ class GLMGenerator
         val voltage = node.nominal_voltage * swing_voltage_factor
         val phase = if (one_phase) "AN" else "ABCN"
         val swing =
-            if (one_phase)
+            if (!swing_nominal_voltage)
+                ""
+            else if (one_phase)
                 s"            voltage_A $voltage;"
             else
             {
