@@ -640,7 +640,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     {
         val voltage_player: Iterable[SimulationPlayer] = original_simulation.swing_nodes.map((swing: GLMNode) =>
         {
-            val mrid = swing.id // TODO: how to get mrid?
+            val mrid = swing.id // as we do not have access to mrid, we use topo node instead
             val file = s"input_data/${mrid}_voltage.csv"
             SimulationPlayer(
                 swing.id + "_player",
@@ -698,7 +698,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
         {
             // TODO: from simulation input parameters
-            val include_voltage = true
+            val include_voltage = false
 
             // perform the extra queries and insert into the key_value table
             performExtraQueries(job)
