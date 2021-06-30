@@ -1,17 +1,11 @@
 package ch.ninecode.sim
 
-import java.io.Closeable
-import java.io.StringReader
-import java.io.StringWriter
 import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import scala.collection.JavaConverters.asScalaBufferConverter
-import scala.collection.JavaConverters.mapAsJavaMapConverter
-import scala.collection.JavaConverters.mapAsScalaMapConverter
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
@@ -19,11 +13,6 @@ import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.writer.TTLOption
 import com.datastax.spark.connector.writer.WriteConf
-import javax.json.Json
-import javax.json.JsonArray
-import javax.json.JsonException
-import javax.json.JsonObject
-import javax.json.stream.JsonGenerator
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
@@ -150,58 +139,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         }
     }
 
-    def dump (obj: JsonObject): Unit =
-    {
-        val o = obj.asScala
-        val strings = o.map(x => s"${x._1}=${x._2.toString}")
-        log.info(strings.mkString(" "))
-    }
-
-    def stringify (resultset: Seq[JsonObject]): String =
-    {
-        val array = Json.createArrayBuilder
-        for (i <- resultset.indices)
-            array.add(resultset(i))
-        val string = new StringWriter
-        val properties = Map[String, AnyRef](
-            JsonGenerator.PRETTY_PRINTING -> "true")
-        val writer = Json.createWriterFactory(properties.asJava).createWriter(string)
-        writer.write(array.build)
-        writer.close()
-        string.toString
-    }
-
-    def destringify (string: String): Seq[JsonObject] =
-    {
-        try
-            Json.createReader(new StringReader(string)).readArray match
-            {
-                case obj: JsonArray =>
-                    obj.getValuesAs(classOf[JsonObject]).asScala
-                case _ =>
-                    log.error("""not a JsonArray""")
-                    Seq()
-            }
-        catch
-        {
-            case je: JsonException =>
-                log.error(s" string could not be parsed as JSON (${je.getMessage})")
-                Seq()
-        }
-    }
-
-    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
-    {
-        try
-        {
-            block(resource)
-        }
-        finally
-        {
-            resource.close()
-        }
-    }
-
     def generate_player_csv (job: SimulationJob)(player: SimulationPlayerResult): SimulationPlayer =
     {
         val file = s"input_data/${player.name}.csv"
@@ -231,11 +168,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             file,
             recorder.interval,
             recorder.aggregations)
-    }
-
-    def pack (string: String): String =
-    {
-        string.replace("\n", " ").replaceAll("[ ]+", " ")
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
@@ -569,7 +501,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     {
         val (transformers, _) = getTransformers
         val tasks = make_tasks(job)
-        val transformer_house_mapping: Map[String, String] = transformers.map((row) =>
+        val transformer_house_mapping: Map[String, String] = transformers.map(row =>
         {
             val island = row._1
             val first_house_for_trafo = house_trafo_mapping_dataframe.collect().filter(_.getString(1) == island)
@@ -688,8 +620,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def generateFakeVoltageForTrafos (
         job: SimulationJob,
-        simulations: RDD[SimulationTrafoKreis]
-    ): RDD[(Trafo, PlayerData)] =
+        simulations: RDD[SimulationTrafoKreis]): RDD[(Trafo, PlayerData)] =
     {
         simulations.map(trafokreis =>
         {
