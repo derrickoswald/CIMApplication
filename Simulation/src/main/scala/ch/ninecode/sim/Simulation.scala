@@ -497,21 +497,10 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         results
     }
 
-    def createSimulationTasks (house_trafo_mapping_dataframe: DataFrame, job: SimulationJob): RDD[SimulationTrafoKreis] =
+    def createSimulationTasks (house_trafo_mapping: Map[String, String], job: SimulationJob): RDD[SimulationTrafoKreis] =
     {
         val (transformers, _) = getTransformers
         val tasks = make_tasks(job)
-        val transformer_house_mapping: Map[String, String] = transformers.map(row =>
-        {
-            val island = row._1
-            val first_house_for_trafo = house_trafo_mapping_dataframe.collect().filter(_.getString(1) == island)
-            val house_for_trafo = first_house_for_trafo.headOption match
-            {
-                case Some(x) => x.getString(0)
-                case _ => ""
-            }
-            (island, house_for_trafo)
-        })
 
         job.save(session, job.output_keyspace, job.id, tasks)
 
@@ -536,7 +525,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                                     task.players,
                                     task.recorders,
                                     s"${transformerset.transformer_name}${System.getProperty("file.separator")}",
-                                    house_for_voltage_calculation = transformer_house_mapping.getOrElse(task.island, "")
+                                    house_for_voltage_calculation = house_trafo_mapping.getOrElse(task.island, "")
                                 )
                             )
                         case None =>
@@ -569,9 +558,9 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def aJob (batch: Seq[SimulationJob]): SimulationJob = batch.head
 
-    def read_house_trafo_csv (house_trafo_mappings: String): DataFrame =
+    def read_house_trafo_csv (house_trafo_mappings: String): Map[String, String] =
     {
-        if (house_trafo_mappings.eq(""))
+        val mappingDf = if (house_trafo_mappings.eq(""))
         {
             spark.emptyDataFrame
         }
@@ -579,6 +568,9 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         {
             spark.read.format("csv").option("header", "true").option("delimiter", "\t").load(house_trafo_mappings)
         }
+
+        import spark.implicits._
+        mappingDf.map(row => (row.getString(1), row.getString(0))).collect().toMap
     }
 
     def simulate (batch: Seq[SimulationJob]): Seq[String] =
@@ -589,8 +581,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         // clean up in case there was a file already loaded
         cleanRDDs()
         read(ajob.cim, ajob.cimreaderoptions, options.cim_options.storage)
-        val house_trafo_mapping = read_house_trafo_csv(ajob.house_trafo_mappings)
-        batch.map(simulateJob(house_trafo_mapping))
+        batch.map(simulateJob)
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.Null"))
@@ -647,7 +638,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         extended_player.groupByKey().map(b => (b._1, b._2.flatten))
     }
 
-    def simulateJob (house_trafo_mapping: DataFrame)(job: SimulationJob): String =
+    def simulateJob (job: SimulationJob): String =
     {
         log.info(s"starting simulation ${job.id}")
 
@@ -655,6 +646,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
         {
             val include_voltage = (job.house_trafo_mappings != "")
+            val house_trafo_mapping = read_house_trafo_csv(job.house_trafo_mappings)
 
             // perform the extra queries and insert into the key_value table
             performExtraQueries(job)

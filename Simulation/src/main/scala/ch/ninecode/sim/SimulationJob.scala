@@ -698,7 +698,8 @@ object SimulationJob
             val recorders = parseArrayOfObjects[SimulationRecorderQuery](name, "recorders", parseRecorder, json)
             val extras = parseArrayOfObjects[SimulationExtraQuery](name, "extras", parseExtra, json)
             val postprocessors = parseArrayOfObjects[(SparkSession, SimulationOptions) => SimulationPostProcessor](name, "postprocessing", parsePostProcess, json)
-            val house_trafo_mappings = json.getString("house_trafo_mapping")
+            val house_trafo_mappings = if (json.containsKey("house_trafo_mapping")) json.getString("house_trafo_mapping") else ""
+
             Some(SimulationJob(
                 id = id,
                 name = name,
