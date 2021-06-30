@@ -104,7 +104,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     val cassandra_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ")
     cassandra_date_format.setCalendar(calendar)
 
-    def read (rdf: String, reader_options: Map[String, String] = Map(), storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"))
+    def readCIM (rdf: String, reader_options: Map[String, String] = Map(), storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"))
     {
         log.info(s"""reading "$rdf"""")
         val start = System.nanoTime()
@@ -580,7 +580,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
         // clean up in case there was a file already loaded
         cleanRDDs()
-        read(ajob.cim, ajob.cimreaderoptions, options.cim_options.storage)
+        readCIM(ajob.cim, ajob.cimreaderoptions, options.cim_options.storage)
         batch.map(simulateJob)
     }
 
@@ -643,7 +643,9 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         log.info(s"starting simulation ${job.id}")
 
         val schema = Schema(session, "/simulation_schema.sql", options.verbose)
-        if (schema.make(keyspace = job.output_keyspace, replication = job.replication))
+        val schemaCreated = schema.make(keyspace = job.output_keyspace, replication = job.replication)
+
+        if (schemaCreated)
         {
             val include_voltage = (job.house_trafo_mappings != "")
             val house_trafo_mapping = read_house_trafo_csv(job.house_trafo_mappings)
@@ -683,15 +685,19 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
                 val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd, !include_voltage)
 
-                // save the results
-                log.info("""saving GridLAB-D simulation results""")
-                val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
-                simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
-                log.info("""saved GridLAB-D simulation results""")
+                saveSimulationResults(job, simulationResults)
                 vanishRDDs(List(simulations, player_rdd, simulationResults))
             }
         }
         job.id
+    }
+
+    private def saveSimulationResults (job: SimulationJob, simulationResults: RDD[SimulationResult]): Unit =
+    {
+        log.info("""saving GridLAB-D simulation results""")
+        val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
+        simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
+        log.info("""saved GridLAB-D simulation results""")
     }
 
     def postprocess (ids: Seq[String], jobs: Seq[SimulationJob])
