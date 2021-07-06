@@ -754,28 +754,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         getVoltageForTrafos(simulations_with_mapping, result_from_simulation)
     }
 
-    def generateFakePowerForTrafo (
-        job: SimulationJob,
-        simulations: RDD[SimulationTrafoKreis]
-    ): RDD[(Trafo, PlayerData)] =
-    {
-        simulations.map(trafokreis =>
-        {
-            val topo_node = trafokreis.swing_nodes.head.id
-            val player_list_data: SimulationPlayerData = SimulationPlayerData(
-                trafokreis.name,
-                topo_node,
-                "power",
-                job.start_in_millis(),
-                90000,
-                "W",
-                Array(21000 * 5, 0.0)
-            )
-            val player_list: PlayerData = List((topo_node, List(player_list_data)))
-            (trafokreis.name, player_list)
-        })
-    }
-
     def queryHakVoltageValue (all_player: RDD[(Trafo, PlayerData)], house_trafo_mapping: Map[String, String]): RDD[(Trafo, PlayerData)] =
     {
         all_player.filter((player) =>
@@ -845,9 +823,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     val mapping = session.sparkContext.parallelize(house_trafo_mapping.toSeq)
                     val simulations_with_mapping: RDD[SimulationTrafoKreis] = simulations.keyBy(_.name).join(mapping).values.map(_._1)
 
-                    simulate_trafo_power(job, simulations_with_mapping, player_rdd)
+                    val trafo_power_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_power(job, simulations_with_mapping, player_rdd)
                     val hak_voltage_players_rdd: RDD[(Trafo, PlayerData)] = queryHakVoltageValue(player_rdd, house_trafo_mapping)
-                    val trafo_power_players_rdd: RDD[(Trafo, PlayerData)] = generateFakePowerForTrafo(job, simulations_with_mapping)
                     val all_player_data = trafo_power_players_rdd.union(hak_voltage_players_rdd).reduceByKey(_ ++ _)
                     val trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_voltage(job, simulations_with_mapping, house_trafo_mapping, all_player_data)
 
