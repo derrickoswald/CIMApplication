@@ -329,7 +329,7 @@ class GLMGenerator
         val voltage = node.nominal_voltage * voltage_factor
         val phase = if (one_phase) "AN" else "ABCN"
         val swing =
-            if (simulation_type != GLMSimulationType.SIMULATION_3 || simulation_type == GLMSimulationType.SIMULATION_2)
+            if (simulation_type == GLMSimulationType.SIMULATION_3 || simulation_type == GLMSimulationType.SIMULATION_2)
                 ""
             else if (one_phase)
                 s"            voltage_A $voltage;"
