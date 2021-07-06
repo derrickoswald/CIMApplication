@@ -1,7 +1,8 @@
 package ch.ninecode.gl
 
 import java.text.SimpleDateFormat
-import java.util.{Calendar, TimeZone}
+import java.util.Calendar
+import java.util.TimeZone
 
 sealed trait GLMSimulationType {def simulation_name: String}
 object GLMSimulationType {
@@ -324,7 +325,8 @@ class GLMGenerator
     def emit_slack (node: GLMNode, suffix: String = ""): String =
     {
         val name = node.id
-        val voltage = node.nominal_voltage * swing_voltage_factor
+        val voltage_factor = if (simulation_type == GLMSimulationType.SIMULATION_1) 1.0 else swing_voltage_factor
+        val voltage = node.nominal_voltage * voltage_factor
         val phase = if (one_phase) "AN" else "ABCN"
         val swing =
             if (simulation_type != GLMSimulationType.SIMULATION_3 || simulation_type == GLMSimulationType.SIMULATION_2)

@@ -701,6 +701,24 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         voltage_player
     }
 
+    def simulate_trafo_power (
+        job: SimulationJob,
+        simulations_with_mapping: RDD[SimulationTrafoKreis],
+        player_rdd: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] =
+    {
+        val simulations_trafo_power = simulations_with_mapping.map(sim => {
+            val recorders = sim.recorders.map(r => {
+                if (r.mrid == sim.name && r.property == "power_out")
+                    r.copy(property = "power_in")
+                else
+                    r
+            })
+            sim.copy(recorders = recorders)
+        })
+        val result_from_simulation = performGridlabSimulations(job, simulations_trafo_power, player_rdd, GLMSimulationType.SIMULATION_1)
+        filterPowerHVPin(simulations_trafo_power, result_from_simulation)
+    }
+
     def extendPlayersRDDWithTrafoVoltage (
         player_rdd: RDD[(Trafo, PlayerData)],
         trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] =
@@ -827,7 +845,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     val mapping = session.sparkContext.parallelize(house_trafo_mapping.toSeq)
                     val simulations_with_mapping: RDD[SimulationTrafoKreis] = simulations.keyBy(_.name).join(mapping).values.map(_._1)
 
-                    //                    val trafo_power_players_rdd = simulate_trafo_power(job, simulations_with_mapping, trafo_has_mapping, player_rdd)
+                    simulate_trafo_power(job, simulations_with_mapping, player_rdd)
                     val hak_voltage_players_rdd: RDD[(Trafo, PlayerData)] = queryHakVoltageValue(player_rdd, house_trafo_mapping)
                     val trafo_power_players_rdd: RDD[(Trafo, PlayerData)] = generateFakePowerForTrafo(job, simulations_with_mapping)
                     val all_player_data = trafo_power_players_rdd.union(hak_voltage_players_rdd).reduceByKey(_ ++ _)

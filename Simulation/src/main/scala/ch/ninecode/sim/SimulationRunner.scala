@@ -7,13 +7,13 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import javax.json.Json
-import javax.json.JsonObject
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process.Process
 import scala.sys.process.ProcessLogger
 
+import javax.json.Json
+import javax.json.JsonObject
 import org.apache.log4j.LogManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -400,7 +400,15 @@ case class SimulationRunner (
                     data.find(x => x._1 == player.mrid) match
                     {
                         case Some(records) =>
-                            (player, records._2)
+                            if (simulation_type == GLMSimulationType.SIMULATION_1 &&
+                                trafo.house_for_voltage_calculation != player.mrid)
+                            {
+                                val zeroed_player_data = records._2.map(_.copy(readings = Array(0.0, 0.0)))
+                                (player, zeroed_player_data)
+                            } else
+                            {
+                                (player, records._2)
+                            }
                         case None =>
                             (player, List())
                     }
