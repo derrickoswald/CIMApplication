@@ -610,6 +610,40 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         original_simulation.copy(players = players)
     }
 
+    def filterPowerHVPin (
+        simulations: RDD[SimulationTrafoKreis],
+        result_from_simulation: RDD[SimulationResult]): RDD[(Trafo, PlayerData)] =
+    {
+
+        val simType = "power"
+        val power_recorder = result_from_simulation.filter(r => r.`type` == simType).groupBy(_.mrid)
+
+        val simulationRecorder = simulations.keyBy(_.name).join(power_recorder).values
+        val power_player = simulationRecorder.map((simRecorder: (SimulationTrafoKreis, Iterable[SimulationResult])) =>
+        {
+            val trafo = simRecorder._1.name
+            val topo_node = simRecorder._1.swing_nodes.head.id
+
+            val simResults = simRecorder._2
+            val player_list_data = simResults.map((simResult: SimulationResult) =>
+            {
+                SimulationPlayerData(
+                    trafo,
+                    topo_node,
+                    simType,
+                    simResult.time,
+                    simResult.period,
+                    simResult.units,
+                    Array(simResult.real_a * -1, simResult.imag_a * -1)
+                )
+            })
+
+            val player_list: PlayerData = List((trafo, player_list_data))
+            (trafo, player_list)
+        })
+        power_player
+    }
+
 
     def generateFakeVoltageForTrafos (
         job: SimulationJob,
