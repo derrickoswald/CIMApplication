@@ -6,6 +6,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
+import scala.collection.convert.ImplicitConversions.`collection asJava`
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
@@ -28,6 +29,7 @@ import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
 import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.gl.GLMNode
+import ch.ninecode.gl.GLMSimulationType
 import ch.ninecode.gl.GridLABD
 import ch.ninecode.model.TopologicalNode
 import ch.ninecode.net.Island.identifier
@@ -477,7 +479,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         job: SimulationJob,
         simulations: RDD[SimulationTrafoKreis],
         player_rdd: RDD[(Trafo, PlayerData)],
-        swing_nominal_voltage: Boolean = true): RDD[SimulationResult] =
+        simulation_type: GLMSimulationType): RDD[SimulationResult] =
     {
         val numSimulations = simulations.count().toInt
         log.info(s"""performing $numSimulations GridLAB-D simulation${plural(numSimulations)}""")
@@ -489,7 +491,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
         val simulation_with_player = simulations.keyBy(_.name).join(player_rdd).values
         val raw_results = simulation_with_player
-            .map(x => runner.execute(x._1, x._2.toMap, swing_nominal_voltage))
+            .map(x => runner.execute(x._1, x._2.toMap, simulation_type))
             .persist(options.cim_options.storage)
 
         raw_results.flatMap(_._1).collect.foreach(log.error)
@@ -630,12 +632,117 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         })
     }
 
+    def getVoltageForTrafos (
+        simulations: RDD[SimulationTrafoKreis],
+        simResults: RDD[SimulationResult]): RDD[(Trafo, PlayerData)] =
+    {
+        val simType = "voltage"
+        val voltage_recorder = simResults.filter(r => r.`type` == simType).groupBy(_.mrid)
+
+        val simulationsKeyedByName = simulations.keyBy(_.name)
+        val simulationVoltagesJoined = simulationsKeyedByName.join(voltage_recorder)
+        val simulationRecorder = simulationVoltagesJoined.values
+        val voltage_player = simulationRecorder.map((simRecorder: (SimulationTrafoKreis, Iterable[SimulationResult])) =>
+        {
+            val trafo = simRecorder._1.name
+            val topo_node = simRecorder._1.swing_nodes.head.id
+
+            val simResults = simRecorder._2
+            val player_list_data = simResults.map((simResult: SimulationResult) =>
+            {
+                SimulationPlayerData(
+                    trafo,
+                    topo_node,
+                    simType,
+                    simResult.time,
+                    simResult.period,
+                    simResult.units,
+                    Array(simResult.real_a, simResult.imag_a)
+                )
+            })
+
+            val player_list: PlayerData = List((trafo, player_list_data))
+            (trafo, player_list)
+        })
+        voltage_player
+    }
+
     def extendPlayersRDDWithTrafoVoltage (
         player_rdd: RDD[(Trafo, PlayerData)],
         trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] =
     {
         val extended_player: RDD[(Trafo, PlayerData)] = player_rdd.union(trafo_voltage_players_rdd)
         extended_player.groupByKey().map(b => (b._1, b._2.flatten))
+    }
+
+    @SuppressWarnings(Array("org.wartremover.warts.Null"))
+    def simulate_trafo_voltage (
+        job: SimulationJob,
+        simulations_with_mapping: RDD[SimulationTrafoKreis],
+        trafo_has_mapping: Map[String, String],
+        player_rdd: RDD[(Trafo, PlayerData)]
+    ): RDD[(Trafo, PlayerData)] =
+    {
+        val simulation_with_voltage_trafo_recorder = simulations_with_mapping.map(trafokreis =>
+        {
+            val mrid = trafokreis.swing_nodes.head.id
+            val recorders_with_trafo_recorder = trafokreis.recorders ++ List(SimulationRecorder(
+                s"${mrid}_voltage_recorder",
+                mrid.replace("_topo", ""),
+                mrid,
+                "voltage",
+                "voltage",
+                "V",
+                s"output_data/${mrid}_voltage_recorder.csv",
+                900
+            ))
+            trafokreis.copy(recorders = recorders_with_trafo_recorder, simulation_type = GLMSimulationType.SIMULATION_2)
+        })
+        val result_from_simulation = performGridlabSimulations(job, simulation_with_voltage_trafo_recorder, player_rdd, GLMSimulationType.SIMULATION_2)
+        getVoltageForTrafos(simulations_with_mapping, result_from_simulation)
+    }
+
+    def generateFakePowerForTrafo (
+        job: SimulationJob,
+        simulations: RDD[SimulationTrafoKreis]
+    ): RDD[(Trafo, PlayerData)] =
+    {
+        simulations.map(trafokreis =>
+        {
+            val topo_node = trafokreis.swing_nodes.head.id
+            val player_list_data: SimulationPlayerData = SimulationPlayerData(
+                trafokreis.name,
+                topo_node,
+                "power",
+                job.start_in_millis(),
+                90000,
+                "W",
+                Array(21000 * 5, 0.0)
+            )
+            val player_list: PlayerData = List((topo_node, List(player_list_data)))
+            (trafokreis.name, player_list)
+        })
+    }
+
+    def queryHakVoltageValue (all_player: RDD[(Trafo, PlayerData)], house_trafo_mapping: Map[String, String]): RDD[(Trafo, PlayerData)] =
+    {
+        all_player.filter((player) =>
+        {
+            val (mrid, recorded_type) = player._2.headOption match
+            {
+                case Some(t) =>
+                {
+                    val mrid = t._1
+                    t._2.headOption match
+                    {
+                        case Some(playerData) => (mrid, playerData.`type`)
+                        case None => (mrid, "")
+                    }
+                }
+                case None => ("", "")
+            }
+            house_trafo_mapping.values.contains(mrid) && (recorded_type equals "voltage")
+        })
     }
 
     def simulateJob (job: SimulationJob): String =
@@ -648,7 +755,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         if (schemaCreated)
         {
             val include_voltage = (job.house_trafo_mappings != "")
-            val house_trafo_mapping = read_house_trafo_csv(job.house_trafo_mappings)
+            val house_trafo_mapping: Map[String, String] = read_house_trafo_csv(job.house_trafo_mappings)
 
             // perform the extra queries and insert into the key_value table
             performExtraQueries(job)
@@ -662,28 +769,41 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 geo.storeGeometry(job.id, simulations)
 
                 log.info("""querying player data""")
-                var player_rdd: RDD[(Trafo, PlayerData)] = queryValues(job, simulations)
+                val all_players = queryValues(job, simulations)
 
+                def test(row: (Trafo, PlayerData)): Boolean =
+                {
+                    val playerData = row._2
+                    playerData.headOption match {
+                        case Some(t) =>t._2.headOption match {
+                            case Some(a) => {
+                                print(a.`type`)
+                                print(a.`type` != "voltage")
+                                a.`type` != "voltage"
+                            }
+                            case None => true
+                        }
+                        case None => true
+                    }
+                }
+
+                var player_rdd: RDD[(Trafo, PlayerData)] = all_players.filter(test)
                 if (include_voltage)
                 {
-                    // how to find/handle missing mappings in trafo_has_mapping ??
-                    // shit in --> shit out ? oder filtern durch join?
-                    //val mapping = session.sparkContext.parallelize(trafo_has_mapping.toSeq)
-                    //val simulations_with_mapping: RDD[SimulationTrafoKreis] =
-                    //simulations.keyBy(_.name).join(mapping).values.map(_._1)
-                    //
-                    //val trafo_power_players_rdd = simulate_trafo_power(job, simulations_with_mapping, trafo_has_mapping, player_rdd)
-                    //val hak_voltage_players_rdd = queryHakVoltageValue(job, simulations_with_mapping, trafo_has_mapping)
-                    //val trafo_voltage_players_rdd = simulate_trafo_voltage(job, simulations_with_mapping, trafo_has_mapping, trafo_power_players_rdd.union(hak_voltage_players_rdd))
+                    val mapping = session.sparkContext.parallelize(house_trafo_mapping.toSeq)
+                    val simulations_with_mapping: RDD[SimulationTrafoKreis] = simulations.keyBy(_.name).join(mapping).values.map(_._1)
 
-                    // TODO: remove
-                    val trafo_voltage_players_rdd = generateFakeVoltageForTrafos(job, simulations)
+                    //                    val trafo_power_players_rdd = simulate_trafo_power(job, simulations_with_mapping, trafo_has_mapping, player_rdd)
+                    val hak_voltage_players_rdd: RDD[(Trafo, PlayerData)] = queryHakVoltageValue(player_rdd, house_trafo_mapping)
+                    val trafo_power_players_rdd: RDD[(Trafo, PlayerData)] = generateFakePowerForTrafo(job, simulations_with_mapping)
+                    val all_player_data = trafo_power_players_rdd.union(hak_voltage_players_rdd).reduceByKey(_ ++ _)
+                    val trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_voltage(job, simulations_with_mapping, house_trafo_mapping, all_player_data)
 
                     player_rdd = extendPlayersRDDWithTrafoVoltage(player_rdd, trafo_voltage_players_rdd)
                     simulations = simulations.map(extendSimulationWithVoltage(job))
                 }
 
-                val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd, !include_voltage)
+                val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd, GLMSimulationType.SIMULATION_3)
 
                 saveSimulationResults(job, simulationResults)
                 vanishRDDs(List(simulations, player_rdd, simulationResults))

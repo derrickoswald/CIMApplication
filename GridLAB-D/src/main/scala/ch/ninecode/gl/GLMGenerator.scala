@@ -3,6 +3,15 @@ package ch.ninecode.gl
 import java.text.SimpleDateFormat
 import java.util.{Calendar, TimeZone}
 
+sealed trait GLMSimulationType {def simulation_name: String}
+object GLMSimulationType {
+    // TODO: Rename to meaningful names
+    case object SIMULATION_NORMAL extends GLMSimulationType {val simulation_name = "SIMULATION_NORMAL"}
+    case object SIMULATION_1 extends GLMSimulationType {val simulation_name = "SIMULATION_1"}
+    case object SIMULATION_2 extends GLMSimulationType {val simulation_name = "SIMULATION_2"}
+    case object SIMULATION_3 extends GLMSimulationType {val simulation_name = "SIMULATION_3"}
+}
+
 /**
  * The .glm file generator.
  *
@@ -32,7 +41,7 @@ class GLMGenerator
     emit_impedance_dump: Boolean = false,
     emit_fault_check: Boolean = false,
     swing_voltage_factor: Double = 1.0,
-    swing_nominal_voltage: Boolean = true)
+    simulation_type: GLMSimulationType = GLMSimulationType.SIMULATION_NORMAL)
     extends Serializable
 {
     /**
@@ -251,6 +260,7 @@ class GLMGenerator
         lines.groupBy(_.configurationName).values.map(_.head.configuration(this))
     }
 
+    def simulationType = simulation_type
     /**
      * Emit configurations for all edges that are PowerTransformers.
      *
@@ -317,7 +327,7 @@ class GLMGenerator
         val voltage = node.nominal_voltage * swing_voltage_factor
         val phase = if (one_phase) "AN" else "ABCN"
         val swing =
-            if (!swing_nominal_voltage)
+            if (simulation_type != GLMSimulationType.SIMULATION_3 || simulation_type == GLMSimulationType.SIMULATION_2)
                 ""
             else if (one_phase)
                 s"            voltage_A $voltage;"

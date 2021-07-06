@@ -18,6 +18,7 @@ import org.apache.log4j.LogManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.gl.GLMSimulationType
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 
@@ -85,7 +86,7 @@ case class SimulationRunner (
             .add("imag", imag)
             .build()
 
-    def write_glm (trafo: SimulationTrafoKreis, workdir: String, swing_nominal_voltage: Boolean = true): Unit =
+    def write_glm (trafo: SimulationTrafoKreis, workdir: String, simulation_type: GLMSimulationType): Unit =
     {
         log.info("""generating %s""".format(trafo.directory + trafo.transformer.transformer_name + ".glm"))
         val generator = SimulationGLMGenerator(
@@ -95,7 +96,7 @@ case class SimulationRunner (
             simulation_temperature = simulation_temperature,
             swing_voltage_factor = swing_voltage_factor,
             kreis = trafo,
-            swing_nominal_voltage = swing_nominal_voltage)
+            simulation_type = simulation_type)
 
         val text = generator.make_glm()
         val file = new File(workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
@@ -383,13 +384,13 @@ case class SimulationRunner (
     def execute (
         trafo: SimulationTrafoKreis,
         data: Map[String, Iterable[SimulationPlayerData]],
-        swing_nominal_voltage: Boolean = true): (List[String], Iterable[SimulationResult]) =
+        simulation_type: GLMSimulationType): (List[String], Iterable[SimulationResult]) =
     {
         val start = iso_date_format.format(trafo.start_time.getTime)
         val end = iso_date_format.format(trafo.finish_time.getTime)
         log.info(s"${trafo.island} from $start to $end")
 
-        write_glm(trafo, workdir, swing_nominal_voltage)
+        write_glm(trafo, workdir, simulation_type)
 
         // match the players to the data
         val players: Iterable[(SimulationPlayer, Iterable[SimulationPlayerData])] =
