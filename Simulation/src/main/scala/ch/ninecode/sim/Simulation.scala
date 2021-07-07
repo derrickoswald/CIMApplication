@@ -419,7 +419,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         job.extras.foreach(
             extra =>
             {
-                log.info(s"""executing "${extra.title}" as ${extra.query}""")
+                log.debug(s"""executing "${extra.title}" as ${extra.query}""")
                 val df: DataFrame = session.sql(extra.query).persist()
                 if (df.count > 0)
                 {
@@ -481,8 +481,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         player_rdd: RDD[(Trafo, PlayerData)],
         simulation_type: GLMSimulationType): RDD[SimulationResult] =
     {
-        val numSimulations = simulations.count().toInt
-        log.info(s"""performing $numSimulations GridLAB-D simulation${plural(numSimulations)}""")
+        val numSim = simulations.count().toInt
+        log.info(s"""performing $numSim GridLAB-D simulation${plural(numSim)} for ${simulation_type.simulation_name}""")
         val runner = SimulationRunner(
             job.output_keyspace, options.workdir,
             options.three_phase, options.fake_three_phase,
@@ -818,6 +818,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 }
 
                 var player_rdd: RDD[(Trafo, PlayerData)] = all_players.filter(test)
+                var simulationType: GLMSimulationType = GLMSimulationType.SIMULATION_NORMAL
                 if (include_voltage)
                 {
                     val mapping = session.sparkContext.parallelize(house_trafo_mapping.toSeq)
@@ -830,9 +831,10 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
                     player_rdd = extendPlayersRDDWithTrafoVoltage(player_rdd, trafo_voltage_players_rdd)
                     simulations = simulations.map(extendSimulationWithVoltage(job))
+                    simulationType = GLMSimulationType.SIMULATION_3
                 }
 
-                val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd, GLMSimulationType.SIMULATION_3)
+                val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd, simulationType)
 
                 saveSimulationResults(job, simulationResults)
                 vanishRDDs(List(simulations, player_rdd, simulationResults))
