@@ -30,7 +30,7 @@ case class SimulationSparkQuery (session: SparkSession, storage_level: StorageLe
 
     def executePlayerQuery (query: SimulationPlayerQuery): RDD[(String, SimulationPlayerResult)] =
     {
-        log.info("""executing "%s" as %s""".format(query.title, pack(query.query)))
+        log.debug("""executing "%s" as %s""".format(query.title, pack(query.query)))
         val resultset = session.sql(query.query)
         val island = resultset.schema.fieldIndex(keyfield)
         val name = resultset.schema.fieldIndex(namefield)
@@ -38,7 +38,11 @@ case class SimulationSparkQuery (session: SparkSession, storage_level: StorageLe
         val mrid = resultset.schema.fieldIndex(mridfield)
         val `type` = resultset.schema.fieldIndex(typefield)
         val property = resultset.schema.fieldIndex(propertyfield)
-        val synthesis = if (resultset.schema.fieldNames.contains(synthesisfield)) resultset.schema.fieldIndex(synthesisfield) else -1
+        val synthesis = if (resultset.schema.fieldNames.contains(synthesisfield))
+            resultset.schema.fieldIndex(synthesisfield)
+        else
+            -1
+
         resultset.rdd.keyBy(row => row.getString(island)).mapValues(
             row =>
             {
@@ -57,7 +61,7 @@ case class SimulationSparkQuery (session: SparkSession, storage_level: StorageLe
 
     def executeRecorderQuery (query: SimulationRecorderQuery): RDD[(String, SimulationRecorderResult)] =
     {
-        log.info("""executing "%s" as %s""".format(query.title, pack(query.query)))
+        log.debug("""executing "%s" as %s""".format(query.title, pack(query.query)))
         val resultset = session.sql(query.query)
         val island = resultset.schema.fieldIndex(keyfield)
         val name = resultset.schema.fieldIndex(namefield)
