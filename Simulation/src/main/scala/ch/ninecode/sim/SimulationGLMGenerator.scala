@@ -7,7 +7,6 @@ import ch.ninecode.gl.GLMEdge
 import ch.ninecode.gl.GLMGenerator
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GLMLineEdge
-import ch.ninecode.gl.GLMSimulationType
 import ch.ninecode.gl.GLMTransformerEdge
 
 /**
@@ -26,18 +25,17 @@ case class SimulationGLMGenerator (
     cim_temperature: Double,
     simulation_temperature: Double,
     swing_voltage_factor: Double,
-    kreis: SimulationTrafoKreis,
-    simulation_type: GLMSimulationType) extends GLMGenerator(
+    kreis: SimulationTrafoKreis) extends GLMGenerator(
     one_phase = one_phase,
     temperature = cim_temperature,
     date_format = date_format,
     swing_voltage_factor = swing_voltage_factor,
-    simulation_type = simulation_type)
+    simulation_type = kreis.simulation_type)
 {
 
     override def name: String = kreis.name
 
-    override def header: String = simulation_type.simulation_name
+    override def header: String = kreis.simulation_type.simulation_name
 
     override def directory: String = kreis.directory
 
@@ -183,7 +181,8 @@ case class SimulationGLMGenerator (
         val name = transformer.transformer.transformer_name
         super.emit_transformer(transformer) +
         // TODO: extend with load object?
-            kreis.recorders.filter(_.parent == name).map(emit_recorder).mkString
+            kreis.recorders.filter(_.parent == name).map(emit_recorder).mkString //+
+//            kreis.players.filter(_.parent == name).map(emit_edge_player).mkString
     }
 
     /**

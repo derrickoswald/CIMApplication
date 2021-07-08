@@ -86,7 +86,7 @@ case class SimulationRunner (
             .add("imag", imag)
             .build()
 
-    def write_glm (trafo: SimulationTrafoKreis, workdir: String, simulation_type: GLMSimulationType): Unit =
+    def write_glm (trafo: SimulationTrafoKreis, workdir: String): Unit =
     {
         log.info("""generating %s""".format(trafo.directory + trafo.transformer.transformer_name + ".glm"))
         val generator = SimulationGLMGenerator(
@@ -95,8 +95,7 @@ case class SimulationRunner (
             cim_temperature = cim_temperature,
             simulation_temperature = simulation_temperature,
             swing_voltage_factor = swing_voltage_factor,
-            kreis = trafo,
-            simulation_type = simulation_type)
+            kreis = trafo)
 
         val text = generator.make_glm()
         val file = new File(workdir + trafo.directory + trafo.transformer.transformer_name + ".glm")
@@ -383,14 +382,13 @@ case class SimulationRunner (
 
     def execute (
         trafo: SimulationTrafoKreis,
-        data: Map[String, Iterable[SimulationPlayerData]],
-        simulation_type: GLMSimulationType): (List[String], Iterable[SimulationResult]) =
+        data: Map[String, Iterable[SimulationPlayerData]]): (List[String], Iterable[SimulationResult]) =
     {
         val start = iso_date_format.format(trafo.start_time.getTime)
         val end = iso_date_format.format(trafo.finish_time.getTime)
         log.info(s"${trafo.island} from $start to $end")
 
-        write_glm(trafo, workdir, simulation_type)
+        write_glm(trafo, workdir)
 
         // match the players to the data
         val players: Iterable[(SimulationPlayer, Iterable[SimulationPlayerData])] =
@@ -400,7 +398,7 @@ case class SimulationRunner (
                     data.find(x => x._1 == player.mrid) match
                     {
                         case Some(records) =>
-                            if (simulation_type == GLMSimulationType.SIMULATION_1 &&
+                            if (trafo.simulation_type == GLMSimulationType.SIMULATION_1 &&
                                 trafo.house_for_voltage_calculation != player.mrid)
                             {
                                 val zeroed_player_data = records._2.map(_.copy(readings = Array(0.0, 0.0)))
