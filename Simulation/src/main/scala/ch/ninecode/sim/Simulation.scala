@@ -599,7 +599,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 "voltage",
                 "voltage",
                 file,
-                mrid,
+                original_simulation.name,
                 job.start_in_millis(),
                 job.end_in_millis(),
                 null,
@@ -649,28 +649,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         power_player
     }
 
-
-    def generateFakeVoltageForTrafos (
-        job: SimulationJob,
-        simulations: RDD[SimulationTrafoKreis]): RDD[(Trafo, PlayerData)] =
-    {
-        simulations.map(trafokreis =>
-        {
-            val topo_node = trafokreis.swing_nodes.head.id
-            val player_list_data: SimulationPlayerData = SimulationPlayerData(
-                trafokreis.name,
-                topo_node,
-                "voltage",
-                job.start_in_millis(),
-                90000,
-                "V",
-                Array(21000, 0.0)
-            )
-            val player_list: PlayerData = List((topo_node, List(player_list_data)))
-            (trafokreis.name, player_list)
-        })
-    }
-
     def simulate_trafo_power (
         job: SimulationJob,
         simulations_with_mapping: RDD[SimulationTrafoKreis],
@@ -693,8 +671,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         player_rdd: RDD[(Trafo, PlayerData)],
         trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] =
     {
-        val extended_player: RDD[(Trafo, PlayerData)] = player_rdd.union(trafo_voltage_players_rdd)
-        extended_player.groupByKey().map(b => (b._1, b._2.flatten))
+        val extended_player: RDD[(Trafo, (PlayerData, PlayerData))] = player_rdd.join(trafo_voltage_players_rdd)
+        extended_player.map(b => (b._1, b._2._1 ++ b._2._2))
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.Null"))
