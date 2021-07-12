@@ -499,7 +499,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         results
     }
 
-    def createSimulationTasks (house_trafo_mapping: Map[String, String], job: SimulationJob): RDD[SimulationTrafoKreis] =
+    def createSimulationTasks (house_trafo_mapping: Map[Trafo, House], job: SimulationJob): RDD[SimulationTrafoKreis] =
     {
         val (transformers, _) = getTransformers
         val tasks = make_tasks(job)
@@ -560,7 +560,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def aJob (batch: Seq[SimulationJob]): SimulationJob = batch.head
 
-    def read_house_trafo_csv (house_trafo_mappings: String): Map[String, String] =
+    def read_house_trafo_csv (house_trafo_mappings: String): Map[Trafo, House] =
     {
         val mappingDf = if (house_trafo_mappings.eq(""))
         {
@@ -679,7 +679,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     def simulate_trafo_voltage (
         job: SimulationJob,
         simulations_with_mapping: RDD[SimulationTrafoKreis],
-        trafo_has_mapping: Map[String, String],
         player_rdd: RDD[(Trafo, PlayerData)]
     ): RDD[(Trafo, PlayerData)] =
     {
@@ -733,7 +732,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         if (schemaCreated)
         {
             val include_voltage = (job.house_trafo_mappings != "")
-            val house_trafo_mapping: Map[String, String] = read_house_trafo_csv(job.house_trafo_mappings)
+            val house_trafo_mapping: Map[Trafo, House] = read_house_trafo_csv(job.house_trafo_mappings)
 
             // perform the extra queries and insert into the key_value table
             performExtraQueries(job)
@@ -773,7 +772,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     val trafo_power_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_power(job, simulations_with_mapping, player_rdd)
                     val hak_voltage_players_rdd: RDD[(Trafo, PlayerData)] = queryHakVoltageValue(all_players, house_trafo_mapping)
                     val all_player_data = trafo_power_players_rdd.union(hak_voltage_players_rdd).reduceByKey(_ ++ _)
-                    val trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_voltage(job, simulations_with_mapping, house_trafo_mapping, all_player_data)
+                    val trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_voltage(job, simulations_with_mapping, all_player_data)
 
                     player_rdd = extendPlayersRDDWithTrafoVoltage(player_rdd, trafo_voltage_players_rdd)
                     simulations = simulations.map(extendSimulationWithVoltage(job))
