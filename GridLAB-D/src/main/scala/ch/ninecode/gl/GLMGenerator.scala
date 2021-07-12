@@ -65,7 +65,7 @@ class GLMGenerator
      *
      * @return A single line of text for the comment header.
      */
-    def header: String = "GridLAB-D"
+    def header: String = simulation_type.simulation_name
 
     /**
      * Simulation clock start time.
