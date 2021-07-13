@@ -178,9 +178,8 @@ case class SimulationGLMGenerator (
     {
         val name = transformer.transformer.transformer_name
         super.emit_transformer(transformer) +
-        // TODO: extend with load object?
-            kreis.recorders.filter(_.parent == name).map(emit_recorder).mkString //+
-//            kreis.players.filter(_.parent == name).map(emit_edge_player).mkString
+            kreis.recorders.filter(_.parent == name).map(emit_recorder).mkString +
+            kreis.players.filter(_.parent == name).map(emit_edge_player).mkString
     }
 
     /**

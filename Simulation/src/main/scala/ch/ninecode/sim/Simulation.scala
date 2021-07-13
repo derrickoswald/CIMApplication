@@ -695,7 +695,39 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 s"output_data/${mrid}_voltage_recorder.csv",
                 900
             ))
-            trafokreis.copy(recorders = recorders_with_trafo_recorder, simulation_type = GLMSimulationType.SIMULATION_2)
+
+            val trafo = trafokreis.name
+            val houseId = trafokreis.house_for_voltage_calculation
+            val players = trafokreis.players ++
+                List(SimulationPlayer(
+                    trafo + "_player",
+                    trafo,
+                    "power",
+                    "power",
+                    s"input_data/${trafo}_voltage.csv",
+                    trafo,
+                    job.start_in_millis(),
+                    job.end_in_millis(),
+                    null,
+                    ""
+                )) ++
+                List(SimulationPlayer(
+                    houseId + "_player",
+                    houseId + "_topo",
+                    "voltage",
+                    "voltage",
+                    s"input_data/${houseId}_voltage.csv",
+                    houseId,
+                    job.start_in_millis(),
+                    job.end_in_millis(),
+                    null,
+                    ""
+                ))
+
+            trafokreis.copy(
+                recorders = recorders_with_trafo_recorder,
+                players = players,
+                simulation_type = GLMSimulationType.SIMULATION_2)
         })
         val result_from_simulation = performGridlabSimulations(job, simulation_with_voltage_trafo_recorder, player_rdd, GLMSimulationType.SIMULATION_2)
         filterPowerHVPin(simulations_with_mapping, result_from_simulation, "voltage")
