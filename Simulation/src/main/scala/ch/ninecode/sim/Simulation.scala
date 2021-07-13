@@ -6,7 +6,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import scala.collection.convert.ImplicitConversions.`collection asJava`
 import scala.tools.nsc.io.Jar
 import scala.util.Random
 
@@ -704,7 +703,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     trafo + "_player",
                     trafo,
                     "power",
-                    "power",
+                    "power_out",
                     s"input_data/${trafo}_power.csv",
                     trafo,
                     job.start_in_millis(),
@@ -736,22 +735,24 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def queryHakVoltageValue (all_player: RDD[(Trafo, PlayerData)], house_trafo_mapping: Map[String, String]): RDD[(Trafo, PlayerData)] =
     {
-        all_player.filter((player) =>
-        {
-            val (mrid, recorded_type) = player._2.headOption match
-            {
-                case Some(t) =>
+        all_player.map((row: (Trafo, PlayerData)) => {
+            val trafo = row._1
+            val playerData = row._2
+            val filteredPlayerData = playerData.map((playerDataEntry: (House, Iterable[SimulationPlayerData])) => {
+                val house = playerDataEntry._1
+                val measurements = playerDataEntry._2
+                val filteredMeasurements = measurements.filter(p = (measurement) =>
                 {
-                    val mrid = t._1
-                    t._2.headOption match
+                    val sameHouse = house_trafo_mapping.get(trafo) match
                     {
-                        case Some(playerData) => (mrid, playerData.`type`)
-                        case None => (mrid, "")
+                        case Some(mappedHouseForTrafo) => mappedHouseForTrafo == measurement.mrid
+                        case None => false
                     }
-                }
-                case None => ("", "")
-            }
-            house_trafo_mapping.values.contains(mrid) && (recorded_type equals "voltage")
+                    measurement.`type` == "voltage" && sameHouse
+                })
+                (house, filteredMeasurements)
+            })
+            (trafo,filteredPlayerData.filter(_._2.nonEmpty))
         })
     }
 
@@ -768,7 +769,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 })
                 (house, filteredMeasurements)
             })
-            (trafo,filteredPlayerData)
+            (trafo,filteredPlayerData.filter(_._2.nonEmpty))
         })
     }
 
