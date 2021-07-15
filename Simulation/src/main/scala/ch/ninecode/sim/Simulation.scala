@@ -16,17 +16,13 @@ import com.datastax.spark.connector.writer.WriteConf
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.cim.CIMClasses
-import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMRDD
-import ch.ninecode.cim.CIMTopologyOptions
 import ch.ninecode.gl.GLMNode
 import ch.ninecode.gl.GLMSimulationType
 import ch.ninecode.gl.GridLABD
@@ -77,7 +73,7 @@ import ch.ninecode.util.Util
  *    - perform the gridlabd load-flow analysis
  *    - insert the contents of each recorder file into Cassandra
  * */
-final case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD
+final case class Simulation (session: SparkSession, options: SimulationOptions) extends CIMRDD with SimulationCleanup
 {
     type Trafo = String
     type House = String
@@ -91,9 +87,13 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         LogManager.getLogger("ch.ninecode.gl.TransformerServiceArea").setLevel(org.apache.log4j.Level.INFO)
         LogManager.getLogger("ch.ninecode.sim.SimulationSparkQuery").setLevel(org.apache.log4j.Level.INFO)
         LogManager.getLogger("ch.ninecode.cim.CIMNetworkTopologyProcessor").setLevel(org.apache.log4j.Level.INFO)
+        LogManager.getLogger("ch.ninecode.sim.SimulationCIMReader").setLevel(org.apache.log4j.Level.INFO)
+        LogManager.getLogger("ch.ninecode.sim.SimulationExtraQuery").setLevel(org.apache.log4j.Level.INFO)
     }
     implicit val log: Logger = LoggerFactory.getLogger(getClass)
     implicit val spark: SparkSession = session
+
+    val inputReader = SimulationInputReader(session, options)
 
     val calendar: Calendar = Calendar.getInstance()
     calendar.setTimeZone(TimeZone.getTimeZone("GMT"))
@@ -104,41 +104,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     val cassandra_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ")
     cassandra_date_format.setCalendar(calendar)
-
-    def readCIM (rdf: String, reader_options: Map[String, String] = Map(), storage_level: StorageLevel = StorageLevel.fromString("MEMORY_AND_DISK_SER"))
-    {
-        log.info(s"""reading "$rdf"""")
-        val start = System.nanoTime()
-        if (rdf.startsWith("s3") && options.aws_s3a_access_key.trim.nonEmpty && options.aws_s3a_secret_key.trim.nonEmpty)
-        {
-            val _ = System.setProperty("com.amazonaws.services.s3.enableV4", "true")
-            session.sparkContext.hadoopConfiguration.set("com.amazonaws.services.s3.enableV4", "true")
-            session.sparkContext.hadoopConfiguration.set("fs.s3a.access.key", options.aws_s3a_access_key)
-            session.sparkContext.hadoopConfiguration.set("fs.s3a.secret.key", options.aws_s3a_secret_key)
-            session.sparkContext.hadoopConfiguration.set("fs.s3a.endpoint", "s3.eu-central-1.amazonaws.com")
-            session.sparkContext.hadoopConfiguration.set("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        }
-        val elements = session.read.format("ch.ninecode.cim").options(reader_options).load(rdf)
-        log.info(s"${elements.count()} elements")
-        val read = System.nanoTime()
-        log.info(s"read: ${(read - start) / 1e9} seconds")
-        session.sparkContext.getPersistentRDDs.find(_._2.name == "TopologicalIsland") match
-        {
-            case Some(_) =>
-                log.info("topology exists")
-            case None =>
-                log.info("generating topology")
-                val ntp = CIMNetworkTopologyProcessor(
-                    session,
-                    CIMTopologyOptions(
-                        identify_islands = true,
-                        storage = storage_level))
-                val ele = ntp.process
-                log.info(s"${ele.count()} elements after topology creation")
-                val topology = System.nanoTime()
-                log.info(s"topology: ${(topology - read) / 1e9} seconds")
-        }
-    }
 
     def generate_player_csv (job: SimulationJob)(player: SimulationPlayerResult): SimulationPlayer =
     {
@@ -192,18 +157,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             val numareas = islands_trafos.map(_._2).distinct.count.toInt
             log.info(s"""$numareas transformer service area${plural(numareas)} found""")
 
-            val q = SimulationSparkQuery(session, options.cim_options.storage, options.verbose)
-
-            // query the players
-            log.info("""querying players""")
-            val playersets: RDD[(island_id, Iterable[SimulationPlayerResult])] = session.sparkContext.union(job.players.map(query => q.executePlayerQuery(query))).groupByKey
-
-            // query the recorders
-            log.info("""querying recorders""")
-            val recordersets: RDD[(island_id, Iterable[SimulationRecorderResult])] = session.sparkContext.union(job.recorders.map(query => q.executeRecorderQuery(query))).groupByKey
-
-            // join players and recorders
-            val players_recorders: RDD[(island_id, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult]))] = playersets.join(recordersets)
+            val players_recorders: RDD[(island_id, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult]))] = getPlayersAndRecorders(job)
 
             log.info("""generating simulation tasks""")
 
@@ -272,6 +226,23 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             log.error("""topology without islands""")
             session.sparkContext.emptyRDD
         }
+    }
+
+    private def getPlayersAndRecorders (job: SimulationJob) =
+    {
+        val q = SimulationSparkQuery(session, options.cim_options.storage, options.verbose)
+
+        // query the players
+        log.info("""querying players""")
+        val playersets: RDD[(island_id, Iterable[SimulationPlayerResult])] = session.sparkContext.union(job.players.map(query => q.executePlayerQuery(query))).groupByKey
+
+        // query the recorders
+        log.info("""querying recorders""")
+        val recordersets: RDD[(island_id, Iterable[SimulationRecorderResult])] = session.sparkContext.union(job.recorders.map(query => q.executeRecorderQuery(query))).groupByKey
+
+        // join players and recorders
+        val players_recorders: RDD[(island_id, (Iterable[SimulationPlayerResult], Iterable[SimulationRecorderResult]))] = playersets.join(recordersets)
+        players_recorders
     }
 
     def columns (primaryKey: String)(phases: Int): Seq[String] =
@@ -394,56 +365,6 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         ret
     }
 
-    @SuppressWarnings(Array("org.wartremover.warts.Null"))
-    def vanishRDD (rdd: RDD[_]): Unit =
-    {
-        val _ = rdd
-            .unpersist(false)
-            .setName(null)
-    }
-
-    def vanishRDDs (rddList: List[RDD[_]]): Unit =
-    {
-        rddList.foreach(vanishRDD)
-    }
-
-    def cleanRDDs (): Unit =
-    {
-        session.sparkContext.getPersistentRDDs.foreach(x => vanishRDD(x._2))
-    }
-
-    def performExtraQueries (job: SimulationJob): Unit =
-    {
-        log.info(s"executing ${job.extras.length} extra queries")
-        job.extras.foreach(
-            extra =>
-            {
-                log.debug(s"""executing "${extra.title}" as ${extra.query}""")
-                val df: DataFrame = session.sql(extra.query).persist()
-                if (df.count > 0)
-                {
-                    val fields = df.schema.fieldNames
-                    if (!fields.contains("key") || !fields.contains("value"))
-                        log.error(s"""extra query "${extra.title}" schema either does not contain a "key" or a "value" field: ${fields.mkString}""")
-                    else
-                    {
-                        val keyindex = df.schema.fieldIndex("key")
-                        val valueindex = df.schema.fieldIndex("value")
-                        val keytype = df.schema.fields(keyindex).dataType.simpleString
-                        val valuetype = df.schema.fields(valueindex).dataType.simpleString
-                        if ((keytype != "string") || (valuetype != "string"))
-                            log.error(s"""extra query "${extra.title}" schema fields key and value are not both strings (key=$keytype, value=$valuetype)""")
-                        else
-                            df.rdd.map(row => (job.id, extra.title, row.getString(keyindex), row.getString(valueindex))).saveToCassandra(job.output_keyspace, "key_value", SomeColumns("simulation", "query", "key", "value"))
-                    }
-                }
-                else
-                    log.warn(s"""extra query "${extra.title}" returned no rows""")
-                df.unpersist(false)
-            }
-        )
-    }
-
     def getTransformers: (Map[String, TransformerSet], Array[TransformerData]) =
     {
         val transformer_data = Transformers(session, options.cim_options.storage).getTransformers()
@@ -560,29 +481,14 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def aJob (batch: Seq[SimulationJob]): SimulationJob = batch.head
 
-    def read_house_trafo_csv (house_trafo_mappings: String): Map[Trafo, House] =
-    {
-        val mappingDf = if (house_trafo_mappings.eq(""))
-        {
-            spark.emptyDataFrame
-        }
-        else
-        {
-            spark.read.format("csv").option("header", "true").option("delimiter", "\t").load(house_trafo_mappings)
-        }
-
-        import spark.implicits._
-        mappingDf.map(row => (row.getString(1), row.getString(0))).collect().toMap
-    }
-
     def simulate (batch: Seq[SimulationJob]): Seq[String] =
     {
         log.info("""starting simulations""")
         val ajob = aJob(batch)
 
         // clean up in case there was a file already loaded
-        cleanRDDs()
-        readCIM(ajob.cim, ajob.cimreaderoptions, options.cim_options.storage)
+        cleanRDDs(session)
+        inputReader.readCIM(ajob.cim, ajob.cimreaderoptions)
         batch.map(simulateJob)
     }
 
@@ -789,10 +695,11 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         if (schemaCreated)
         {
             val include_voltage = (job.house_trafo_mappings != "")
-            val house_trafo_mapping: Map[Trafo, House] = read_house_trafo_csv(job.house_trafo_mappings)
+            val house_trafo_mapping: Map[Trafo, House] = inputReader.read_house_trafo_csv(job.house_trafo_mappings)
 
             // perform the extra queries and insert into the key_value table
-            performExtraQueries(job)
+            log.info(s"executing ${job.extras.length} extra queries")
+            job.extras.foreach(_.executeQuery(job, session))
 
             var simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(house_trafo_mapping, job)
 
