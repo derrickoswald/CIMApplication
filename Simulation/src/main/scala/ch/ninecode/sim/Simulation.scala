@@ -615,11 +615,10 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         result_from_simulation: RDD[SimulationResult],
         simType: String = "power"): RDD[(Trafo, PlayerData)] =
     {
-        val (change_direction,keyByMethod) = if (simType == "power") {
-            (-1, (x:SimulationTrafoKreis) => {x.name})
-        } else {
-            (1, (x:SimulationTrafoKreis) => {x.swing_nodes.head.id.replace("_topo","")})
-        }
+        val (change_direction, keyByMethod) = if (simType == "power")
+            (-1, (x: SimulationTrafoKreis) => x.name)
+        else
+            (1, (x: SimulationTrafoKreis) => x.swing_nodes.head.id.replace("_topo", ""))
 
         val power_recorder = result_from_simulation.filter(r => r.`type` == simType).groupBy(_.mrid)
 
@@ -654,8 +653,10 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         simulations_with_mapping: RDD[SimulationTrafoKreis],
         player_rdd: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] =
     {
-        val simulations_trafo_power = simulations_with_mapping.map(sim => {
-            val recorders = sim.recorders.map(r => {
+        val simulations_trafo_power = simulations_with_mapping.map(sim =>
+        {
+            val recorders = sim.recorders.map(r =>
+            {
                 if (r.mrid == sim.name && r.property == "power_out")
                     r.copy(property = "power_in")
                 else
@@ -735,10 +736,12 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     def queryHakVoltageValue (all_player: RDD[(Trafo, PlayerData)], house_trafo_mapping: Map[String, String]): RDD[(Trafo, PlayerData)] =
     {
-        all_player.map((row: (Trafo, PlayerData)) => {
+        all_player.map((row: (Trafo, PlayerData)) =>
+        {
             val trafo = row._1
             val playerData = row._2
-            val filteredPlayerData = playerData.map((playerDataEntry: (House, Iterable[SimulationPlayerData])) => {
+            val filteredPlayerData = playerData.map((playerDataEntry: (House, Iterable[SimulationPlayerData])) =>
+            {
                 val house = playerDataEntry._1
                 val measurements = playerDataEntry._2
                 val filteredMeasurements = measurements.filter(p = (measurement) =>
@@ -752,24 +755,27 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 })
                 (house, filteredMeasurements)
             })
-            (trafo,filteredPlayerData.filter(_._2.nonEmpty))
+            (trafo, filteredPlayerData.filter(_._2.nonEmpty))
         })
     }
 
-    def filterOutVoltagePlayerData(player_data: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] =
+    def filterOutVoltagePlayerData (player_data: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] =
     {
-        player_data.map((row: (Trafo, PlayerData)) => {
+        player_data.map((row: (Trafo, PlayerData)) =>
+        {
             val trafo = row._1
             val playerData = row._2
-            val filteredPlayerData = playerData.map((playerDataEntry: (House, Iterable[SimulationPlayerData])) => {
+            val filteredPlayerData = playerData.map((playerDataEntry: (House, Iterable[SimulationPlayerData])) =>
+            {
                 val house = playerDataEntry._1
                 val measurements = playerDataEntry._2
-                val filteredMeasurements = measurements.filter(measurement => {
+                val filteredMeasurements = measurements.filter(measurement =>
+                {
                     measurement.`type` != "voltage"
                 })
                 (house, filteredMeasurements)
             })
-            (trafo,filteredPlayerData.filter(_._2.nonEmpty))
+            (trafo, filteredPlayerData.filter(_._2.nonEmpty))
         })
     }
 
