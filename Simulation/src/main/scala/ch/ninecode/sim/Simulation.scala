@@ -480,7 +480,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         player_rdd: RDD[(Trafo, PlayerData)]): RDD[SimulationResult] =
     {
         val numSim = simulations.count().toInt
-        val simulationType = simulations.take(1)(0).simulation_type
+        val simulationType = simulations.first().simulation_type
         log.info(s"""performing $numSim GridLAB-D simulation${plural(numSim)} for ${simulationType.simulation_name}""")
         val runner = SimulationRunner(
             job.output_keyspace, options.workdir,
@@ -764,7 +764,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             val filteredPlayerData = playerData.map((playerDataEntry: (House, Iterable[SimulationPlayerData])) => {
                 val house = playerDataEntry._1
                 val measurements = playerDataEntry._2
-                val filteredMeasurements = measurements.filter((measurement) => {
+                val filteredMeasurements = measurements.filter(measurement => {
                     measurement.`type` != "voltage"
                 })
                 (house, filteredMeasurements)
@@ -811,9 +811,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     val trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_voltage(job, simulations_with_mapping, all_player_data)
 
                     player_rdd = extendPlayersRDDWithTrafoVoltage(player_rdd, trafo_voltage_players_rdd)
-                    simulations = simulations.map(extendSimulationWithVoltage(job)).map((sim) => {
-                        sim.copy(simulation_type = GLMSimulationType.SIMULATION_3)
-                    })
+                    simulations = simulations.map(extendSimulationWithVoltage(job))
                 }
 
                 val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd)
