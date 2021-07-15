@@ -610,7 +610,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         original_simulation.copy(players = players, simulation_type = GLMSimulationType.SIMULATION_3)
     }
 
-    def filterPowerHVPin (
+    def getHvPinPlayerData (
         simulations: RDD[SimulationTrafoKreis],
         result_from_simulation: RDD[SimulationResult],
         simType: String = "power"): RDD[(Trafo, PlayerData)] =
@@ -620,10 +620,10 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         else
             (1, (x: SimulationTrafoKreis) => x.swing_nodes.head.id.replace("_topo", ""))
 
-        val power_recorder = result_from_simulation.filter(r => r.`type` == simType).groupBy(_.mrid)
+        val recorder = result_from_simulation.filter(r => r.`type` == simType).groupBy(_.mrid)
 
-        val simulationRecorder = simulations.keyBy(keyByMethod).join(power_recorder).values
-        val power_player = simulationRecorder.map((simRecorder: (SimulationTrafoKreis, Iterable[SimulationResult])) =>
+        val simulationRecorder = simulations.keyBy(keyByMethod).join(recorder).values
+        val player = simulationRecorder.map((simRecorder: (SimulationTrafoKreis, Iterable[SimulationResult])) =>
         {
             val trafo = simRecorder._1.name
             val topo_node = simRecorder._1.swing_nodes.head.id
@@ -645,7 +645,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             val player_list: PlayerData = List((trafo, player_list_data))
             (trafo, player_list)
         })
-        power_player
+        player
     }
 
     def simulate_trafo_power (
@@ -665,7 +665,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             sim.copy(recorders = recorders, simulation_type = GLMSimulationType.SIMULATION_1)
         })
         val result_from_simulation = performGridlabSimulations(job, simulations_trafo_power, player_rdd)
-        filterPowerHVPin(simulations_trafo_power, result_from_simulation)
+        getHvPinPlayerData(simulations_trafo_power, result_from_simulation)
     }
 
     def extendPlayersRDDWithTrafoVoltage (
@@ -731,7 +731,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 simulation_type = GLMSimulationType.SIMULATION_2)
         })
         val result_from_simulation = performGridlabSimulations(job, simulation_with_voltage_trafo_recorder, player_rdd)
-        filterPowerHVPin(simulations_with_mapping, result_from_simulation, "voltage")
+        getHvPinPlayerData(simulations_with_mapping, result_from_simulation, "voltage")
     }
 
     def queryHakVoltageValue (all_player: RDD[(Trafo, PlayerData)], house_trafo_mapping: Map[String, String]): RDD[(Trafo, PlayerData)] =
