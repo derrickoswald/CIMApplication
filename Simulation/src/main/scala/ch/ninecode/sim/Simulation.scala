@@ -712,9 +712,10 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 log.info("""querying player data""")
                 val all_players = queryValues(job, simulations)
 
-                var player_rdd: RDD[(Trafo, PlayerData)] = filterOutVoltagePlayerData(all_players)
+                var player_rdd: RDD[(Trafo, PlayerData)] = all_players
                 if (include_voltage)
                 {
+                    player_rdd = filterOutVoltagePlayerData(all_players)
                     val mapping = session.sparkContext.parallelize(house_trafo_mapping.toSeq)
                     val simulations_with_mapping: RDD[SimulationTrafoKreis] = simulations.keyBy(_.name).join(mapping).values.map(_._1)
 
@@ -887,6 +888,7 @@ object Simulation extends CIMInitializer[SimulationOptions] with Main
     {
         if (options.verbose)
             LogManager.getLogger(getClass).setLevel(Level.INFO)
+            LogManager.getLogger("ch.ninecode.sim.SimulationInputReader").setLevel(Level.INFO)
         if (options.main_options.valid)
         {
             if (options.simulation.nonEmpty)
