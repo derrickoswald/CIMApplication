@@ -36,6 +36,8 @@ import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.net.Transformers
 import ch.ninecode.sc.ScEdge.resistanceAt
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.TransformerBranch
 import ch.ninecode.util.CIMInitializer
 import ch.ninecode.util.Complex
 import ch.ninecode.util.Graphable
@@ -132,17 +134,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                node2 = terminals(i)._1.TopologicalNode;
                                // eliminate edges with only one connectivity node, or the same connectivity node
                                if null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
-                    yield ScEdge(
-                        node1,
-                        voltage1,
-                        node2,
-                        terminals(i)._2,
-                        terminals.length,
-                        eq,
-                        element,
-                        standard,
-                        z
-                    )
+                yield ScEdge(
+                    node1,
+                    voltage1,
+                    node2,
+                    terminals(i)._2,
+                    terminals.length,
+                    eq,
+                    element,
+                    standard,
+                    z
+                )
                 ret.toList
             case _ =>
                 // shouldn't happen, terminals always reference ConductingEquipment, right?
@@ -425,7 +427,8 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
             val problems = edges.foldLeft(errors)((errors, edge) => edge.hasIssues(errors, options))
 
-            val transformator: TransformerData = trafo.transformer.transformers.filter((trafoData: TransformerData) => {
+            val transformator: TransformerData = trafo.transformer.transformers.filter((trafoData: TransformerData) =>
+            {
                 trafoData.nodes.exists(_.id == node.id_seq)
             }).head
 
@@ -480,7 +483,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val container_per_cond_equipment: RDD[(CondEquipmentID, Container)] = get_container_per_equipment
 
         val results_with_container: RDD[(ScNode, TerminalID, CondEquipmentID, Container)] =
-                result_per_terminals_keyed_by_cond_equipment
+            result_per_terminals_keyed_by_cond_equipment
                 .join(container_per_cond_equipment)
                 .map(
                     (x: (CondEquipmentID, ((ScNode, Terminal), Container))) =>

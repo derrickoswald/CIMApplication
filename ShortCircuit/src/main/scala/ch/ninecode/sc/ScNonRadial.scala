@@ -25,6 +25,11 @@ import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.sc.ScNonRadial.need_load_flow
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.ComplexBranch
+import ch.ninecode.sc.branch.ParallelBranch
+import ch.ninecode.sc.branch.SimpleBranch
+import ch.ninecode.sc.branch.TransformerBranch
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 

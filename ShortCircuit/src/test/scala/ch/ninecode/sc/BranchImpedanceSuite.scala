@@ -1,8 +1,14 @@
 package ch.ninecode.sc
 
 import ch.ninecode.util.Complex
-
 import org.scalatest.funsuite.AnyFunSuite
+
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.ComplexBranch
+import ch.ninecode.sc.branch.ParallelBranch
+import ch.ninecode.sc.branch.SeriesBranch
+import ch.ninecode.sc.branch.SimpleBranch
+import ch.ninecode.sc.branch.TransformerBranch
 
 class BranchImpedanceSuite extends AnyFunSuite
 {

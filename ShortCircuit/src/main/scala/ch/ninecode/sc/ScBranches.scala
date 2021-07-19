@@ -5,6 +5,8 @@ import scala.util.control.Breaks.break
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.sc.branch.Branch
+
 class ScBranches
 {
     implicit val log: Logger = LoggerFactory.getLogger(getClass)
