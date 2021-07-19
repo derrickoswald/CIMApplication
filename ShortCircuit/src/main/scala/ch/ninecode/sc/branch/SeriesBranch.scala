@@ -56,7 +56,7 @@ case class SeriesBranch (
                     case s: SeriesBranch =>
                         Some(SeriesBranch(from, to, current, s.series))
                     case c: ComplexBranch =>
-                        Some(ComplexBranch(from, to, current, c.basket))
+                        Some(ComplexBranch(Array(from), to, current, c.basket))
                 }
             case _ =>
                 Some(SeriesBranch(from, to, current, fuses))

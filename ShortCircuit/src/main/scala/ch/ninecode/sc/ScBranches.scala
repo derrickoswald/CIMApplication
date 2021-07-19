@@ -56,6 +56,12 @@ class ScBranches
         branches
     }
 
+
+    def get_all_nodes (branches: Iterable[Branch]) =
+    {
+        branches.map(_.to).toSet ++ branches.map(_.from).toSet
+    }
+
     /**
      * Reduce series connected elements.
      *
@@ -68,11 +74,6 @@ class ScBranches
         def is_reducable: String => Boolean = (node: String) =>
         {
             network.count(_.to == node) == 1 && network.count(_.from == node) == 1
-        }
-
-        def get_all_nodes (branches: Iterable[Branch]) =
-        {
-            branches.map(_.to).toSet ++ branches.map(_.from).toSet
         }
 
         def get_reduced_series (starting_branch: Branch, branches: Iterable[Branch], reducable_nodes: Set[String]): Branch =

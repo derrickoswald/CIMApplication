@@ -49,7 +49,7 @@ case class ParallelBranch (
                     case s: SeriesBranch =>
                         Some(SeriesBranch(from, to, current, s.series))
                     case c: ComplexBranch =>
-                        Some(ComplexBranch(from, to, current, c.basket))
+                        Some(ComplexBranch(Array(from), to, current, c.basket))
                 }
             case _ =>
                 Some(ParallelBranch(from, to, current, fuses))

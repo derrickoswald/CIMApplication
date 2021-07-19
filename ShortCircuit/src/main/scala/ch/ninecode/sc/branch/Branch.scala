@@ -142,5 +142,5 @@ object Branch
 
     def apply (from: String, to: String, current: Double, parallel: Iterable[Branch]): ParallelBranch = ParallelBranch(from, to, current, parallel)
 
-    def apply (from: String, to: String, current: Double, basket: Array[Branch]): ComplexBranch = ComplexBranch(from, to, current, basket)
+    def apply (trafo_hv_nodes: Array[String], to: String, current: Double, basket: Array[Branch]): ComplexBranch = ComplexBranch(trafo_hv_nodes, to, current, basket)
 }
