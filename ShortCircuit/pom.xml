@@ -50,6 +50,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.scalanlp</groupId>
+            <artifactId>breeze_${version.dependency.scala}</artifactId>
+            <version>1.2</version>
+        </dependency>
+
+        <dependency>
             <groupId>ch.ninecode.util</groupId>
             <artifactId>Util</artifactId>
             <version>${project.version}</version>
