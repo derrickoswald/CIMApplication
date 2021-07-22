@@ -702,7 +702,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             job.extras.foreach(_.executeQuery(job, session))
 
             var simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(house_trafo_mapping, job)
-
+            log.info(s"simulations: ${simulations.count()}")
             if (!simulations.isEmpty())
             {
                 log.info("""storing GeoJSON data""")
@@ -711,7 +711,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
                 log.info("""querying player data""")
                 val all_players = queryValues(job, simulations)
-
+                log.info(s"all_players: ${all_players.count()}")
                 var player_rdd: RDD[(Trafo, PlayerData)] = all_players
                 if (include_voltage)
                 {
@@ -730,6 +730,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
                 val simulationResults: RDD[SimulationResult] = performGridlabSimulations(job, simulations, player_rdd)
 
+                log.info(s"simulationResults: ${simulationResults.count()}")
                 saveSimulationResults(job, simulationResults)
                 vanishRDDs(List(simulations, player_rdd, simulationResults))
             }
