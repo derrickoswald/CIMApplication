@@ -397,15 +397,16 @@ case class SimulationRunner (
                 {
                     data.find(x => x._1 == player.mrid) match
                     {
-                        case Some(records) =>
+                        case Some(records: (String, Iterable[SimulationPlayerData])) =>
+                            val type_records = records._2.filter(_.`type` == player.`type`)
                             if (trafo.simulation_type == GLMSimulationType.SIMULATION_1 &&
                                 trafo.house_for_voltage_calculation != player.mrid)
                             {
-                                val zeroed_player_data = records._2.map(_.copy(readings = Array(0.0, 0.0)))
+                                val zeroed_player_data = type_records.map(_.copy(readings = Array(0.0, 0.0)))
                                 (player, zeroed_player_data)
                             } else
                             {
-                                (player, records._2)
+                                (player, type_records)
                             }
                         case None =>
                             (player, List())
