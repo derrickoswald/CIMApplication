@@ -1,7 +1,17 @@
 package ch.ninecode.gl
 
 import java.text.SimpleDateFormat
-import java.util.{Calendar, TimeZone}
+import java.util.Calendar
+import java.util.TimeZone
+
+sealed trait GLMSimulationType {def simulation_name: String}
+object GLMSimulationType {
+    // TODO: Rename to meaningful names
+    case object SIMULATION_NORMAL extends GLMSimulationType {val simulation_name = "SIMULATION_NORMAL"}
+    case object SIMULATION_1 extends GLMSimulationType {val simulation_name = "SIMULATION_1"}
+    case object SIMULATION_2 extends GLMSimulationType {val simulation_name = "SIMULATION_2"}
+    case object SIMULATION_3 extends GLMSimulationType {val simulation_name = "SIMULATION_3"}
+}
 
 /**
  * The .glm file generator.
@@ -31,7 +41,8 @@ class GLMGenerator
     emit_voltage_dump: Boolean = false,
     emit_impedance_dump: Boolean = false,
     emit_fault_check: Boolean = false,
-    swing_voltage_factor: Double = 1.0)
+    swing_voltage_factor: Double = 1.0,
+    simulation_type: GLMSimulationType = GLMSimulationType.SIMULATION_NORMAL)
     extends Serializable
 {
     /**
@@ -54,7 +65,7 @@ class GLMGenerator
      *
      * @return A single line of text for the comment header.
      */
-    def header: String = "GridLAB-D"
+    def header: String = simulation_type.simulation_name
 
     /**
      * Simulation clock start time.
@@ -250,6 +261,7 @@ class GLMGenerator
         lines.groupBy(_.configurationName).values.map(_.head.configuration(this))
     }
 
+    def simulationType = simulation_type
     /**
      * Emit configurations for all edges that are PowerTransformers.
      *
@@ -313,10 +325,13 @@ class GLMGenerator
     def emit_slack (node: GLMNode, suffix: String = ""): String =
     {
         val name = node.id
-        val voltage = node.nominal_voltage * swing_voltage_factor
+        val voltage_factor = if (simulation_type == GLMSimulationType.SIMULATION_1) 1.0 else swing_voltage_factor
+        val voltage = node.nominal_voltage * voltage_factor
         val phase = if (one_phase) "AN" else "ABCN"
         val swing =
-            if (one_phase)
+            if (simulation_type == GLMSimulationType.SIMULATION_3 || simulation_type == GLMSimulationType.SIMULATION_2)
+                ""
+            else if (one_phase)
                 s"            voltage_A $voltage;"
             else
             {

@@ -12,6 +12,7 @@ import ch.ninecode.net.TransformerSet
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.gl.GLMSimulationType
 import ch.ninecode.model.BasicElement
 import ch.ninecode.model.ConductingEquipment
 import ch.ninecode.model.Equipment
@@ -53,7 +54,9 @@ case class SimulationTrafoKreis
     var recorders: Iterable[SimulationRecorder],
     directory: String,
     directions: Map[String, Int] = Map(),
-    var hacked: Boolean = false)
+    var hacked: Boolean = false,
+    house_for_voltage_calculation: String = "",
+    simulation_type: GLMSimulationType = GLMSimulationType.SIMULATION_NORMAL)
 {
     val name: String = transformer.transformer_name
 
@@ -65,10 +68,14 @@ case class SimulationTrafoKreis
 
     var transformer_edge: GLMTransformerEdge = GLMTransformerEdge(transformer)
 
-    def swing_nodes: Array[GLMNode] = if ("lo" == swing)
-        nodes.filter(_.id == transformer.node1).toArray
-    else
-        nodes.filter(_.id == transformer.node0).toArray
+    def swing_nodes: Array[GLMNode] = if (simulation_type == GLMSimulationType.SIMULATION_2) {
+        nodes.filter(_.id.startsWith(house_for_voltage_calculation)).toArray
+    } else {
+        if ("lo" == swing)
+            nodes.filter(_.id == transformer.node1).toArray
+        else
+            nodes.filter(_.id == transformer.node0).toArray
+    }
 
     def attached (node: String): Iterable[GLMEdge] = (raw_edges ++ Seq(transformer_edge)).filter(edge => (edge.cn1 == node) || (edge.cn2 == node))
 
