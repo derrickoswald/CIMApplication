@@ -49,7 +49,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
     def mergeMessage (a: ScMessage, b: ScMessage): ScMessage =
     {
         val text = s"non-radial network detected from ${a.previous_node} to ${b.previous_node}"
-        log.error(text)
+        log.info(text)
         val error = ScError(fatal = true, invalid = true, text)
         val error1 = ScError.combine_errors(b.errors, List(error), options.messagemax)
         val errors = ScError.combine_errors(a.errors, error1, options.messagemax)
@@ -80,7 +80,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         else
                         {
                             val error = ScError(fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
-                            log.error(error.message)
+                            log.info(error.message)
                             if (!src.fatalErrors && !dst.fatalErrors)
                             // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                                 Iterator(
@@ -99,7 +99,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         else
                         {
                             val error = ScError(fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
-                            log.error(error.message)
+                            log.info(error.message)
                             if (!src.fatalErrors && !dst.fatalErrors)
                             // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                                 Iterator(
@@ -116,7 +116,7 @@ case class ShortCircuitTrace (session: SparkSession, options: ShortCircuitOption
                         else
                         {
                             val error = ScError(fatal = true, invalid = true, s"non-radial network detected through ${edge.id_equ}")
-                            log.error(error.message)
+                            log.info(error.message)
                             if (!src.fatalErrors && !dst.fatalErrors)
                             // neither node has a fatal error yet, send a message to both to mark them with a fatal error
                                 Iterator(
