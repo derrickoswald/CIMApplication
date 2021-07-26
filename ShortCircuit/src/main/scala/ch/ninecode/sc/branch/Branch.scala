@@ -62,6 +62,14 @@ abstract class Branch (val from: String, val to: String, val current: Double)
 
     def lastFuses: Iterable[Branch]
 
+    def justLastFuses: Iterable[Branch] =
+    {
+        justFuses match {
+            case Some(branch) => branch.lastFuses
+            case None => List()
+        }
+    }
+
     def reverse: Branch
 
     @SuppressWarnings(Array("org.wartremover.warts.Throw"))
