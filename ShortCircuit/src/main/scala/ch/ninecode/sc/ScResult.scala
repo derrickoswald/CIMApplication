@@ -115,10 +115,21 @@ case class ScResult
         if (null == branches)
             ""
         else
-            branches.justFuses match
+            if (branches.isInstanceOf[ComplexBranch])
             {
-                case Some(branch) => branch.ratios.map(x => x._1 * high_ik).map(_.toString).mkString(",")
-                case None => ""
+                val ikSplit: Iterable[Double] = branches.justLastFuses.map((x: Branch) =>
+                {
+                    val ratio = x.ratios.map(_._1).sum
+                    ratio * high_ik
+                })
+                ikSplit.map(_.toString).mkString(",")
+            } else
+            {
+                branches.justFuses match
+                {
+                    case Some(branch) => branch.ratios.map(x => x._1 * high_ik).map(_.toString).mkString(",")
+                    case None => ""
+                }
             }
     }
 
@@ -166,14 +177,20 @@ case class ScResult
 
     def fuseMax (options: ShortCircuitOptions, standard: Option[String] = None): String =
     {
-        if (null == branches || branches.isInstanceOf[ComplexBranch])
+        if (null == branches)
             ""
         else
-            branches.justFuses match
+            if (branches.isInstanceOf[ComplexBranch])
             {
-                case Some(branch) => fuses(high_ik, options, branch, standard)
-                case None => ""
-            }
+                val fuseMax: Iterable[String] = branches.justLastFuses.map((fuse: Branch) =>
+                    fuses(high_ik, options, fuse, standard))
+                fuseMax.mkString(",")
+            } else
+                branches.justFuses match
+                {
+                    case Some(branch) => fuses(high_ik, options, branch, standard)
+                    case None => ""
+                }
     }
 
     def lastFuseHasMissingValues (branches: Branch): Boolean =
@@ -234,7 +251,7 @@ case class ScResult
             {
                 network match
                 {
-                    case Some(n) =>
+                    case Some(n: Branch) =>
                         val z = n.z(supply_z)
                         // first time through this should be high_ik
                         val ik = calculate_ik(voltage, options.cmin, z.impedanz_high, z.null_impedanz_high)

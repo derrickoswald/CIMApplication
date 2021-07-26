@@ -41,11 +41,13 @@ case class ComplexBranch (
 
     def lastFuses: Iterable[Branch] =
     {
-        justFuses match
+        var lastFuseBranches = Set[Branch]()
+        val directs: Iterable[Branch] = basket.filter(b => to == b.to || to == b.from)
+        for (direct <- directs)
         {
-            case Some(fuses) => Seq(fuses)
-            case None => Seq()
+            lastFuseBranches ++= getLastFuseBranches(direct, basket)
         }
+        lastFuseBranches
     }
 
     def justFuses: Option[Branch] =
@@ -70,9 +72,30 @@ case class ComplexBranch (
                 None
     }
 
+    override def justLastFuses: Iterable[Branch] =
+    {
+        lastFuses.toList.flatMap(_.justLastFuses)
+    }
+
     def reverse: Branch = ComplexBranch(trafo_hv_nodes, to, current, basket.map(_.reverse))
 
-    def ratios: Iterable[(Double, Branch)] = basket.map(x => (x.current / current, x))
+    private def getLastFuseBranches (branch: Branch, branches: Iterable[Branch]): Set[Branch] =
+    {
+        if (branch.justFuses.size < 1)
+        {
+            val newBranches: Iterable[Branch] = branches.filter(branch.from == _.to)
+            val newFuseBranches: Iterable[Branch] = newBranches.flatMap((b: Branch) => getLastFuseBranches(b, branches))
+            newFuseBranches.toSet
+        } else
+        {
+            Set(branch)
+        }
+    }
+
+    def ratios: Iterable[(Double, Branch)] =
+    {
+        lastFuses.map(x => (x.current / current, x))
+    }
 
     def voltageRatio: Double = basket.foldLeft(1.0)((v, branch) => v * branch.voltageRatio)
 

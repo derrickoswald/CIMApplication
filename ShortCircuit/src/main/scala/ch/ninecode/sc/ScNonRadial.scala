@@ -320,7 +320,9 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         if (branches.size > 1)
         {
             log.info(s"complex branch network from ${trafo_hv_nodes.mkString(",")} to ${experiment.mrid}")
-            branches = List(ComplexBranch(trafo_hv_nodes, experiment.mrid, 0.0, branches.toArray))
+            val directs: Iterable[Branch] = branches.filter(b => experiment.mrid == b.to || experiment.mrid == b.from)
+            val current = directs.map(_.current).sum
+            branches = List(ComplexBranch(trafo_hv_nodes, experiment.mrid, current, branches.toArray))
         }
 
         branches.headOption match
