@@ -120,7 +120,7 @@ class GridLABDTestSuite extends TestUtil with BeforeAndAfter
 
             assert(text ==
                 """// gridlabd.glm
-// GridLAB-D
+// SIMULATION_NORMAL
 //*********************************************
 
         module tape;
