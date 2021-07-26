@@ -97,17 +97,26 @@ case class ScResult
 
     def lastFusesString: String =
     {
-        branches.justLastFuses.map(_.asFuse).mkString(",")
+        if (branches == null)
+            ""
+        else
+            branches.justLastFuses.map(_.asFuse).mkString(",")
     }
 
     def lastFuseStandard: String =
     {
-        branches.justLastFuses.map(std).mkString(",")
+        if (branches == null)
+            ""
+        else
+            branches.justLastFuses.map(std).mkString(",")
     }
 
     def lastFusesId: String =
     {
-        branches.justLastFuses.map(_.asId).mkString(",")
+        if (branches == null)
+            ""
+        else
+            branches.justLastFuses.map(_.asId).mkString(",")
     }
 
     def iksplitString: String =
