@@ -50,9 +50,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.scalanlp</groupId>
-            <artifactId>breeze_${version.dependency.scala}</artifactId>
-            <version>1.2</version>
+            <groupId>org.ojalgo</groupId>
+            <artifactId>ojalgo</artifactId>
+            <version>48.4.2</version>
         </dependency>
 
         <dependency>

@@ -1,10 +1,11 @@
 package ch.ninecode.sc.branch
 
-import breeze.linalg.Axis
-import breeze.linalg.DenseMatrix
-import breeze.linalg.DenseVector
-import breeze.linalg.inv
-import breeze.linalg.sum
+import org.ojalgo.function.BinaryFunction
+import org.ojalgo.matrix.store.MatrixStore
+import org.ojalgo.matrix.store.SparseStore
+import org.ojalgo.matrix.task.InverterTask
+import org.ojalgo.scalar.ComplexNumber
+import org.ojalgo.structure.Access1D
 
 import ch.ninecode.sc.Impedanzen
 import ch.ninecode.sc.ScBranches
@@ -80,9 +81,9 @@ case class ComplexBranch (
      */
     def z (in: Impedanzen): Impedanzen =
     {
-        // TODO: get all, not only get real of impedance_high
-        val real: Double = getImpedanceForComplexBranches
-        val branch_impedance = Impedanzen(Complex(0), Complex(0), Complex(real, 0), Complex(0))
+        // TODO: get all, not only get impedance of impedance_high
+        val impedance: ComplexNumber = getImpedanceForComplexBranches
+        val branch_impedance = Impedanzen(Complex(0), Complex(0), Complex(impedance.getReal, impedance.getImaginary), Complex(0))
 
         // TODO: convert "in" from middle voltage to low voltage, e.g see ParallelBranch
         branch_impedance + in
@@ -110,87 +111,113 @@ case class ComplexBranch (
             (false, Some(this))
     }
 
-    def getAdmittanceForBuses (bus1: String, bus2: String): Double =
+    def getAdmittanceForBuses (bus1: String, bus2: String): ComplexNumber =
     {
         val impedance = basket.filter(b => (b.from == bus1 || b.to == bus1) && (b.from == bus2 || b.to == bus2))
-        val admittance: Double = impedance.headOption match
+        val admittance = impedance.headOption match
         {
             // TODO: calculate impedance for low and high and null impedance
-            case Some(impedance) => impedance.z(Impedanzen()).impedanz_high.reciprocal.re
-            case None => Impedanzen().impedanz_high.re
+            case Some(impedance) =>
+                val reciprocal = impedance.z(Impedanzen()).impedanz_high.reciprocal
+                ComplexNumber.of(reciprocal.re, reciprocal.im)
+            case None => ComplexNumber.of(Impedanzen().impedanz_high.re, Impedanzen().impedanz_high.im)
         }
         admittance
     }
 
-    private def getAdmittanceForTrafo (all_buses: List[String], row: Int): Double =
+    private def getAdmittanceForTrafo (all_buses: List[String], row: Int): ComplexNumber =
     {
         val trafo_admittances = trafo_hv_nodes.map(trafo_node =>
         {
             getAdmittanceForBuses(trafo_node, all_buses(row))
         })
-        val trafo_values = trafo_admittances.filter(_ != 0.0)
+        val trafo_values = trafo_admittances.filter(_.getReal != 0.0)
         if (trafo_values.isEmpty)
         {
-            0.0
+            ComplexNumber.of(0.0, 0.0)
         } else
         {
             trafo_values(0)
         }
     }
 
-    private def getAdmittanceDiagValues (nodalAdmittanceMatrix: DenseMatrix[Double]) =
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf","deprecation"))
+    private def getAdmittanceDiagValues (nodalAdmittanceMatrix: MatrixStore[ComplexNumber]): Access1D[ComplexNumber] =
     {
-        val helperMatrix: DenseMatrix[Double] = DenseMatrix.tabulate(nodalAdmittanceMatrix.rows, nodalAdmittanceMatrix.cols)((i, j) =>
-        {
-            if (i == j)
-            {
-                1
-            } else
-            {
-                -1
+        val storeFactory = MatrixStore.COMPLEX
+        val testFactory = MatrixStore.COMPLEX
+        val storeResultMatrix = testFactory.makeSparse(nodalAdmittanceMatrix.countRows(),nodalAdmittanceMatrix.countColumns())
+        val storeHelperMatrix: SparseStore[ComplexNumber] = storeFactory.makeSparse(nodalAdmittanceMatrix.countRows(),nodalAdmittanceMatrix.countColumns())
+        for (i <- 0 until nodalAdmittanceMatrix.countRows().toInt) {
+            for (j <- 0 until nodalAdmittanceMatrix.countColumns().toInt) {
+                val value = if (i == j) {
+                    1
+                } else {
+                    -1
+                }
+                storeHelperMatrix.set(i,j,ComplexNumber.of(value,0.0))
             }
-        })
-        // a_{i,i} = y_i + sum[(y_{i,j}, for all j != i)]
-        sum(nodalAdmittanceMatrix *:* helperMatrix, Axis._1)
-    }
-
-    private def replaceMainDiagonal (nodalAdmittanceMatrix: DenseMatrix[Double], admittanceValues: DenseVector[Double]): Unit =
-    {
-        var index = 0
-        while (index < admittanceValues.size)
-        {
-            nodalAdmittanceMatrix(index, index) = admittanceValues(index)
-            index += 1
         }
-    }
 
-    private def getInitialNodalAdmittanceMatrix (all_buses: List[String]): DenseMatrix[Double] =
-    {
-        DenseMatrix.tabulate(all_buses.size, all_buses.size)((row, col) =>
-        {
-            if (row == col)
+        class customComplexMulty() extends BinaryFunction[ComplexNumber]  {
+            override def invoke (arg1: Double, arg2: Double): Double =
             {
-                getAdmittanceForTrafo(all_buses, row)
-            } else
-            {
-                -getAdmittanceForBuses(all_buses(row), all_buses(col))
+                arg1*arg2
             }
-        })
+
+            override def invoke (arg1: ComplexNumber, arg2: ComplexNumber): ComplexNumber =
+            {
+                arg1.multiply(arg2)
+            }
+        }
+
+        nodalAdmittanceMatrix.onMatching(
+            new customComplexMulty(),
+            storeHelperMatrix.asInstanceOf[MatrixStore[ComplexNumber]]
+        ).supplyTo(storeResultMatrix)
+        storeResultMatrix.sliceDiagonal()
     }
 
-    def getImpedanceForComplexBranches: Double =
+    private def getInitialNodalAdmittanceMatrix (all_buses: List[String]): MatrixStore[ComplexNumber] =
+    {
+        val matrix_size = all_buses.size
+        val storeFactory = SparseStore.COMPLEX
+        val storeInitialNodalAdmittanceMatrix = storeFactory.make(matrix_size, matrix_size)
+        for (row <- 0 until matrix_size)
+        {
+            for (col <- 0 until matrix_size)
+            {
+                val admittanceValue: ComplexNumber = if (row == col)
+                {
+                    getAdmittanceForTrafo(all_buses, row)
+                } else
+                {
+                    ComplexNumber.of(-1,0).multiply(getAdmittanceForBuses(all_buses(row), all_buses(col)))
+                }
+                storeInitialNodalAdmittanceMatrix.set(row,col,admittanceValue)
+            }
+        }
+        storeInitialNodalAdmittanceMatrix.get()
+    }
+
+    @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
+    def getImpedanceForComplexBranches: ComplexNumber =
     {
         val all_buses: List[String] = new ScBranches().get_all_nodes(basket).filter(!trafo_hv_nodes.contains(_)).toList
         val hak_index = all_buses.indexOf(to)
 
-        val nodalAdmittanceMatrix: DenseMatrix[Double] = getInitialNodalAdmittanceMatrix(all_buses)
+        val nodalAdmittanceMatrix: SparseStore[ComplexNumber] = getInitialNodalAdmittanceMatrix(all_buses).asInstanceOf[SparseStore[ComplexNumber]]
 
         val admittanceValues = getAdmittanceDiagValues(nodalAdmittanceMatrix)
-        replaceMainDiagonal(nodalAdmittanceMatrix, admittanceValues)
+        nodalAdmittanceMatrix.fillDiagonal(admittanceValues)
 
         // Y^(-1)*I=V
-        val impedanceMatrix: DenseMatrix[Double] = inv(nodalAdmittanceMatrix)
-        val impedance = impedanceMatrix(hak_index, hak_index)
+        val inverter = InverterTask.COMPLEX.make(nodalAdmittanceMatrix)
+        val inv = inverter.invert(nodalAdmittanceMatrix)
+        val impedanceMatrix: MatrixStore[ComplexNumber] = inv.get()
+//        println(f"hak_index: ${hak_index}")
+        val impedance = impedanceMatrix.get(hak_index, hak_index)
+//        println(impedance)
         impedance
     }
 }
