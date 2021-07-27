@@ -346,7 +346,7 @@ case class ComplexBranch (
                         val impedanceMatrix: MatrixStore[ComplexNumber] = inv.get()
                         impedanceMatrix.get(hak_index, hak_index)
                     } catch {
-                        case e: RecoverableCondition => {
+                        case _: RecoverableCondition => {
                             ComplexNumber.ZERO
                         }
                     }
