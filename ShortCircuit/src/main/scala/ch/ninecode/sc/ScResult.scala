@@ -121,22 +121,19 @@ case class ScResult
 
     def iksplitString: String =
     {
+        def getIkSplitStringForBranch(branch: Branch): String = branch.ratios.map(x => x._1 * high_ik).map(_.toInt.toString).mkString(",")
+
         if (null == branches)
             ""
         else
             if (branches.isInstanceOf[ComplexBranch])
             {
-                val ikSplit: Iterable[Double] = branches.justLastFuses.map((x: Branch) =>
-                {
-                    val ratio = x.ratios.map(_._1).sum
-                    ratio * high_ik
-                })
-                ikSplit.map(_.toString).mkString(",")
+                getIkSplitStringForBranch(branches)
             } else
             {
                 branches.justFuses match
                 {
-                    case Some(branch) => branch.ratios.map(x => x._1 * high_ik).map(_.toString).mkString(",")
+                    case Some(branch) => getIkSplitStringForBranch(branch)
                     case None => ""
                 }
             }
@@ -191,9 +188,7 @@ case class ScResult
         else
             if (branches.isInstanceOf[ComplexBranch])
             {
-                val fuseMax: Iterable[String] = branches.justLastFuses.map((fuse: Branch) =>
-                    fuses(high_ik, options, fuse, standard))
-                fuseMax.mkString(",")
+                fuses(high_ik, options, branches, standard)
             } else
                 branches.justFuses match
                 {
