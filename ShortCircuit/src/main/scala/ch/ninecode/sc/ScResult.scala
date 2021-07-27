@@ -257,23 +257,34 @@ case class ScResult
             // recompute the impedance of the trafo and the EquivalentInjection together
             val high_z = Impedanzen(Complex(low_r, low_x), Complex(low_r0, low_x0), Complex(high_r, high_x), Complex(high_r0, high_x0))
             val supply_z = high_z - branches.z(Impedanzen())
+
+            def checkFuseBlows (n: Branch): (Boolean,Option[Branch]) =
+            {
+                val z = n.z(supply_z)
+                // first time through this should be high_ik
+                val ik = calculate_ik(voltage, options.cmin, z.impedanz_high, z.null_impedanz_high)
+                n.checkFuses(ik, options)
+            }
+
             do
             {
                 network match
                 {
-                    case Some(n: Branch) =>
-                        n match {
-                            case cb:ComplexBranch => if (cb.basket.length == 0) {
-                                return true
-                            }
-                            case _ => {}
+                    case Some(n:ComplexBranch) => {
+                        if (n.basket.length == 0) {
+                            changed = false
+                            network = None
+                        } else
+                        {
+                            val res = checkFuseBlows(n)
+                            changed = res._1
+                            network = res._2
                         }
-                        val z = n.z(supply_z)
-                        // first time through this should be high_ik
-                        val ik = calculate_ik(voltage, options.cmin, z.impedanz_high, z.null_impedanz_high)
-                        val (blows, newnet) = n.checkFuses(ik, options)
-                        changed = blows
-                        network = newnet
+                    }
+                    case Some(n: Branch) =>
+                        val res = checkFuseBlows(n)
+                        changed = res._1
+                        network = res._2
                     case None =>
                 }
             }
