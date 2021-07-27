@@ -245,6 +245,7 @@ case class ScResult
      *
      * @return <code>true</code> if the network would be interrupted because of the short circuit, or <code>false</code> otherwise
      */
+    @SuppressWarnings(Array("org.wartremover.warts.Return"))
     def fuseOK (options: ShortCircuitOptions): Boolean =
     {
         if (null == branches)
@@ -261,6 +262,12 @@ case class ScResult
                 network match
                 {
                     case Some(n: Branch) =>
+                        n match {
+                            case cb:ComplexBranch => if (cb.basket.length == 0) {
+                                return true
+                            }
+                            case _ => {}
+                        }
                         val z = n.z(supply_z)
                         // first time through this should be high_ik
                         val ik = calculate_ik(voltage, options.cmin, z.impedanz_high, z.null_impedanz_high)
