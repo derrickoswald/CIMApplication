@@ -67,7 +67,7 @@ class ScBranches
     }
 
 
-    def get_all_nodes (branches: Iterable[Branch]) =
+    def get_all_nodes (branches: Iterable[Branch]): Set[String] =
     {
         branches.map(_.to).toSet ++ branches.map(_.from).toSet
     }

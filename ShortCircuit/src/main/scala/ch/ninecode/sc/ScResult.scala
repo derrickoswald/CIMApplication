@@ -240,7 +240,6 @@ case class ScResult
      *
      * @return <code>true</code> if the network would be interrupted because of the short circuit, or <code>false</code> otherwise
      */
-    @SuppressWarnings(Array("org.wartremover.warts.Return"))
     def fuseOK (options: ShortCircuitOptions): Boolean =
     {
         if (null == branches)
