@@ -26,7 +26,6 @@ import ch.ninecode.net.TransformerServiceArea
 import ch.ninecode.net.TransformerSet
 import ch.ninecode.sc.ScNonRadial.need_load_flow
 import ch.ninecode.sc.branch.Branch
-import ch.ninecode.sc.branch.ComplexBranch
 import ch.ninecode.sc.branch.ParallelBranch
 import ch.ninecode.sc.branch.SimpleBranch
 import ch.ninecode.sc.branch.TransformerBranch
@@ -315,17 +314,9 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         // get directed edges hi→lo voltage = Branch from→to
         val graph_edges: Iterable[Branch] = get_directed_edges(edges, flatten_trafo_lv_nodes, data, experiment.mrid)
 
-        var branches: Iterable[Branch] = new ScBranches().reduce_branches(graph_edges, trafo_hv_nodes, experiment.mrid)
+        val branches: Option[Branch] = new ScBranches().reduce_branches(graph_edges, trafo_hv_nodes, experiment.mrid)
 
-        if (branches.size > 1)
-        {
-            log.info(s"complex branch network from ${trafo_hv_nodes.mkString(",")} to ${experiment.mrid}")
-            val directs: Iterable[Branch] = branches.filter(b => experiment.mrid == b.to || experiment.mrid == b.from)
-            val current = directs.map(_.current).sum
-            branches = List(ComplexBranch(trafo_hv_nodes, experiment.mrid, current, branches.toArray))
-        }
-
-        branches.headOption match
+        branches match
         {
             case Some(branch) =>
             {
@@ -339,7 +330,8 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
                 List((experiment.trafo, experiment.mrid, impedanzen_middle_voltage, path))
             }
-            case None => {
+            case None =>
+            {
                 log.error(s"no branches found for ${experiment.mrid}")
                 List()
             }
@@ -425,7 +417,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 None
     }
 
-    private def getSourceAndDestinationFromVoltages(v1: Double, v2: Double, switch: GLMSwitchEdge): Option[(String, String)] =
+    private def getSourceAndDestinationFromVoltages (v1: Double, v2: Double, switch: GLMSwitchEdge): Option[(String, String)] =
     {
         if (v1 > v2)
         {

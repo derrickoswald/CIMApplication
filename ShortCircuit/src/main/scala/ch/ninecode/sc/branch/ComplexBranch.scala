@@ -28,6 +28,8 @@ case class ComplexBranch (
     override val current: Double,
     basket: Array[Branch]) extends Branch(trafo_hv_nodes.mkString("_"), to, current)
 {
+    val scBranches = new ScBranches()
+
     override def toString: String =
         s"""ComplexBranch ("$from" ⇒ "$to" ${current}A ${basket.map(_.toString).mkString("[", ",", "]")})"""
 
@@ -142,7 +144,8 @@ case class ComplexBranch (
 
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
-        val new_complex: Iterable[(Boolean, Option[Branch])] = ratios.map(
+        val ratio_all_branches = basket.map(x => (x.current / current, x))
+        val new_complex: Iterable[(Boolean, Option[Branch])] = ratio_all_branches.map(
             (pair: (Double, Branch)) =>
             {
                 val (fraction, branch) = pair
@@ -155,7 +158,10 @@ case class ComplexBranch (
         )
         val blows = new_complex.exists(_._1)
         if (blows)
-            (blows, Some(ComplexBranch(trafo_hv_nodes, to, current, new_complex.flatMap(_._2).toArray)))
+        {
+            val new_branch: Option[Branch] = scBranches.reduce_branches(new_complex.flatMap(_._2), trafo_hv_nodes, to)
+            (blows, new_branch)
+        }
         else
             (false, Some(this))
     }
@@ -318,7 +324,7 @@ case class ComplexBranch (
     @SuppressWarnings(Array("org.wartremover.warts.AsInstanceOf"))
     def getImpedanceForComplexBranches: Impedanzen =
     {
-        val all_buses: List[String] = new ScBranches().get_all_nodes(basket).filter(!trafo_hv_nodes.contains(_)).toList
+        val all_buses: List[String] = scBranches.get_all_nodes(basket).filter(!trafo_hv_nodes.contains(_)).toList
         val hak_index = all_buses.indexOf(to)
         if (hak_index == -1) {
             Impedanzen()

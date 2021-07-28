@@ -6,6 +6,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.ComplexBranch
 
 class ScBranches
 {
@@ -40,7 +41,7 @@ class ScBranches
     def reduce_branches (
         graph_edges: Iterable[Branch],
         trafo_hv_nodes: Array[String],
-        mrid: String): Iterable[Branch] =
+        mrid: String): Option[Branch] =
     {
         // reduce the tree to (hopefully) one branch spanning from start to end
         var family = graph_edges
@@ -52,8 +53,17 @@ class ScBranches
         }
         while (count != family.size)
 
-        val branches: Iterable[Branch] = reduce(family, trafo_hv_nodes, mrid)
-        branches
+        var branches: Iterable[Branch] = reduce(family, trafo_hv_nodes, mrid)
+
+        if (branches.size > 1)
+        {
+            log.info(s"complex branch network from ${trafo_hv_nodes.mkString(",")} to ${mrid}")
+            val directs: Iterable[Branch] = branches.filter(b => mrid == b.to || mrid == b.from)
+            val current = directs.map(_.current).sum
+            branches = List(ComplexBranch(trafo_hv_nodes, mrid, current, branches.toArray))
+        }
+
+        branches.headOption
     }
 
 
