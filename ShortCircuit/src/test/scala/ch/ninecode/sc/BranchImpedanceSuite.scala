@@ -237,10 +237,10 @@ class BranchImpedanceSuite extends AnyFunSuite
         val branch = ComplexBranch(Array("PIN26199_topo"), "HAS118345_topo", 4.0, branches)
         // fake z
         val z = Impedanzen(
-            Complex("0.0+0.0j"),
-            Complex("0.0+0.0j"),
-            Complex("0.0+0.0j"),
-            Complex("0.0+0.0j")
+            Complex("0.02213275+0.00776434j"),
+            Complex("0.08793007+0.02792157j"),
+            Complex("0.02442234+0.00776434j"),
+            Complex("0.09702628+0.02792157j")
         )
         assert(branch.z(Impedanzen()).toString == z.toString)
     }
