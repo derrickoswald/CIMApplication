@@ -126,17 +126,18 @@ case class ScResult
         if (null == branches)
             ""
         else
-            if (branches.isInstanceOf[ComplexBranch])
-            {
-                getIkSplitStringForBranch(branches)
-            } else
-            {
-                branches.justFuses match
-                {
-                    case Some(branch) => getIkSplitStringForBranch(branch)
-                    case None => ""
-                }
+        {
+            branches match {
+                case cb: ComplexBranch =>
+                    getIkSplitStringForBranch(cb)
+                case _ =>
+                    branches.justFuses match
+                    {
+                        case Some(branch) => getIkSplitStringForBranch(branch)
+                        case None => ""
+                    }
             }
+        }
     }
 
     def std (branch: Branch): String =
@@ -186,15 +187,18 @@ case class ScResult
         if (null == branches)
             ""
         else
-            if (branches.isInstanceOf[ComplexBranch])
-            {
-                fuses(high_ik, options, branches, standard)
-            } else
-                branches.justFuses match
-                {
-                    case Some(branch) => fuses(high_ik, options, branch, standard)
-                    case None => ""
-                }
+        {
+            branches match {
+                case cb:ComplexBranch =>
+                    fuses(high_ik, options, cb, standard)
+                case _ =>
+                    branches.justFuses match
+                    {
+                        case Some(branch) => fuses(high_ik, options, branch, standard)
+                        case None => ""
+                    }
+            }
+        }
     }
 
     def lastFuseHasMissingValues (branches: Branch): Boolean =
