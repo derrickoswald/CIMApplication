@@ -53,17 +53,17 @@ class ScBranches
         }
         while (count != family.size)
 
-        var branches: Iterable[Branch] = reduce(family, trafo_hv_nodes, mrid)
+        val branches: Iterable[Branch] = reduce(family, trafo_hv_nodes, mrid)
 
         if (branches.size > 1)
         {
             log.info(s"complex branch network from ${trafo_hv_nodes.mkString(",")} to ${mrid}")
             val directs: Iterable[Branch] = branches.filter(b => mrid == b.to || mrid == b.from)
             val current = directs.map(_.current).sum
-            branches = List(ComplexBranch(trafo_hv_nodes, mrid, current, branches.toArray))
+            Option(ComplexBranch(trafo_hv_nodes, mrid, current, branches.toArray))
+        } else {
+            branches.headOption
         }
-
-        branches.headOption
     }
 
 
