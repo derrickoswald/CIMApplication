@@ -86,7 +86,9 @@ case class ComplexBranch (
 
     def ratios: Iterable[(Double, Branch)] =
     {
-        justLastFuses.toList.map(x => (x.current / current, x))
+        val justFuses = justLastFuses.toList
+        val current = justFuses.map(_.current).sum
+        justFuses.map(x => (x.current / current, x))
     }
 
     def voltageRatio: Double = basket.foldLeft(1.0)((v, branch) => v * branch.voltageRatio)
