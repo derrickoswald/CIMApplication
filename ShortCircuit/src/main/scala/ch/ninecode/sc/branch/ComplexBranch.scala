@@ -141,7 +141,14 @@ case class ComplexBranch (
         {
             val new_branches = new_complex.flatMap(_._2)
             val new_branch: Option[Branch] = new ScBranches().reduce_branches(new_branches, trafo_hv_nodes, to)
-            (blows, new_branch)
+            new_branch match {
+                case Some(branch) =>
+                    if (branch.lastFuses.nonEmpty)
+                        (blows, new_branch)
+                    else
+                        (blows, None)
+                case None => (blows, None)
+            }
         }
         else
             (false, Some(this))
