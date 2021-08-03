@@ -111,23 +111,13 @@ case class ComplexBranch (
 
     def getTransformerBranch: Option[TransformerBranch] =
     {
-        val trafoBranches = basket.filter
+        val trafoBranches: Array[TransformerBranch] = basket.flatMap
         {
-            case _: TransformerBranch => true
-            case _ => false
+            case series: SeriesBranch => series.getTransformerBranch
+            case parallel: ParallelBranch => parallel.getTransformerBranch
+            case _ => None
         }
-
-        trafoBranches.headOption match
-        {
-            case Some(branch) =>
-                branch match
-                {
-                    case trafo: TransformerBranch => Option(trafo)
-                    case series: SeriesBranch => series.getTransformerBranch
-                    case _ => None
-                }
-            case None => None
-        }
+        trafoBranches.headOption
     }
 
     def contents: Iterable[Branch] = basket

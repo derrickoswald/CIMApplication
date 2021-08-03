@@ -76,8 +76,6 @@ case class TransformerBranch (
 
     def convert_impedance (in: Impedanzen): Impedanzen =
     {
-        val ratio = vto / vfrom
-        val ratio2 = ratio * ratio
-        in * ratio2
+        in * math.pow(voltageRatio, 2.0)
     }
 }
