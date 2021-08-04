@@ -118,8 +118,10 @@ case class ComplexBranch (
 
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
-        val ratio_all_branches = basket.map(x => (x.current / current, x))
-        val new_complex: Iterable[(Boolean, Option[Branch])] = ratio_all_branches.map(
+        val justFuses = lastFuses.toList
+        val current = justFuses.map(_.current).sum
+        val ratio = justFuses.map(x => (x.current / current, x))
+        val new_complex: Iterable[(Boolean, Option[Branch])] = ratio.map(
             (pair: (Double, Branch)) =>
             {
                 val (fraction, branch) = pair
@@ -134,17 +136,18 @@ case class ComplexBranch (
         if (blows)
         {
             val new_branches = new_complex.flatMap(_._2)
-            val new_branch: Option[Branch] = new ScBranches().reduce_branches(new_branches, trafo_hv_nodes, to)
-            new_branch match {
-                case Some(branch) =>
-                    if (branch.lastFuses.nonEmpty)
-                        (blows, new_branch)
-                    else
-                        (blows, None)
-                case None => (blows, None)
+            if (new_branches.isEmpty)
+            {
+                // Stop if just lastfuse branches are empty
+                (blows, None)
+            } else {
+                // Continue by considering again the whole basket but without the blown branches
+                val branchWithoutFuses = basket.filter(!lastFuses.toList.contains(_))
+                val new_branch: Option[Branch] = new ScBranches().reduce_branches(new_branches ++ branchWithoutFuses, trafo_hv_nodes, to)
+                (blows, new_branch)
             }
-        }
-        else
+        } else {
             (false, Some(this))
+        }
     }
 }
