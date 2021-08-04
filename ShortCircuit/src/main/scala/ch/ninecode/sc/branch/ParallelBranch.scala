@@ -98,17 +98,7 @@ case class ParallelBranch (
 
     def getTransformerBranch: Option[TransformerBranch] =
     {
-        parallel.headOption match
-        {
-            case Some(branch) =>
-                branch match
-                {
-                    case trafo: TransformerBranch => Option(trafo)
-                    case series: SeriesBranch => series.getTransformerBranch
-                    case _ => None
-                }
-            case None => None
-        }
+        parallel.flatMap(_.getTransformerBranch).headOption
     }
 
     def contents: Iterable[Branch] = parallel

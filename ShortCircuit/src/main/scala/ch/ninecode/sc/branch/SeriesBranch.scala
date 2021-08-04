@@ -82,11 +82,7 @@ case class SeriesBranch (
     {
         series.headOption match
         {
-            case Some(trafo) => trafo match
-            {
-                case trafo: TransformerBranch => Option(trafo)
-                case _ => None
-            }
+            case Some(trafo) => trafo.getTransformerBranch
             case _ => None
         }
     }

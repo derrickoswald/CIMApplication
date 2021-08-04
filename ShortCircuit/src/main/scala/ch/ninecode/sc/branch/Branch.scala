@@ -124,6 +124,8 @@ abstract class Branch (val from: String, val to: String, val current: Double)
      */
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch])
 
+    def getTransformerBranch: Option[TransformerBranch]
+
     def hasSameFrom (other: Branch): Boolean =
     {
         from == other.from

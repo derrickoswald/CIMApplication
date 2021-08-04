@@ -63,6 +63,8 @@ case class SimpleBranch (override val from: String, override val to: String, ove
 
     def contents: Iterable[SimpleBranch] = Iterable(this)
 
+    def getTransformerBranch: Option[TransformerBranch] = None
+
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
         if (isFuse)

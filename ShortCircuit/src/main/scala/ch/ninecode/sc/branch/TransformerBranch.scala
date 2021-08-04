@@ -59,6 +59,8 @@ case class TransformerBranch (
 
     def contents: Iterable[TransformerBranch] = Iterable(this)
 
+    def getTransformerBranch: Option[TransformerBranch] = Some(this)
+
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
         (false, Some(this))
