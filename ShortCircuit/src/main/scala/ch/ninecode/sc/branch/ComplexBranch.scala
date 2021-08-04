@@ -86,9 +86,9 @@ case class ComplexBranch (
 
     def ratios: Iterable[(Double, Branch)] =
     {
-        val justFuses = justLastFuses.toList
-        val current = justFuses.map(_.current).sum
-        justFuses.map(x => (x.current / current, x))
+        val justLastFusesList = justLastFuses.toList
+        val current = justLastFusesList.map(_.current).sum
+        justLastFusesList.map(x => (x.current / current, x))
     }
 
     def voltageRatio: Double = basket.foldLeft(1.0)((v, branch) => v * branch.voltageRatio)
@@ -118,9 +118,9 @@ case class ComplexBranch (
 
     def checkFuses (ik: Double, options: ShortCircuitOptions): (Boolean, Option[Branch]) =
     {
-        val justFuses = lastFuses.toList
-        val current = justFuses.map(_.current).sum
-        val ratio = justFuses.map(x => (x.current / current, x))
+        val lastFusesList = lastFuses.toList
+        val current = lastFusesList.map(_.current).sum
+        val ratio = lastFusesList.map(x => (x.current / current, x))
         val new_complex: Iterable[(Boolean, Option[Branch])] = ratio.map(
             (pair: (Double, Branch)) =>
             {
