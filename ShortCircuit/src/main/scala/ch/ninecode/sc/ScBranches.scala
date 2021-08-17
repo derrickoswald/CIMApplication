@@ -57,7 +57,7 @@ class ScBranches
 
         if (branches.size > 1)
         {
-            log.info(s"complex branch network from ${trafo_hv_nodes.mkString(",")} to ${mrid}")
+            log.debug(s"complex branch network from ${trafo_hv_nodes.mkString(",")} to $mrid")
             val directs: Iterable[Branch] = branches.filter(b => mrid == b.to || mrid == b.from)
             val current = directs.map(_.current).sum
             Option(ComplexBranch(trafo_hv_nodes, mrid, current, branches.toArray))
