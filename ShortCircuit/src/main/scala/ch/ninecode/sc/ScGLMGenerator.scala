@@ -37,13 +37,19 @@ case class ScGLMGenerator
     isMax: Boolean)
     extends GLMGenerator(one_phase, temperature, date_format)
 {
+    var slack_emitted: Boolean = false
+
     override def name: String = area.name
 
     override def directory: String = area.directory
 
     override def start_time: Calendar = area.start_time
 
-    override def edges: Iterable[GLMEdge] = area.edges
+    override def transformers: Iterable[GLMTransformerEdge] = area.island.transformers.map(GLMTransformerEdge)
+
+    override def edges: Iterable[GLMEdge] = area.edges.filter(edges =>
+        !transformers.exists(_.id == edges.id)
+    )
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     override def getTransformerConfigurations (transformers: Iterable[GLMTransformerEdge]): Iterable[String] =
@@ -58,8 +64,6 @@ case class ScGLMGenerator
         val configurations = trafos.groupBy(_.configurationName).values
         configurations.map(config => config.head.configuration(this, config.map(_.transformer.transformer_name).mkString(", ")))
     }
-
-    override def transformers: Iterable[GLMTransformerEdge] = area.island.transformers.map(GLMTransformerEdge)
 
     class ShortCircuitSwingNode (val set: TransformerSet) extends SwingNode(set.node0, set.v0, set.transformer_name)
 
@@ -78,7 +82,7 @@ case class ScGLMGenerator
      * @param node The swing node to emit.
      * @return The .glm file text for the swing bus.
      */
-    override def emit_slack (node: GLMNode): String =
+    override def emit_slack (node: GLMNode, suffix:String = ""): String =
     {
         val voltage = node.nominal_voltage
         val phase = if (one_phase) "AN" else "ABCN"
@@ -90,14 +94,19 @@ case class ScGLMGenerator
         {
             val network_level = "N5"
             val network_level_config_name = network_level + "_configuration"
+            var results = ""
 
-            val swing = swing_meter_glm(network_level, voltage, phase)
-            val config = generate_glm_configs(node, z, network_level, network_level_config_name)
-            val cable = overhead_line_glm(phase, network_level, nodename, network_level_config_name)
+            if (!slack_emitted)
+            {
+                val swing = swing_meter_glm(network_level, voltage, phase)
+                val config = generate_glm_configs(node, z, network_level, network_level_config_name)
+                slack_emitted = true
+                results = swing + config
+            }
+            val cable = overhead_line_glm(phase, network_level, nodename, network_level_config_name,suffix)
             val meter = object_meter_glm(voltage, phase, nodename)
 
-            swing +
-                config +
+            results +
                 cable +
                 meter
         }
@@ -142,8 +151,13 @@ case class ScGLMGenerator
           |""".stripMargin.format(nodename, phase, voltage)
     }
 
-    private def overhead_line_glm (phase: String, from: String, to: String, configuration: String): String =
+    private def overhead_line_glm (phase: String, from: String, to: String, configuration: String, suffix: String): String =
     {
+        val nodename = if (suffix != "") {
+            s"HV_${suffix}"
+        } else {
+            "HV"
+        }
         s"""
            |        object overhead_line
            |        {
@@ -154,10 +168,10 @@ case class ScGLMGenerator
            |            length 1000m;
            |            configuration "%s";
            |        };
-           |""".stripMargin.format("HV", phase, from, to, configuration)
+           |""".stripMargin.format(nodename, phase, from, to, configuration)
     }
 
-    private def swing_meter_glm (name:String, voltage: Double, phase: String) =
+    private def swing_meter_glm (name: String, voltage: Double, phase: String) =
     {
         s"""
            |        object meter

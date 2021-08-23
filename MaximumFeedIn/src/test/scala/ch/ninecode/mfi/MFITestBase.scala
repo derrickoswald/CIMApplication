@@ -81,6 +81,17 @@ class MFITestBase extends TestUtil
         result.getString(1)
     }
 
+    def checkResultsForMrid (trafo: String, mrid: String, max: Double, reason: String, details: String, dbFile: String): Unit =
+    {
+        val query =
+            s"SELECT Transformer, House, Maximum, Reason, Details FROM feedin " +
+                s"WHERE Transformer='$trafo' AND House='$mrid';"
+        val result = querySQLite(dbFile, query)
+
+        assert(result.size == 1, "should have one result")
+        assert(result.first(), "should point to first result")
+        checkResults(result, max, reason, details)
+    }
 
     def checkResults (result: CachedRowSetImpl, max: Double, reason: String, details: String): Unit =
     {

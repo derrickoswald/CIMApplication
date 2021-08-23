@@ -246,7 +246,8 @@ class ShortCircuitSuite extends SCTestBase with BeforeAndAfter
                 low_temperature = 20.0,
                 cmax = 0.95,
                 cmin = 0.95,
-                trafos = s"$FILE_DEPOT$FILENAME5.transformers")
+                trafos = s"$FILE_DEPOT$FILENAME5.transformers",
+                workdir = "simulation/")
             val shortcircuit = ShortCircuit(session, StorageLevel.MEMORY_AND_DISK_SER, sc_options)
             val results = shortcircuit.run()
 

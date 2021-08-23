@@ -33,8 +33,11 @@ import ch.ninecode.model.VoltageLevel
 import ch.ninecode.net.Net
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
+import ch.ninecode.net.TransformerSet
 import ch.ninecode.net.Transformers
 import ch.ninecode.sc.ScEdge.resistanceAt
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.TransformerBranch
 import ch.ninecode.util.CIMInitializer
 import ch.ninecode.util.Complex
 import ch.ninecode.util.Graphable
@@ -131,17 +134,17 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
                                node2 = terminals(i)._1.TopologicalNode;
                                // eliminate edges with only one connectivity node, or the same connectivity node
                                if null != node1 && null != node2 && "" != node1 && "" != node2 && node1 != node2)
-                    yield ScEdge(
-                        node1,
-                        voltage1,
-                        node2,
-                        terminals(i)._2,
-                        terminals.length,
-                        eq,
-                        element,
-                        standard,
-                        z
-                    )
+                yield ScEdge(
+                    node1,
+                    voltage1,
+                    node2,
+                    terminals(i)._2,
+                    terminals.length,
+                    eq,
+                    element,
+                    standard,
+                    z
+                )
                 ret.toList
             case _ =>
                 // shouldn't happen, terminals always reference ConductingEquipment, right?
@@ -156,7 +159,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         transformer_island
             .transformers
             .flatMap(
-                set =>
+                (set: TransformerSet) =>
                 {
                     val transformer = set.transformers(0)
                     for (lv_node <- transformer.nodes.tail)
@@ -424,18 +427,43 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
 
             val problems = edges.foldLeft(errors)((errors, edge) => edge.hasIssues(errors, options))
 
+            val transformator: TransformerData = trafo.transformer.transformers.filter((trafoData: TransformerData) =>
+            {
+                trafoData.nodes.exists(_.id == node.id_seq)
+            }).head
+
+            val trafo_node_to = transformator.nodes.filter(_.id == node.id_seq).head
+            val voltage_to = transformator.voltages.filter(_._1 == trafo_node_to.BaseVoltage).head
+
+            val trafo_total_impedance: Complex = trafo.transformer.total_impedance._1
+            val impedanzen = Impedanzen(trafo_total_impedance, trafo_total_impedance, trafo_total_impedance, trafo_total_impedance)
+
+            val trafo_branch = TransformerBranch(
+                transformator.node0.id,
+                trafo_node_to.id,
+                0.0,
+                trafo.transformer.transformer_name,
+                transformator.transformer.id,
+                trafo.transformer.power_rating,
+                trafo.transformer.v0,
+                voltage_to._2,
+                trafo.transformer.total_impedance_per_unit._1,
+                Some(impedanzen)
+            )
+
             ScNode(
                 id_seq = node.id_seq,
                 voltage = node.voltage,
                 source_id = trafo.transformer.transformer_name,
                 id_prev = "self",
                 impedance = trafo.lv_impedance(node.voltage),
+                branches = trafo_branch,
                 errors = problems
             )
         }
 
         val starting_nodes: RDD[StartingTrafos] = transformers.flatMap(trafo_mapping).setName("starting_nodes")
-        val starting_trafos_with_edges = starting_nodes.keyBy(_.nsPin).join(initial.edges.flatMap(both_ends).groupByKey)
+        val starting_trafos_with_edges: RDD[(VertexId, (StartingTrafos, Iterable[ScEdge]))] = starting_nodes.keyBy(_.nsPin).join(initial.edges.flatMap(both_ends).groupByKey)
             .setName("starting_trafos_with_edges")
 
         val initial_with_starting_nodes: Graph[ScNode, ScEdge] = initial.joinVertices(starting_trafos_with_edges)(add_starting_trafo).persist(storage_level)
@@ -455,7 +483,7 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         val container_per_cond_equipment: RDD[(CondEquipmentID, Container)] = get_container_per_equipment
 
         val results_with_container: RDD[(ScNode, TerminalID, CondEquipmentID, Container)] =
-                result_per_terminals_keyed_by_cond_equipment
+            result_per_terminals_keyed_by_cond_equipment
                 .join(container_per_cond_equipment)
                 .map(
                     (x: (CondEquipmentID, ((ScNode, Terminal), Container))) =>
@@ -527,9 +555,9 @@ case class ShortCircuit (session: SparkSession, storage_level: StorageLevel, opt
         // transformer id, node mrid, attached equipment mrid, nominal node voltage, and impedance at the node
         results_keyed.join(original_keyed).values.map(x =>
         {
-            val (transformer, node, ztrafo, branches) = x._1
+            val (transformer, node, z_middle_voltage, branches) = x._1
             val original = x._2
-            val z = if (null == branches) ztrafo else branches.z(ztrafo)
+            val z = if (null == branches) z_middle_voltage else branches.z(z_middle_voltage)
 
             calculate_short_circuit((
                 ScNode(
@@ -705,6 +733,8 @@ object ShortCircuit extends CIMInitializer[ShortCircuitOptions] with Main
                     if (options.verbose)
                     {
                         org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ShortCircuit").setLevel(org.apache.log4j.Level.INFO)
+                        org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ShortCircuitTrace").setLevel(org.apache.log4j.Level.INFO)
+                        org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ScNonRadial").setLevel(org.apache.log4j.Level.INFO)
                         org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.ScBranches").setLevel(org.apache.log4j.Level.INFO)
                         org.apache.log4j.LogManager.getLogger("ch.ninecode.sc.Database").setLevel(org.apache.log4j.Level.INFO)
                     }

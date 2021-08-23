@@ -1,8 +1,12 @@
 package ch.ninecode.sc
 
 import ch.ninecode.util.Complex
-
 import org.scalatest.funsuite.AnyFunSuite
+
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.ParallelBranch
+import ch.ninecode.sc.branch.SeriesBranch
+import ch.ninecode.sc.branch.SimpleBranch
 
 class FDataSuite extends AnyFunSuite
 {
@@ -888,7 +892,7 @@ class FDataSuite extends AnyFunSuite
             branches = branch
         )
         assert(scr.fuses(280, options_table1, branch) == "50,40", "expected 60:40 split")
-        assert(scr.iksplitString == "168.0,112.0", "ik split")
+        assert(scr.iksplitString == "168,112", "ik split")
         assert(scr.fuseString == "[50,(50,40)]", "fuseString")
         assert(scr.lastFusesString == "50,40", "lastFusesString")
         assert(scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
@@ -947,7 +951,7 @@ class FDataSuite extends AnyFunSuite
         )
         assert(scr.fuses(280, options_table1, branch) == "50,40", "expected 60:40 split")
         assert(scr.fuseString == "[50,(50,40)]", "fuseString")
-        assert(scr.iksplitString == "168.0,112.0", "ik split")
+        assert(scr.iksplitString == "168,112", "ik split")
         assert(scr.lastFusesString == "50,40", "lastFusesString")
         assert(scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
         assert(scr.fuseMax(options_table1) == "50,40", "expected 60:40 split")
@@ -1015,7 +1019,7 @@ class FDataSuite extends AnyFunSuite
         )
         assert(scr.fuses(280, options_table1, branch) == "50,50", "expected 50:50 split")
         assert(scr.fuseString == "[50,(100,100)]", "fuseString")
-        assert(scr.iksplitString == "140.0,140.0", "ik split")
+        assert(scr.iksplitString == "140,140", "ik split")
         assert(scr.lastFusesString == "50,100", "lastFusesString")
         assert(scr.lastFusesId == "TEI11,TEI22", "lastFusesId")
         assert(scr.fuseMax(options_table1) == "50,50", "expected 50:50 split")

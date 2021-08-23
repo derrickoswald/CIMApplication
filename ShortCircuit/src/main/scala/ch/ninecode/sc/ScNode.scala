@@ -1,5 +1,6 @@
 package ch.ninecode.sc
 
+import ch.ninecode.sc.branch.Branch
 import ch.ninecode.util.Graphable
 
 /**

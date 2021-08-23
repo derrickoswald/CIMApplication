@@ -7,17 +7,18 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import javax.json.Json
-import javax.json.JsonObject
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
 import scala.sys.process.Process
 import scala.sys.process.ProcessLogger
 
+import javax.json.Json
+import javax.json.JsonObject
 import org.apache.log4j.LogManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.gl.GLMSimulationType
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 
@@ -379,9 +380,13 @@ case class SimulationRunner (
         )
     }
 
-    def execute (trafo: SimulationTrafoKreis, data: Map[String, Iterable[SimulationPlayerData]]): (List[String], Iterable[SimulationResult]) =
+    def execute (
+        trafo: SimulationTrafoKreis,
+        data: Map[String, Iterable[SimulationPlayerData]]): (List[String], Iterable[SimulationResult]) =
     {
-        log.info(trafo.island + " from " + iso_date_format.format(trafo.start_time.getTime) + " to " + iso_date_format.format(trafo.finish_time.getTime))
+        val start = iso_date_format.format(trafo.start_time.getTime)
+        val end = iso_date_format.format(trafo.finish_time.getTime)
+        log.info(s"${trafo.island} from $start to $end")
 
         write_glm(trafo, workdir)
 
@@ -392,8 +397,17 @@ case class SimulationRunner (
                 {
                     data.find(x => x._1 == player.mrid) match
                     {
-                        case Some(records) =>
-                            (player, records._2)
+                        case Some(records: (String, Iterable[SimulationPlayerData])) =>
+                            val type_records = records._2.filter(_.`type` == player.`type`)
+                            if (trafo.simulation_type == GLMSimulationType.SIMULATION_1 &&
+                                trafo.house_for_voltage_calculation != player.mrid)
+                            {
+                                val zeroed_player_data = type_records.map(_.copy(readings = Array(0.0, 0.0)))
+                                (player, zeroed_player_data)
+                            } else
+                            {
+                                (player, type_records)
+                            }
                         case None =>
                             (player, List())
                     }

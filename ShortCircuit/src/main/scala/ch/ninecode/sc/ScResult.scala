@@ -1,5 +1,10 @@
 package ch.ninecode.sc
 
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.ComplexBranch
+import ch.ninecode.sc.branch.ParallelBranch
+import ch.ninecode.sc.branch.SeriesBranch
+import ch.ninecode.sc.branch.SimpleBranch
 import ch.ninecode.util.Complex
 
 /**
@@ -75,7 +80,7 @@ case class ScResult
 )
 {
     def csv (options: ShortCircuitOptions): String =
-        s"""$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString(",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm;$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;${fuseMax(options,Some("DIN"))};${fuseMax(options,Some("SEV"))};${fuseOK(options)}"""
+        s"""$node;$equipment;$terminal;$container;${if (null != errors) errors.mkString(",") else ""};$tx$low_ik;$low_ik3pol;$low_ip;$low_r;$low_x;$low_r0;$low_x0;$low_sk;$costerm;$imax_3ph_low;$imax_1ph_low;$imax_2ph_low;$imax_3ph_med;$imax_1ph_med;$imax_2ph_med$high_r;$high_x;$high_r0;$high_x0;$high_ik;$high_ik3pol;$high_ip;$high_sk$fuseString;$lastFusesString;$iksplitString;${fuseMax(options, Some("DIN"))};${fuseMax(options, Some("SEV"))};${fuseOK(options)}"""
 
     def fuseString: String =
     {
@@ -92,53 +97,47 @@ case class ScResult
 
     def lastFusesString: String =
     {
-        val s = if (null == branches)
+        if (branches == null)
             ""
         else
-            branches.justFuses match
-            {
-                case Some(branch) => branch.lastFuses.map(_.asFuse).mkString(",")
-                case None => ""
-            }
-        s
+            branches.justLastFuses.map(_.asFuse).mkString(",")
     }
 
     def lastFuseStandard: String =
     {
-        val s = if (null == branches)
+        if (branches == null)
             ""
         else
-            branches.justFuses match
-            {
-                case Some(branch) => branch.lastFuses.map(std).mkString(",")
-                case None => ""
-            }
-        s
+            branches.justLastFuses.map(std).mkString(",")
     }
 
     def lastFusesId: String =
     {
-        val s = if (null == branches)
+        if (branches == null)
             ""
         else
-            branches.justFuses match
-            {
-                case Some(branch) => branch.lastFuses.map(_.asId).mkString(",")
-                case None => ""
-            }
-        s
+            branches.justLastFuses.map(_.asId).mkString(",")
     }
 
     def iksplitString: String =
     {
+        def getIkSplitStringForBranch(branch: Branch): String = branch.ratios.map(x => x._1 * high_ik).map(_.toInt.toString).mkString(",")
+
         if (null == branches)
             ""
         else
-            branches.justFuses match
-            {
-                case Some(branch) => branch.ratios.map(x => x._1 * high_ik).map(_.toString).mkString(",")
-                case None => ""
+        {
+            branches match {
+                case cb: ComplexBranch =>
+                    getIkSplitStringForBranch(cb)
+                case _ =>
+                    branches.justFuses match
+                    {
+                        case Some(branch) => getIkSplitStringForBranch(branch)
+                        case None => ""
+                    }
             }
+        }
     }
 
     def std (branch: Branch): String =
@@ -160,20 +159,24 @@ case class ScResult
     {
         if (ik.isNaN || (null == branches))
         {
-            val fuseType = standard match {
+            val fuseType = standard match
+            {
                 case Some(std) => std
                 case None => std(branches)
             }
             options.fuse_table.fuse(Double.NaN, fuseType).toInt.toString
         } else
         {
-            def getFuseFromBranch (x: (Double, Branch)): Int = {
-                val fuseType = standard match {
+            def getFuseFromBranch (x: (Double, Branch)): Int =
+            {
+                val fuseType = standard match
+                {
                     case Some(std) => std
                     case None => std(x._2)
                 }
                 options.fuse_table.fuse(x._1, fuseType).toInt
             }
+
             val ikSplitPerBranch = branches.ratios.map(x => (x._1 * Math.abs(ik), x._2))
             ikSplitPerBranch.map(getFuseFromBranch).mkString(",")
         }
@@ -184,11 +187,18 @@ case class ScResult
         if (null == branches)
             ""
         else
-            branches.justFuses match
-            {
-                case Some(branch) => fuses(high_ik, options, branch, standard)
-                case None => ""
+        {
+            branches match {
+                case cb:ComplexBranch =>
+                    fuses(high_ik, options, cb, standard)
+                case _ =>
+                    branches.justFuses match
+                    {
+                        case Some(branch) => fuses(high_ik, options, branch, standard)
+                        case None => ""
+                    }
             }
+        }
     }
 
     def lastFuseHasMissingValues (branches: Branch): Boolean =
@@ -202,7 +212,7 @@ case class ScResult
                 case sim: SimpleBranch => sim.rating.getOrElse(Double.MinValue) <= 0.0
                 case ser: SeriesBranch => ser.lastFuses.exists(lastFuseHasMissingValues)
                 case par: ParallelBranch => par.parallel.exists(lastFuseHasMissingValues)
-                case com: ComplexBranch => com.basket.exists(lastFuseHasMissingValues)
+                case com: ComplexBranch => com.justLastFuses.exists(lastFuseHasMissingValues)
             }
             missing
         }
@@ -245,17 +255,18 @@ case class ScResult
             // recompute the impedance of the trafo and the EquivalentInjection together
             val high_z = Impedanzen(Complex(low_r, low_x), Complex(low_r0, low_x0), Complex(high_r, high_x), Complex(high_r0, high_x0))
             val supply_z = high_z - branches.z(Impedanzen())
+
             do
             {
                 network match
                 {
-                    case Some(n) =>
+                    case Some(n: Branch) =>
                         val z = n.z(supply_z)
                         // first time through this should be high_ik
                         val ik = calculate_ik(voltage, options.cmin, z.impedanz_high, z.null_impedanz_high)
-                        val (blows, newnet) = n.checkFuses(ik, options)
-                        changed = blows
-                        network = newnet
+                        val res = n.checkFuses(ik, options)
+                        changed = res._1
+                        network = res._2
                     case None =>
                 }
             }

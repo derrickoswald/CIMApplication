@@ -1,5 +1,7 @@
 package ch.ninecode.sc
 
+import ch.ninecode.sc.branch.Branch
+
 /**
  * Message sent between nodes in the short circuit GraphX Pregel algorithm.
  *

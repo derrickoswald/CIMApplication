@@ -17,18 +17,23 @@ import ch.ninecode.gl.GLMLineEdge
 import ch.ninecode.gl.GLMSwitchEdge
 import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.gl.GridLABD
-import ch.ninecode.model.ACLineSegment
 import ch.ninecode.net.Island.identifier
 import ch.ninecode.net.Island.island_id
+import ch.ninecode.net.SwitchDetails
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerIsland
 import ch.ninecode.net.TransformerServiceArea
-import ch.ninecode.sc.ScEdge.resistanceAt
+import ch.ninecode.net.TransformerSet
 import ch.ninecode.sc.ScNonRadial.need_load_flow
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.ParallelBranch
+import ch.ninecode.sc.branch.SimpleBranch
+import ch.ninecode.sc.branch.TransformerBranch
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
 
 case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, options: ShortCircuitOptions)
+    extends ImpedanceForLine
 {
 
     implicit val spark: SparkSession = session
@@ -61,7 +66,8 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         {
             log.info(s"""performing load-flow for $n non-radial network${if (n > 1) "s" else ""}""")
             fix(gridlab_islands).setName("fixed_results")
-        } else {
+        } else
+        {
             log.info("No islands to calculate with GridLAB-D")
             spark.sparkContext.emptyRDD[(Trafo, Mrid, Impedanzen, Branch)]
         }
@@ -75,6 +81,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         // transformer area calculations
         val tsa = TransformerServiceArea(session, storage_level, calculate_public_lighting = options.calculate_public_lighting)
         val trafos_islands: RDD[(identifier, island_id)] = tsa.getTransformerServiceAreas.map(_.swap).setName("trafos_islands") // (trafosetid, islandid)
+
         def set_island (island: TransformerIsland): Iterable[(identifier, identifier)] =
         {
             for (set <- island.transformers)
@@ -96,22 +103,6 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             // set up simulations
             val now = javax.xml.bind.DatatypeConverter.parseDateTime("2018-07-19T12:00:00")
 
-            def notTheTransformers (island: TransformerIsland): GLMEdge => Boolean =
-            {
-                val trafos = island.transformers.flatMap(
-                    trafo =>
-                    {
-                        Set(trafo.transformer_name) ++ trafo.transformers.map(x => x.transformer.id).toSet
-                    }
-                ).toSet
-
-                {
-                    case t: GLMTransformerEdge =>
-                        !trafos.contains(t.transformer.transformer_name)
-                    case _ => true
-                }
-            }
-
             val simulations: RDD[SimulationTransformerServiceArea] = areas
                 .join(problem_transformers.keyBy(_.island_name))
                 .values
@@ -122,7 +113,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                         SimulationTransformerServiceArea(
                             island = island,
                             nodes = nodes,
-                            edges = edges.filter(notTheTransformers(island)),
+                            edges = edges,
                             start_time = now,
                             directory = island.island_name)
                     })
@@ -195,7 +186,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             .setName("exp")
 
         val z: RDD[(Trafo, Mrid, Impedanzen, Branch)] = exp
-            .map(evaluate)
+            .flatMap(evaluate)
             .setName("z")
 
         val anal = System.nanoTime()
@@ -300,134 +291,84 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
      * @param exp all the data, the simulation and specific experiment plus all the voltage readings
      * @return a tuple with the transformer id, node mrid, attached equipment mrid, nominal node voltage, secondary impedance of the source transformer and an equivalent circuit
      */
-    def evaluate (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): (Trafo, Mrid, Impedanzen, Branch) =
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
+    def evaluate (exp: ((SimulationTransformerServiceArea, ScExperiment), Iterable[ThreePhaseComplexDataElement])): List[(Trafo, Mrid, Impedanzen, Branch)] =
     {
         val trafokreis: SimulationTransformerServiceArea = exp._1._1
         val experiment: ScExperiment = exp._1._2
         val edges: Iterable[GLMEdge] = exp._1._1.edges
         val data: Iterable[ThreePhaseComplexDataElement] = exp._2
-        val trafo_lv_nodes: Array[Array[String]] = trafokreis.island.transformers.map(x =>
+        val flatten_trafo_lv_nodes: Array[String] = trafokreis.island.transformers.flatMap(x =>
         {
             val trafos: Array[TransformerData] = x.transformers
             val nodes = trafos(0).nodes
             for (node <- nodes.tail)
                 yield node.id
         })
-        val flatten_trafo_lv_nodes: Array[String] = trafo_lv_nodes.flatten
-
+        val trafo_hv_nodes: Array[String] = trafokreis.island.transformers.map(x =>
+        {
+            val trafos: Array[TransformerData] = x.transformers
+            trafos(0).node0.id
+        })
 
         // get directed edges hi→lo voltage = Branch from→to
-        val graph_edges: Iterable[Branch] = edges.flatMap(
-            x =>
-            {
-                data.find(y => y.element == x.cn1) match
-                {
-                    case Some(voltage1) =>
-                        data.find(y => y.element == x.cn2) match
-                        {
-                            case Some(voltage2) =>
-                                val v1 = voltage1.value_a.modulus
-                                val v2 = voltage2.value_a.modulus
-                                val voltage_diff = (voltage1.value_a - voltage2.value_a)
-                                x match
-                                {
-                                    case switch: GLMSwitchEdge =>
-                                        makeSwitchBranch(switch, flatten_trafo_lv_nodes, experiment.mrid, v1, v2, voltage_diff)
-                                    case cable: GLMLineEdge =>
-                                        makeCableBranch(cable, v1, v2, voltage_diff)
-                                    case transformer: GLMTransformerEdge =>
-                                        makeTransformerBranch(transformer, v1, v2)
-                                    case _ =>
-                                        log.error(s"unexpected edge type ${x.toString}")
-                                        if (v1 > v2)
-                                            List(SimpleBranch(x.cn1, x.cn2, 0.0, x.id, "", None, ""))
-                                        else
-                                            List(SimpleBranch(x.cn2, x.cn1, 0.0, x.id, "", None, ""))
-                                }
-                            case None =>
-                                List()
-                        }
-                    case None =>
-                        List()
-                }
-            }
-        )
+        val graph_edges: Iterable[Branch] = get_directed_edges(edges, flatten_trafo_lv_nodes, data, experiment.mrid)
 
-        val branches = new ScBranches().reduce_branches(graph_edges, flatten_trafo_lv_nodes, experiment)
+        val branches: Option[Branch] = new ScBranches().reduce_branches(graph_edges, trafo_hv_nodes, experiment.mrid)
 
-
-        // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers
-        // finding the first is not sufficient
-        val twig: Option[Branch] = branches.find(
-            branch =>
-            {
-                val isThreeWindingTrafo = trafo_lv_nodes.filter(_.length > 1)
-                if (isThreeWindingTrafo.nonEmpty)
-                {
-                    if (trafo_lv_nodes.length > 1)
-                    {
-                        // Multiple 3W trafos
-                        log.error(s"meshed 3-windig-trafos detected (not supported) for ${experiment.mrid}")
-                        false
-                    } else
-                    {
-                        // Single 3W trafo
-                        val lvnodes = trafo_lv_nodes.head
-                        ((experiment.mrid == branch.to) && lvnodes.contains(branch.from)) ||
-                            ((experiment.mrid == branch.from) && lvnodes.contains(branch.to))
-                    }
-                } else
-                {
-                    // 2W
-                    val lvnodes_string = flatten_trafo_lv_nodes.toList.sorted.mkString("_")
-                    ((experiment.mrid == branch.to) && (lvnodes_string == branch.from)) ||
-                        ((experiment.mrid == branch.from) && (lvnodes_string == branch.to))
-                }
-            }
-        )
-
-        // compute the impedance from start to end
-        // ToDo: this will need to be revisited for mesh networks where there are multiple supplying transformers
-        val tx = StartingTrafos(0L, 0L, trafokreis.island.transformers(0))
-        val (path, impedance) = twig match
+        branches match
         {
             case Some(branch) =>
-                val _branch = if (experiment.mrid == branch.to) branch else branch.reverse
-                val v = experiment.voltage / _branch.voltageRatio
-                (_branch, tx.lv_impedance(v))
-            case _ =>
-                val b: Branch = if (flatten_trafo_lv_nodes.contains(experiment.mrid))
-                    SimpleBranch(experiment.mrid, experiment.mrid, 0.0, experiment.mrid, "", None, "")
-                else
-                {
-                    val lv = flatten_trafo_lv_nodes.mkString(",")
-                    val trace = branches.map(_.asString).mkString("\n")
-                    log.error(s"complex branch network from $lv to ${experiment.mrid}\n$trace")
-                    // get the total current to the energy consumer
-                    val directs = branches.filter(experiment.mrid == _.to)
-                    val sum = directs.map(_.current).sum
-                    // generate a fake impedance
-                    ComplexBranch(flatten_trafo_lv_nodes.mkString(","), experiment.mrid, sum, branches.toArray)
-                }
-                (b, tx.lv_impedance(experiment.voltage))
+            {
+                val path = if (experiment.mrid == branch.to) branch else branch.reverse
+
+                // compute the impedance from start to end
+                // WIK-1814: "impedanzen_middle_voltage" does not work, when there are meshed networks (multiple trafos) and
+                //   each trafo has its own impedance (Equivalent Injection) from middle voltage
+                val tx = StartingTrafos(0L, 0L, trafokreis.island.transformers(0))
+                val impedanzen_middle_voltage = tx.primary_impedance
+
+                List((experiment.trafo, experiment.mrid, impedanzen_middle_voltage, path))
+            }
+            case None =>
+            {
+                log.error(s"no branches found for ${experiment.mrid}")
+                List()
+            }
         }
-        (experiment.trafo, experiment.mrid, impedance, path)
     }
 
-    private def getImpedanzenFor (line: ACLineSegment, dist_km: Double) =
+    private def get_directed_edges (edges: Iterable[GLMEdge],
+        flatten_trafo_lv_nodes: Array[String],
+        data: Iterable[ThreePhaseComplexDataElement],
+        mrid: String): Iterable[Branch] =
     {
-        val x_per_km = line.x * dist_km
-        val x0_per_km = line.x0 * dist_km
-        Impedanzen(
-            Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r) * dist_km, x_per_km),
-            Complex(resistanceAt(options.low_temperature, options.base_temperature, line.r0) * dist_km, x0_per_km),
-            Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r) * dist_km, x_per_km),
-            Complex(resistanceAt(options.high_temperature, options.base_temperature, line.r0) * dist_km, x0_per_km))
+        edges.flatMap((x: GLMEdge) =>
+        {
+            x match
+            {
+                case switch: GLMSwitchEdge =>
+                    makeSwitchBranch(switch, flatten_trafo_lv_nodes, mrid, data)
+                case cable: GLMLineEdge =>
+                    makeCableBranch(cable, data)
+                case transformer: GLMTransformerEdge =>
+                    makeTransformerBranch(transformer, data, flatten_trafo_lv_nodes)
+                case _ =>
+                    makeUnexpectedBranch(x, data)
+            }
+        })
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def makeCableBranch (cable: GLMLineEdge,v1: Double, v2: Double, voltage_diff: Complex): List[Branch] =
+    def makeCableBranch (cable: GLMLineEdge, data: Iterable[ThreePhaseComplexDataElement]): List[Branch] =
     {
+        val voltages = get_voltages(data, Array(cable.cn1, cable.cn2))
+        val (voltage1, voltage2) = (voltages(0), voltages(1))
+
+        val v1 = voltage1.value_a.modulus
+        val v2 = voltage2.value_a.modulus
+        val voltage_diff = (voltage1.value_a - voltage2.value_a)
+
         // Adjust this threshold according the chosen "default_maximum_voltage_error" in gridlabd
         if (Math.abs(v1 - v2) < 1e-5)
             List()
@@ -435,10 +376,10 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         {
             val line = cable.lines.head
             val dist_km = line.Conductor.len / 1000.0
-            var z = getImpedanzenFor(line, dist_km)
+            var z = getImpedanzenFor(line, dist_km, options)
             for (l <- cable.lines.tail)
             {
-                val z1 = getImpedanzenFor(l, dist_km)
+                val z1 = getImpedanzenFor(l, dist_km, options)
                 z = Impedanzen(
                     z.impedanz_low.parallel_impedanz(z1.impedanz_low),
                     z.null_impedanz_low.parallel_impedanz(z1.null_impedanz_low),
@@ -476,59 +417,158 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
                 None
     }
 
-    private def getSourceAndDestinationFromVoltages = (v1: Double, v2: Double, switch: GLMSwitchEdge) => {
+    private def getSourceAndDestinationFromVoltages (v1: Double, v2: Double, switch: GLMSwitchEdge): Option[(String, String)] =
+    {
         if (v1 > v2)
         {
-            (switch.cn1, switch.cn2)
-        } else if ( v2 > v1)
+            Some((switch.cn1, switch.cn2))
+        } else
+            if (v2 > v1)
+            {
+                Some((switch.cn2, switch.cn1))
+            } else
+            {
+                None
+            }
+    }
+
+    private def get_voltages (data: Iterable[ThreePhaseComplexDataElement], nodes: Array[String]): Array[ThreePhaseComplexDataElement] =
+    {
+        nodes.flatMap(node =>
         {
-            (switch.cn2, switch.cn1)
-        } else {
-            log.warn(s"guessing: (${switch.cn1},${switch.cn2}) for ${switch.id}")
-            (switch.cn2, switch.cn1)
-        }
+            data.find(y => y.element == node) match
+            {
+                case Some(voltage) => List(voltage)
+                case None => List()
+            }
+        })
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
-    def makeSwitchBranch(switch: GLMSwitchEdge,lvnodes: Array[String],mrid: String, v1: Double, v2: Double, voltage_diff: Complex): List[Branch] =
+    def makeSwitchBranch (switch: GLMSwitchEdge, lvnodes: Array[String], mrid: String, data: Iterable[ThreePhaseComplexDataElement]): List[Branch] =
     {
         if (!switch.closed)
             List()
         else
         {
-            val rating = if (switch.fuse) Some(switch.ratedCurrent) else None
-            val name = switch.data.switches.head.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name
-            val stds = switch.data.switches.flatMap(_.standard).toArray.distinct
-            val std = if (0 == stds.length) "" else stds(0) // ToDo: what if parallel switches have different standards?
+            val branches: Iterable[SimpleBranch] = switch.data.switches.map((sub_switch: SwitchDetails) =>
+            {
+                val voltages = get_voltages(data, Array(switch.cn1, switch.cn2))
+                val (voltage1, voltage2) = (voltages(0), voltages(1))
 
-            val current = (voltage_diff / ScNonRadial.switch_default_z.impedanz_low).modulus
+                val v1 = voltage1.value_a.modulus
+                val v2 = voltage2.value_a.modulus
+                val voltage_diff = (voltage1.value_a - voltage2.value_a)
 
-            val (from, to) = getSourceAndDestinationFromLvnodes(lvnodes,switch) match {
-                case Some((from,to)) => (from,to)
-                case None => getSourceAndDestinationFromMrid(mrid, switch) match {
-                    case Some((from, to)) => (from, to)
-                    case None => getSourceAndDestinationFromVoltages(v1, v2, switch)
-                }
+                val rating = if (sub_switch.fuse) Some(sub_switch.ratedCurrent) else None
+                val identifiedObject = sub_switch.asSwitch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject
+                val id = identifiedObject.mRID
+                val name = identifiedObject.name
+                val std = sub_switch.standard.getOrElse("DIN")
+
+                val current = (voltage_diff / ScNonRadial.switch_default_z.impedanz_low).modulus
+
+                val (from, to) = determineSwitchBranchOrientation(switch, lvnodes, mrid, v1, v2)
+                SimpleBranch(from, to, current, id, name, rating, std, ScNonRadial.switch_default_z)
+            })
+            if (branches.size > 1)
+            {
+                val parallel_branch = ParallelBranch(branches.head.from, branches.head.to, branches.head.current, branches.toList)
+                List(parallel_branch)
+            } else
+            {
+                branches.toList
             }
-            List(SimpleBranch(from, to, current, switch.id, name, rating, std, ScNonRadial.switch_default_z))
+
         }
     }
 
-    def makeTransformerBranch (transformer: GLMTransformerEdge, v1: Double, v2: Double): List[Branch] =
+    private def determineSwitchBranchOrientation (switch: GLMSwitchEdge, lvnodes: Array[String], mrid: String, v1: Double, v2: Double): (String, String) =
     {
-        List(
-            TransformerBranch(
-                transformer.cn1,
-                transformer.cn2,
-                0.0,
-                transformer.transformer.transformer_name,
+        getSourceAndDestinationFromVoltages(v1, v2, switch) match
+        {
+            case Some((from, to)) => (from, to)
+            case None => getSourceAndDestinationFromMrid(mrid, switch) match
+            {
+                case Some((from, to)) => (from, to)
+                case None => getSourceAndDestinationFromLvnodes(lvnodes, switch) match
+                {
+                    case Some((from, to)) => (from, to)
+                    case None => (switch.cn2, switch.cn1)
+                }
+            }
+        }
+    }
+
+    def makeTransformerBranch (transformer: GLMTransformerEdge, data: Iterable[ThreePhaseComplexDataElement], lvnodes: Array[String]): List[Branch] =
+    {
+        val transformer_set: TransformerSet = transformer.transformer
+        val power_rating = transformer_set.power_rating
+        val z_per_unit = transformer_set.total_impedance_per_unit._1
+
+        val trafo = transformer_set.transformers.head
+        val hv_pin = transformer_set.node0
+        val high_voltages = get_voltages(data, Array(trafo.node0.id))
+        val high_voltage = high_voltages(0)
+        val node0BaseVoltage = transformer_set.transformers(0).voltages.filter(_._1.equals(trafo.node0.BaseVoltage))(0)._2
+        val v1 = high_voltage.value_a.modulus
+
+        // create Branch for each low voltage node, multi-winding trafos have more than 1 low voltage node
+        val trafo_low_voltage_nodes = trafo.nodes.tail
+        trafo_low_voltage_nodes.map(trafo_end_node =>
+        {
+            val low_voltages = get_voltages(data, Array(trafo_end_node.id))
+            val low_voltage = low_voltages(0)
+            val v_end = low_voltage.value_a.modulus
+            val base_ohms = v_end * v_end / power_rating
+            val z_low_voltage_node: Complex = z_per_unit * base_ohms
+
+            val voltageEndBaseVoltage = transformer_set.transformers(0).voltages.filter(_._1.equals(trafo_end_node.BaseVoltage))(0)._2
+            val upperPinVoltage = high_voltage.value_a / node0BaseVoltage * voltageEndBaseVoltage
+            val voltage_diff = upperPinVoltage - low_voltage.value_a
+            val hvTrafo = lvnodes.contains(trafo_end_node.IdentifiedObject.mRID)
+            val flipTransformerBranchDirection = upperPinVoltage.modulus < low_voltage.value_a.modulus && !hvTrafo
+            val current = (voltage_diff / z_low_voltage_node).modulus
+
+            val trafo_total_impedance: Complex = transformer_set.total_impedance._1
+            val impedanzen = Impedanzen(trafo_total_impedance, trafo_total_impedance, trafo_total_impedance, trafo_total_impedance)
+
+            val transformerBranch = TransformerBranch(
+                hv_pin,
+                trafo_end_node.id,
+                current,
+                transformer_set.transformer_name,
                 transformer.id,
-                transformer.transformer.power_rating,
+                power_rating,
                 v1,
-                v2,
-                transformer.transformer.total_impedance_per_unit._1
+                v_end,
+                z_per_unit,
+                Some(impedanzen)
             )
-        )
+
+            if (flipTransformerBranchDirection)
+            {
+                transformerBranch.reverse
+            } else
+            {
+                transformerBranch
+            }
+        }).toList
+    }
+
+    private def makeUnexpectedBranch (x: GLMEdge, data: Iterable[ThreePhaseComplexDataElement]): List[Branch] =
+    {
+        val voltages = get_voltages(data, Array(x.cn1, x.cn2))
+        val (voltage1, voltage2) = (voltages(0), voltages(1))
+
+        val v1 = voltage1.value_a.modulus
+        val v2 = voltage2.value_a.modulus
+
+        log.error(s"unexpected edge type ${x.toString}")
+        if (v1 > v2)
+            List(SimpleBranch(x.cn1, x.cn2, 0.0, x.id, "", None, ""))
+        else
+            List(SimpleBranch(x.cn2, x.cn1, 0.0, x.id, "", None, ""))
     }
 
 
@@ -636,8 +676,10 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
 
 }
 
-object ScNonRadial {
-    def need_load_flow (error: String): Boolean = {
+object ScNonRadial
+{
+    def need_load_flow (error: String): Boolean =
+    {
         error.startsWith("FATAL: non-radial network detected") ||
             error.startsWith("INVALID: 3 transformer windings") ||
             error.startsWith("INVALID: low voltage")

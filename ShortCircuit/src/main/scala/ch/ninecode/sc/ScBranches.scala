@@ -5,6 +5,9 @@ import scala.util.control.Breaks.break
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.ComplexBranch
+
 class ScBranches
 {
     implicit val log: Logger = LoggerFactory.getLogger(getClass)
@@ -37,8 +40,8 @@ class ScBranches
 
     def reduce_branches (
         graph_edges: Iterable[Branch],
-        lvnodes: Array[String],
-        experiment: ScExperiment): Iterable[Branch] =
+        trafo_hv_nodes: Array[String],
+        mrid: String): Option[Branch] =
     {
         // reduce the tree to (hopefully) one branch spanning from start to end
         var family = graph_edges
@@ -46,12 +49,27 @@ class ScBranches
         do
         {
             count = family.size
-            family = family.filter(no_stubs(family, lvnodes, experiment.mrid))
+            family = family.filter(no_stubs(family, trafo_hv_nodes, mrid))
         }
         while (count != family.size)
 
-        val branches: Iterable[Branch] = reduce(family, lvnodes, experiment.mrid)
-        branches
+        val branches: Iterable[Branch] = reduce(family, trafo_hv_nodes, mrid)
+
+        if (branches.size > 1)
+        {
+            log.debug(s"complex branch network from ${trafo_hv_nodes.mkString(",")} to $mrid")
+            val directs: Iterable[Branch] = branches.filter(b => mrid == b.to || mrid == b.from)
+            val current = directs.map(_.current).sum
+            Option(ComplexBranch(trafo_hv_nodes, mrid, current, branches.toArray))
+        } else {
+            branches.headOption
+        }
+    }
+
+
+    def get_all_nodes (branches: Iterable[Branch]): Set[String] =
+    {
+        branches.map(_.to).toSet ++ branches.map(_.from).toSet
     }
 
     /**
@@ -61,16 +79,11 @@ class ScBranches
      * @param trafo_nodes the list of starting trafo nodes
      * @return the reduced network with one pair of series elements converted to a series branch
      */
-    def reduce_series (network: Iterable[Branch], trafo_nodes: Array[String], mrid: String): (Boolean, Iterable[Branch]) = // (reduced?, network)
+    def reduce_series (network: Iterable[Branch], mrid: String): (Boolean, Iterable[Branch]) = // (reduced?, network)
     {
         def is_reducable: String => Boolean = (node: String) =>
         {
             network.count(_.to == node) == 1 && network.count(_.from == node) == 1
-        }
-
-        def get_all_nodes (branches: Iterable[Branch]) =
-        {
-            branches.map(_.to).toSet ++ branches.map(_.from).toSet
         }
 
         def get_reduced_series (starting_branch: Branch, branches: Iterable[Branch], reducable_nodes: Set[String]): Branch =
@@ -173,17 +186,20 @@ class ScBranches
     {
         // step by step reduce the network to a single branch through series and parallel reductions
         var network = branches
-        var changed = false
+        var networkChanged = false
+        var branchFlipped = false
+        val maxIter = branches.size * 10
+        var iterationStep = 0
         do
         {
-            val series_result = reduce_series(network, trafo_nodes, mrid)
+            val series_result = reduce_series(network, mrid)
             val series_modified = series_result._1
             network = series_result._2
             val parallel_result = reduce_parallel(network, trafo_nodes)
             val parallel_modified = parallel_result._1
             network = parallel_result._2
-            changed = series_modified || parallel_modified
-            if (!changed && network.size > 1)
+            networkChanged = series_modified || parallel_modified
+            if (!networkChanged && network.size > 1)
             {
                 // no changes in last iteration, but still more than 1 branch --> try to reverse fuse branches
                 val branches_with_unclear_direction = network.filter(_.current == 0.0)
@@ -195,12 +211,14 @@ class ScBranches
                     {
                         network = network.filter(_ != branch)
                         network = Seq(branch.reverse) ++ network
-                        changed = true
+                        branchFlipped = true
                     }
                 }
+
             }
+            iterationStep = iterationStep + 1
         }
-        while (changed)
+        while (networkChanged || (branchFlipped && iterationStep < maxIter))
 
         network
     }

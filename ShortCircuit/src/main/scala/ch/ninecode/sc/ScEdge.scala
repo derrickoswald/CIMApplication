@@ -14,6 +14,11 @@ import ch.ninecode.model.ProtectedSwitch
 import ch.ninecode.model.Recloser
 import ch.ninecode.model.Sectionaliser
 import ch.ninecode.model.Switch
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.ParallelBranch
+import ch.ninecode.sc.branch.SeriesBranch
+import ch.ninecode.sc.branch.SimpleBranch
+import ch.ninecode.sc.branch.TransformerBranch
 import ch.ninecode.util.Complex
 import ch.ninecode.util.Graphable
 
@@ -40,7 +45,7 @@ case class ScEdge
     id_equ: String,
     element: Element,
     standard: Option[String],
-    impedance: Impedanzen) extends Graphable with Serializable
+    impedance: Impedanzen) extends Graphable with Serializable with ImpedanceForLine
 {
 
     import ScEdge._
@@ -235,8 +240,7 @@ case class ScEdge
      * @param prev_branch fuse network of the node at one end of the edge
      * @return network of fuses at the other end of the edge
      */
-    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
-    def fusesTo (prev_branch: Branch, prev_node: String): Branch =
+    def fusesTo (prev_branch: Branch, prev_node: String, options: ShortCircuitOptions): Branch =
     {
         val current_edge = element
         // Make sure the previous node is always "from"
@@ -250,34 +254,42 @@ case class ScEdge
         current_edge match
         {
             case fuse: Fuse =>
-                val std = standard.getOrElse("")
-                val next = SimpleBranch(from, to, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some(fuse.Switch.ratedCurrent), std)
-                if (null == prev_branch)
-                    next
+
+                val std_from_rdf = standard.getOrElse("")
+                val std = if (options.fuse_table.Tables.map(_.Standard).contains(std_from_rdf))
+                    std_from_rdf
                 else
-                    prev_branch match
-                    {
-                        case sim: SimpleBranch => SeriesBranch(sim.from, to, 0.0, Seq(prev_branch, next))
-                        case ser: SeriesBranch => SeriesBranch(ser.from, to, 0.0, ser.series ++ Seq(next))
-                        case par: ParallelBranch => SeriesBranch(par.from, to, 0.0, Seq(prev_branch, next))
-                        case _ =>  throw new IllegalArgumentException(s"unknown class for ref (${prev_branch.getClass.toString})")
-                    }
+                    "DIN"
+                val next = SimpleBranch(from, to, 0.0, fuse.id, fuse.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some(fuse.Switch.ratedCurrent), std)
+                add_branch_in_series(prev_branch, next)
             case breaker: Breaker =>
                 val std = standard.getOrElse("")
                 val next = SimpleBranch(from, to, 0.0, breaker.id, breaker.ProtectedSwitch.Switch.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, Some(breaker.ProtectedSwitch.Switch.ratedCurrent), std)
-                if (null == prev_branch)
-                    next
-                else
-                    prev_branch match
-                    {
-                        case sim: SimpleBranch => SeriesBranch(sim.from, to, 0.0, Seq(prev_branch, next))
-                        case ser: SeriesBranch => SeriesBranch(ser.from, to, 0.0, ser.series ++ Seq(next))
-                        case par: ParallelBranch => SeriesBranch(par.from, to, 0.0, Seq(prev_branch, next))
-                        case _ => throw new IllegalArgumentException(s"unknown class for ref (${prev_branch.getClass.toString})")
-                    }
+                add_branch_in_series(prev_branch, next)
+            case line: ACLineSegment =>
+                val dist_km = line.Conductor.len / 1000.0
+                val z = getImpedanzenFor(line, dist_km, options)
+                val next = SimpleBranch(from, to, 0.0, line.id, line.Conductor.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name, None, "", z)
+                add_branch_in_series(prev_branch, next)
             case _ =>
                 prev_branch
         }
+    }
+
+    @SuppressWarnings(Array("org.wartremover.warts.Throw"))
+    def add_branch_in_series (prev_branch: Branch, new_branch: Branch): Branch =
+    {
+        if (null == prev_branch)
+            new_branch
+        else
+            prev_branch match
+            {
+                case sim: SimpleBranch => SeriesBranch(sim.from, new_branch.to, 0.0, Seq(prev_branch, new_branch))
+                case ser: SeriesBranch => SeriesBranch(ser.from, new_branch.to, 0.0, ser.series ++ Seq(new_branch))
+                case par: ParallelBranch => SeriesBranch(par.from, new_branch.to, 0.0, Seq(prev_branch, new_branch))
+                case trafo: TransformerBranch => SeriesBranch(trafo.from, new_branch.to, 0.0, Seq(prev_branch, new_branch))
+                case _ => throw new IllegalArgumentException(s"unknown class for ref (${prev_branch.getClass.toString})")
+            }
     }
 }
 

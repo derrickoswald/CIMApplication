@@ -29,7 +29,8 @@ case class SimulationGLMGenerator (
     one_phase = one_phase,
     temperature = cim_temperature,
     date_format = date_format,
-    swing_voltage_factor = swing_voltage_factor)
+    swing_voltage_factor = swing_voltage_factor,
+    simulation_type = kreis.simulation_type)
 {
 
     override def name: String = kreis.name
@@ -147,7 +148,7 @@ case class SimulationGLMGenerator (
         }
     }
 
-    override def emit_slack (node: GLMNode): String =
+    override def emit_slack (node: GLMNode, suffix:String=""): String =
     {
         node match
         {
@@ -177,7 +178,8 @@ case class SimulationGLMGenerator (
     {
         val name = transformer.transformer.transformer_name
         super.emit_transformer(transformer) +
-            kreis.recorders.filter(_.parent == name).map(emit_recorder).mkString
+            kreis.recorders.filter(_.parent == name).map(emit_recorder).mkString +
+            kreis.players.filter(_.parent == name).map(emit_edge_player).mkString
     }
 
     /**

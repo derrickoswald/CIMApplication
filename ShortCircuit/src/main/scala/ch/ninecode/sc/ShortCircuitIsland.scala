@@ -21,6 +21,7 @@ import ch.ninecode.net.Lines.topological_edge
 import ch.ninecode.net.LoadFlowEdge
 import ch.ninecode.net.LoadFlowNode
 import ch.ninecode.net.SwitchData
+import ch.ninecode.net.Switches
 import ch.ninecode.net.TerminalPlus
 import ch.ninecode.net.TransformerData
 import ch.ninecode.net.TransformerSet
@@ -65,11 +66,12 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
      */
     def transformer_filter (transformer: TransformerData): Boolean =
     {
-        val power_transformer = transformer.transformer.ConductingEquipment.Equipment.PowerSystemResource.IdentifiedObject.name != "Messen_Steuern"
         val power_significant = transformer.ends.forall(_.ratedS > 0.0)
         val voltage_significant = options.calculate_public_lighting || transformer.voltages.tail.exists(_._2 >= 400.0)
-        power_transformer && power_significant && voltage_significant
+        power_significant && voltage_significant
     }
+
+    override lazy val switches: RDD[SwitchData] = Switches(session, storageLevel).getSwitches(Option(options.fuse_table.Tables.map(_.Standard)))
 
     override lazy val transformers: RDD[TransformerSet] = Transformers(session, storageLevel).getTransformers(transformer_filter = transformer_filter) // substation filter
         // legacy naming: TransformerData should be TransformerDetails, TransformerSet should be TransformerData
@@ -149,7 +151,7 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
     override def transformer_maker (rdd: RDD[Iterable[(TransformerSet, (identifier, LoadFlowNode))]]): RDD[(identifier, LoadFlowEdge)] =
     {
         rdd.flatMap(
-            x =>
+            (x: Iterable[(TransformerSet, (identifier, LoadFlowNode))]) =>
             {
                 val unique_identifiers = x.map(_._2._1).toList.distinct
                 unique_identifiers.flatMap(

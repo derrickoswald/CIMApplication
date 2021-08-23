@@ -72,8 +72,12 @@ case class StartingTrafos (osPin: VertexId, nsPin: VertexId, transformer: Transf
         val ratio = v2 / v1
         val ratio2 = ratio * ratio
         val primary = primary_impedance
-        Impedanzen(
-            Complex(trafo_r1, trafo_x1) + (primary.impedanz_low * ratio2), Complex(trafo_r0, trafo_x0) + (primary.null_impedanz_low * ratio2),
-            Complex(trafo_r1, trafo_x1) + (primary.impedanz_high * ratio2), Complex(trafo_r0, trafo_x0) + (primary.null_impedanz_high * ratio2))
+
+        val impedance_low = Complex(trafo_r1, trafo_x1) + (primary.impedanz_low * ratio2)
+        val null_impedance_low = Complex(trafo_r0, trafo_x0) + (primary.null_impedanz_low * ratio2)
+        val impedance_high = Complex(trafo_r1, trafo_x1) + (primary.impedanz_high * ratio2)
+        val null_impedance_high = Complex(trafo_r0, trafo_x0) + (primary.null_impedanz_high * ratio2)
+
+        Impedanzen(impedance_low, null_impedance_low, impedance_high, null_impedance_high)
     }
 }

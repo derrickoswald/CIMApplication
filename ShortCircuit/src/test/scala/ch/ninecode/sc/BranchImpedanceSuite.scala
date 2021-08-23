@@ -1,8 +1,14 @@
 package ch.ninecode.sc
 
 import ch.ninecode.util.Complex
-
 import org.scalatest.funsuite.AnyFunSuite
+
+import ch.ninecode.sc.branch.Branch
+import ch.ninecode.sc.branch.ComplexBranch
+import ch.ninecode.sc.branch.ParallelBranch
+import ch.ninecode.sc.branch.SeriesBranch
+import ch.ninecode.sc.branch.SimpleBranch
+import ch.ninecode.sc.branch.TransformerBranch
 
 class BranchImpedanceSuite extends AnyFunSuite
 {
@@ -228,13 +234,13 @@ class BranchImpedanceSuite extends AnyFunSuite
             )
         )
 
-        val branch = ComplexBranch("PIN26199_topo", "HAS118345_topo", 4.0, branches)
+        val branch = ComplexBranch(Array("PIN26199_topo"), "HAS118345_topo", 4.0, branches)
         // fake z
         val z = Impedanzen(
-            Complex("0.03116704+0.01120796j"),
-            Complex("0.12406259+0.04185622j"),
-            Complex("0.21073073+0.07010604j"),
-            Complex("0.84021245+0.26969719j")
+            Complex("0.02213275+0.00776434j"),
+            Complex("0.08793007+0.02792157j"),
+            Complex("0.02442234+0.00776434j"),
+            Complex("0.09702628+0.02792157j")
         )
         assert(branch.z(Impedanzen()).toString == z.toString)
     }
@@ -250,7 +256,7 @@ class BranchImpedanceSuite extends AnyFunSuite
                         Complex(2.0, 2.0),
                         Complex(1.0, 1.0))),
                     TransformerBranch("b", "c", 0.0, "TX0001", "250kVA", 400000, 1000.0, 400.0,
-                        Complex(1.0, 1.0)),
+                        Complex(1.0, 1.0), None),
                     SimpleBranch("c", "d", 0.0, "KLE789", "", Some(4.0), "", Impedanzen(
                         Complex(2.0, 2.0),
                         Complex(1.0, 1.0),
@@ -275,7 +281,7 @@ class BranchImpedanceSuite extends AnyFunSuite
                         Complex(2.0, 2.0),
                         Complex(1.0, 1.0))
                     ),
-                    TransformerBranch("b", "c", 0.0, "TX0001", "250kVA", 400000, 400.0, 1000.0, Complex(1.0, 1.0)),
+                    TransformerBranch("b", "c", 0.0, "TX0001", "250kVA", 400000, 400.0, 1000.0, Complex(1.0, 1.0), None),
                     SimpleBranch("c", "d", 0.0, "KLE789", "", Some(4.0), "", Impedanzen(
                         Complex(2.0, 2.0),
                         Complex(1.0, 1.0),
