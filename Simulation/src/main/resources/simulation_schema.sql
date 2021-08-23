@@ -1,6 +1,6 @@
 create keyspace if not exists cimapplication with replication = {'class': 'SimpleStrategy', 'replication_factor': 1 };
 
-create or replace function cimapplication.magnitude (real double, imag double)
+create or replace function cimapplication.magnitude(real double, imag double)
     returns null on null input
     returns double
     language java
@@ -11,37 +11,37 @@ create or replace function cimapplication.magnitude_sign(real double, imag doubl
     returns double
     language java
     as $$
-        if (Math.abs(real) > Math.abs(imag))
+        if (Math.abs (real) > Math.abs (imag))
             return (Math.signum (real) * Math.sqrt (real * real + imag * imag));
         else
             return (Math.signum (imag) * Math.sqrt (real * real + imag * imag));
     $$;
 
-create or replace function cimapplication.phase (real double, imag double)
+create or replace function cimapplication.phase(real double, imag double)
     returns null on null input
     returns double
     language java
     as $$ return (Math.atan2 (imag, real)); $$;
 
-create or replace function cimapplication.cosphi (real double, imag double)
+create or replace function cimapplication.cosphi(real double, imag double)
     returns null on null input
     returns double
     language java
-    as $$ return ( Math.cos(Math.atan2(imag, real)) ); $$;
+    as $$ return (Math.cos (Math.atan2 (imag, real))); $$;
 
-create or replace function cimapplication.radians2degrees (radians double)
+create or replace function cimapplication.radians2degrees(radians double)
     returns null on null input
     returns double
     language java
     as $$ return (radians / Math.PI * 180.0); $$;
 
-create or replace function cimapplication.concat (s1 text, s2 text)
+create or replace function cimapplication.concat(s1 text, s2 text)
     returns null on null input
     returns text
     language java
     as $$ return (s1 + s2); $$;
 
-create or replace function cimapplication.standard_deviation_state (state tuple<int,double,double>, val double)
+create or replace function cimapplication.standard_deviation_state(state tuple<int,double,double>, val double)
     called on null input
     returns tuple<int,double,double>
     language java
@@ -51,22 +51,22 @@ create or replace function cimapplication.standard_deviation_state (state tuple<
             ret = null;
         else
         {
-            int n = state.getInt(0);
-            double mean = state.getDouble(1);
-            double m2 = state.getDouble(2);
+            int n = state.getInt (0);
+            double mean = state.getDouble (1);
+            double m2 = state.getDouble (2);
             n++;
             double delta = val - mean;
             mean += delta / n;
             m2 += delta * delta;
-            state.setInt(0, n);
-            state.setDouble(1, mean);
-            state.setDouble(2, m2);
+            state.setInt (0, n);
+            state.setDouble (1, mean);
+            state.setDouble (2, m2);
             ret = state;
         }
         return (ret);
     $$;
 
-create or replace function cimapplication.standard_deviation_final (state tuple<int,double,double>)
+create or replace function cimapplication.standard_deviation_final(state tuple<int,double,double>)
     called on null input
     returns double
     language java
@@ -74,8 +74,8 @@ create or replace function cimapplication.standard_deviation_final (state tuple<
         double ret = 0.0;
         if (null != state)
         {
-            int n = state.getInt(0);
-            double m2 = state.getDouble(2);
+            int n = state.getInt (0);
+            double m2 = state.getDouble (2);
             if (n >= 1)
                 ret = Math.sqrt (m2 / (n - 1));
         }
@@ -88,15 +88,15 @@ create or replace aggregate cimapplication.standard_deviation (double)
     finalfunc standard_deviation_final
     initcond (0, 0.0, 0.0);
 
-create or replace function cimapplication.tick (t timestamp, period int)
+create or replace function cimapplication.tick(t timestamp, period int)
     returns null on null input
     returns int
     language java
     as $$
-        return ((int)((t.getTime () / period) % (24 * 60 * 60 * 1000 / period)));
-$$;
+        return ((int) ((t.getTime () / period) % (24 * 60 * 60 * 1000 / period)));
+    $$;
 
-create or replace function cimapplication.day (t timestamp)
+create or replace function cimapplication.day(t timestamp)
     returns null on null input
     returns int
     language java
@@ -107,7 +107,7 @@ create or replace function cimapplication.day (t timestamp)
         return (c.get (Calendar.DAY_OF_WEEK));
     $$;
 
-create or replace function cimapplication.week (t timestamp)
+create or replace function cimapplication.week(t timestamp)
     returns null on null input
     returns int
     language java
@@ -118,11 +118,12 @@ create or replace function cimapplication.week (t timestamp)
         return (c.get (Calendar.WEEK_OF_YEAR));
     $$;
 
-create table if not exists cimapplication.version (
+create table if not exists cimapplication.version
+(
     program text,
-    build text,
+    build   text,
     version text,
-    time timestamp,
+    time    timestamp,
     primary key ((program), version)
 ) with clustering order by (version asc) and comment = '
 Schema version.
@@ -132,12 +133,14 @@ Schema version.
     time    - schema creation time
 ';
 
-insert into cimapplication.version (program, build, version, time) values ('${artifactId} ${version}', '${buildNumber}', '35', toTimestamp(now())) if not exists;
+insert into cimapplication.version (program, build, version, time)
+values ('${artifactId} ${version}', '${buildNumber}', '35', toTimestamp(now())) if not exists;
 
-create table if not exists cimapplication.measured_value (
-    mrid text,
-    type text,
-    time timestamp,
+create table if not exists cimapplication.measured_value
+(
+    mrid   text,
+    type   text,
+    time   timestamp,
     period int,
     real_a double,
     imag_a double,
@@ -145,7 +148,7 @@ create table if not exists cimapplication.measured_value (
     imag_b double,
     real_c double,
     imag_c double,
-    units text static,
+    units  text static,
     primary key ((mrid, type), time)
 ) with clustering order by (time asc) and comment = '
 Measurement values.
@@ -163,17 +166,18 @@ These are typically smart meter readings, or transformer values from a SCADA sys
     units  - the units for the measurement
 ';
 
-create table if not exists cimapplication.measured_value_stats (
-    mrid text,
-    type text,
-    start timestamp,
-    end timestamp,
-    count int,
+create table if not exists cimapplication.measured_value_stats
+(
+    mrid    text,
+    type    text,
+    start   timestamp,
+    end     timestamp,
+    count   int,
     missing int,
     minimum double,
     average double,
     maximum double,
-    stddev double,
+    stddev  double,
     primary key ((mrid, type), start)
 ) with clustering order by (start asc) and comment = '
 Measurement value statistics.
@@ -190,11 +194,12 @@ Statistical properties of measurement_value table aggregated by mrid and type.
     stddev  - the standard deviation of the non-zero measurement values
 ';
 
-create table if not exists cimapplication.measured_value_meta (
-    mrid text,
+create table if not exists cimapplication.measured_value_meta
+(
+    mrid    text,
     classes frozen<map<text,int>>,
-    lon double,
-    lat double,
+    lon     double,
+    lat     double,
     primary key (mrid)
 ) with comment = '
 Measurement value metadata.
@@ -205,19 +210,20 @@ Auxiliary properties of measurement_value table entries.
     lat     - the latitude of the location (°)
 ';
 
-create table if not exists cimapplication.simulated_value (
+create table if not exists cimapplication.simulated_value
+(
     simulation text,
-    mrid text,
-    type text,
-    period int,
-    time timestamp,
-    real_a double,
-    imag_a double,
-    real_b double,
-    imag_b double,
-    real_c double,
-    imag_c double,
-    units text,
+    mrid       text,
+    type       text,
+    period     int,
+    time       timestamp,
+    real_a     double,
+    imag_a     double,
+    real_b     double,
+    imag_b     double,
+    real_c     double,
+    imag_c     double,
+    units      text,
     primary key ((simulation, mrid, type, period), time)
 ) with clustering order by (time asc) and comment = '
 Simulation results.
@@ -236,20 +242,21 @@ These are values obtained from load-flow simulations or other analysis software.
     units  - the units for the simulated value
 ';
 
-create table if not exists cimapplication.synthesized_value (
+create table if not exists cimapplication.synthesized_value
+(
     synthesis text,
-    type text,
-    period int,
-    time timestamp,
-    real_a double,
-    imag_a double,
-    real_b double,
-    imag_b double,
-    real_c double,
-    imag_c double,
-    units text,
+    type      text,
+    period    int,
+    time      timestamp,
+    real_a    double,
+    imag_a    double,
+    real_b    double,
+    imag_b    double,
+    real_c    double,
+    imag_c    double,
+    units     text,
     primary key ((synthesis, type, period), time)
-    ) with clustering order by (time asc) and comment = '
+) with clustering order by (time asc) and comment = '
 Synthesized values.
 These are synthesized values from synthetic load-profile software or machine learning algorithms generalizing real data.
     synthesis - the synthetic data set name
@@ -265,15 +272,16 @@ These are synthesized values from synthetic load-profile software or machine lea
     units  - the units for the synthesized value
 ';
 
-create table if not exists cimapplication.simulation_event (
+create table if not exists cimapplication.simulation_event
+(
     simulation text,
-    mrid text,
-    type text,
+    mrid       text,
+    type       text,
     start_time timestamp,
-    end_time timestamp,
-    ratio double,
-    severity int,
-    message text,
+    end_time   timestamp,
+    ratio      double,
+    severity   int,
+    message    text,
     primary key ((simulation, mrid, type), start_time)
 ) with clustering order by (start_time asc) and comment = '
 Simulation events.
@@ -290,16 +298,17 @@ These are events of interest from a post-analysis of the simulated values.
 
 create type if not exists cimapplication.event_number (orange int, red int);
 
-create table if not exists cimapplication.simulation_event_summary (
-    simulation text,
-    mrid text,
-    day date,
-    consumer_total frozen<cimapplication.event_number>,
+create table if not exists cimapplication.simulation_event_summary
+(
+    simulation         text,
+    mrid               text,
+    day                date,
+    consumer_total     frozen<cimapplication.event_number>,
     linesegments_total frozen<cimapplication.event_number>,
-    transformer_total frozen<cimapplication.event_number>,
-    consumer map<text, frozen <cimapplication.event_number>>,
-    linesegments map<text, frozen <cimapplication.event_number>>,
-    transformer map<text, frozen <cimapplication.event_number>>,
+    transformer_total  frozen<cimapplication.event_number>,
+    consumer           map<text, frozen<cimapplication.event_number>>,
+    linesegments       map<text, frozen<cimapplication.event_number>>,
+    transformer        map<text, frozen<cimapplication.event_number>>,
     primary key (simulation, mrid, day)
 ) with clustering order by (mrid asc, day asc) and comment = '
 Summary of simulation events.
@@ -315,23 +324,24 @@ This is the global events of interest from a post-analysis of the simulated valu
     transformer        - the mRID of PowerTransformer with power events and the count of events for each severity
 ';
 
-create table if not exists cimapplication.simulation (
-    id text,
-    run int,
-    name text,
-    description text,
-    cim text,
-    cimreaderoptions map<text,text>,
-    run_time timestamp,
-    start_time timestamp,
-    end_time timestamp,
-    cim_temperature double,
+create table if not exists cimapplication.simulation
+(
+    id                     text,
+    run                    int,
+    name                   text,
+    description            text,
+    cim                    text,
+    cimreaderoptions       map<text,text>,
+    run_time               timestamp,
+    start_time             timestamp,
+    end_time               timestamp,
+    cim_temperature        double,
     simulation_temperature double,
-    swing text,
-    swing_voltage_factor double,
-    input_keyspace text,
-    output_keyspace text,
-    transformers list<text>,
+    swing                  text,
+    swing_voltage_factor   double,
+    input_keyspace         text,
+    output_keyspace        text,
+    transformers           list<text>,
     primary key ((id), run)
 ) with comment = '
 Details about a simulation execution.
@@ -354,13 +364,14 @@ Describes each run of the Simulate code.
     transformers - the list of PowerTransformer mRID used to determine topological islands, an empty list indicates all
 ';
 
-create table if not exists cimapplication.simulation_player (
-    simulation text,
+create table if not exists cimapplication.simulation_player
+(
+    simulation  text,
     transformer text,
-    name text,
-    mrid text,
-    type text,
-    property text,
+    name        text,
+    mrid        text,
+    type        text,
+    property    text,
     primary key (simulation, transformer, name)
 ) with comment = '
 Details about GridLAB-D players in the simulation.
@@ -374,15 +385,16 @@ Describes each player used in the simulation.
 Note: not included here are the player file name, the SQL that generated this player, and the start and end times
 ';
 
-create table if not exists cimapplication.simulation_recorder (
-    simulation text,
-    transformer text,
-    name text,
-    mrid text,
-    type text,
-    property text,
-    unit text,
-    interval int,
+create table if not exists cimapplication.simulation_recorder
+(
+    simulation   text,
+    transformer  text,
+    name         text,
+    mrid         text,
+    type         text,
+    property     text,
+    unit         text,
+    interval     int,
     aggregations map<int,int>,
     primary key (simulation, transformer, name)
 ) with comment = '
@@ -402,19 +414,20 @@ Note: not included here are the recorder parent or file name.
 
 create type if not exists cimapplication.point_data (type text, coordinates list<double>);
 
-create type if not exists cimapplication.line_data (type text, coordinates list<frozen <list<double>>>);
+create type if not exists cimapplication.line_data (type text, coordinates list<frozen<list<double>>>);
 
-create type if not exists cimapplication.polygon_data (type text, coordinates list<frozen <list<frozen <list<double>>>>>);
+create type if not exists cimapplication.polygon_data (type text, coordinates list<frozen<list<frozen<list<double>>>>>);
 
-create table if not exists cimapplication.geojson_points (
-    simulation text,
+create table if not exists cimapplication.geojson_points
+(
+    simulation        text,
     coordinate_system text,
-    mrid text,
-    transformer text,
-    type text,
-    geometry frozen<cimapplication.point_data>,
-    properties frozen<map<text,text>>,
-    primary key ((simulation, coordinate_system), mrid)
+    mrid              text,
+    transformer       text,
+    type              text,
+    geometry          frozen<cimapplication.point_data>,
+    properties        frozen<map<text,text>>,
+    primary key ((simulation, coordinate_system), transformer, mrid)
 ) with comment = '
 GeoJSON for simulated point elements.
 Describes each point object in the simulation, excluding transformers.
@@ -427,15 +440,16 @@ Describes each point object in the simulation, excluding transformers.
     properties        - the attributes for this element from the extra queries
 ';
 
-create table if not exists cimapplication.geojson_lines (
-    simulation text,
+create table if not exists cimapplication.geojson_lines
+(
+    simulation        text,
     coordinate_system text,
-    mrid text,
-    transformer text,
-    type text,
-    geometry frozen<cimapplication.line_data>,
-    properties frozen<map<text,text>>,
-    primary key ((simulation, coordinate_system), mrid)
+    mrid              text,
+    transformer       text,
+    type              text,
+    geometry          frozen<cimapplication.line_data>,
+    properties        frozen<map<text,text>>,
+    primary key ((simulation, coordinate_system), transformer, mrid)
 ) with comment = '
 GeoJSON for simulated line elements.
 Describes each linear object in the simulation.
@@ -448,13 +462,14 @@ Describes each linear object in the simulation.
     properties        - the attributes for this element from the extra queries
 ';
 
-create table if not exists cimapplication.geojson_polygons (
-    simulation text,
+create table if not exists cimapplication.geojson_polygons
+(
+    simulation        text,
     coordinate_system text,
-    mrid text,
-    type text,
-    geometry frozen<cimapplication.polygon_data>,
-    properties frozen<map<text,text>>,
+    mrid              text,
+    type              text,
+    geometry          frozen<cimapplication.polygon_data>,
+    properties        frozen<map<text,text>>,
     primary key ((simulation, coordinate_system), mrid)
 ) with comment = '
 GeoJSON for simulated polygon elements.
@@ -467,14 +482,15 @@ Describes each polygonal object in the simulation.
     properties        - the attributes for this element from the extra queries
 ';
 
-create table if not exists cimapplication.geojson_transformers (
-    simulation text,
+create table if not exists cimapplication.geojson_transformers
+(
+    simulation        text,
     coordinate_system text,
-    mrid text,
-    transformers set<text>,
-    type text,
-    geometry frozen<cimapplication.point_data>,
-    properties frozen<map<text,text>>,
+    mrid              text,
+    transformers      set<text>,
+    type              text,
+    geometry          frozen<cimapplication.point_data>,
+    properties        frozen<map<text,text>>,
     primary key ((simulation, coordinate_system), mrid)
 ) with comment = '
 GeoJSON for transformers.
@@ -488,16 +504,17 @@ Describes each transformer (set) in the simulation.
     properties        - the attributes for this transformer (set) from the extra queries
 ';
 
-create table if not exists cimapplication.geojson_stations (
-    simulation text,
+create table if not exists cimapplication.geojson_stations
+(
+    simulation        text,
     coordinate_system text,
-    transformer text,
-    mrid text,
-    type text,
-    geometry frozen<cimapplication.polygon_data>,
-    properties frozen<map<text,text>>,
-    primary key ((simulation, coordinate_system), mrid, transformer)
-    ) with comment = '
+    transformer       text,
+    mrid              text,
+    type              text,
+    geometry          frozen<cimapplication.polygon_data>,
+    properties        frozen<map<text,text>>,
+    primary key ((simulation, coordinate_system), transformer, mrid)
+) with comment = '
 GeoJSON for stations.
 Describes each station polygonal object in the simulation.
     simulation        - the simulation run identifier, UUID
@@ -509,11 +526,12 @@ Describes each station polygonal object in the simulation.
     properties        - the attributes for this station from the extra queries
 ';
 
-create table if not exists cimapplication.key_value (
+create table if not exists cimapplication.key_value
+(
     simulation text,
-    query text,
-    key text,
-    value text,
+    query      text,
+    key        text,
+    value      text,
     primary key (simulation, query, key)
 ) with comment = '
 Key-value pairs for extra data.
@@ -524,16 +542,18 @@ Extra query results.
     value      - the value as returned by the query
 ';
 
-create table if not exists cimapplication.load_factor_by_day (
-   mrid text,
-   type text,
-   date date,
-   avg_power double,
-   peak_power double,
-   load_factor double,
-   units text,
-   simulation text,
-   primary key ((mrid, type), date)
+
+create table if not exists cimapplication.load_factor_by_day
+(
+    mrid        text,
+    type        text,
+    date        date,
+    avg_power   double,
+    peak_power  double,
+    load_factor double,
+    units       text,
+    simulation  text,
+    primary key ((mrid, type), date)
 ) with clustering order by (date asc) and comment = '
 Load factor
 Transformer load divided by daily peak load.
@@ -547,16 +567,17 @@ Transformer load divided by daily peak load.
     simulation  - the simulation run identifier, UUID
 ';
 
-create table if not exists cimapplication.coincidence_factor_by_day (
-   mrid text,
-   type text,
-   date date,
-   peak_power double,
-   sum_power double,
-   coincidence_factor double,
-   units text,
-   simulation text,
-   primary key ((mrid, type), date)
+create table if not exists cimapplication.coincidence_factor_by_day
+(
+    mrid               text,
+    type               text,
+    date               date,
+    peak_power         double,
+    sum_power          double,
+    coincidence_factor double,
+    units              text,
+    simulation         text,
+    primary key ((mrid, type), date)
 ) with clustering order by (date asc) and comment = '
 Coincidence factor
 Transformer peak power divided by the sum of the peak powers of all connected elements.
@@ -570,18 +591,19 @@ Transformer peak power divided by the sum of the peak powers of all connected el
     simulation  - the simulation run identifier, UUID
 ';
 
-create table if not exists cimapplication.responsibility_by_day (
-   mrid text,
-   type text,
-   date date,
-   time timestamp,
-   transformer text,
-   power double,
-   peak double,
-   responsibility double,
-   units text,
-   simulation text,
-   primary key ((mrid, type), date)
+create table if not exists cimapplication.responsibility_by_day
+(
+    mrid           text,
+    type           text,
+    date           date,
+    time           timestamp,
+    transformer    text,
+    power          double,
+    peak           double,
+    responsibility double,
+    units          text,
+    simulation     text,
+    primary key ((mrid, type), date)
 ) with clustering order by (date asc) and comment = '
 Responsibility
 Individual element contributions to the peak power of a transformer per day.
