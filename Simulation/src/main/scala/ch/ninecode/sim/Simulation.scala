@@ -16,6 +16,7 @@ import com.datastax.spark.connector.writer.WriteConf
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -420,11 +421,12 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         results
     }
 
-    def createSimulationTasks (house_trafo_mapping: Map[Trafo, House], job: SimulationJob): RDD[SimulationTrafoKreis] =
+    def createSimulationTasks (
+        house_trafo_mapping: Map[Trafo, House],
+        job: SimulationJob,
+        tasks: RDD[SimulationTask]): RDD[SimulationTrafoKreis] =
     {
         val (transformers, _) = getTransformers
-        val tasks = make_tasks(job)
-
         job.save(session, job.output_keyspace, job.id, tasks)
 
         log.info("""matching tasks to topological islands""")
@@ -699,10 +701,10 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
             val house_trafo_mapping: Map[Trafo, House] = inputReader.read_house_trafo_csv(job.house_trafo_mappings)
 
             // perform the extra queries and insert into the key_value table
-            log.info(s"executing ${job.extras.length} extra queries")
-            job.extras.foreach(_.executeQuery(job, session))
+            val key_values_df: DataFrame = performExtraQueries(job)
 
-            var simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(house_trafo_mapping, job)
+            val tasks: RDD[SimulationTask] = make_tasks(job)
+            var simulations: RDD[SimulationTrafoKreis] = createSimulationTasks(house_trafo_mapping, job, tasks)
 
             if (!simulations.isEmpty())
             {
@@ -734,7 +736,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 saveSimulationResults(job, simulationResults)
 
                 // Run postprocessing
-                if (!options.simulationonly) {
+                if (!options.simulationonly)
+                {
                     implicit val access = new SimulationRDDAccess(
                         spark,
                         options.cim_options.storage,
@@ -744,7 +747,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                         options.verbose,
                         simulationResults,
                         tasks,
-                        key_values
+                        key_values_df
                     )
                     job.postprocessors.foreach(
                         processor =>
@@ -761,7 +764,23 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         job.id
     }
 
+    private def performExtraQueries (job: SimulationJob) =
+    {
+        log.info(s"executing ${job.extras.length} extra queries")
+        val key_value_seq: Seq[RDD[(String, String, String, String)]] = job.extras.map(_.executeQuery(job, session))
+        val key_values = session.sparkContext.union(key_value_seq)
+        import spark.implicits._
+        val key_values_df = key_values.map(k => (k._2, k._3, k._4)).toDF("query", "mrid", "value")
+        key_values_df
+    }
 
+    private def saveSimulationResults (job: SimulationJob, simulationResults: RDD[SimulationResult]): Unit =
+    {
+        log.info("""saving GridLAB-D simulation results""")
+        val conf = WriteConf.fromSparkConf(spark.sparkContext.getConf).copy(ttl = TTLOption.perRow("ttl"), consistencyLevel = ConsistencyLevel.ANY)
+        simulationResults.saveToCassandra(job.output_keyspace, "simulated_value", writeConf = conf)
+        log.info("""saved GridLAB-D simulation results""")
+    }
 
     def postprocess_only (jobs: Seq[SimulationJob]): Seq[String] =
     {
@@ -811,7 +830,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
     }
 
-    private def getSimulationIds(keyspaces: Seq[String]) =
+    private def getSimulationIds (keyspaces: Seq[String]) =
     {
         keyspaces.flatMap(
             keyspace =>
@@ -907,8 +926,10 @@ object Simulation extends CIMInitializer[SimulationOptions] with Main
     def run (options: SimulationOptions): Unit =
     {
         if (options.verbose)
+        {
             LogManager.getLogger(getClass).setLevel(Level.INFO)
             LogManager.getLogger("ch.ninecode.sim.SimulationInputReader").setLevel(Level.INFO)
+        }
         if (options.main_options.valid)
         {
             if (options.simulation.nonEmpty)

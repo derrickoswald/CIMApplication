@@ -1,7 +1,8 @@
 package ch.ninecode.sim
 
-import com.datastax.spark.connector._
 import com.datastax.spark.connector.SomeColumns
+import com.datastax.spark.connector._
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.SparkSession
 import org.slf4j.Logger
@@ -25,9 +26,10 @@ case class SimulationExtraQuery
 {
     implicit val log: Logger = LoggerFactory.getLogger(getClass)
 
-    def executeQuery (job: SimulationJob, session: SparkSession): Unit =
+    def executeQuery (job: SimulationJob, session: SparkSession): RDD[(String, String, String, String)] =
     {
         log.debug(s"""executing "${title}" as ${query}""")
+        var key_value: RDD[(String, String, String, String)] = session.sparkContext.emptyRDD[(String, String, String, String)]
         val df: DataFrame = session.sql(query).persist()
         if (df.count > 0)
         {
@@ -43,12 +45,16 @@ case class SimulationExtraQuery
                 if ((keytype != "string") || (valuetype != "string"))
                     log.error(s"""extra query "${title}" schema fields key and value are not both strings (key=$keytype, value=$valuetype)""")
                 else
-                    df.rdd.map(row => (job.id, title, row.getString(keyindex), row.getString(valueindex))).saveToCassandra(job.output_keyspace, "key_value", SomeColumns("simulation", "query", "key", "value"))
+                {
+                    key_value = df.rdd.map(row => (job.id, title, row.getString(keyindex), row.getString(valueindex)))
+                }
+                key_value.saveToCassandra(job.output_keyspace, "key_value", SomeColumns("simulation", "query", "key", "value"))
             }
         }
         else
             log.warn(s"""extra query "${title}" returned no rows""")
         val _ = df.unpersist(false)
+        key_value
     }
 }
 
