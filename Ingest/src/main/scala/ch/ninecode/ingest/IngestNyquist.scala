@@ -17,6 +17,8 @@ import org.apache.spark.sql.SparkSession
 
 case class IngestNyquist (session: SparkSession, options: IngestOptions) extends IngestProcessor
 {
+    private val NYQUIST_TIMEZONE = "GMT+1"
+
     if (options.verbose) LogManager.getLogger(getClass).setLevel(Level.INFO)
     implicit val spark: SparkSession = session
 
@@ -40,7 +42,7 @@ case class IngestNyquist (session: SparkSession, options: IngestOptions) extends
     def sub_nyquist (filename: String, join_table: Map[String, String], job: IngestJob): Unit =
     {
         val lines: RDD[String] = session.sparkContext.textFile(filename)
-        val measurementTimeZone: TimeZone = TimeZone.getTimeZone(job.timezone)
+        val measurementTimeZone: TimeZone = TimeZone.getTimeZone(NYQUIST_TIMEZONE)
         val measurementCalendar: Calendar = Calendar.getInstance()
         measurementCalendar.setTimeZone(measurementTimeZone)
         val nyquistDateTimeFormat: SimpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm")
