@@ -688,6 +688,22 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         })
     }
 
+    def shiftPlayerRDD (all_players: RDD[(Trafo, PlayerData)]): RDD[(Trafo, PlayerData)] =
+    {
+        all_players.map(playerData => {
+            val trafo = playerData._1
+            val player = playerData._2.map(playerRecords => {
+                // Iterable[(House, Iterable[SimulationPlayerData])]
+                val house = playerRecords._1
+                val entries = playerRecords._2.map((simPlayerData: SimulationPlayerData) => {
+                    simPlayerData.copy(time = simPlayerData.time - simPlayerData.period)
+                })
+                (house, entries)
+            })
+            (trafo,player)
+        })
+    }
+
     def simulateJob (job: SimulationJob): String =
     {
         log.info(s"starting simulation ${job.id}")
@@ -719,15 +735,16 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                 if (include_voltage)
                 {
                     player_rdd = filterOutVoltagePlayerData(all_players)
+                    val shifted_player_rdd = shiftPlayerRDD(player_rdd)
                     val mapping = session.sparkContext.parallelize(house_trafo_mapping.toSeq)
                     val simulations_with_mapping: RDD[SimulationTrafoKreis] = simulations.keyBy(_.name).join(mapping).values.map(_._1)
 
-                    val trafo_power_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_power(job, simulations_with_mapping, player_rdd)
+                    val trafo_power_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_power(job, simulations_with_mapping, shifted_player_rdd)
                     val hak_voltage_players_rdd: RDD[(Trafo, PlayerData)] = queryHakVoltageValue(all_players, house_trafo_mapping)
                     val all_player_data = trafo_power_players_rdd.union(hak_voltage_players_rdd).reduceByKey(_ ++ _)
                     val trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_voltage(job, simulations_with_mapping, all_player_data)
 
-                    player_rdd = extendPlayersRDDWithTrafoVoltage(player_rdd, trafo_voltage_players_rdd)
+                    player_rdd = extendPlayersRDDWithTrafoVoltage(shifted_player_rdd, trafo_voltage_players_rdd)
                     simulations = simulations.map(extendSimulationWithVoltage(job))
                 }
 
