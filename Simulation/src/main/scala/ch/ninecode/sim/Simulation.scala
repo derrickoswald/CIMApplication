@@ -740,7 +740,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
                     val simulations_with_mapping: RDD[SimulationTrafoKreis] = simulations.keyBy(_.name).join(mapping).values.map(_._1)
 
                     val trafo_power_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_power(job, simulations_with_mapping, shifted_player_rdd)
-                    val hak_voltage_players_rdd: RDD[(Trafo, PlayerData)] = shiftPlayerRDD(queryHakVoltageValue(all_players, house_trafo_mapping))
+                    val hak_voltage_players_rdd: RDD[(Trafo, PlayerData)] = queryHakVoltageValue(all_players, house_trafo_mapping)
                     val all_player_data = trafo_power_players_rdd.union(hak_voltage_players_rdd).reduceByKey(_ ++ _)
                     val trafo_voltage_players_rdd: RDD[(Trafo, PlayerData)] = simulate_trafo_voltage(job, simulations_with_mapping, all_player_data)
 
