@@ -23,7 +23,7 @@
     </scm>
 
     <properties>
-        <version.dependency.log4j>2.12.1</version.dependency.log4j>
+        <version.dependency.log4j>2.15.0</version.dependency.log4j>
     </properties>
 
     <dependencies>
