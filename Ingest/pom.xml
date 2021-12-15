@@ -22,7 +22,7 @@
     </scm>
 
     <properties>
-        <version.dependency.log4j>2.15.0</version.dependency.log4j>
+        <version.dependency.log4j>2.16.0</version.dependency.log4j>
         <version.dependency.commons-lang3>3.10</version.dependency.commons-lang3>
         <version.dependency.aws-java-sdk>1.11.893</version.dependency.aws-java-sdk>
         <version.dependency.jackson>2.10.4</version.dependency.jackson>
