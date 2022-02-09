@@ -25,7 +25,7 @@
     <properties>
         <version.dependency.log4j>2.16.0</version.dependency.log4j>
         <version.dependency.aws-java-sdk>1.11.893</version.dependency.aws-java-sdk>
-        <version.dependency.hadoop>3.2.0</version.dependency.hadoop>
+        <version.dependency.hadoop>3.2.2</version.dependency.hadoop>
     </properties>
 
     <dependencies>
