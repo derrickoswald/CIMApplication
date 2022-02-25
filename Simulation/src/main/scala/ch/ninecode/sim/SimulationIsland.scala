@@ -54,7 +54,7 @@ class SimulationIsland (spark: SparkSession, storage_level: StorageLevel)
 
     def getOne (terminals: Iterable[TerminalPlus]): TerminalPlus =
     {
-        val sorted = terminals.toArray.sortBy(_.element.id)
+        val sorted = terminals.toArray.sortBy(_.element.getClass.toString)
         sorted(0)
     }
 
