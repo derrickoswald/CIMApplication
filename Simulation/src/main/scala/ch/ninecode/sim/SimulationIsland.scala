@@ -11,6 +11,7 @@ import ch.ninecode.gl.GLMSwitchEdge
 import ch.ninecode.gl.GLMTransformerEdge
 import ch.ninecode.model.DiagramObject
 import ch.ninecode.model.DiagramObjectPoint
+import ch.ninecode.model.EnergyConsumer
 import ch.ninecode.model.PositionPoint
 import ch.ninecode.model.PowerSystemResource
 import ch.ninecode.net.Island
@@ -54,8 +55,13 @@ class SimulationIsland (spark: SparkSession, storage_level: StorageLevel)
 
     def getOne (terminals: Iterable[TerminalPlus]): TerminalPlus =
     {
-        val sorted = terminals.toArray.sortBy(_.element.getClass.toString)
-        sorted(0)
+        val filtered_terminal = terminals.toArray.filter(t => t.element.isInstanceOf[EnergyConsumer])
+        if (filtered_terminal.length >= 1) {
+            filtered_terminal(0)
+        } else {
+            val sorted = terminals.toArray.sortBy(_.element.id)
+            sorted(0)
+        }
     }
 
     override def node_maker (rdd: RDD[Iterable[TerminalPlus]]): RDD[(identifier, LoadFlowNode)] =
