@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory
 object Formats extends Enumeration
 {
     type Formats = Value
-    val Belvis, LPEx, MSCONS, Custom, Parquet, Nyquist = Value
+    val Belvis, BelvisPlus, LPEx, MSCONS, Custom, Parquet, Nyquist = Value
 }
 
 object Modes extends Enumeration

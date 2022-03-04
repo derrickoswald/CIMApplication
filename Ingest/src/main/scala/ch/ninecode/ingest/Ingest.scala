@@ -79,6 +79,7 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
                     val processor: IngestProcessor = job.format.toString match
                     {
                         case "Belvis" => IngestBelvis(session, options)
+                        case "BelvisPlus" => IngestBelvisPlus(session, options)
                         case "LPEx" => IngestLPEx(session, options)
                         case "MSCONS" => IngestMSCONS(session, options)
                         case "Custom" => IngestCustom(session, options)
