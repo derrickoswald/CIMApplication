@@ -24,11 +24,14 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
      *
      * @param line one line from the BelVis file
      */
-    def parse_belvis_plus_line (join_table: Map[String, String], job: IngestJob, measurementDateTimeFormat: SimpleDateFormat, headerInfos: (Mrid, Units, String))
+    def parse_belvis_plus_line (
+        join_table: Map[String, String],
+        measurementDateTimeFormat: SimpleDateFormat,
+        headerInfos: (Mrid, Units, String))
         (line: String): Seq[MeasuredValue] =
     {
         val ONE_MINUTE_IN_MILLIS = 60000
-        val mrid = headerInfos._1
+        val chNr = headerInfos._1
         val (typ, real, imag, units, factor) = decode_obis(headerInfos._3, headerInfos._2, "1.0")
 
         val fields = line.split(";")
@@ -37,7 +40,7 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
         {
 
             val value = fields(1)
-            join_table.get(mrid) match
+            join_table.get(chNr) match
             {
                 case Some(mrid) =>
                     val time = measurementDateTimeFormat.parse(fields(0)).getTime
@@ -70,14 +73,13 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
         val measurementDateTimeFormat: SimpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm")
         measurementDateTimeFormat.setCalendar(measurementCalendar)
 
-        // it's almost a CSV file
-        // for daylight savings time changes, not all lines have the same number of columns
         val lines = session.sparkContext.textFile(filename)
         val headers = lines.take(NR_HEADER_LINES)
         val headerLines = session.sparkContext.parallelize(headers)
         val dataLines = lines.subtract(headerLines)
         val headerInfos = parseHeaderLines(headers)
-        val rdd: RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)] = dataLines.flatMap(parse_belvis_plus_line(join_table, job, measurementDateTimeFormat, headerInfos))
+        val rdd: RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)] =
+            dataLines.flatMap(parse_belvis_plus_line(join_table, measurementDateTimeFormat, headerInfos))
         // combine real and imaginary parts
         if (job.mode == Modes.Append)
         {
@@ -86,15 +88,18 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
                 ReadConf
                     .fromSparkConf(session.sparkContext.getConf)
                     .copy(splitCount = Some(executors))
-            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value")
+                .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
             val unioned = rdd.union(df)
             val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
-            grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            grouped.saveToCassandra(job.keyspace, "measured_value",
+                SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
         else
         {
             val grouped = rdd.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
-            grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+            grouped.saveToCassandra(job.keyspace, "measured_value",
+                SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
         }
     }
 
