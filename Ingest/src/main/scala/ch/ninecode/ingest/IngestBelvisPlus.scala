@@ -65,7 +65,12 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
         (chNr, unit, obis)
     }
 
-    def sub_belvis_plus (filename: String, join_table: Map[String, String], job: IngestJob): Unit =
+    def sub_belvis_plus
+    (
+        filename: String,
+        join_table: Map[String, String],
+        job: IngestJob
+    ): RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)] =
     {
         val measurementTimeZone: TimeZone = TimeZone.getTimeZone(job.timezone)
         val measurementCalendar: Calendar = Calendar.getInstance()
@@ -80,40 +85,41 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
         val headerInfos = parseHeaderLines(headers)
         val rdd: RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)] =
             dataLines.flatMap(parse_belvis_plus_line(join_table, measurementDateTimeFormat, headerInfos))
-        // combine real and imaginary parts
-        if (job.mode == Modes.Append)
-        {
-            val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
-            implicit val configuration: ReadConf =
-                ReadConf
-                    .fromSparkConf(session.sparkContext.getConf)
-                    .copy(splitCount = Some(executors))
-            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value")
-                .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-            val unioned = rdd.union(df)
-            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
-            grouped.saveToCassandra(job.keyspace, "measured_value",
-                SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-        }
-        else
-        {
-            val grouped = rdd.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
-            grouped.saveToCassandra(job.keyspace, "measured_value",
-                SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-        }
+        rdd.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
     }
 
+    @SuppressWarnings(Array("org.wartremover.warts.All"))
     def process (filename: String, job: IngestJob): Unit =
     {
         val join_table = loadCsvMapping(session, filename, job)
-        job.datafiles.foreach(
-            file =>
-                for (filename <- getFiles(job, options.workdir)(file))
-                    time(s"process $filename: %s seconds")
-                    {
-                        sub_belvis_plus(filename, join_table, job)
-                        cleanUp(job, filename)
-                    }
-        )
+        val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+        implicit val configuration: ReadConf =
+            ReadConf
+                .fromSparkConf(session.sparkContext.getConf)
+                .copy(splitCount = Some(executors))
+        val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value")
+            .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+        val existingData: RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)] = df
+
+        val dataframes: Seq[RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)]] = job.datafiles.flatMap((file) =>
+        {
+            getFiles(job, options.workdir)(file).map((filename) =>
+            {
+                time(s"process $filename: %s seconds")
+                {
+                    val dataframe = sub_belvis_plus(filename, join_table, job)
+//                    cleanUp(job, filename)
+                    dataframe
+                }
+            })
+        })
+        val grouped = time(s"process union: %s seconds") {
+            spark.sparkContext.union(dataframes :+ existingData)
+        }
+        time("collect union: %s seconds") {
+            grouped.collect()
+        }
+        grouped.saveToCassandra(job.keyspace, "measured_value",
+            SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
     }
 }
