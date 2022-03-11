@@ -78,14 +78,22 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
         val measurementDateTimeFormat: SimpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm")
         measurementDateTimeFormat.setCalendar(measurementCalendar)
 
-        val lines = session.sparkContext.textFile(filename)
-        val headers = lines.take(NR_HEADER_LINES)
-        val headerLines = session.sparkContext.parallelize(headers)
-        val dataLines = lines.subtract(headerLines)
-        val headerInfos = parseHeaderLines(headers)
-        val rdd: RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)] =
-            dataLines.flatMap(parse_belvis_plus_line(join_table, measurementDateTimeFormat, headerInfos))
-        rdd.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
+        val combinedFiles: RDD[(String, String)] = session.sparkContext.wholeTextFiles(filename)
+        val readData: RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)] = combinedFiles.flatMap(fileData =>
+        {
+            val fileContent = fileData._2
+            val singeFile: Array[String] = fileContent.split("Date").drop(1).map(x => "Date" + x)
+            singeFile.flatMap(fileString =>
+            {
+                val fileLines = fileString.split("\n")
+                val headers = fileLines.take(NR_HEADER_LINES)
+                val dataLines = fileLines.drop(NR_HEADER_LINES)
+                val headerInfos = parseHeaderLines(headers)
+                val rdd = dataLines.flatMap(parse_belvis_plus_line(join_table, measurementDateTimeFormat, headerInfos))
+                rdd
+            })
+        })
+        readData
     }
 
     @SuppressWarnings(Array("org.wartremover.warts.All"))
@@ -101,25 +109,34 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
             .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
         val existingData: RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)] = df
 
-        val dataframes: Seq[RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)]] = job.datafiles.flatMap((file) =>
+        val files: Seq[String] = job.datafiles.flatMap(file =>
         {
-            getFiles(job, options.workdir)(file).map((filename) =>
-            {
-                time(s"process $filename: %s seconds")
-                {
-                    val dataframe = sub_belvis_plus(filename, join_table, job)
-//                    cleanUp(job, filename)
-                    dataframe
-                }
-            })
+            getFiles(job, options.workdir)(file)
         })
-        val grouped = time(s"process union: %s seconds") {
-            spark.sparkContext.union(dataframes :+ existingData)
+
+        val dataframes: Seq[RDD[(Mrid, Type, Time, Period, Real_a, Imag_a, Units)]] = files.map(filename =>
+        {
+            sub_belvis_plus(filename, join_table, job)
+        })
+
+        val union = time(s"process union: %s seconds")
+        {
+            if (job.mode == Modes.Append && !existingData.isEmpty())
+            {
+                spark.sparkContext.union(dataframes).union(existingData)
+            } else
+            {
+                spark.sparkContext.union(dataframes)
+            }
         }
-        time("collect union: %s seconds") {
-            grouped.collect()
-        }
+
+        val grouped = union.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
         grouped.saveToCassandra(job.keyspace, "measured_value",
             SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
+
+        files.foreach(filename =>
+        {
+            cleanUp(job, filename)
+        })
     }
 }
