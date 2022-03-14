@@ -97,7 +97,6 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
     def process (filename: String, job: IngestJob): Unit =
     {
         val join_table = loadCsvMapping(session, filename, job)
-        val existingData: RDD[MeasuredValue] = get_existing_data_from_database(session, job)
 
         val files: Seq[String] = job.datafiles.flatMap(file =>
         {
@@ -111,6 +110,7 @@ case class IngestBelvisPlus (session: SparkSession, options: IngestOptions) exte
 
         val union = time(s"process union: %s seconds")
         {
+            val existingData: RDD[MeasuredValue] = get_existing_data_from_database(session, job)
             if (job.mode == Modes.Append && !existingData.isEmpty())
             {
                 spark.sparkContext.union(dataframes).union(existingData)
