@@ -6,11 +6,7 @@ import java.util.TimeZone
 
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
-import com.datastax.spark.connector._
-import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
-import com.datastax.spark.connector.SomeColumns
-import com.datastax.spark.connector.rdd.ReadConf
 
 
 case class IngestLPEx (session: SparkSession, options: IngestOptions) extends IngestProcessor
@@ -43,7 +39,7 @@ case class IngestLPEx (session: SparkSession, options: IngestOptions) extends In
                     val period = fields(14).toInt
                     val interval = period * ONE_MINUTE_IN_MILLIS
                     val list = for
-                        {
+                    {
                         i <- 15 until fields.length by 2
                         flags = fields(i + 1)
                         if flags == "W"
@@ -52,8 +48,8 @@ case class IngestLPEx (session: SparkSession, options: IngestOptions) extends In
                         timestamp = time + (interval * slot)
                         if (timestamp >= job.mintime) && (timestamp <= job.maxtime)
                     }
-                        yield
-                            (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
+                    yield
+                        (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
                     // discard all zero records
                     if (list.exists(x => x._5 != 0.0 || x._6 != 0.0))
                         list
@@ -81,24 +77,7 @@ case class IngestLPEx (session: SparkSession, options: IngestOptions) extends In
         if (lines.first.startsWith("LPEX V3.0"))
         {
             val rdd = lines.flatMap(parse_lpex_line(join_table, job, measurementDateTimeFormat))
-            // combine real and imaginary parts
-            if (job.mode == Modes.Append)
-            {
-                val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
-                implicit val configuration: ReadConf =
-                    ReadConf
-                        .fromSparkConf(session.sparkContext.getConf)
-                        .copy(splitCount = Some(executors))
-                val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-                val unioned = rdd.union(df)
-                val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
-                grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-            }
-            else
-            {
-                val grouped: RDD[MeasuredValue] = rdd.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
-                grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-            }
+            store_data(session, job, rdd)
         }
     }
 

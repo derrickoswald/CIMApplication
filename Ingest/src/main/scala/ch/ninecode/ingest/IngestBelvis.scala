@@ -4,9 +4,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
 
-import com.datastax.spark.connector.SomeColumns
-import com.datastax.spark.connector._
-import com.datastax.spark.connector.rdd.ReadConf
 import org.apache.log4j.Level
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.SparkSession
@@ -40,7 +37,7 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
                     val period = fields(6).toInt
                     val interval = period * ONE_MINUTE_IN_MILLIS
                     val list = for
-                        {
+                    {
                         i <- 7 until fields.length by 2
                         reading = fields(i)
                         value = if ("" != reading) asDouble(reading) * factor else 0.0
@@ -48,8 +45,8 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
                         timestamp = time + (interval * slot)
                         if (timestamp >= job.mintime) && (timestamp <= job.maxtime)
                     }
-                        yield
-                            (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
+                    yield
+                        (mrid, typ, timestamp, interval, if (real) value else 0.0, if (imag) value else 0.0, units)
                     list
                 case _ =>
                     List()
@@ -71,24 +68,7 @@ case class IngestBelvis (session: SparkSession, options: IngestOptions) extends 
         // for daylight savings time changes, not all lines have the same number of columns
         val lines = session.sparkContext.textFile(filename)
         val rdd = lines.flatMap(parse_belvis_line(join_table, job, measurementDateTimeFormat))
-        // combine real and imaginary parts
-        if (job.mode == Modes.Append)
-        {
-            val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
-            implicit val configuration: ReadConf =
-                ReadConf
-                    .fromSparkConf(session.sparkContext.getConf)
-                    .copy(splitCount = Some(executors))
-            val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value").select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
-            val unioned = rdd.union(df)
-            val grouped = unioned.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
-            grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-        }
-        else
-        {
-            val grouped = rdd.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
-            grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
-        }
+        store_data(session, job, rdd)
     }
 
     def process (filename: String, job: IngestJob): Unit =

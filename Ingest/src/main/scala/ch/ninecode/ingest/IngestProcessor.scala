@@ -8,11 +8,14 @@ import java.nio.file.Paths
 import java.util.regex.Pattern
 import java.util.zip.ZipInputStream
 
+import com.datastax.spark.connector._
+import com.datastax.spark.connector.rdd.ReadConf
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.permission.FsAction
 import org.apache.hadoop.fs.permission.FsPermission
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types.DataType
@@ -133,7 +136,7 @@ trait IngestProcessor
             {
                 val in =
                     try
-                    Files.newInputStream(Paths.get(src))
+                        Files.newInputStream(Paths.get(src))
                     catch
                     {
                         case e: Exception =>
@@ -338,6 +341,38 @@ trait IngestProcessor
             dataframe.rdd.map(row => (extract(row, ch_number), row.getString(nis_number))).filter(_._2 != null).collect.toMap
         }
         join_table
+    }
+
+    def get_existing_data_from_database (session: SparkSession, job: IngestJob): RDD[MeasuredValue] =
+    {
+        val executors = session.sparkContext.getExecutorMemoryStatus.keys.size - 1
+        implicit val configuration: ReadConf =
+            ReadConf
+                .fromSparkConf(session.sparkContext.getConf)
+                .copy(splitCount = Some(executors))
+        val df = session.sparkContext.cassandraTable[MeasuredValue](job.keyspace, "measured_value")
+            .select("mrid", "type", "time", "period", "real_a", "imag_a", "units")
+        df
+    }
+
+    def store_data (session: SparkSession, job: IngestJob, rdd: RDD[MeasuredValue]): Unit =
+    {
+        val data = if (job.mode == Modes.Append)
+        {
+            val existingData: RDD[MeasuredValue] = get_existing_data_from_database(session, job)
+            rdd.union(existingData)
+        }
+        else
+        {
+            rdd
+        }
+        save_to_cassandra(job, data)
+    }
+
+    def save_to_cassandra (job: IngestJob, data: RDD[MeasuredValue]): Unit =
+    {
+        val grouped = data.groupBy(x => (x._1, x._2, x._3)).values.flatMap(complex)
+        grouped.saveToCassandra(job.keyspace, "measured_value", SomeColumns("mrid", "type", "time", "period", "real_a", "imag_a", "units"))
     }
 
     def process (filename: String, job: IngestJob): Unit
