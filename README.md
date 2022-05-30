@@ -10,3 +10,4 @@ A good overview presentation is [CIM Distribution Grid Applications](https://der
 
 ![CIMApplication Architecture](https://rawgit.com/derrickoswald/CIMApplication/master/img/Architecture.svg "Architecture diagram")
 
+
