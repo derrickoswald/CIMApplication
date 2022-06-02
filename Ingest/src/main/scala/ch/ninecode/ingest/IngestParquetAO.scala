@@ -20,7 +20,7 @@ import ch.ninecode.model.ServiceLocation
 import ch.ninecode.model.StringQuantity
 import ch.ninecode.model.UserAttribute
 
-case class IngestParquet (session: SparkSession, options: IngestOptions) extends IngestProcessor with CIMRDD
+case class IngestParquetAO(session: SparkSession, options: IngestOptions) extends IngestProcessor with CIMRDD
 {
     if (options.verbose) LogManager.getLogger(getClass).setLevel(Level.INFO)
     implicit val spark: SparkSession = session

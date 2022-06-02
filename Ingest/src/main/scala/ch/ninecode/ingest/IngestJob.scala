@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory
 object Formats extends Enumeration
 {
     type Formats = Value
-    val Belvis, BelvisPlus, LPEx, MSCONS, Custom, Parquet, Nyquist = Value
+    val Belvis, BelvisPlus, LPEx, MSCONS, Custom, ParquetAO, ParquetRaw, Nyquist = Value
 }
 
 object Modes extends Enumeration
@@ -283,7 +283,8 @@ object IngestJob
     def parseJob (options: IngestOptions)(json: JsonObject): Option[IngestJob] =
     {
         val mapping = json.getString("mapping", "")
-        if ("" == mapping)
+        val format = json.getString("format","")
+        if ("" == mapping && format != "ParquetRaw")
         {
             log.error(s"""mapping file not specified in ${options.ingestions.mkString(",")}""")
             None

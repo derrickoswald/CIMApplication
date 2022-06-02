@@ -83,7 +83,8 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
                         case "LPEx" => IngestLPEx(session, options)
                         case "MSCONS" => IngestMSCONS(session, options)
                         case "Custom" => IngestCustom(session, options)
-                        case "Parquet" => IngestParquet(session, options)
+                        case "ParquetAO" => IngestParquetAO(session, options)
+                        case "ParquetRaw" => IngestParquetRaw(session, options)
                         case "Nyquist" => IngestNyquist(session, options)
                     }
                     processor.process(filename, job)
