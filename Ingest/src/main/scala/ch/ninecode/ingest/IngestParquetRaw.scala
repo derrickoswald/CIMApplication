@@ -24,6 +24,16 @@ case class IngestParquetRaw(session: SparkSession, options: IngestOptions) exten
     def import_parquet (job: IngestJob): RDD[MeasuredValue] =
     {
         val dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ssXXX")
+
+        def getValueAsDouble (row: Row, index: Int): Double = {
+            val value = row.getAs[java.math.BigDecimal](index)
+            if (value != null) {
+                value.doubleValue()
+            } else {
+                0.0
+            }
+        }
+
         def parquetMapping (row: Row): MeasuredValue =
         {
             val has_id = row.getString(0)
@@ -34,8 +44,8 @@ case class IngestParquetRaw(session: SparkSession, options: IngestOptions) exten
                 case timestamp: Timestamp => timestamp.getTime
                 case _ => throw new Exception("invalid timestamp format")
             }
-            val real_a = row.getAs[java.math.BigDecimal](8).doubleValue()
-            val imag_a = row.getAs[java.math.BigDecimal](4).doubleValue()
+            val real_a = getValueAsDouble(row, 8)
+            val imag_a = getValueAsDouble(row, 4)
             val period = row.getInt(7)
             val unit = row.getString(3)
             (has_id, typ, timestamp ,period,real_a,imag_a,unit)
