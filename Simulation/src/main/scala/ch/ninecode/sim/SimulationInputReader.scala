@@ -4,11 +4,11 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.storage.StorageLevel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-
 import ch.ninecode.cim.CIMNetworkTopologyProcessor
 import ch.ninecode.cim.CIMTopologyOptions
+import ch.ninecode.util.HDFS
 
-case class SimulationInputReader ( session: SparkSession, options: SimulationOptions )
+case class SimulationInputReader ( session: SparkSession, options: SimulationOptions ) extends HDFS
 {
     implicit val spark: SparkSession = session
     implicit val log: Logger = LoggerFactory.getLogger(getClass)
@@ -38,6 +38,8 @@ case class SimulationInputReader ( session: SparkSession, options: SimulationOpt
                 generateTopology(storage_level, read)
         }
     }
+
+
 
     private def setAwsS3Options(): Unit =
     {

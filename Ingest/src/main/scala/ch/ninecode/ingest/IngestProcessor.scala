@@ -1,20 +1,11 @@
 package ch.ninecode.ingest
 
-import java.io.ByteArrayInputStream
-import java.io.File
-import java.io.FileOutputStream
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.util.regex.Pattern
-import java.util.zip.ZipInputStream
+import ch.ninecode.util.HDFS
 
+import java.util.regex.Pattern
 import com.datastax.spark.connector._
 import com.datastax.spark.connector.rdd.ReadConf
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.fs.permission.FsAction
-import org.apache.hadoop.fs.permission.FsPermission
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SparkSession
@@ -22,7 +13,7 @@ import org.apache.spark.sql.types.DataType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-trait IngestProcessor
+trait IngestProcessor extends HDFS
 {
     type AOID = String
     type MstID = String
@@ -65,138 +56,6 @@ trait IngestProcessor
         val ret = block
         val t1 = System.nanoTime()
         LoggerFactory.getLogger(getClass).info(template.format((t1 - t0) / 1e9), None)
-        ret
-    }
-
-    // build a file system configuration, including core-site.xml
-    def hdfs_configuration: Configuration =
-    {
-        val configuration = new Configuration()
-        if (null == configuration.getResource("core-site.xml"))
-        {
-            val hadoop_conf: String = System.getenv("HADOOP_CONF_DIR")
-            if (null != hadoop_conf)
-            {
-                val site: Path = new Path(hadoop_conf, "core-site.xml")
-                val f: File = new File(site.toString)
-                if (f.exists && !f.isDirectory)
-                    configuration.addResource(site)
-            }
-            else
-                log.error("HADOOP_CONF_DIR environment variable not found")
-        }
-        configuration
-    }
-
-    def hdfs: FileSystem =
-    {
-        // get the configuration
-        val conf = hdfs_configuration
-        // get the file system
-        FileSystem.get(FileSystem.getDefaultUri(conf), conf)
-    }
-
-    def base_name (path: String): String =
-    {
-        val sep = System.getProperty("file.separator")
-        val index = path.lastIndexOf(sep)
-        if (-1 != index)
-            path.substring(index + 1)
-        else
-            path
-    }
-
-    lazy val wideOpen = new FsPermission(FsAction.ALL, FsAction.ALL, FsAction.ALL)
-
-    /**
-     * Put a file on HDFS
-     *
-     * @param dst   the path to save the file
-     * @param src   the file to save
-     * @param unzip flag indicating the stream is a ZIP file that needs to be expanded
-     * @return
-     */
-    def putFile (dst: String, src: String, unzip: Boolean = false): Seq[String] =
-    {
-        var ret = Seq[String]()
-        val fs = hdfs
-        val file = new Path(fs.getUri.toString, dst)
-        // write the file
-        try
-        {
-            val parent = if (dst.endsWith("/")) file else file.getParent
-            if (!fs.exists(parent))
-            {
-                val _ = fs.mkdirs(parent, wideOpen)
-                if (!parent.isRoot)
-                    fs.setPermission(parent, wideOpen)
-            }
-
-            if (unzip)
-            {
-                val in =
-                    try
-                        Files.newInputStream(Paths.get(src))
-                    catch
-                    {
-                        case e: Exception =>
-                            log.error(s"""ingest failed for file "$file"""", e)
-                            new ByteArrayInputStream(Array[Byte]())
-                    }
-                val zip = new ZipInputStream(in)
-                val buffer = new Array[Byte](1024)
-                var more = true
-                do
-                {
-                    val entry = zip.getNextEntry
-                    if (null != entry)
-                    {
-                        if (entry.isDirectory)
-                        {
-                            val path = new Path(parent, entry.getName)
-                            val _ = fs.mkdirs(path, wideOpen)
-                            fs.setPermission(path, wideOpen)
-                        }
-                        else
-                        {
-                            val tmp = File.createTempFile("ingest", ".tmp")
-                            val stream = new FileOutputStream(tmp)
-                            var eof = false
-                            do
-                            {
-                                val len = zip.read(buffer, 0, buffer.length)
-                                if (-1 == len)
-                                    eof = true
-                                else
-                                    stream.write(buffer, 0, len)
-                            }
-                            while (!eof)
-                            stream.close()
-                            val f = new Path(parent, entry.getName)
-                            fs.copyFromLocalFile(true, true, new Path(tmp.getAbsolutePath), f)
-                            ret = ret :+ f.toString
-                        }
-                        zip.closeEntry()
-                    }
-                    else
-                        more = false
-                }
-                while (more)
-                zip.close()
-            }
-            else
-            {
-                val f = new Path(parent, dst)
-                fs.copyFromLocalFile(false, true, new Path(src), f)
-                ret = ret :+ file.toString
-            }
-        }
-        catch
-        {
-            case e: Exception =>
-                log.error(s"""putFile failed for "$src" to "$dst" with unzip=$unzip""", e)
-        }
-
         ret
     }
 
