@@ -37,6 +37,7 @@ class SimulationSuiteIT
     import SimulationSuiteIT.cassandra_port
     import SimulationSuiteIT.delete
     import SimulationSuiteIT.using
+    val curDir = new java.io.File(".").getCanonicalPath
 
     def getSession: CqlSession =
     {
@@ -65,7 +66,7 @@ class SimulationSuiteIT
                        |    "id": "Basic",
                        |    "name": "DemoData",
                        |    "description": "simulation with demo data",
-                       |    "cim": "$FILE_DEPOT$FILENAME1.rdf",
+                       |    "cim": "$FILE_DEPOT$FILENAME1.zip",
                        |    "cimreaderoptions": {
                        |        "ch.ninecode.cim.do_about": false,
                        |        "ch.ninecode.cim.do_normalize": false,
@@ -345,6 +346,7 @@ class SimulationSuiteIT
                 "--master", "local[2]",
                 "--verbose",
                 "--keep",
+                "--workdir", curDir,
                 "--host", "localhost",
                 "--port", cassandra_port,
                 json))
@@ -364,7 +366,7 @@ class SimulationSuiteIT
                        |    "id": "$ID_SIMULATION",
                        |    "name": "Reinforced Simulation Test",
                        |    "description": "simulation with demo data and reinforcement",
-                       |    "cim": "$FILE_DEPOT$FILENAME2.rdf",
+                       |    "cim": "$FILE_DEPOT$FILENAME2.zip",
                        |    "cimreaderoptions": {
                        |        "ch.ninecode.cim.do_about": false,
                        |        "ch.ninecode.cim.do_normalize": false,
@@ -542,6 +544,7 @@ class SimulationSuiteIT
                 "--spark_options", "spark.driver.memory=2g,spark.executor.memory=2g,spark.serializer=org.apache.spark.serializer.KryoSerializer,spark.sql.catalog.casscatalog=com.datastax.spark.connector.datasource.CassandraCatalog,spark.kryo.registrator=ch.ninecode.cim.CIMRegistrator,spark.graphx.pregel.checkpointInterval=8,spark.ui.showConsoleProgress=false,spark.sql.debug.maxToStringFields=250",
                 "--verbose",
                 "--keep",
+                "--workdir", curDir,
                 "--host", "localhost",
                 "--port", cassandra_port,
                 json
@@ -570,7 +573,7 @@ class SimulationSuiteIT
                        |    "id": "ThreePhase",
                        |    "name": "Three Phase Simulation Test",
                        |    "description": "three phase simulation with demo data",
-                       |    "cim": "$FILE_DEPOT$FILENAME1.rdf",
+                       |    "cim": "$FILE_DEPOT$FILENAME1.zip",
                        |    "cimreaderoptions": {
                        |        "ch.ninecode.cim.do_about": false,
                        |        "ch.ninecode.cim.do_normalize": false,
@@ -957,6 +960,7 @@ class SimulationSuiteIT
                 "--keep",
                 "--three",
                 "--fake",
+                "--workdir",curDir,
                 "--host", "localhost",
                 "--port", cassandra_port,
                 json
@@ -978,7 +982,7 @@ class SimulationSuiteIT
                        |    "id": "$ID_SIMULATION",
                        |    "name": "Voltage Factor Simulation Test",
                        |    "description": "simulation with 103% slack voltage",
-                       |    "cim": "$FILE_DEPOT$FILENAME1.rdf",
+                       |    "cim": "$FILE_DEPOT$FILENAME1.zip",
                        |    "cimreaderoptions": {
                        |        "ch.ninecode.cim.do_about": false,
                        |        "ch.ninecode.cim.do_normalize": false,
@@ -1108,6 +1112,7 @@ class SimulationSuiteIT
                 "--master", "local[2]",
                 "--verbose",
                 "--keep",
+                "--workdir",curDir,
                 "--host", "localhost",
                 "--port", cassandra_port,
                 json))
