@@ -19,7 +19,8 @@ trait HDFS
         implicit val log: Logger = LoggerFactory.getLogger(getClass)
         var ret = Seq[String]()
         val fs = hdfs
-        val file = new Path(fs.getUri.toString, dst)
+        val filePath = if (dst.startsWith("/")) dst else s"/$dst"
+        val file = new Path(fs.getUri.toString, filePath)
         // write the file
         try
         {
