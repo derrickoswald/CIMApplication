@@ -39,7 +39,7 @@ case class SimulationOptions
         topology_options = CIMTopologyOptions(identify_islands = true)),
     var cassandra_options: CassandraOptions = CassandraOptions(),
     verbose: Boolean = false,
-    workdir: String = "simulation/",
+    workdir: String = s"${SimulationOptions.cwd}/work/",
     three_phase: Boolean = false,
     fake_three_phase: Boolean = false,
     keep: Boolean = false,
@@ -50,3 +50,15 @@ case class SimulationOptions
     aws_s3a_secret_key: String = "",
     simulation: Seq[String] = Seq()
 ) extends Mainable with Sparkable with CIMAble with Cassandraable
+
+object SimulationOptions
+{
+    def cwd: String =
+    {
+        val pwd = new java.io.File(".").getCanonicalPath
+        if (pwd.endsWith("."))
+            pwd.substring(0, pwd.length - 1)
+        else
+            pwd
+    }
+}
