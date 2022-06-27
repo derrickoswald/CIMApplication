@@ -491,8 +491,12 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
 
         // clean up in case there was a file already loaded
         cleanRDDs(session)
-        val rdf_file_ = inputReader.putFile(s"${options.workdir}${inputReader.base_name(ajob.cim)}", ajob.cim, ajob.cim.toLowerCase.endsWith(".zip"))
-        val rdf_file = rdf_file_.toList.mkString(",")
+        val cim_files = ajob.cim.split(",")
+        val rdf_files = cim_files.flatMap(cim_file => {
+            val destination = s"${options.workdir}${inputReader.base_name(cim_file)}"
+            inputReader.putFile(destination, cim_file, cim_file.toLowerCase.endsWith(".zip"))
+        })
+        val rdf_file = rdf_files.mkString(",")
         inputReader.readCIM(rdf_file, ajob.cimreaderoptions)
         batch.map(simulateJob)
     }
