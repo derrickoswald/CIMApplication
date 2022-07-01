@@ -3,6 +3,7 @@ package ch.ninecode.sim
 import java.io.Closeable
 import java.io.File
 import java.io.PrintWriter
+import java.net.URI
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.TimeZone
@@ -83,8 +84,45 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false)
         var dir = trafo.directory
         if (dir.takeRight(1) == """\""")
             dir = dir.slice(0, dir.length - 1)
-        val bash = s"""pushd "$workdir$dir";gridlabd --quiet "${trafo.name}.glm";popd;"""
-        val command = Seq("bash", "-c", bash)
+
+        val os = System.getProperty("os.name")
+        val command =
+            if (os.startsWith("Windows"))
+            {
+                log.info("Running GridLABD on Windows")
+                val pipeFileName = "./src/test/resources/pipe.sh"
+                val pipeContent =
+                    s"""#!/bin/bash
+                       |while read line; do
+                       |    pushd $$1 > /dev/null;
+                       |    gridlabd.exe --quiet $$2 > /dev/null;
+                       |    popd > /dev/null;
+                       |done""".stripMargin
+                using(new PrintWriter(pipeFileName))
+                {
+                    writer =>
+                        writer.write(pipeContent)
+                }
+
+                val uri = new URI(workdir.replace("\\", "/"))
+                val pattern = """([A-Z])""".r
+                val scheme = pattern.replaceAllIn(uri.getScheme, m =>
+                {
+                    "/" + m.group(1).toLowerCase
+                })
+
+                val workdir_win_bash = scheme + uri.getPath
+                Seq("bash",
+                    pipeFileName,
+                    s"$workdir_win_bash$dir",
+                    s"${trafo.name}.glm"
+                )
+            } else
+            {
+                val bash = s"""pushd "$workdir$dir";gridlabd --quiet "${trafo.name}.glm";popd;"""
+                Seq("bash", "-c", bash)
+            }
+
         val lines = new ListBuffer[String]()
         var warningLines = 0
         var errorLines = 0
