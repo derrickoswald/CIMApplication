@@ -404,11 +404,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         val numSim = simulations.count().toInt
         val simulationType = simulations.first().simulation_type
         log.info(s"""performing $numSim GridLAB-D simulation${plural(numSim)} for ${simulationType.simulation_name}""")
-        val runner = SimulationRunner(
-            job.output_keyspace, options.workdir,
-            options.three_phase, options.fake_three_phase,
-            job.cim_temperature, job.simulation_temperature, job.swing_voltage_factor,
-            options.keep, options.verbose)
+        val runner = SimulationRunner(options, job.cim_temperature, job.simulation_temperature, job.swing_voltage_factor)
 
         val simulation_with_player = simulations.keyBy(_.name).join(player_rdd).values
         val raw_results = simulation_with_player
@@ -492,7 +488,8 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         // clean up in case there was a file already loaded
         cleanRDDs(session)
         val cim_files = ajob.cim.split(",")
-        val rdf_files = cim_files.flatMap(cim_file => {
+        val rdf_files = cim_files.flatMap(cim_file =>
+        {
             val destination = s"${options.workdir}${inputReader.base_name(cim_file)}"
             inputReader.putFile(destination, cim_file, cim_file.toLowerCase.endsWith(".zip"))
         })

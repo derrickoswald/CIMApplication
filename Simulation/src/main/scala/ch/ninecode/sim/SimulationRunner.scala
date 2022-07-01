@@ -1,23 +1,13 @@
 package ch.ninecode.sim
 
-import java.io.Closeable
 import java.io.File
 import java.io.PrintWriter
-import java.net.URI
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.TimeZone
 
-import scala.collection.mutable.ListBuffer
 import scala.io.Source
-import scala.sys.process.Process
-import scala.sys.process.ProcessLogger
 
 import javax.json.Json
 import javax.json.JsonObject
-import org.apache.log4j.LogManager
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
 import ch.ninecode.gl.GLMSimulationType
 import ch.ninecode.util.Complex
@@ -33,52 +23,16 @@ import ch.ninecode.util.ThreePhaseComplexDataElement
  *  - execute gridlabd (2:41)
  *  - store each Recorder .csv file in Cassandra (3:30)
  *
- * @param keyspace               the keyspace to store the results (the keyspace for reading is set by the Cassandra query in the player)
- * @param workdir                the directory to create the .glm and location of /input_data and /output_data directories
- * @param three_phase            if <code>true</code> simulate in three phase
- * @param fake_three_phase       if <code>true</code> convert single phase readings on phase A into three phase
+ * @param options                simulation options
  * @param cim_temperature        the temperature of the elements in the CIM file (°C)
  * @param simulation_temperature the temperature at which to run the simulation (°C)
  * @param swing_voltage_factor   factor to apply to the nominal slack voltage, e.g. 1.03 = 103% of nominal
- * @param keep                   when <code>true</code> do not delete the generated .glm, player and recorder files
- * @param verbose                when <code>true</code> set the log level for this class as INFO
  */
-case class SimulationRunner (
-    keyspace: String,
-    workdir: String,
-    three_phase: Boolean,
-    fake_three_phase: Boolean,
+case class SimulationRunner (options: SimulationOptions,
     cim_temperature: Double = 20.0,
     simulation_temperature: Double = 20.0,
-    swing_voltage_factor: Double = 1.0,
-    keep: Boolean = false,
-    verbose: Boolean = false) extends Serializable
+    swing_voltage_factor: Double = 1.0) extends SimulationGridlab(options.workdir, options.verbose) with Serializable
 {
-    if (verbose)
-        LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
-    val log: Logger = LoggerFactory.getLogger(getClass)
-
-    val calendar: Calendar = Calendar.getInstance()
-    calendar.setTimeZone(TimeZone.getTimeZone("GMT"))
-    calendar.setTimeInMillis(0L)
-
-    val glm_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z")
-    glm_date_format.setCalendar(calendar)
-
-    val iso_date_format: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-    iso_date_format.setCalendar(calendar)
-
-    def using[T <: Closeable, R] (resource: T)(block: T => R): R =
-    {
-        try
-        {
-            block(resource)
-        }
-        finally
-        {
-            resource.close()
-        }
-    }
 
     def make_record (time: Long, real: Double, imag: Double): JsonObject =
         Json.createObjectBuilder()
@@ -91,7 +45,7 @@ case class SimulationRunner (
     {
         log.info("""generating %s""".format(trafo.directory + trafo.transformer.transformer_name + ".glm"))
         val generator = SimulationGLMGenerator(
-            one_phase = !three_phase,
+            one_phase = !options.three_phase,
             date_format = glm_date_format,
             cim_temperature = cim_temperature,
             simulation_temperature = simulation_temperature,
@@ -113,7 +67,7 @@ case class SimulationRunner (
     {
         val time = glm_date_format.format(datum.time)
         val (r, i) = (datum.readings(index), datum.readings(index + 1))
-        val (real, imag) = if (three_phase && fake_three_phase) (r / 3.0, i / 3.0) else (r, i)
+        val (real, imag) = if (options.three_phase && options.fake_three_phase) (r / 3.0, i / 3.0) else (r, i)
         s"$time,$real,$imag"
     }
 
@@ -148,9 +102,9 @@ case class SimulationRunner (
             program.transform(player_data.toArray.sortBy(_.time))
 
         val file = file_prefix + player.file
-        if (three_phase)
+        if (options.three_phase)
         {
-            if (fake_three_phase)
+            if (options.fake_three_phase)
             {
                 val text = data.map(glm_format(0)).mkString("\n")
                 write_player_csv(phase_file(file, "_R"), text)
@@ -166,82 +120,6 @@ case class SimulationRunner (
         }
         else
             write_player_csv(file, data.map(glm_format(0)).mkString("\n"))
-    }
-
-    def gridlabd (trafo: SimulationTrafoKreis, workdir: String): (Boolean, List[String]) =
-    {
-        log.info("""executing GridLAB-D for %s""".format(trafo.name))
-
-        var dir = trafo.directory
-        if (dir.takeRight(1) == """\""")
-            dir = dir.slice(0, dir.length - 1)
-
-        val os = System.getProperty("os.name")
-        val command =
-            if (os.startsWith("Windows"))
-            {
-                log.info("Running GridLABD on Windows")
-                val pipeFileName = "./src/test/resources/pipe.sh"
-                val pipeContent =
-                    s"""#!/bin/bash
-                       |while read line; do
-                       |    pushd $$1 > /dev/null;
-                       |    gridlabd.exe $$2 > /dev/null;
-                       |    popd > /dev/null;
-                       |done""".stripMargin
-                using(new PrintWriter(pipeFileName))
-                {
-                    writer =>
-                        writer.write(pipeContent)
-                }
-
-                val uri = new URI(workdir.replace("\\", "/"))
-                val pattern = """([A-Z])""".r
-                val scheme = pattern.replaceAllIn(uri.getScheme, m =>
-                {
-                    "/" + m.group(1).toLowerCase
-                })
-
-                val workdir_win_bash = scheme + uri.getPath
-
-                Seq("bash",
-                    pipeFileName,
-                    s"$workdir_win_bash$dir",
-                    s"${trafo.name}.glm"
-                )
-            } else
-            {
-                val bash = s"""pushd "$workdir$dir";gridlabd --quiet "${trafo.name}.glm";popd;"""
-                Seq("bash", "-c", bash)
-            }
-
-        val lines = new ListBuffer[String]()
-        var warningLines = 0
-        var errorLines = 0
-
-        def check (line: String): Unit =
-        {
-            if (line.trim != "")
-            {
-                val _ = lines += line
-            }
-            if (line.contains("WARNING")) warningLines += 1
-            if (line.contains("ERROR")) errorLines += 1
-            if (line.contains("FATAL")) errorLines += 1
-        }
-
-        val countLogger = ProcessLogger(check, check)
-        val process = Process(command).run(countLogger)
-        // wait for the process to finish
-        val exit_code = process.exitValue
-        if (0 != errorLines)
-            log.error("GridLAB-D: %d warning%s, %d error%s: %s".format(warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString("\n\n", "\n", "\n\n")))
-        else
-            if (0 != warningLines)
-                log.warn("GridLAB-D: %d warning%s, %d error%s: %s".format(warningLines, if (1 == warningLines) "" else "s", errorLines, if (1 == errorLines) "" else "s", lines.mkString("\n\n", "\n", "\n\n")))
-
-        val problems: List[String] = (if (0 != exit_code) List(s"gridlabd exit code $exit_code") else List[String]()) ++ lines.toList
-        ((0 == exit_code) && (0 == errorLines), problems)
     }
 
     def read_recorder_csv (workdir: String, file: String, element: String, units: String, multiplier: Double): Array[ThreePhaseComplexDataElement] =
@@ -267,7 +145,7 @@ case class SimulationRunner (
                 line =>
                 {
                     val fields = line.split(",")
-                    if (three_phase)
+                    if (options.three_phase)
                         if (fields.length == 4)
                             ThreePhaseComplexDataElement(element, toTimeStamp(fields(0)), multiplier * Complex.fromString(fields(1)), multiplier * Complex.fromString(fields(2)), multiplier * Complex.fromString(fields(3)), units)
                         else
@@ -280,7 +158,7 @@ case class SimulationRunner (
                 }
             ).toArray
             handle.close
-            if (!keep)
+            if (!options.keep)
             {
                 val _ = name.delete
             }
@@ -324,9 +202,9 @@ case class SimulationRunner (
                 {
                     case Some(baseline: SimulationAggregate) =>
                         // compensate for single phase simulated current using line-line voltage scaling
-                        val factor = if (!three_phase && recorder.`type` == "current") 1.0 / math.sqrt(3) else 1.0
+                        val factor = if (!options.three_phase && recorder.`type` == "current") 1.0 / math.sqrt(3) else 1.0
                         val multiplier = trafo.directions.getOrElse(recorder.mrid, 1).toDouble * factor
-                        val records = read_recorder_csv(workdir, trafo.directory + recorder.file, recorder.mrid, recorder.unit, multiplier).map(
+                        val records = read_recorder_csv(options.workdir, trafo.directory + recorder.file, recorder.mrid, recorder.unit, multiplier).map(
                             entry =>
                                 SimulationResult
                                 (
@@ -427,7 +305,7 @@ case class SimulationRunner (
         val end = iso_date_format.format(trafo.finish_time.getTime)
         log.info(s"${trafo.island} from $start to $end")
 
-        write_glm(trafo, workdir)
+        write_glm(trafo, options.workdir)
 
         // match the players to the data
         val players: Iterable[(SimulationPlayer, Iterable[SimulationPlayerData])] =
@@ -454,16 +332,15 @@ case class SimulationRunner (
             )
 
         // create the player files
-        players.foreach(create_player_csv(workdir + trafo.directory))
+        players.foreach(create_player_csv(options.workdir + trafo.directory))
         // execute gridlabd
-        val _ = new File(workdir + trafo.directory + "output_data/").mkdirs
-        val ret = gridlabd(trafo, workdir)
+        val ret = run_gridlabd(trafo)
         // read the recorder files
         if (ret._1)
             (List(), read_recorders_and_accumulate(trafo))
         else
         {
-            (s"GridLAB-D failed for ${trafo.name}" :: ret._2, List())
+            (List(s"GridLAB-D failed for ${trafo.name}", ret._2), List())
         }
     }
 }
