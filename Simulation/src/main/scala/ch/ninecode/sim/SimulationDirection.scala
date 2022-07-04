@@ -5,10 +5,6 @@ import java.io.PrintWriter
 
 import scala.io.Source
 
-import org.apache.log4j.LogManager
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-
 import ch.ninecode.net.LineEdge
 import ch.ninecode.util.Complex
 import ch.ninecode.util.ThreePhaseComplexDataElement
@@ -23,14 +19,10 @@ import ch.ninecode.util.ThreePhaseComplexDataElement
  * the current through each cable is simulated and given a sign value (±1)
  * according to whether the simulated value is negative or positive.
  *
- * @param workdir the directory to create the .glm and location of /input_data and /output_data directories
- * @param verbose when <code>true</code> set the log level for this class as INFO
+ * @param options                simulation options
  */
-case class SimulationDirection (workdir: String, verbose: Boolean = false) extends SimulationGridlab(workdir, verbose)
+case class SimulationDirection (options: SimulationOptions) extends SimulationGridlab(options.workdir, options.verbose)
 {
-    if (verbose)
-        LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
-    override val log: Logger = LoggerFactory.getLogger(getClass)
 
     def write_glm (trafo: SimulationTrafoKreis, workdir: String): Unit =
     {
@@ -87,7 +79,7 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false) exten
     {
         log.info(trafo.island + " direction detection")
 
-        write_glm(trafo, workdir)
+        write_glm(trafo, options.workdir)
         val ret = run_gridlabd(trafo)
 
         // read the voltage dump file and convert to direction
@@ -106,7 +98,7 @@ case class SimulationDirection (workdir: String, verbose: Boolean = false) exten
     private def read_gridlab_results (trafo: SimulationTrafoKreis) =
     {
         val file = s"${trafo.directory}output_data/${trafo.name}_voltdump.csv"
-        val records = read_voltage_dump_csv(workdir, file, trafo.start_time.getTimeInMillis, "V")
+        val records = read_voltage_dump_csv(options.workdir, file, trafo.start_time.getTimeInMillis, "V")
         val lookup = records.map(x => (x.element, x)).toMap
         val filtered_edges = trafo.edges.filter(
             _.rawedge match

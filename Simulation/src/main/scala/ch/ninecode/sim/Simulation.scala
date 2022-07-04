@@ -462,7 +462,7 @@ final case class Simulation (session: SparkSession, options: SimulationOptions) 
         var simulations: RDD[SimulationTrafoKreis] = spark.sparkContext.emptyRDD
         if (0 != numsimulations)
         {
-            val direction = SimulationDirection(options.workdir, options.verbose)
+            val direction = SimulationDirection(options)
             simulations = _simulations.map(x => x.copy(directions = direction.execute(x)))
                 .persist(options.cim_options.storage).setName(s"${job.id}_simulations")
             val _ = _simulations.unpersist(false)
