@@ -31,7 +31,7 @@ import ch.ninecode.util.ThreePhaseComplexDataElement
 case class SimulationRunner (options: SimulationOptions,
     cim_temperature: Double = 20.0,
     simulation_temperature: Double = 20.0,
-    swing_voltage_factor: Double = 1.0) extends SimulationGridlab(options.workdir, options.verbose) with Serializable
+    swing_voltage_factor: Double = 1.0) extends SimulationGridlab(options.workdir, options.verbose)
 {
 
     def make_record (time: Long, real: Double, imag: Double): JsonObject =

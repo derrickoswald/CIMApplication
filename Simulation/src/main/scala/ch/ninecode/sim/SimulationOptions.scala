@@ -39,7 +39,7 @@ case class SimulationOptions
         topology_options = CIMTopologyOptions(identify_islands = true)),
     var cassandra_options: CassandraOptions = CassandraOptions(),
     verbose: Boolean = false,
-    workdir: String = s"${SimulationOptions.cwd}/work/",
+    workdir: String = s"${SimulationOptions.cwd}/simulation/",
     three_phase: Boolean = false,
     fake_three_phase: Boolean = false,
     keep: Boolean = false,

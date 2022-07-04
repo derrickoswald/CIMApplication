@@ -37,7 +37,7 @@ class SimulationSuiteIT
     import SimulationSuiteIT.cassandra_port
     import SimulationSuiteIT.delete
     import SimulationSuiteIT.using
-    val curDir = new java.io.File(".").getCanonicalPath
+    val curDir = new java.io.File("./simulation").getCanonicalPath
 
     def getSession: CqlSession =
     {

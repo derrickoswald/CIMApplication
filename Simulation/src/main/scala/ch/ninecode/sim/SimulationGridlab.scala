@@ -1,7 +1,6 @@
 package ch.ninecode.sim
 
 import java.io.File
-import java.io.PrintWriter
 import java.net.URI
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -21,7 +20,7 @@ import ch.ninecode.util.Using
  * @param workdir the directory to create the .glm and location of /input_data and /output_data directories
  * @param verbose when <code>true</code> set the log level for this class as INFO
  */
-abstract class SimulationGridlab (workdir: String, verbose: Boolean = false) extends Using
+abstract class SimulationGridlab (workdir: String, verbose: Boolean = false) extends Using with Serializable
 {
     if (verbose)
         LogManager.getLogger(getClass.getName).setLevel(org.apache.log4j.Level.INFO)
@@ -41,7 +40,9 @@ abstract class SimulationGridlab (workdir: String, verbose: Boolean = false) ext
     {
         log.info(s"executing GridLAB-D for ${trafo.name}")
         val _ = new File(workdir + trafo.directory + "output_data/").mkdirs
-        val command = get_gridlab_command(trafo)
+        val gridlab_work_dir = get_gridlab_work_dir(trafo)
+        val bash = s"""pushd "$gridlab_work_dir";gridlabd --quiet "${trafo.name}.glm";popd;"""
+        val command = Seq("bash", "-c", bash)
 
         val lines = new ListBuffer[String]()
         var warningLines = 0
@@ -77,48 +78,27 @@ abstract class SimulationGridlab (workdir: String, verbose: Boolean = false) ext
         ((0 == exit_code) && (0 == errorLines), if (0 == exit_code) lines.mkString("\n\n", "\n", "\n\n") else s"gridlabd exit code $exit_code")
     }
 
-    def get_gridlab_command (trafo: SimulationTrafoKreis): Seq[String] =
+    def get_gridlab_work_dir (trafo: SimulationTrafoKreis): String =
     {
         var dir = trafo.directory
         if (dir.takeRight(1) == """\""")
             dir = dir.slice(0, dir.length - 1)
 
-
         val os = System.getProperty("os.name")
         if (os.startsWith("Windows"))
         {
             log.info("Running GridLABD on Windows")
-            val pipeFileName = "./src/test/resources/pipe.sh"
-            val pipeContent =
-                s"""#!/bin/bash
-                   |while read line; do
-                   |    pushd $$1 > /dev/null;
-                   |    gridlabd.exe --quiet $$2 > /dev/null;
-                   |    popd > /dev/null;
-                   |done""".stripMargin
-            using(new PrintWriter(pipeFileName))
-            {
-                writer =>
-                    writer.write(pipeContent)
-            }
-
             val uri = new URI(workdir.replace("\\", "/"))
             val pattern = """([A-Z])""".r
             val scheme = pattern.replaceAllIn(uri.getScheme, m =>
             {
-                "/" + m.group(1).toLowerCase
+                "/mnt/" + m.group(1).toLowerCase
             })
 
-            val workdir_win_bash = scheme + uri.getPath
-            Seq("bash",
-                pipeFileName,
-                s"$workdir_win_bash$dir",
-                s"${trafo.name}.glm"
-            )
+            scheme + uri.getPath
         } else
         {
-            val bash = s"""pushd "$workdir$dir";gridlabd --quiet "${trafo.name}.glm";popd;"""
-            Seq("bash", "-c", bash)
+            workdir
         }
     }
 }
