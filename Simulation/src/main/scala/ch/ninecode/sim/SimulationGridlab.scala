@@ -95,10 +95,10 @@ abstract class SimulationGridlab (workdir: String, verbose: Boolean = false) ext
                 "/mnt/" + m.group(1).toLowerCase
             })
 
-            scheme + uri.getPath
+            s"$scheme${uri.getPath}$dir"
         } else
         {
-            workdir
+            s"$workdir$dir"
         }
     }
 }
