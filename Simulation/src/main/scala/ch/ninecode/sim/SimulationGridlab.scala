@@ -92,6 +92,7 @@ abstract class SimulationGridlab (workdir: String, verbose: Boolean = false) ext
             val pattern = """([A-Z])""".r
             val scheme = pattern.replaceAllIn(uri.getScheme, m =>
             {
+                // Use /mnt since locally WSL's bash is used
                 "/mnt/" + m.group(1).toLowerCase
             })
 
