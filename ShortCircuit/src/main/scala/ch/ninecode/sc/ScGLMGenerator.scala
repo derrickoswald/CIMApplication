@@ -48,9 +48,7 @@ case class ScGLMGenerator
     override def transformers: Iterable[GLMTransformerEdge] = area.island.transformers.map(GLMTransformerEdge)
 
     override def edges: Iterable[GLMEdge] = area.edges.filter(edges =>
-        !transformers.exists(transformerEdge => {
-            transformerEdge.id.split("_").contains(edges.id) || transformerEdge.id == edges.id
-        })
+        !transformers.exists(_.id == edges.id)
     )
 
     @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))

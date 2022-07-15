@@ -509,13 +509,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         val trafo = transformer_set.transformers.head
         val hv_pin = transformer_set.node0
         val high_voltages = get_voltages(data, Array(trafo.node0.id))
-        val high_voltage = if (high_voltages.length > 0)
-        {
-            high_voltages(0)
-        } else {
-            get_voltages(data, Array(trafo.node1.id))(0)
-        }
-
+        val high_voltage = high_voltages(0)
         val node0BaseVoltage = transformer_set.transformers(0).voltages.filter(_._1.equals(trafo.node0.BaseVoltage))(0)._2
         val v1 = high_voltage.value_a.modulus
 
