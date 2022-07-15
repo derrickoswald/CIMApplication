@@ -38,7 +38,7 @@ class Island (
      */
     def getTransformerId (transformer: TransformerData): String =
     {
-        transformer.nodes.map(_.id).mkString("_")
+        transformer.node1.id
     }
 
     // get the edges we understand

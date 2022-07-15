@@ -75,7 +75,7 @@ class ShortCircuitIsland (session: SparkSession, storageLevel: StorageLevel, opt
 
     override lazy val transformers: RDD[TransformerSet] = Transformers(session, storageLevel).getTransformers(transformer_filter = transformer_filter) // substation filter
         // legacy naming: TransformerData should be TransformerDetails, TransformerSet should be TransformerData
-        .groupBy(transformer => transformer.nodes.map(_.id).mkString("_"))
+        .groupBy(transformer => transformer.node1.id)
         .values
         .map(trafos => TransformerSet(trafos.toArray)) // default_power_rating, default_impedance
 
