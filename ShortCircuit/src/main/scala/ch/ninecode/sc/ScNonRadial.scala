@@ -500,6 +500,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         }
     }
 
+    @SuppressWarnings(Array("org.wartremover.warts.TraversableOps"))
     def makeTransformerBranch (transformer: GLMTransformerEdge, data: Iterable[ThreePhaseComplexDataElement], lvnodes: Array[String]): List[Branch] =
     {
         val transformer_set: TransformerSet = transformer.transformer
@@ -507,9 +508,22 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
         val z_per_unit = transformer_set.total_impedance_per_unit._1
 
         val trafo = transformer_set.transformers.head
-        val hv_pin = transformer_set.node0
-        val high_voltages = get_voltages(data, Array(trafo.node0.id))
-        val high_voltage = high_voltages(0)
+        var hv_pin = transformer_set.node0
+        var high_voltages = get_voltages(data, Array(hv_pin))
+        val high_voltage =
+        try
+            high_voltages(0)
+        catch
+        {
+            case e: Exception =>
+                log.warn(s"HV Pin ($hv_pin) not found for transformer_set: ${transformer_set.toString}", e)
+                val data_set: Set[Mrid] = data.map(d => d.element).toSet
+                val hv_pins_set: Set[Mrid] = transformer_set.node0All.toSet
+                hv_pin = hv_pins_set.intersect(data_set).head
+                log.warn(s"New HV Pin: $hv_pin")
+                high_voltages = get_voltages(data, Array(hv_pin))
+                high_voltages(0)
+        }
         val node0BaseVoltage = transformer_set.transformers(0).voltages.filter(_._1.equals(trafo.node0.BaseVoltage))(0)._2
         val v1 = high_voltage.value_a.modulus
 

@@ -75,13 +75,15 @@ case class TransformerSet (
         v
     }
 
-    // all primaries and secondaries should be connected to the same nodes (respectively)
+    // all secondaries should be connected to the same nodes
     lazy val node0: String =
     {
-        val n = transformers.head.node0.id
-        if (!transformers.tail.forall(_.node0.id == n))
-            LoggerFactory.getLogger(getClass).error(s"transformer set $transformer_name has different nodes on terminal 0 ${strings(_.node0.id)}")
-        n
+        transformers.sortWith(_.node0.id < _.node0.id).head.node0.id
+    }
+
+    lazy val node0All: Array[String] =
+    {
+        transformers.sortWith(_.node0.id < _.node0.id).map(t => t.node0.id)
     }
 
     lazy val node1: String =
