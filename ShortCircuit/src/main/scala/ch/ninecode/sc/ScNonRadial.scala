@@ -305,11 +305,7 @@ case class ScNonRadial (session: SparkSession, storage_level: StorageLevel, opti
             for (node <- nodes.tail)
                 yield node.id
         })
-        val trafo_hv_nodes: Array[String] = trafokreis.island.transformers.map(x =>
-        {
-            val trafos: Array[TransformerData] = x.transformers
-            trafos(0).node0.id
-        })
+        val trafo_hv_nodes: Array[String] = trafokreis.island.transformers.map(t=>t.node0)
 
         // get directed edges hi→lo voltage = Branch from→to
         val graph_edges: Iterable[Branch] = get_directed_edges(edges, flatten_trafo_lv_nodes, data, experiment.mrid)
