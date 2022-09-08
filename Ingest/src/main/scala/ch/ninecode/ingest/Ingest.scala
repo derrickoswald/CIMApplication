@@ -63,35 +63,32 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
         }
     }
 
-    def runIngestProcessor(job: IngestJob): Unit = {
-        val mapping_files = time(s"put ${job.mapping}: %s seconds")
+    def runIngestProcessor (job: IngestJob): Unit =
+    {
+        val mappingFile = time(s"put ${job.mapping}: %s seconds")
         {
-            if (job.nocopy)
-                Seq(job.mapping)
-            else
-                putFile(s"${options.workdir}${base_name(job.mapping)}", job.mapping, job.mapping.toLowerCase.endsWith(".zip"))
+            if (!job.nocopy && !job.mapping.isBlank)
+            {
+                val _ = putFile(s"${options.workdir}${base_name(job.mapping)}", job.mapping, job.mapping.toLowerCase.endsWith(".zip"))
+            }
+            job.mapping
         }
-        mapping_files.headOption match
+        time("process: %s seconds")
         {
-            case Some(filename) =>
-                time("process: %s seconds")
-                {
-                    val processor: IngestProcessor = job.format.toString match
-                    {
-                        case "Belvis" => IngestBelvis(session, options)
-                        case "BelvisPlus" => IngestBelvisPlus(session, options)
-                        case "LPEx" => IngestLPEx(session, options)
-                        case "MSCONS" => IngestMSCONS(session, options)
-                        case "Custom" => IngestCustom(session, options)
-                        case "ParquetAO" => IngestParquetAO(session, options)
-                        case "ParquetRaw" => IngestParquetRaw(session, options)
-                        case "Nyquist" => IngestNyquist(session, options)
-                    }
-                    processor.process(filename, job)
-                }
-                cleanUp(job, filename)
-            case None =>
+            val processor: IngestProcessor = job.format.toString match
+            {
+                case "Belvis" => IngestBelvis(session, options)
+                case "BelvisPlus" => IngestBelvisPlus(session, options)
+                case "LPEx" => IngestLPEx(session, options)
+                case "MSCONS" => IngestMSCONS(session, options)
+                case "Custom" => IngestCustom(session, options)
+                case "ParquetAO" => IngestParquetAO(session, options)
+                case "ParquetRaw" => IngestParquetRaw(session, options)
+                case "Nyquist" => IngestNyquist(session, options)
+            }
+            processor.process(mappingFile, job)
         }
+        cleanUp(job, mappingFile)
     }
 
     def runJob (job: IngestJob): Unit =
