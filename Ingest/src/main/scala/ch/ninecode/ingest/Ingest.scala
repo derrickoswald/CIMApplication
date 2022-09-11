@@ -65,13 +65,15 @@ class Ingest (session: SparkSession, options: IngestOptions) extends IngestProce
 
     def runIngestProcessor (job: IngestJob): Unit =
     {
-        val mappingFile = time(s"put ${job.mapping}: %s seconds")
+        val mappingFile: String = time(s"put ${job.mapping}: %s seconds")
         {
             if (!job.nocopy && !job.mapping.isBlank)
             {
-                val _ = putFile(s"${options.workdir}${base_name(job.mapping)}", job.mapping, job.mapping.toLowerCase.endsWith(".zip"))
+                val puttedFile = putFile(s"${options.workdir}${base_name(job.mapping)}", job.mapping, job.mapping.toLowerCase.endsWith(".zip"))
+                puttedFile.headOption.getOrElse("")
+            } else {
+                job.mapping
             }
-            job.mapping
         }
         time("process: %s seconds")
         {
