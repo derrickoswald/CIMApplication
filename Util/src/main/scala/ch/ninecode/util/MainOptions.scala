@@ -11,7 +11,7 @@ package ch.ninecode.util
 case class MainOptions
 (
     application: String = "SparkApplication",
-    version: String = "2.12-3.0.1-3.0.13",
+    version: String = "2.12-3.0.1-3.0.14",
     valid: Boolean = true,
     unittest: Boolean = false,
 )
