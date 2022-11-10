@@ -194,28 +194,36 @@ case class SimulationTrafoKreis
      * @param edge  the edge to check
      * @return <code>Some(true)</code> if incoming, <code>Some(false)</code> if outgoing, <code>None</code> if we can't tell.
      */
-    def minitrace_incoming (start: String, edge: GLMEdge): Option[Boolean] =
+    def minitrace_incoming (start: String, edge: GLMEdge, counter: Int = 0): Option[Boolean] =
     {
-        // if this edge has a direction
-        if (directions.contains(edge.id))
+        if (counter > 3)
         {
-            // use it
-            val direction = directions(edge.id) // +1 = cn1->cn2 away from trafo, -1 = cn1->cn2 towards trafo
-            Some(((edge.cn1 == start) && (-1 == direction)) || ((edge.cn2 == start) && (1 == direction)))
-        }
-        else
+            implicit val log: Logger = LoggerFactory.getLogger(getClass)
+            log.error(s"counter > 3: start: ${start}, edge: ${edge.toString}")
+            None
+        } else
         {
-            // otherwise, try edges at the other end
-            val other = if (edge.cn1 == start) edge.cn2 else edge.cn1
-            val connected = attached(other).filter(_.id != edge.id) // filter out the edge we arrived on
-            if (0 < connected.size)
+            // if this edge has a direction
+            if (directions.contains(edge.id))
             {
-                val votes = connected.map(e => minitrace_incoming(other, e))
-                val initial: Option[Boolean] = None
-                votes.foldLeft(initial)(vote(other))
+                // use it
+                val direction = directions(edge.id) // +1 = cn1->cn2 away from trafo, -1 = cn1->cn2 towards trafo
+                Some(((edge.cn1 == start) && (-1 == direction)) || ((edge.cn2 == start) && (1 == direction)))
             }
             else
-                None
+            {
+                // otherwise, try edges at the other end
+                val other = if (edge.cn1 == start) edge.cn2 else edge.cn1
+                val connected = attached(other).filter(_.id != edge.id) // filter out the edge we arrived on
+                if (0 < connected.size)
+                {
+                    val votes = connected.map(e => minitrace_incoming(other, e, counter + 1))
+                    val initial: Option[Boolean] = None
+                    votes.foldLeft(initial)(vote(other))
+                }
+                else
+                    None
+            }
         }
     }
 
