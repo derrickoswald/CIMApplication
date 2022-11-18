@@ -67,6 +67,11 @@ case class SimulationInputReader ( session: SparkSession, options: SimulationOpt
 
     def read_house_trafo_csv (house_trafo_mappings: String): Map[String, String] =
     {
+        if (house_trafo_mappings.startsWith("s3") &&
+            options.aws_s3a_access_key.trim.nonEmpty &&
+            options.aws_s3a_secret_key.trim.nonEmpty)
+            setAwsS3Options()
+
         val mappingDf = if (house_trafo_mappings.eq(""))
         {
             spark.emptyDataFrame
