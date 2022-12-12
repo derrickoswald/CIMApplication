@@ -11,7 +11,7 @@
       "description": "the name of the program"
     },
     "version": {
-      "default": "2.12-3.0.1-3.0.14",
+      "default": "2.12-3.0.1-3.0.15",
       "type": "string",
       "description": "the version of the program (format: <scala>-<spark>-<program>)",
       "pattern": "^.+-.+-.+$"
